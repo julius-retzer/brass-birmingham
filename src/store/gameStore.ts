@@ -1,6 +1,7 @@
 import { setup, assign } from 'xstate';
 import type { LogEntry } from '../components/GameLog';
 import { type CityId } from '../data/board';
+import { on } from 'events';
 
 // Card Types
 export type IndustryType = 'cotton' | 'coal' | 'iron' | 'manufacturer' | 'pottery' | 'brewery';
@@ -342,14 +343,26 @@ export const gameStore = setup({
       states: {
         actionSelection: {
           on: {
-            SELECT_ACTION: [
-              { target: 'build', cond: 'isBuildAction' },
-              { target: 'develop', cond: 'isDevelopAction' },
-              { target: 'sell', cond: 'isSellAction' },
-              { target: 'takeLoan', cond: 'isTakeLoanAction' },
-              { target: 'scout', cond: 'isScoutAction' },
-            ],
-            actions: ['selectAction']
+            SELECT_ACTION: {
+              target: 'build',
+                  guard: 'isBuildAction'
+                },
+                DEVELOP: {
+                  target: 'develop',
+                  guard: 'isDevelopAction'
+                },
+                SELL: {
+                  target: 'sell',
+                  guard: 'isSellAction'
+                },
+                TAKE_LOAN: {
+                  target: 'takeLoan',
+                  guard: 'isTakeLoanAction'
+                },
+                SCOUT: {
+                  target: 'scout',
+                  guard: 'isScoutAction'
+                }
           }
         },
         build: {
@@ -427,13 +440,6 @@ export const gameStore = setup({
           ]
         }
       },
-      guards: {
-        isBuildAction: (context: GameState, event: { type: 'SELECT_ACTION'; action: 'BUILD' | 'DEVELOP' | 'SELL' | 'TAKE_LOAN' | 'SCOUT' }) => event.action === 'BUILD',
-        isDevelopAction: (context: GameState, event: { type: 'SELECT_ACTION'; action: 'BUILD' | 'DEVELOP' | 'SELL' | 'TAKE_LOAN' | 'SCOUT' }) => event.action === 'DEVELOP',
-        isSellAction: (context: GameState, event: { type: 'SELECT_ACTION'; action: 'BUILD' | 'DEVELOP' | 'SELL' | 'TAKE_LOAN' | 'SCOUT' }) => event.action === 'SELL',
-        isTakeLoanAction: (context: GameState, event: { type: 'SELECT_ACTION'; action: 'BUILD' | 'DEVELOP' | 'SELL' | 'TAKE_LOAN' | 'SCOUT' }) => event.action === 'TAKE_LOAN',
-        isScoutAction: (context: GameState, event: { type: 'SELECT_ACTION'; action: 'BUILD' | 'DEVELOP' | 'SELL' | 'TAKE_LOAN' | 'SCOUT' }) => event.action === 'SCOUT',
-      }
     },
     gameOver: {
       type: 'final'

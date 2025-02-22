@@ -164,9 +164,9 @@ export default function Home() {
         </CardContent>
       </CardUI>
 
-      <div className="grid lg:grid-cols-4 gap-8">
+      <div className="grid lg:grid-cols-2 gap-8">
         {/* Game Board */}
-        <div className="lg:col-span-2">
+        <div>
           <Board
             isNetworking={currentActionState === 'networking'}
             era={era}
@@ -175,19 +175,19 @@ export default function Home() {
           />
         </div>
 
-        {/* Player Info */}
-        <div className="lg:col-span-1 space-y-8">
-          {players.map((player, index) => (
-            <PlayerCard
-              key={player.id}
-              player={player}
-              isCurrentPlayer={index === currentPlayerIndex}
-            />
-          ))}
-        </div>
+        {/* Player Info, Hand, and Actions */}
+        <div className="space-y-8">
+          {/* Players */}
+          <div className="grid grid-cols-2 gap-4">
+            {players.map((player, index) => (
+              <PlayerCard
+                key={player.id}
+                player={player}
+                isCurrentPlayer={index === currentPlayerIndex}
+              />
+            ))}
+          </div>
 
-        {/* Player Hand and Actions */}
-        <div className="lg:col-span-1 space-y-8">
           {/* Current Player's Hand */}
           {currentPlayer && (
             <CardUI>

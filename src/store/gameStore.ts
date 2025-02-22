@@ -401,7 +401,6 @@ export const gameStore = setup({
       initial: 'selectingAction',
       states: {
         selectingAction: {
-          entry: ['refillHand'],
           on: {
             BUILD: {
               target: 'building',
@@ -424,7 +423,8 @@ export const gameStore = setup({
               guard: 'canTakeAction'
             },
             END_TURN: {
-              target: 'checkingGameState'
+              target: 'checkingGameState',
+              actions: ['refillHand']
             }
           }
         },

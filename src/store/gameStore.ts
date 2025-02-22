@@ -14,6 +14,18 @@ export interface Player {
   victoryPoints: number;
   income: number;
   hand: Card[];
+  // Built items
+  links: {
+    from: CityId;
+    to: CityId;
+    type: 'canal' | 'rail';
+  }[];
+  industries: {
+    location: CityId;
+    type: IndustryType;
+    level: number;
+    flipped: boolean;
+  }[];
 }
 
 export interface GameState {
@@ -36,6 +48,12 @@ export interface GameState {
   selectedCard: Card | null;
   selectedCardsForScout: Card[];
   spentMoney: number;
+  // Network-related state
+  selectedLink: {
+    from: CityId;
+    to: CityId;
+  } | null;
+  secondLinkAllowed: boolean;
 }
 
 // Fisher-Yates shuffle algorithm
@@ -71,6 +89,12 @@ export const gameStore = setup({
     } | {
       type: 'SCOUT';
     } | {
+      type: 'NETWORK';
+    } | {
+      type: 'SELECT_LINK';
+      from: CityId;
+      to: CityId;
+    } | {
       type: 'SELECT_CARD';
       cardId: string;
     } | {
@@ -93,6 +117,17 @@ export const gameStore = setup({
     },
     isFirstRound: ({ context }) =>
       context.era === 'canal' && context.round === 1,
+    hasSelectedLink: ({ context }) => context.selectedLink !== null,
+    canBuildSecondLink: ({ context }) => {
+      // Can only build second link in rail era and if beer is available
+      return context.era === 'rail' && context.resources.beer > 0 && context.secondLinkAllowed;
+    },
+    canBuildSecondRailLink: ({ context }) => {
+      return context.selectedLink !== null &&
+             context.era === 'rail' &&
+             context.resources.beer > 0 &&
+             context.secondLinkAllowed;
+    }
   },
   actions: {
     initializeGame: assign(({ event }) => {
@@ -115,6 +150,8 @@ export const gameStore = setup({
       const players = event.players.map((player, index) => ({
         ...player,
         hand: hands[index] ?? [],
+        links: [],
+        industries: [],
       }));
 
       return {
@@ -140,6 +177,8 @@ export const gameStore = setup({
         selectedCard: null,
         selectedCardsForScout: [],
         spentMoney: 0,
+        selectedLink: null,
+        secondLinkAllowed: true,
       };
     }),
     selectCard: assign({
@@ -407,6 +446,82 @@ export const gameStore = setup({
           timestamp: new Date()
         }
       ]
+    }),
+    selectLink: assign({
+      selectedLink: ({ event }) => {
+        if (event.type !== 'SELECT_LINK') return null;
+        return {
+          from: event.from,
+          to: event.to
+        };
+      }
+    }),
+    clearSelectedLink: assign({
+      selectedLink: null,
+      secondLinkAllowed: true
+    }),
+    buildLink: assign({
+      spentMoney: ({ context }) => {
+        // Canal era: £3 per link
+        // Rail era: £5 for first link, £15 for two links
+        if (context.era === 'canal') {
+          return context.spentMoney + 3;
+        }
+        return context.spentMoney + (context.secondLinkAllowed ? 5 : 15);
+      },
+      resources: ({ context }) => {
+        // Only consume coal in rail era
+        if (context.era === 'rail') {
+          return {
+            ...context.resources,
+            coal: context.resources.coal - 1,
+            // If building second link, consume beer
+            beer: context.secondLinkAllowed ? context.resources.beer : context.resources.beer - 1
+          };
+        }
+        return context.resources;
+      },
+      players: ({ context }) => {
+        const currentPlayer = context.players[context.currentPlayerIndex];
+        if (!currentPlayer || !context.selectedLink) return context.players;
+
+        return context.players.map((player, index) =>
+          index === context.currentPlayerIndex
+            ? {
+                ...player,
+                money: player.money - (
+                  context.era === 'canal'
+                    ? 3 // Canal era: £3 per link
+                    : context.secondLinkAllowed
+                      ? 5 // Rail era: £5 for first link
+                      : 15 // Rail era: £15 for two links
+                ),
+                links: [
+                  ...player.links,
+                  {
+                    from: context.selectedLink.from,
+                    to: context.selectedLink.to,
+                    type: context.era
+                  }
+                ]
+              }
+            : player
+        );
+      },
+      secondLinkAllowed: false,
+      logs: ({ context }) => {
+        const currentPlayer = context.players[context.currentPlayerIndex];
+        if (!currentPlayer || !context.selectedLink) return context.logs;
+
+        return [
+          ...context.logs,
+          {
+            message: `${currentPlayer.name} built a ${context.era} link between ${context.selectedLink.from} and ${context.selectedLink.to}`,
+            type: 'action' as const,
+            timestamp: new Date()
+          }
+        ];
+      }
     })
   }
 }).createMachine({
@@ -429,7 +544,9 @@ export const gameStore = setup({
     wildIndustryPile: [],
     selectedCard: null,
     selectedCardsForScout: [],
-    spentMoney: 0
+    spentMoney: 0,
+    selectedLink: null,
+    secondLinkAllowed: true,
   },
   initial: 'setup',
   states: {
@@ -466,6 +583,10 @@ export const gameStore = setup({
             },
             SCOUT: {
               target: 'scouting',
+              guard: 'canTakeAction'
+            },
+            NETWORK: {
+              target: 'networking',
               guard: 'canTakeAction'
             },
             END_TURN: {
@@ -552,6 +673,29 @@ export const gameStore = setup({
             CANCEL_ACTION: {
               target: 'selectingAction',
               actions: ['clearSelectedCards']
+            }
+          }
+        },
+        networking: {
+          on: {
+            SELECT_LINK: {
+              actions: ['selectLink']
+            },
+            CONFIRM_ACTION: [
+              {
+                target: 'networking',
+                guard: 'canBuildSecondRailLink',
+                actions: ['buildLink', 'discardSelectedCard']
+              },
+              {
+                target: 'selectingAction',
+                guard: 'hasSelectedLink',
+                actions: ['buildLink', 'discardSelectedCard', 'decrementActions', 'clearSelectedLink']
+              }
+            ],
+            CANCEL_ACTION: {
+              target: 'selectingAction',
+              actions: ['clearSelectedLink']
             }
           }
         },

@@ -87,70 +87,91 @@ function hasConnectionType(types: readonly ConnectionType[], type: ConnectionTyp
   return types.includes(type);
 }
 
+interface BoardProps {
+  isNetworking?: boolean;
+  era?: 'canal' | 'rail';
+  onLinkSelect?: (from: CityId, to: CityId) => void;
+  selectedLink?: { from: CityId; to: CityId } | null;
+}
+
 // Convert our connections to ReactFlow edges
-const edges: Edge[] = [...connections].flatMap((connection) => {
-  const hasCanal = hasConnectionType(connection.types, 'canal');
-  const hasRail = hasConnectionType(connection.types, 'rail');
+function getEdges({ isNetworking, era, selectedLink }: BoardProps): Edge[] {
+  return [...connections].flatMap((connection) => {
+    const hasCanal = hasConnectionType(connection.types, 'canal');
+    const hasRail = hasConnectionType(connection.types, 'rail');
+    const isSelected = selectedLink?.from === connection.from && selectedLink?.to === connection.to;
 
-  const baseStyle: React.CSSProperties = {
-    strokeWidth: 3,
-  };
+    // Skip connections that don't match the current era when networking
+    if (isNetworking && era) {
+      if (era === 'canal' && !hasCanal) return [];
+      if (era === 'rail' && !hasRail) return [];
+    }
 
-  if (hasCanal && hasRail) {
-    // Create two parallel edges for canal and rail
-    return [
-      {
-        id: `${connection.from}-${connection.to}-canal`,
+    const baseStyle: React.CSSProperties = {
+      strokeWidth: 3,
+      cursor: isNetworking ? 'pointer' : 'default',
+    };
+
+    if (hasCanal && hasRail) {
+      // Create two parallel edges for canal and rail
+      return [
+        {
+          id: `${connection.from}-${connection.to}-canal`,
+          source: connection.from,
+          target: connection.to,
+          type: 'default',
+          className: `[&>path]:stroke-blue-600 ${isSelected ? '[&>path]:stroke-[4px]' : ''}`,
+          style: {
+            ...baseStyle,
+            transform: 'translateY(-2px)',
+          },
+          data: { connection },
+        },
+        {
+          id: `${connection.from}-${connection.to}-rail`,
+          source: connection.from,
+          target: connection.to,
+          type: 'default',
+          className: `[&>path]:stroke-orange-600 ${isSelected ? '[&>path]:stroke-[4px]' : ''}`,
+          style: {
+            ...baseStyle,
+            transform: 'translateY(2px)',
+          },
+          data: { connection },
+        },
+      ];
+    } else if (hasCanal) {
+      // Canal only - solid blue line
+      return [{
+        id: `${connection.from}-${connection.to}`,
         source: connection.from,
         target: connection.to,
         type: 'default',
-        className: '[&>path]:stroke-blue-600',
-        style: {
-          ...baseStyle,
-          transform: 'translateY(-2px)',
-        },
-      },
-      {
-        id: `${connection.from}-${connection.to}-rail`,
+        className: `[&>path]:stroke-blue-600 ${isSelected ? '[&>path]:stroke-[4px]' : ''}`,
+        style: baseStyle,
+        data: { connection },
+      }];
+    } else {
+      // Rail only - solid orange line
+      return [{
+        id: `${connection.from}-${connection.to}`,
         source: connection.from,
         target: connection.to,
         type: 'default',
-        className: '[&>path]:stroke-orange-600',
-        style: {
-          ...baseStyle,
-          transform: 'translateY(2px)',
-        },
-      },
-    ];
-  } else if (hasCanal) {
-    // Canal only - solid blue line
-    return [{
-      id: `${connection.from}-${connection.to}`,
-      source: connection.from,
-      target: connection.to,
-      type: 'default',
-      className: '[&>path]:stroke-blue-600',
-      style: baseStyle,
-    }];
-  } else {
-    // Rail only - solid orange line
-    return [{
-      id: `${connection.from}-${connection.to}`,
-      source: connection.from,
-      target: connection.to,
-      type: 'default',
-      className: '[&>path]:stroke-orange-600',
-      style: baseStyle,
-    }];
-  }
-});
+        className: `[&>path]:stroke-orange-600 ${isSelected ? '[&>path]:stroke-[4px]' : ''}`,
+        style: baseStyle,
+        data: { connection },
+      }];
+    }
+  });
+}
 
 // Node types configuration
 const nodeTypes = {
   cityNode: CityNode,
 };
 
-export function Board() {
+export function Board({ isNetworking = false, era, onLinkSelect, selectedLink }: BoardProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
 
   const onNodeDrag = useCallback(() => {
@@ -166,6 +187,15 @@ export function Board() {
     console.log('New positions:', JSON.stringify(newPositions, null, 2));
   }, [nodes]);
 
+  const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
+    if (!isNetworking || !onLinkSelect) return;
+
+    const connection = (edge.data as { connection: typeof connections[number] }).connection;
+    onLinkSelect(connection.from, connection.to);
+  }, [isNetworking, onLinkSelect]);
+
+  const edges = getEdges({ isNetworking, era, selectedLink });
+
   return (
     <Card className="relative w-full aspect-square">
       <div className="absolute inset-0">
@@ -175,6 +205,7 @@ export function Board() {
           nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}
           onNodeDrag={onNodeDrag}
+          onEdgeClick={onEdgeClick}
           fitView
           panOnScroll
           panOnDrag

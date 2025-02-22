@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useMachine } from '@xstate/react';
 import { gameStore, type Player } from '../store/gameStore';
 import { type Card } from '../data/cards';
+import { type CityId } from '../data/board';
 import { GameLog } from '../components/GameLog';
 import { Card as CardUI, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -11,8 +12,9 @@ import { Badge } from '../components/ui/badge';
 import { Coins, Trophy, TrendingUp, CircleDot, Factory, Beer } from 'lucide-react';
 import { Board } from '../components/Board';
 import { PlayerHand } from '../components/PlayerHand';
+import { PlayerCard } from '../components/PlayerCard';
 
-type ActionState = 'building' | 'developing' | 'selling' | 'takingLoan' | 'scouting';
+type ActionState = 'building' | 'developing' | 'selling' | 'takingLoan' | 'scouting' | 'networking';
 
 export default function Home() {
   const [state, send] = useMachine(gameStore);
@@ -26,7 +28,8 @@ export default function Home() {
     logs,
     selectedCard,
     selectedCardsForScout,
-    spentMoney
+    spentMoney,
+    selectedLink
   } = state.context;
 
   console.log(state.context);
@@ -35,8 +38,24 @@ export default function Home() {
   useEffect(() => {
     if (state.matches('setup')) {
       const initialPlayers = [
-        { id: '1', name: 'Player 1', money: 30, victoryPoints: 0, income: 10 },
-        { id: '2', name: 'Player 2', money: 30, victoryPoints: 0, income: 10 },
+        {
+          id: '1',
+          name: 'Player 1',
+          money: 30,
+          victoryPoints: 0,
+          income: 10,
+          links: [],
+          industries: []
+        },
+        {
+          id: '2',
+          name: 'Player 2',
+          money: 30,
+          victoryPoints: 0,
+          income: 10,
+          links: [],
+          industries: []
+        },
       ];
       send({ type: 'START_GAME', players: initialPlayers });
     }
@@ -45,7 +64,7 @@ export default function Home() {
   const currentPlayer = players[currentPlayerIndex];
   const isSelectingAction = state.matches({ playing: 'selectingAction' });
   const currentActionState = state.matches('playing') ?
-    (['building', 'developing', 'selling', 'takingLoan', 'scouting'] as const)
+    (['building', 'developing', 'selling', 'takingLoan', 'scouting', 'networking'] as const)
       .find(action => state.matches({ playing: action }))
     : null;
 
@@ -53,7 +72,7 @@ export default function Home() {
     send({ type: 'SELECT_CARD', cardId: card.id });
   };
 
-  const handleAction = (action: 'BUILD' | 'DEVELOP' | 'SELL' | 'TAKE_LOAN' | 'SCOUT') => {
+  const handleAction = (action: 'BUILD' | 'DEVELOP' | 'SELL' | 'TAKE_LOAN' | 'SCOUT' | 'NETWORK') => {
     send({ type: action });
   };
 
@@ -79,6 +98,12 @@ export default function Home() {
         return 'Select a card to discard to take a loan (£30, -3 income)';
       case 'scouting':
         return `Select ${2 - selectedCardsForScout.length} cards to discard and get wild cards`;
+      case 'networking':
+        return state.context.era === 'canal'
+          ? 'Select a canal connection to build (£3)'
+          : state.context.secondLinkAllowed
+            ? 'Select a rail connection to build (£5, requires coal)'
+            : 'Select a second rail connection to build (part of £15 total, requires coal)';
       default:
         return null;
     }
@@ -95,9 +120,15 @@ export default function Home() {
         return selectedCard !== null;
       case 'scouting':
         return selectedCardsForScout.length === 2;
+      case 'networking':
+        return selectedLink !== null;
       default:
         return false;
     }
+  };
+
+  const handleLinkSelect = (from: CityId, to: CityId) => {
+    send({ type: 'SELECT_LINK', from, to });
   };
 
   return (
@@ -133,35 +164,48 @@ export default function Home() {
         </CardContent>
       </CardUI>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          {/* Player Hands */}
-          <div className="space-y-4">
-            {players.map((player, index) => (
-              <PlayerHand
-                key={player.id}
-                player={player}
-                isCurrentPlayer={index === currentPlayerIndex}
-                selectedCard={selectedCard}
-                selectedCards={currentActionState === 'scouting' ? selectedCardsForScout : undefined}
-                onCardSelect={index === currentPlayerIndex && currentActionState ? handleCardSelect : undefined}
-              />
-            ))}
-          </div>
-
-          {/* Game Board */}
-          <CardUI>
-            <CardHeader>
-              <CardTitle>Game Board</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Board />
-            </CardContent>
-          </CardUI>
+      <div className="grid lg:grid-cols-4 gap-8">
+        {/* Game Board */}
+        <div className="lg:col-span-2">
+          <Board
+            isNetworking={currentActionState === 'networking'}
+            era={era}
+            onLinkSelect={handleLinkSelect}
+            selectedLink={selectedLink}
+          />
         </div>
 
-        {/* Right Column */}
+        {/* Player Info */}
         <div className="lg:col-span-1 space-y-8">
+          {players.map((player, index) => (
+            <PlayerCard
+              key={player.id}
+              player={player}
+              isCurrentPlayer={index === currentPlayerIndex}
+            />
+          ))}
+        </div>
+
+        {/* Player Hand and Actions */}
+        <div className="lg:col-span-1 space-y-8">
+          {/* Current Player's Hand */}
+          {currentPlayer && (
+            <CardUI>
+              <CardHeader>
+                <CardTitle>Your Hand</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PlayerHand
+                  player={currentPlayer}
+                  isCurrentPlayer={true}
+                  selectedCard={selectedCard}
+                  selectedCards={currentActionState === 'scouting' ? selectedCardsForScout : undefined}
+                  onCardSelect={currentActionState ? handleCardSelect : undefined}
+                />
+              </CardContent>
+            </CardUI>
+          )}
+
           {/* Resources */}
           <CardUI>
             <CardHeader>
@@ -245,6 +289,14 @@ export default function Home() {
                       className="w-full"
                     >
                       Scout
+                    </Button>
+                    <Button
+                      onClick={() => handleAction('NETWORK')}
+                      disabled={actionsRemaining <= 0}
+                      variant="secondary"
+                      className="w-full"
+                    >
+                      Network
                     </Button>
                     <Button
                       onClick={() => send({ type: 'END_TURN' })}

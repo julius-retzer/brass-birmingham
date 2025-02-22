@@ -1,6 +1,7 @@
-import { type Player } from "~/types/player";
-import { Card, CardContent, CardHeader } from "~/components/ui/card";
-import { Coins, Trophy, TrendingUp, ScrollText, Factory, Route } from "lucide-react";
+import { type Player } from '../store/gameStore';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Coins, Trophy, TrendingUp, ScrollText, Factory, Route } from 'lucide-react';
+import { cities } from '../data/board';
 
 interface PlayerCardProps {
   player: Player;
@@ -9,20 +10,15 @@ interface PlayerCardProps {
 
 export function PlayerCard({ player, isCurrentPlayer }: PlayerCardProps) {
   return (
-    <Card className={`w-72 ${isCurrentPlayer ? 'ring-2 ring-primary' : ''}`}>
-      <CardHeader
-        className="flex flex-row items-center gap-2 pb-2"
-        style={{
-          backgroundColor: player.color,
-          color: 'white'
-        }}
-      >
-        <div className="flex-1">
-          <h3 className="font-bold">{player.name}</h3>
-          <p className="text-sm opacity-90">{player.character}</p>
-        </div>
+    <Card className={isCurrentPlayer ? 'ring-2 ring-primary' : ''}>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span>{player.name}</span>
+          {isCurrentPlayer && <span className="text-sm text-muted-foreground">(Current)</span>}
+        </CardTitle>
       </CardHeader>
-      <CardContent className="pt-4">
+      <CardContent className="space-y-4">
+        {/* Stats */}
         <div className="grid grid-cols-3 gap-4 text-center">
           <div className="flex flex-col items-center">
             <Coins className="h-6 w-6 text-yellow-500" />
@@ -41,31 +37,42 @@ export function PlayerCard({ player, isCurrentPlayer }: PlayerCardProps) {
           </div>
         </div>
 
-        <div className="mt-4">
+        {/* Cards */}
+        <div>
           <h4 className="text-sm font-medium mb-2">Cards</h4>
-          <div className="flex justify-between text-sm items-center">
-            <div className="flex items-center gap-1">
-              <ScrollText className="h-4 w-4" />
-              <span>Hand: {player.hand.length}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <ScrollText className="h-4 w-4" />
-              <span>Discard: {player.discardPile.length}</span>
-            </div>
+          <div className="flex items-center gap-2">
+            <ScrollText className="h-4 w-4" />
+            <span className="text-sm">Hand: {player.hand.length}</span>
           </div>
         </div>
 
-        <div className="mt-4">
-          <h4 className="text-sm font-medium mb-2">Built</h4>
-          <div className="flex justify-between text-sm items-center">
-            <div className="flex items-center gap-1">
-              <Factory className="h-4 w-4" />
-              <span>Industries: {player.builtIndustries.length}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Route className="h-4 w-4" />
-              <span>Links: {player.links.length}</span>
-            </div>
+        {/* Links */}
+        <div>
+          <h4 className="text-sm font-medium mb-2">Links ({player.links.length})</h4>
+          <div className="space-y-1">
+            {player.links.map((link, index) => (
+              <div key={index} className="flex items-center gap-2 text-sm">
+                <Route className={`h-4 w-4 ${link.type === 'canal' ? 'text-blue-500' : 'text-orange-500'}`} />
+                <span>
+                  {cities[link.from].name} → {cities[link.to].name}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Industries */}
+        <div>
+          <h4 className="text-sm font-medium mb-2">Industries ({player.industries.length})</h4>
+          <div className="space-y-1">
+            {player.industries.map((industry, index) => (
+              <div key={index} className="flex items-center gap-2 text-sm">
+                <Factory className={`h-4 w-4 ${industry.flipped ? 'text-green-500' : 'text-gray-500'}`} />
+                <span>
+                  {industry.type} (L{industry.level}) at {cities[industry.location].name}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </CardContent>

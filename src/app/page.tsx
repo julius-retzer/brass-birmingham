@@ -144,82 +144,6 @@ export default function Home() {
             </CardContent>
           </CardUI>
 
-          {/* Actions */}
-          {state.matches('playing') && (
-            <CardUI>
-              <CardHeader>
-                <CardTitle>Actions</CardTitle>
-                {currentActionState && (
-                  <p className="text-sm text-muted-foreground">{getActionDescription()}</p>
-                )}
-              </CardHeader>
-              <CardContent>
-                {isSelectingAction ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    <Button
-                      onClick={() => handleAction('BUILD')}
-                      disabled={actionsRemaining <= 0}
-                      variant="secondary"
-                    >
-                      Build
-                    </Button>
-                    <Button
-                      onClick={() => handleAction('DEVELOP')}
-                      disabled={actionsRemaining <= 0}
-                      variant="secondary"
-                    >
-                      Develop
-                    </Button>
-                    <Button
-                      onClick={() => handleAction('SELL')}
-                      disabled={actionsRemaining <= 0}
-                      variant="secondary"
-                    >
-                      Sell
-                    </Button>
-                    <Button
-                      onClick={() => handleAction('TAKE_LOAN')}
-                      disabled={actionsRemaining <= 0}
-                      variant="secondary"
-                    >
-                      Take Loan
-                    </Button>
-                    <Button
-                      onClick={() => handleAction('SCOUT')}
-                      disabled={actionsRemaining <= 0}
-                      variant="secondary"
-                    >
-                      Scout
-                    </Button>
-                    <Button
-                      onClick={() => send({ type: 'END_TURN' })}
-                      variant="default"
-                      className="col-span-full"
-                    >
-                      End Turn
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex justify-end gap-4">
-                    <Button
-                      onClick={handleCancelAction}
-                      variant="secondary"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleConfirmAction}
-                      disabled={!canConfirmAction()}
-                      variant="default"
-                    >
-                      Confirm
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </CardUI>
-          )}
-
           {/* Player Hands */}
           <div className="space-y-4">
             {players.map((player, index) => (
@@ -233,7 +157,10 @@ export default function Home() {
               />
             ))}
           </div>
+        </div>
 
+        {/* Right Column */}
+        <div className="lg:col-span-1 space-y-8">
           {/* Resources */}
           <CardUI>
             <CardHeader>
@@ -265,10 +192,91 @@ export default function Home() {
               </div>
             </CardContent>
           </CardUI>
-        </div>
 
-        {/* Game Log */}
-        <div className="lg:col-span-1">
+          {/* Actions */}
+          {state.matches('playing') && (
+            <CardUI>
+              <CardHeader>
+                <CardTitle>Actions</CardTitle>
+                {currentActionState && (
+                  <p className="text-sm text-muted-foreground">{getActionDescription()}</p>
+                )}
+              </CardHeader>
+              <CardContent>
+                {isSelectingAction ? (
+                  <div className="grid grid-cols-1 gap-2">
+                    <Button
+                      onClick={() => handleAction('BUILD')}
+                      disabled={actionsRemaining <= 0}
+                      variant="secondary"
+                      className="w-full"
+                    >
+                      Build
+                    </Button>
+                    <Button
+                      onClick={() => handleAction('DEVELOP')}
+                      disabled={actionsRemaining <= 0}
+                      variant="secondary"
+                      className="w-full"
+                    >
+                      Develop
+                    </Button>
+                    <Button
+                      onClick={() => handleAction('SELL')}
+                      disabled={actionsRemaining <= 0}
+                      variant="secondary"
+                      className="w-full"
+                    >
+                      Sell
+                    </Button>
+                    <Button
+                      onClick={() => handleAction('TAKE_LOAN')}
+                      disabled={actionsRemaining <= 0}
+                      variant="secondary"
+                      className="w-full"
+                    >
+                      Take Loan
+                    </Button>
+                    <Button
+                      onClick={() => handleAction('SCOUT')}
+                      disabled={actionsRemaining <= 0}
+                      variant="secondary"
+                      className="w-full"
+                    >
+                      Scout
+                    </Button>
+                    <Button
+                      onClick={() => send({ type: 'END_TURN' })}
+                      variant="default"
+                      className="w-full mt-4"
+                    >
+                      End Turn
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      onClick={handleConfirmAction}
+                      disabled={!canConfirmAction()}
+                      variant="default"
+                      className="w-full"
+                    >
+                      Confirm
+                    </Button>
+                    <Button
+                      onClick={handleCancelAction}
+                      variant="secondary"
+                      className="w-full"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </CardUI>
+          )}
+
+          {/* Game Log */}
           <div className="sticky top-8">
             <CardUI>
               <CardHeader>

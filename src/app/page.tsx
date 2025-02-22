@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Coins, Trophy, TrendingUp, CircleDot, Factory, Beer } from 'lucide-react';
+import { Board } from '../components/Board';
 
 export default function Home() {
   const [state, send] = useMachine(gameStore);
@@ -57,6 +58,16 @@ export default function Home() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
+          {/* Game Board */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Game Board</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Board />
+            </CardContent>
+          </Card>
+
           {/* Resources */}
           <Card>
             <CardHeader>

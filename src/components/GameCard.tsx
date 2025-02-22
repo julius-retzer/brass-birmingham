@@ -1,4 +1,4 @@
-import { type Card as CardType } from '../store/gameStore';
+import { type Card as CardType } from '../data/cards';
 import { Card, CardContent } from './ui/card';
 import { MapPin, Factory, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';

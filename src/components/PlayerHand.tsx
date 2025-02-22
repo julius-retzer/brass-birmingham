@@ -1,4 +1,5 @@
-import { type Card, type Player } from '../store/gameStore';
+import { type Card } from '../data/cards';
+import { type Player } from '../store/gameStore';
 import { GameCard } from './GameCard';
 import { Card as CardUI, CardContent, CardHeader, CardTitle } from './ui/card';
 

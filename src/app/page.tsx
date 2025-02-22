@@ -2,7 +2,8 @@
 
 import { useEffect } from 'react';
 import { useMachine } from '@xstate/react';
-import { gameStore, type Player, type Card } from '../store/gameStore';
+import { gameStore, type Player } from '../store/gameStore';
+import { type Card } from '../data/cards';
 import { GameLog } from '../components/GameLog';
 import { Card as CardUI, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';

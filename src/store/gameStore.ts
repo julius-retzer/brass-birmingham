@@ -2,6 +2,7 @@ import { setup, assign } from 'xstate';
 import type { LogEntry } from '../components/GameLog';
 import { type CityId } from '../data/board';
 import { on } from 'events';
+import { timestamp } from 'drizzle-orm/mysql-core';
 
 // Card Types
 export type IndustryType = 'cotton' | 'coal' | 'iron' | 'manufacturer' | 'pottery' | 'brewery';
@@ -63,7 +64,6 @@ export interface GameState {
   wildLocationPile: Card[];
   wildIndustryPile: Card[];
   selectedCard: Card | null;
-  currentAction: 'BUILD' | 'DEVELOP' | 'SELL' | 'TAKE_LOAN' | 'SCOUT' | null;
 }
 
 // Fisher-Yates shuffle algorithm
@@ -89,28 +89,21 @@ export const gameStore = setup({
       type: 'START_GAME';
       players: Omit<Player, 'hand'>[];
     } | {
-      type: 'SELECT_ACTION';
-      action: 'BUILD' | 'DEVELOP' | 'SELL' | 'TAKE_LOAN' | 'SCOUT';
-    } | {
       type: 'BUILD';
-      cardId: string;
-      location: CityId;
     } | {
       type: 'DEVELOP';
-      cardId: string;
     } | {
       type: 'SELL';
-      cardId: string;
     } | {
       type: 'TAKE_LOAN';
     } | {
       type: 'SCOUT';
-      cardIds: [string, string]; // Two cards to discard
     } | {
       type: 'SELECT_CARD';
-      cardId: string;
     } | {
       type: 'END_TURN';
+    } | {
+      type: 'CANCEL_ACTION';
     };
   },
   guards: {
@@ -121,20 +114,8 @@ export const gameStore = setup({
       context.currentPlayerIndex === context.players.length - 1,
     hasSelectedCard: ({ context }) => context.selectedCard !== null,
     canScoutAction: ({ context, event }) => {
-      if (event.type !== 'SCOUT') return false;
-      if (context.actionsRemaining <= 0) return false;
-
-      const player = context.players[context.currentPlayerIndex];
-      if (!player) return false;
-
-      const cardsExist = event.cardIds.every(id =>
-        player.hand.some(card => card.id === id)
-      );
-      const noWildCards = player.hand.every(card =>
-        card.type !== 'wild_location' && card.type !== 'wild_industry'
-      );
-      return cardsExist && noWildCards;
-    },
+     return true
+    }
   },
   actions: {
     initializeGame: assign(({ event }) => {
@@ -187,26 +168,17 @@ export const gameStore = setup({
         wildLocationPile: wildCards.filter(card => card.type === 'wild_location'),
         wildIndustryPile: wildCards.filter(card => card.type === 'wild_industry'),
         selectedCard: null,
-        currentAction: null,
       };
-    }),
-    selectAction: assign({
-      currentAction: ({ event }) => {
-        if (event.type !== 'SELECT_ACTION') return null;
-        return event.action;
-      }
     }),
     decrementActions: assign({
       actionsRemaining: ({ context }) => context.actionsRemaining - 1,
       selectedCard: null,
-      currentAction: null,
     }),
     nextPlayer: assign({
       currentPlayerIndex: ({ context }) =>
         (context.currentPlayerIndex + 1) % context.players.length,
       actionsRemaining: 2,
       selectedCard: null,
-      currentAction: null,
       logs: ({ context }) => {
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer) return context.logs;
@@ -226,7 +198,6 @@ export const gameStore = setup({
       currentPlayerIndex: 0,
       actionsRemaining: 2,
       selectedCard: null,
-      currentAction: null,
       logs: ({ context }) => [
         ...context.logs,
         {
@@ -305,7 +276,6 @@ export const gameStore = setup({
     })
   }
 }).createMachine({
-  /** @xstate-layout N4IgpgJg5mDOIC5QCMBOBDWsDi6C2YAdLGAC4CuADgMQDKAKgIIBK9A+towLICiA2gAYAuolCUA9rACWpKeIB2okAA9EARgDMAdkIaATAA41agwBYAbBtNbzAgKwAaEAE91AjQE5Ce0-YMCDQI0DDXMAXzCnNEwcfCJKABt0Zyl5KEJE5LBUenJUeWoAIQBVAEkAGQARQREkEAlpWQUlVQQDPTtdQ2Mzc3NTK3MnVwQtAy9TMw07Uw9DOxmIqIwsXAIMpJS0jaycvILKngA1HnKAeQAFGqUGmTlFOtajPUIDOzUF9q0Bu09hxD6OgEY2MAxCwT0eiWIGiqziOy26UyzmyuXydFO5WudVuTQeoCeei8dhBAgEmlCvy0-wQM1MhHMWhMWmCELU7mhsNi62RqSRm1R+2oTAA0jw2OdGAA5bFiSR3ZqPRD+ekCDzaKyTPQCDoGGmmSHecx2Sz6dXuKaclbc+KbPkIwXo2gAYTOxXosvq8rxLWVah02lm4I0oQCepciB85kIHl+alMBoTanM7StMTWtuS9uRjoKtFOPGd7GdLGqwhu3vuvraM1e7xmHl8FnVGhpHzUhDJXbMehDdg8OrTcJ5du2Ob26J4UsqbHoxWYMvLOMrioJAJJDN85jUPg8Bm+jJpWhNunZsZZO9+kyHNoR9oAxgALMD3gDWGdopHQpDA1E9uKrJVaT0NtBkINR1SZRk1QgwwbwzO9tifF93ziT9v1-Pg1FqOVGkAtdaUCQgQUhLQbG1XwPBpfxoyMNVPFMEw9HMdV4PhXkkOfN8Py-H8-z0HCvTw1cVEQOwiJIvQyPMCi1WovcjSbRiAjsQwPAiSIQHkcQIDgJQuQzCthPxUSEAAWiGCNzN7GMPDs+yHLsgY2PWEgKEoIyFRM1oDTbAQZMICwmWsPc9H9MiXMzRFPJ9ICwI8FMWWBQJvhsGlLEIOwuwEA1jEZWNTEixD+V2NETIAkSniZcCmQMWwEoTSZLJGDxk1eAd+xmFktGYtQio49JkO4tDeLAGL8NMhiY0SjRkv3axmsQVqNF0DqCu63qiqgOIzgAN2ycbKsjZjXh3axtEZZM+lA40Y21KTrDGCENLCIA */
   id: 'brassGame',
   context: {
     players: [],
@@ -323,8 +293,7 @@ export const gameStore = setup({
     discardPile: [],
     wildLocationPile: [],
     wildIndustryPile: [],
-    selectedCard: null,
-    currentAction: null,
+    selectedCard: null
   },
   initial: 'setup',
   states: {
@@ -339,80 +308,77 @@ export const gameStore = setup({
       }
     },
     playing: {
-      initial: 'actionSelection',
+      initial: 'selectingAction',
       states: {
-        actionSelection: {
+        selectingAction: {
           on: {
-            SELECT_ACTION: {
-              target: 'build',
-                  guard: 'isBuildAction'
-                },
-                DEVELOP: {
-                  target: 'develop',
-                  guard: 'isDevelopAction'
-                },
-                SELL: {
-                  target: 'sell',
-                  guard: 'isSellAction'
-                },
-                TAKE_LOAN: {
-                  target: 'takeLoan',
-                  guard: 'isTakeLoanAction'
-                },
-                SCOUT: {
-                  target: 'scout',
-                  guard: 'isScoutAction'
-                }
+            BUILD: { target: 'building' },
+            DEVELOP: { target: 'developing' },
+            SELL: { target: 'selling' },
+            TAKE_LOAN: { target: 'takingLoan' },
+            SCOUT: { target: 'scouting' }
           }
         },
-        build: {
+        building: {
           on: {
             SELECT_CARD: {
-              target: 'playerTurn',
-              actions: ['selectCard', 'decrementActions', 'logAction']
+              target: 'selectingAction',
+              actions: ['selectCard', 'decrementActions', 'logAction'],
+              guard: 'hasSelectedCard'
+            },
+            CANCEL_ACTION: {
+              target: 'selectingAction'
             }
           }
         },
-        develop: {
+        developing: {
           on: {
             SELECT_CARD: {
-              target: 'playerTurn',
-              actions: ['selectCard', 'decrementActions', 'logAction']
+              target: 'selectingAction',
+              actions: ['selectCard', 'decrementActions', 'logAction'],
+              guard: 'hasSelectedCard'
+            },
+            CANCEL_ACTION: {
+              target: 'selectingAction'
             }
           }
         },
-        sell: {
+        selling: {
           on: {
             SELECT_CARD: {
-              target: 'playerTurn',
-              actions: ['selectCard', 'decrementActions', 'logAction']
+              target: 'selectingAction',
+              actions: ['selectCard', 'decrementActions', 'logAction'],
+              guard: 'hasSelectedCard'
+            },
+            CANCEL_ACTION: {
+              target: 'selectingAction'
             }
           }
         },
-        takeLoan: {
+        takingLoan: {
           on: {
-            END_TURN: {
-              target: 'checkGameState',
+            TAKE_LOAN: {
+              target: 'selectingAction',
               actions: ['decrementActions', 'logAction']
+            },
+            CANCEL_ACTION: {
+              target: 'selectingAction'
             }
           }
         },
-        scout: {
+        scouting: {
           on: {
             SCOUT: {
-              target: 'playerTurn',
-              actions: ['discardCard', 'drawWildCards', 'decrementActions', 'logAction']
+              target: 'selectingAction',
+              actions: ['discardCard', 'drawWildCards', 'decrementActions', 'logAction'],
+              guard: 'canScoutAction'
+            },
+            CANCEL_ACTION: {
+              target: 'selectingAction'
             }
           }
         },
-        playerTurn: {
-          on: {
-            END_TURN: {
-              target: 'checkGameState'
-            }
-          }
-        },
-        checkGameState: {
+        checkingGameState: {
           always: [
             {
               guard: 'isGameOver',
@@ -422,7 +388,7 @@ export const gameStore = setup({
                   ...context.logs,
                   {
                     message: 'Game Over!',
-                    type: 'system' as const,
+                    type: 'system',
                     timestamp: new Date()
                   }
                 ]
@@ -430,16 +396,21 @@ export const gameStore = setup({
             },
             {
               guard: 'isRoundOver',
-              target: 'playerTurn',
+              target: 'selectingAction',
               actions: ['nextRound']
             },
             {
-              target: 'playerTurn',
+              target: 'selectingAction',
               actions: ['nextPlayer']
             }
           ]
         }
       },
+      on: {
+        END_TURN: {
+          target: '.checkingGameState'
+        }
+      }
     },
     gameOver: {
       type: 'final'

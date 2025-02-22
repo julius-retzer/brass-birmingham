@@ -11,13 +11,14 @@ import { Coins, Trophy, TrendingUp, CircleDot, Factory, Beer } from 'lucide-reac
 import { Board } from '../components/Board';
 import { PlayerHand } from '../components/PlayerHand';
 
+
 export default function Home() {
   const [state, send] = useMachine(gameStore);
   const { players, currentPlayerIndex, era, round, actionsRemaining, resources, logs, selectedCard } = state.context;
 
   // Start a new game with 2 players for testing
   useEffect(() => {
-    if (state.value === 'setup') {
+    if (state.matches('setup')) {
       const initialPlayers = [
         { id: '1', name: 'Player 1', money: 30, victoryPoints: 0, income: 10 },
         { id: '2', name: 'Player 2', money: 30, victoryPoints: 0, income: 10 },
@@ -27,13 +28,47 @@ export default function Home() {
   }, [state, send]);
 
   const currentPlayer = players[currentPlayerIndex];
+  const isSelectingAction = state.matches({ playing: 'selectingAction' });
+  const currentActionState = state.matches('playing') ?
+    (['building', 'developing', 'selling', 'takingLoan', 'scouting'] as const)
+      .find(action => state.matches({ playing: action }))
+    : null;
+
 
   const handleCardSelect = (card: Card) => {
-    send({ type: 'SELECT_CARD', cardId: card.id });
+    if (!currentActionState) return;
+
+    switch (currentActionState) {
+      case 'building':
+      case 'developing':
+      case 'selling':
+        send({ type: 'SELECT_CARD', cardId: card.id });
+        break;
+      // Scout will need special handling for selecting two cards
+    }
   };
 
-  const handleAction = (action: 'BUILD' | 'DEVELOP' | 'SELL' | 'TAKE_LOAN' | 'SCOUT') => {
-    send({ type: 'SELECT_ACTION', action });
+  const handleCancelAction = () => {
+    send({ type: 'CANCEL_ACTION' });
+  };
+
+  const getActionDescription = () => {
+    if (!currentActionState) return null;
+
+    switch (currentActionState) {
+      case 'building':
+        return 'Select a location or industry card to build';
+      case 'developing':
+        return 'Select an industry card to develop';
+      case 'selling':
+        return 'Select a card to sell';
+      case 'takingLoan':
+        return 'Taking a loan...';
+      case 'scouting':
+        return 'Select two cards to discard and get wild cards';
+      default:
+        return null;
+    }
   };
 
   return (
@@ -77,6 +112,75 @@ export default function Home() {
             </CardContent>
           </CardUI>
 
+          {/* Actions */}
+          {state.matches('playing') && (
+            <CardUI>
+              <CardHeader>
+                <CardTitle>Actions</CardTitle>
+                {currentActionState && (
+                  <p className="text-sm text-muted-foreground">{getActionDescription()}</p>
+                )}
+              </CardHeader>
+              <CardContent>
+                {isSelectingAction ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <Button
+                      onClick={() => send({ type: 'BUILD' })}
+                      disabled={actionsRemaining <= 0}
+                      variant="secondary"
+                    >
+                      Build
+                    </Button>
+                    <Button
+                      onClick={() => send({ type: 'DEVELOP' })}
+                      disabled={actionsRemaining <= 0}
+                      variant="secondary"
+                    >
+                      Develop
+                    </Button>
+                    <Button
+                      onClick={() => send({ type: 'SELL' })}
+                      disabled={actionsRemaining <= 0}
+                      variant="secondary"
+                    >
+                      Sell
+                    </Button>
+                    <Button
+                      onClick={() => send({ type: 'TAKE_LOAN' })}
+                      disabled={actionsRemaining <= 0}
+                      variant="secondary"
+                    >
+                      Take Loan
+                    </Button>
+                    <Button
+                      onClick={() => send({ type: 'SCOUT' })}
+                      disabled={actionsRemaining <= 0}
+                      variant="secondary"
+                    >
+                      Scout
+                    </Button>
+                    <Button
+                      onClick={() => send({ type: 'END_TURN' })}
+                      variant="default"
+                      className="col-span-full"
+                    >
+                      End Turn
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleCancelAction}
+                      variant="secondary"
+                    >
+                      Cancel Action
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </CardUI>
+          )}
+
           {/* Player Hands */}
           <div className="space-y-4">
             {players.map((player, index) => (
@@ -85,7 +189,7 @@ export default function Home() {
                 player={player}
                 isCurrentPlayer={index === currentPlayerIndex}
                 selectedCard={selectedCard}
-                onCardSelect={index === currentPlayerIndex ? handleCardSelect : undefined}
+                onCardSelect={index === currentPlayerIndex && currentActionState ? handleCardSelect : undefined}
               />
             ))}
           </div>
@@ -121,53 +225,6 @@ export default function Home() {
               </div>
             </CardContent>
           </CardUI>
-
-          {/* Actions */}
-          {state.value === 'playing' && (
-            <CardUI>
-              <CardHeader>
-                <CardTitle>Actions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <Button
-                    onClick={() => handleAction('BUILD')}
-                    disabled={!state.can({ type: 'SELECT_ACTION', action: 'BUILD' })}
-                    variant="secondary"
-                  >
-                    Build
-                  </Button>
-                  <Button
-                    onClick={() => handleAction('DEVELOP')}
-                    disabled={!state.can({ type: 'SELECT_ACTION', action: 'DEVELOP' })}
-                    variant="secondary"
-                  >
-                    Develop
-                  </Button>
-                  <Button
-                    onClick={() => handleAction('SELL')}
-                    disabled={!state.can({ type: 'SELECT_ACTION', action: 'SELL' })}
-                    variant="secondary"
-                  >
-                    Sell
-                  </Button>
-                  <Button
-                    onClick={() => handleAction('TAKE_LOAN')}
-                    disabled={!state.can({ type: 'SELECT_ACTION', action: 'TAKE_LOAN' })}
-                    variant="secondary"
-                  >
-                    Take Loan
-                  </Button>
-                  <Button
-                    onClick={() => send({ type: 'END_TURN' })}
-                    variant="default"
-                  >
-                    End Turn
-                  </Button>
-                </div>
-              </CardContent>
-            </CardUI>
-          )}
         </div>
 
         {/* Game Log */}
@@ -186,7 +243,7 @@ export default function Home() {
       </div>
 
       {/* Game Over State */}
-      {state.value === 'gameOver' && (
+      {state.matches('gameOver') && (
         <CardUI className="mt-8">
           <CardContent className="text-center py-8">
             <h2 className="text-2xl font-bold mb-4">Game Over!</h2>

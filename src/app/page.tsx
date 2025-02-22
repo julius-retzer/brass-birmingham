@@ -73,7 +73,7 @@ export default function Home() {
       case 'selling':
         return 'Select a card to sell';
       case 'takingLoan':
-        return 'Taking a loan will give you £30 and decrease your income by 3';
+        return 'Select a card to discard to take a loan (£30, -3 income)';
       case 'scouting':
         return `Select ${2 - selectedCardsForScout.length} cards to discard and get wild cards`;
       default:
@@ -88,9 +88,8 @@ export default function Home() {
       case 'building':
       case 'developing':
       case 'selling':
-        return selectedCard !== null;
       case 'takingLoan':
-        return true;
+        return selectedCard !== null;
       case 'scouting':
         return selectedCardsForScout.length === 2;
       default:

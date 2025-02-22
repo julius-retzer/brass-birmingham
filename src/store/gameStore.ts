@@ -478,12 +478,17 @@ export const gameStore = setup({
         },
         takingLoan: {
           on: {
+            SELECT_CARD: {
+              actions: ['selectCard']
+            },
             CONFIRM_ACTION: {
               target: 'selectingAction',
-              actions: ['takeLoan', 'decrementActions']
+              actions: ['takeLoan', 'discardSelectedCard', 'decrementActions', 'clearSelectedCards'],
+              guard: 'hasSelectedCard'
             },
             CANCEL_ACTION: {
-              target: 'selectingAction'
+              target: 'selectingAction',
+              actions: ['clearSelectedCards']
             }
           }
         },

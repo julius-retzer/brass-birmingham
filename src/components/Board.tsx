@@ -1,7 +1,8 @@
 import { cities, connections, type CityId, type City, type ConnectionType } from '../data/board';
 import { Card } from './ui/card';
-import { ReactFlow, Background, type Node, type Edge, Handle, Position } from '@xyflow/react';
+import { ReactFlow, Background, type Node, type Edge, Handle, Position, useNodesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { useCallback } from 'react';
 
 // Custom node component for cities
 function CityNode({ data }: { data: { label: string; type: City['type'] } }) {
@@ -66,8 +67,8 @@ const cityPositions: Record<CityId, { x: number; y: number }> = {
   shrewsbury: { x: 5, y: 45 },
 };
 
-// Convert our city positions to ReactFlow format
-const nodes: Node[] = Object.entries(cities).map(([id, city]) => ({
+// Initial positions based on the actual game board layout
+const initialNodes: Node[] = Object.entries(cities).map(([id, city]) => ({
   id,
   type: 'cityNode',
   position: {
@@ -78,6 +79,7 @@ const nodes: Node[] = Object.entries(cities).map(([id, city]) => ({
     label: city.name,
     type: city.type
   },
+  draggable: true,
 }));
 
 // Helper function to check connection types
@@ -149,6 +151,21 @@ const nodeTypes = {
 };
 
 export function Board() {
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+
+  const onNodeDrag = useCallback(() => {
+    // Log the new positions to help with updating the initial positions
+    const newPositions = nodes.reduce((acc, node) => {
+      acc[node.id] = {
+        x: Math.round(node.position.x / 10),
+        y: Math.round(node.position.y / 10)
+      };
+      return acc;
+    }, {} as Record<string, { x: number; y: number }>);
+
+    console.log('New positions:', JSON.stringify(newPositions, null, 2));
+  }, [nodes]);
+
   return (
     <Card className="relative w-full aspect-square">
       <div className="absolute inset-0">
@@ -156,10 +173,11 @@ export function Board() {
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onNodeDrag={onNodeDrag}
           fitView
           panOnScroll
-          selectionOnDrag={false}
-          panOnDrag={false}
+          panOnDrag
           className="bg-background"
         >
           <Background />

@@ -39,11 +39,15 @@ export const connections = [
   { from: 'birmingham', to: 'walsall', types: ['canal', 'rail'] },
   { from: 'birmingham', to: 'tamworth', types: ['canal', 'rail'] },
   { from: 'birmingham', to: 'coventry', types: ['canal', 'rail'] },
+  { from: 'birmingham', to: 'worcester', types: ['canal', 'rail'] },
+  { from: 'birmingham', to: 'nuneaton', types: ['canal', 'rail'] },
+  { from: 'birmingham', to: 'oxford', types: ['canal', 'rail'] },
   { from: 'dudley', to: 'wolverhampton', types: ['canal', 'rail'] },
   { from: 'dudley', to: 'kidderminster', types: ['canal', 'rail'] },
   { from: 'wolverhampton', to: 'walsall', types: ['canal', 'rail'] },
   { from: 'wolverhampton', to: 'cannock', types: ['canal', 'rail'] },
-  { from: 'wolverhampton', to: 'coalbrookdale', types: ['rail'] },
+  { from: 'wolverhampton', to: 'dudley', types: ['canal', 'rail'] },
+  { from: 'wolverhampton', to: 'coalbrookdale', types: ['canal', 'rail'] },
 
   // Northern Area
   { from: 'stone', to: 'stoke', types: ['canal', 'rail'] },
@@ -53,24 +57,33 @@ export const connections = [
   { from: 'uttoxeter', to: 'stoke', types: ['rail'] },
   { from: 'uttoxeter', to: 'derby', types: ['rail'] },
   { from: 'burton', to: 'derby', types: ['canal', 'rail'] },
+  { from: 'burton', to: 'stone', types: ['canal', 'rail'] },
+  { from: 'burton', to: 'cannock', types: ['canal', 'rail'] },
   { from: 'derby', to: 'belper', types: ['canal', 'rail'] },
 
   // Eastern Area
   { from: 'tamworth', to: 'burton', types: ['canal', 'rail'] },
   { from: 'tamworth', to: 'nuneaton', types: ['rail'] },
   { from: 'coventry', to: 'nuneaton', types: ['canal', 'rail'] },
-  { from: 'walsall', to: 'tamworth', types: ['rail'] },
+  { from: 'walsall', to: 'tamworth', types: ['canal', 'rail'] },
+  { from: 'walsall', to: 'cannock', types: ['canal', 'rail'] },
+  { from: 'walsall', to: 'burton', types: ['canal', 'rail'] },
 
   // Southern Area
   { from: 'redditch', to: 'worcester', types: ['rail'] },
   { from: 'worcester', to: 'kidderminster', types: ['canal', 'rail'] },
+  { from: 'kidderminster', to: 'dudley', types: ['canal', 'rail'] },
+  { from: 'kidderminster', to: 'coalbrookdale', types: ['canal', 'rail'] },
 
   // Merchant Connections
-  { from: 'coalbrookdale', to: 'shrewsbury', types: ['rail'] },
+  { from: 'coalbrookdale', to: 'shrewsbury', types: ['canal', 'rail'] },
   { from: 'stoke', to: 'warrington', types: ['canal', 'rail'] },
   { from: 'worcester', to: 'gloucester', types: ['canal', 'rail'] },
   { from: 'coventry', to: 'oxford', types: ['canal', 'rail'] },
   { from: 'belper', to: 'nottingham', types: ['rail'] },
+  { from: 'gloucester', to: 'redditch', types: ['canal', 'rail'] },
+  { from: 'gloucester', to: 'oxford', types: ['canal', 'rail'] },
+  { from: 'redditch', to: 'oxford', types: ['canal', 'rail'] },
 ] as const;
 
 // Types for type safety

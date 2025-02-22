@@ -1,20 +1,37 @@
-import { type Player } from '../store/gameStore';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Coins, Trophy, TrendingUp, ScrollText, Factory, Route } from 'lucide-react';
-import { cities } from '../data/board';
+import { type Player } from "../store/gameStore";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import {
+  Coins,
+  Trophy,
+  TrendingUp,
+  ScrollText,
+  Factory,
+  Route,
+} from "lucide-react";
+import { cities } from "../data/board";
+import { type Link } from "../store/gameStore";
 
 interface PlayerCardProps {
   player: Player;
   isCurrentPlayer: boolean;
+  links: Link[];
 }
 
-export function PlayerCard({ player, isCurrentPlayer }: PlayerCardProps) {
+export function PlayerCard({
+  player,
+  isCurrentPlayer,
+  links,
+}: PlayerCardProps) {
+  const playerLinks = links.filter((link) => link.playerId === player.id);
+
   return (
-    <Card className={isCurrentPlayer ? 'ring-2 ring-primary' : ''}>
+    <Card className={isCurrentPlayer ? "ring-2 ring-primary" : ""}>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>{player.name}</span>
-          {isCurrentPlayer && <span className="text-sm text-muted-foreground">(Current)</span>}
+          {isCurrentPlayer && (
+            <span className="text-sm text-muted-foreground">(Current)</span>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -39,7 +56,7 @@ export function PlayerCard({ player, isCurrentPlayer }: PlayerCardProps) {
 
         {/* Cards */}
         <div>
-          <h4 className="text-sm font-medium mb-2">Cards</h4>
+          <h4 className="mb-2 text-sm font-medium">Cards</h4>
           <div className="flex items-center gap-2">
             <ScrollText className="h-4 w-4" />
             <span className="text-sm">Hand: {player.hand.length}</span>
@@ -48,11 +65,15 @@ export function PlayerCard({ player, isCurrentPlayer }: PlayerCardProps) {
 
         {/* Links */}
         <div>
-          <h4 className="text-sm font-medium mb-2">Links ({player.links.length})</h4>
+          <h4 className="mb-2 text-sm font-medium">
+            Links ({playerLinks.length})
+          </h4>
           <div className="space-y-1">
-            {player.links.map((link, index) => (
+            {playerLinks.map((link, index) => (
               <div key={index} className="flex items-center gap-2 text-sm">
-                <Route className={`h-4 w-4 ${link.type === 'canal' ? 'text-blue-500' : 'text-orange-500'}`} />
+                <Route
+                  className={`h-4 w-4 ${link.type === "canal" ? "text-blue-500" : "text-orange-500"}`}
+                />
                 <span>
                   {cities[link.from].name} → {cities[link.to].name}
                 </span>
@@ -63,13 +84,18 @@ export function PlayerCard({ player, isCurrentPlayer }: PlayerCardProps) {
 
         {/* Industries */}
         <div>
-          <h4 className="text-sm font-medium mb-2">Industries ({player.industries.length})</h4>
+          <h4 className="mb-2 text-sm font-medium">
+            Industries ({player.industries.length})
+          </h4>
           <div className="space-y-1">
             {player.industries.map((industry, index) => (
               <div key={index} className="flex items-center gap-2 text-sm">
-                <Factory className={`h-4 w-4 ${industry.flipped ? 'text-green-500' : 'text-gray-500'}`} />
+                <Factory
+                  className={`h-4 w-4 ${industry.flipped ? "text-green-500" : "text-gray-500"}`}
+                />
                 <span>
-                  {industry.type} (L{industry.level}) at {cities[industry.location].name}
+                  {industry.type} (L{industry.level}) at{" "}
+                  {cities[industry.location].name}
                 </span>
               </div>
             ))}

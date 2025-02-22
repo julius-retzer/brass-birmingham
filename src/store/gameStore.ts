@@ -1,15 +1,45 @@
-import { setup, assign } from 'xstate';
-import { type CityId } from '../data/board';
-import { type Card, type IndustryType, type CardType, type LocationColor, type BaseCard, type LocationCard, type IndustryCard, type WildLocationCard, type WildIndustryCard, getInitialCards, type CardDecks } from '../data/cards';
-import { on } from 'events';
-import { timestamp } from 'drizzle-orm/mysql-core';
+import { setup, assign } from "xstate";
+import { type CityId } from "../data/board";
+import {
+  type Card,
+  type IndustryType,
+  type CardType,
+  type LocationColor,
+  type BaseCard,
+  type LocationCard,
+  type IndustryCard,
+  type WildLocationCard,
+  type WildIndustryCard,
+  getInitialCards,
+  type CardDecks,
+} from "../data/cards";
+import { on } from "events";
+import { timestamp } from "drizzle-orm/mysql-core";
 
-export type LogEntryType = 'system' | 'action' | 'info' | 'error';
+export type LogEntryType = "system" | "action" | "info" | "error";
 
 export interface LogEntry {
   message: string;
   type: LogEntryType;
   timestamp: Date;
+}
+
+// Helper function to create log entries
+function createLogEntry(
+  context: GameState,
+  message: string | ((context: GameState) => string),
+  type: LogEntryType = "action",
+): LogEntry[] {
+  const finalMessage =
+    typeof message === "function" ? message(context) : message;
+  return [
+    ...context.logs,
+    {
+      message: finalMessage,
+      type,
+      timestamp: new Date(),
+    },
+  ];
 }
 
 export interface Player {
@@ -20,11 +50,6 @@ export interface Player {
   income: number;
   hand: Card[];
   // Built items
-  links: {
-    from: CityId;
-    to: CityId;
-    type: 'canal' | 'rail';
-  }[];
   industries: {
     location: CityId;
     type: IndustryType;
@@ -33,10 +58,17 @@ export interface Player {
   }[];
 }
 
+export interface Link {
+  playerId: string;
+  from: CityId;
+  to: CityId;
+  type: "canal" | "rail";
+}
+
 export interface GameState {
   players: Player[];
   currentPlayerIndex: number;
-  era: 'canal' | 'rail';
+  era: "canal" | "rail";
   round: number;
   actionsRemaining: number;
   resources: {
@@ -59,6 +91,8 @@ export interface GameState {
     to: CityId;
   } | null;
   secondLinkAllowed: boolean;
+  // Links collection
+  links: Link[];
 }
 
 // Fisher-Yates shuffle algorithm
@@ -80,40 +114,51 @@ function shuffleArray<T>(array: T[]): T[] {
 export const gameStore = setup({
   types: {} as {
     context: GameState;
-    events: {
-      type: 'START_GAME';
-      players: Omit<Player, 'hand'>[];
-    } | {
-      type: 'BUILD';
-    } | {
-      type: 'DEVELOP';
-    } | {
-      type: 'SELL';
-    } | {
-      type: 'TAKE_LOAN';
-    } | {
-      type: 'SCOUT';
-    } | {
-      type: 'NETWORK';
-    } | {
-      type: 'SELECT_LINK';
-      from: CityId;
-      to: CityId;
-    } | {
-      type: 'SELECT_CARD';
-      cardId: string;
-    } | {
-      type: 'CONFIRM_ACTION';
-    } | {
-      type: 'CANCEL_ACTION';
-    } | {
-      type: 'END_TURN';
-    };
+    events:
+      | {
+          type: "START_GAME";
+          players: Omit<Player, "hand">[];
+        }
+      | {
+          type: "BUILD";
+        }
+      | {
+          type: "DEVELOP";
+        }
+      | {
+          type: "SELL";
+        }
+      | {
+          type: "TAKE_LOAN";
+        }
+      | {
+          type: "SCOUT";
+        }
+      | {
+          type: "NETWORK";
+        }
+      | {
+          type: "SELECT_LINK";
+          from: CityId;
+          to: CityId;
+        }
+      | {
+          type: "SELECT_CARD";
+          cardId: string;
+        }
+      | {
+          type: "CONFIRM_ACTION";
+        }
+      | {
+          type: "CANCEL_ACTION";
+        }
+      | {
+          type: "END_TURN";
+        };
   },
   guards: {
     canTakeAction: ({ context }) => context.actionsRemaining > 0,
-    isGameOver: ({ context }) =>
-      context.era === 'rail' && context.round >= 8,
+    isGameOver: ({ context }) => context.era === "rail" && context.round >= 8,
     isRoundOver: ({ context }) =>
       context.currentPlayerIndex === context.players.length - 1,
     hasSelectedCard: ({ context }) => context.selectedCard !== null,
@@ -121,49 +166,53 @@ export const gameStore = setup({
       return context.selectedCardsForScout.length === 2;
     },
     isFirstRound: ({ context }) =>
-      context.era === 'canal' && context.round === 1,
+      context.era === "canal" && context.round === 1,
     hasSelectedLink: ({ context }) => context.selectedLink !== null,
     canBuildSecondLink: ({ context }) => {
       // Can only build second link in rail era and if beer is available
-      return context.era === 'rail' && context.resources.beer > 0 && context.secondLinkAllowed;
+      return (
+        context.era === "rail" &&
+        context.resources.beer > 0 &&
+        context.secondLinkAllowed
+      );
     },
     canBuildSecondRailLink: ({ context }) => {
-      return context.selectedLink !== null &&
-             context.era === 'rail' &&
-             context.resources.beer > 0 &&
-             context.secondLinkAllowed;
+      return (
+        context.selectedLink !== null &&
+        context.era === "rail" &&
+        context.resources.beer > 0 &&
+        context.secondLinkAllowed
+      );
     },
     canBuildLink: ({ context, event }) => {
-      if (event.type !== 'SELECT_LINK') return false;
+      if (event.type !== "SELECT_LINK") return false;
 
-      // Check if any player already has a link on this connection
-      const existingLink = context.players.some(player =>
-        player.links.some(link =>
+      const existingLink = context.links.some(
+        (link) =>
           (link.from === event.from && link.to === event.to) ||
-          (link.from === event.to && link.to === event.from)
-        )
+          (link.from === event.to && link.to === event.from),
       );
 
       if (existingLink) {
-        // Add an error message to the logs
-        context.logs.push({
-          message: `Cannot build a link between ${event.from} and ${event.to} as a link already exists there`,
-          type: 'error',
-          timestamp: new Date()
-        });
+        context.logs = createLogEntry(
+          context,
+          `Cannot build a link between ${event.from} and ${event.to} as a link already exists there`,
+          "error",
+        );
         return false;
       }
 
       return true;
-    }
+    },
   },
   actions: {
     initializeGame: assign(({ event }) => {
-      if (event.type !== 'START_GAME') return {};
+      if (event.type !== "START_GAME") return {};
 
       // Initialize card piles based on player count
       const playerCount = event.players.length;
-      const { regularCards, wildLocationCards, wildIndustryCards } = getInitialCards(playerCount);
+      const { regularCards, wildLocationCards, wildIndustryCards } =
+        getInitialCards(playerCount);
       const shuffledCards = shuffleArray(regularCards);
       const hands: Card[][] = [];
       let currentIndex = 0;
@@ -178,26 +227,27 @@ export const gameStore = setup({
       const players = event.players.map((player, index) => ({
         ...player,
         hand: hands[index] ?? [],
-        links: [],
         industries: [],
       }));
 
       return {
         players,
         currentPlayerIndex: 0,
-        era: 'canal' as const,
+        era: "canal" as const,
         round: 1,
-        actionsRemaining: 1, // First round of Canal Era only gets 1 action
+        actionsRemaining: 1,
         resources: {
           coal: 24,
           iron: 24,
           beer: 24,
         },
-        logs: [{
-          message: 'Game started',
-          type: 'system' as const,
-          timestamp: new Date()
-        }],
+        logs: [
+          {
+            message: "Game started",
+            type: "system" as LogEntryType,
+            timestamp: new Date(),
+          },
+        ],
         drawPile: shuffledCards.slice(currentIndex),
         discardPile: [],
         wildLocationPile: wildLocationCards,
@@ -207,34 +257,35 @@ export const gameStore = setup({
         spentMoney: 0,
         selectedLink: null,
         secondLinkAllowed: true,
+        links: [],
       };
     }),
     selectCard: assign({
       selectedCard: ({ context, event }) => {
-        if (event.type !== 'SELECT_CARD') return null;
+        if (event.type !== "SELECT_CARD") return null;
         const player = context.players[context.currentPlayerIndex];
         if (!player) return null;
-        return player.hand.find(card => card.id === event.cardId) ?? null;
-      }
+        return player.hand.find((card) => card.id === event.cardId) ?? null;
+      },
     }),
     selectScoutCard: assign({
       selectedCardsForScout: ({ context, event }) => {
-        if (event.type !== 'SELECT_CARD') return context.selectedCardsForScout;
+        if (event.type !== "SELECT_CARD") return context.selectedCardsForScout;
         const player = context.players[context.currentPlayerIndex];
         if (!player) return context.selectedCardsForScout;
 
-        const card = player.hand.find(c => c.id === event.cardId);
+        const card = player.hand.find((c) => c.id === event.cardId);
         if (!card) return context.selectedCardsForScout;
 
         if (context.selectedCardsForScout.length < 2) {
           return [...context.selectedCardsForScout, card];
         }
         return context.selectedCardsForScout;
-      }
+      },
     }),
     clearSelectedCards: assign({
       selectedCard: null,
-      selectedCardsForScout: []
+      selectedCardsForScout: [],
     }),
     discardSelectedCard: assign({
       players: ({ context }) => {
@@ -242,13 +293,13 @@ export const gameStore = setup({
         if (!currentPlayer || !context.selectedCard) return context.players;
 
         const updatedHand = currentPlayer.hand.filter(
-          card => card.id !== context.selectedCard?.id
+          (card) => card.id !== context.selectedCard?.id,
         );
 
         return context.players.map((player, index) =>
           index === context.currentPlayerIndex
             ? { ...player, hand: updatedHand }
-            : player
+            : player,
         );
       },
       discardPile: ({ context }) => {
@@ -259,31 +310,24 @@ export const gameStore = setup({
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer || !context.selectedCard) return context.logs;
 
-        let message = '';
+        let message = "";
         switch (context.selectedCard.type) {
-          case 'location':
+          case "location":
             message = `${currentPlayer.name} discarded ${context.selectedCard.location} (${context.selectedCard.color})`;
             break;
-          case 'industry':
-            message = `${currentPlayer.name} discarded ${context.selectedCard.industries.join('/')} industry card`;
+          case "industry":
+            message = `${currentPlayer.name} discarded ${context.selectedCard.industries.join("/")} industry card`;
             break;
-          case 'wild_location':
+          case "wild_location":
             message = `${currentPlayer.name} discarded wild location card`;
             break;
-          case 'wild_industry':
+          case "wild_industry":
             message = `${currentPlayer.name} discarded wild industry card`;
             break;
         }
 
-        return [
-          ...context.logs,
-          {
-            message,
-            type: 'action' as const,
-            timestamp: new Date()
-          }
-        ];
-      }
+        return createLogEntry(context, message);
+      },
     }),
     discardScoutCards: assign({
       players: ({ context }) => {
@@ -291,13 +335,14 @@ export const gameStore = setup({
         if (!currentPlayer) return context.players;
 
         const updatedHand = currentPlayer.hand.filter(
-          card => !context.selectedCardsForScout.some(sc => sc.id === card.id)
+          (card) =>
+            !context.selectedCardsForScout.some((sc) => sc.id === card.id),
         );
 
         return context.players.map((player, index) =>
           index === context.currentPlayerIndex
             ? { ...player, hand: updatedHand }
-            : player
+            : player,
         );
       },
       discardPile: ({ context }) => {
@@ -307,28 +352,24 @@ export const gameStore = setup({
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer) return context.logs;
 
-        const cardDescriptions = context.selectedCardsForScout.map(card => {
+        const cardDescriptions = context.selectedCardsForScout.map((card) => {
           switch (card.type) {
-            case 'location':
+            case "location":
               return `${card.location} (${card.color})`;
-            case 'industry':
-              return `${card.industries.join('/')} industry`;
-            case 'wild_location':
-              return 'wild location';
-            case 'wild_industry':
-              return 'wild industry';
+            case "industry":
+              return `${card.industries.join("/")} industry`;
+            case "wild_location":
+              return "wild location";
+            case "wild_industry":
+              return "wild industry";
           }
         });
 
-        return [
-          ...context.logs,
-          {
-            message: `${currentPlayer.name} scouted by discarding ${cardDescriptions.join(' and ')}`,
-            type: 'action' as const,
-            timestamp: new Date()
-          }
-        ];
-      }
+        return createLogEntry(
+          context,
+          `${currentPlayer.name} scouted by discarding ${cardDescriptions.join(" and ")}`,
+        );
+      },
     }),
     drawWildCards: assign({
       players: ({ context }) => {
@@ -344,7 +385,7 @@ export const gameStore = setup({
         return context.players.map((player, index) =>
           index === context.currentPlayerIndex
             ? { ...player, hand: updatedHand }
-            : player
+            : player,
         );
       },
       wildLocationPile: ({ context }) => context.wildLocationPile.slice(1),
@@ -353,15 +394,11 @@ export const gameStore = setup({
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer) return context.logs;
 
-        return [
-          ...context.logs,
-          {
-            message: `${currentPlayer.name} drew wild location and wild industry cards`,
-            type: 'action' as const,
-            timestamp: new Date()
-          }
-        ];
-      }
+        return createLogEntry(
+          context,
+          `${currentPlayer.name} drew wild location and wild industry cards`,
+        );
+      },
     }),
     takeLoan: assign({
       players: ({ context }) => {
@@ -373,44 +410,39 @@ export const gameStore = setup({
             ? {
                 ...player,
                 money: player.money + 30,
-                income: Math.max(0, player.income - 3)
+                income: Math.max(0, player.income - 3),
               }
-            : player
+            : player,
         );
       },
       logs: ({ context }) => {
-        console.log(context);
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer || !context.selectedCard) return context.logs;
 
-        let cardDesc = '';
+        let cardDesc = "";
         switch (context.selectedCard.type) {
-          case 'location':
+          case "location":
             cardDesc = `${context.selectedCard.location} (${context.selectedCard.color})`;
             break;
-          case 'industry':
-            cardDesc = `${context.selectedCard.industries.join('/')} industry`;
+          case "industry":
+            cardDesc = `${context.selectedCard.industries.join("/")} industry`;
             break;
-          case 'wild_location':
-            cardDesc = 'wild location';
+          case "wild_location":
+            cardDesc = "wild location";
             break;
-          case 'wild_industry':
-            cardDesc = 'wild industry';
+          case "wild_industry":
+            cardDesc = "wild industry";
             break;
         }
 
-        return [
-          ...context.logs,
-          {
-            message: `${currentPlayer.name} took a loan (£30, -3 income) using ${cardDesc}`,
-            type: 'action' as const,
-            timestamp: new Date()
-          }
-        ];
-      }
+        return createLogEntry(
+          context,
+          `${currentPlayer.name} took a loan (£30, -3 income) using ${cardDesc}`,
+        );
+      },
     }),
     decrementActions: assign({
-      actionsRemaining: ({ context }) => context.actionsRemaining - 1
+      actionsRemaining: ({ context }) => context.actionsRemaining - 1,
     }),
     refillHand: assign({
       players: ({ context }) => {
@@ -426,7 +458,7 @@ export const gameStore = setup({
         return context.players.map((player, index) =>
           index === context.currentPlayerIndex
             ? { ...player, hand: updatedHand }
-            : player
+            : player,
         );
       },
       drawPile: ({ context }) => {
@@ -435,29 +467,22 @@ export const gameStore = setup({
 
         const cardsNeeded = 8 - currentPlayer.hand.length;
         return context.drawPile.slice(cardsNeeded);
-      }
+      },
     }),
     nextPlayer: assign({
       currentPlayerIndex: ({ context }) =>
         (context.currentPlayerIndex + 1) % context.players.length,
       actionsRemaining: ({ context }) =>
-        context.era === 'canal' && context.round === 1 ? 1 : 2,
+        context.era === "canal" && context.round === 1 ? 1 : 2,
       selectedCard: null,
       selectedCardsForScout: [],
       spentMoney: 0,
-      logs: ({ context }) => {
-        const currentPlayer = context.players[context.currentPlayerIndex];
-        if (!currentPlayer) return context.logs;
-
-        return [
-          ...context.logs,
-          {
-            message: `${currentPlayer.name}'s turn ended`,
-            type: 'system' as const,
-            timestamp: new Date()
-          }
-        ];
-      }
+      logs: ({ context }) =>
+        createLogEntry(
+          context,
+          (ctx) => `${ctx.players[ctx.currentPlayerIndex]?.name}'s turn ended`,
+          "system",
+        ),
     }),
     nextRound: assign({
       round: ({ context }) => context.round + 1,
@@ -466,45 +491,45 @@ export const gameStore = setup({
       selectedCard: null,
       selectedCardsForScout: [],
       spentMoney: 0,
-      logs: ({ context }) => [
-        ...context.logs,
-        {
-          message: `Round ${context.round} ended. Starting round ${context.round + 1}`,
-          type: 'system' as const,
-          timestamp: new Date()
-        }
-      ]
+      logs: ({ context }) =>
+        createLogEntry(
+          context,
+          (ctx) => `Round ${ctx.round} ended. Starting round ${ctx.round + 1}`,
+          "system",
+        ),
     }),
     selectLink: assign({
       selectedLink: ({ event }) => {
-        if (event.type !== 'SELECT_LINK') return null;
+        if (event.type !== "SELECT_LINK") return null;
         return {
           from: event.from,
-          to: event.to
+          to: event.to,
         };
-      }
+      },
     }),
     clearSelectedLink: assign({
       selectedLink: null,
-      secondLinkAllowed: true
+      secondLinkAllowed: true,
     }),
     buildLink: assign({
       spentMoney: ({ context }) => {
         // Canal era: £3 per link
         // Rail era: £5 for first link, £15 for two links
-        if (context.era === 'canal') {
+        if (context.era === "canal") {
           return context.spentMoney + 3;
         }
         return context.spentMoney + (context.secondLinkAllowed ? 5 : 15);
       },
       resources: ({ context }) => {
         // Only consume coal in rail era
-        if (context.era === 'rail') {
+        if (context.era === "rail") {
           return {
             ...context.resources,
             coal: context.resources.coal - 1,
             // If building second link, consume beer
-            beer: context.secondLinkAllowed ? context.resources.beer : context.resources.beer - 1
+            beer: context.secondLinkAllowed
+              ? context.resources.beer
+              : context.resources.beer - 1,
           };
         }
         return context.resources;
@@ -513,61 +538,61 @@ export const gameStore = setup({
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer || !context.selectedLink) return context.players;
 
-        const selectedLink = context.selectedLink; // Capture in variable to satisfy TypeScript
-
         return context.players.map((player, index) =>
           index === context.currentPlayerIndex
             ? {
                 ...player,
-                money: player.money - (
-                  context.era === 'canal'
+                money:
+                  player.money -
+                  (context.era === "canal"
                     ? 3 // Canal era: £3 per link
                     : context.secondLinkAllowed
                       ? 5 // Rail era: £5 for first link
-                      : 15 // Rail era: £15 for two links
-                ),
-                links: [
-                  ...player.links,
-                  {
-                    from: selectedLink.from,
-                    to: selectedLink.to,
-                    type: context.era
-                  }
-                ]
+                      : 15), // Rail era: £15 for two links
               }
-            : player
+            : player,
         );
+      },
+      links: ({ context }) => {
+        const currentPlayer = context.players[context.currentPlayerIndex];
+        if (!currentPlayer || !context.selectedLink) return context.links;
+
+        return [
+          ...context.links,
+          {
+            playerId: currentPlayer.id,
+            from: context.selectedLink.from,
+            to: context.selectedLink.to,
+            type: context.era,
+          },
+        ];
       },
       secondLinkAllowed: false,
       logs: ({ context }): LogEntry[] => {
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer || !context.selectedLink) return context.logs;
 
-        const selectedLink = context.selectedLink; // Capture in variable to satisfy TypeScript
+        const selectedLink = context.selectedLink;
 
-        return [
-          ...context.logs,
-          {
-            message: `${currentPlayer.name} built a ${context.era} link between ${selectedLink.from} and ${selectedLink.to}`,
-            type: 'action' as const,
-            timestamp: new Date()
-          }
-        ];
-      }
-    })
-  }
+        return createLogEntry(
+          context,
+          `${currentPlayer.name} built a ${context.era} link between ${selectedLink.from} and ${selectedLink.to}`,
+        );
+      },
+    }),
+  },
 }).createMachine({
-  id: 'brassGame',
+  id: "brassGame",
   context: {
     players: [],
     currentPlayerIndex: 0,
-    era: 'canal',
+    era: "canal",
     round: 1,
     actionsRemaining: 1,
     resources: {
       coal: 24,
       iron: 24,
-      beer: 24
+      beer: 24,
     },
     logs: [],
     drawPile: [],
@@ -579,190 +604,211 @@ export const gameStore = setup({
     spentMoney: 0,
     selectedLink: null,
     secondLinkAllowed: true,
+    links: [],
   },
-  initial: 'setup',
+  initial: "setup",
   states: {
     setup: {
       on: {
         START_GAME: {
-          target: 'playing',
-          actions: ['initializeGame'],
+          target: "playing",
+          actions: ["initializeGame"],
           guard: ({ event }) =>
-            event.players.length >= 2 && event.players.length <= 4
-        }
-      }
+            event.players.length >= 2 && event.players.length <= 4,
+        },
+      },
     },
     playing: {
-      initial: 'selectingAction',
+      initial: "selectingAction",
       states: {
         selectingAction: {
           on: {
             BUILD: {
-              target: 'building',
-              guard: 'canTakeAction'
+              target: "building",
+              guard: "canTakeAction",
             },
             DEVELOP: {
-              target: 'developing',
-              guard: 'canTakeAction'
+              target: "developing",
+              guard: "canTakeAction",
             },
             SELL: {
-              target: 'selling',
-              guard: 'canTakeAction'
+              target: "selling",
+              guard: "canTakeAction",
             },
             TAKE_LOAN: {
-              target: 'takingLoan',
-              guard: 'canTakeAction'
+              target: "takingLoan",
+              guard: "canTakeAction",
             },
             SCOUT: {
-              target: 'scouting',
-              guard: 'canTakeAction'
+              target: "scouting",
+              guard: "canTakeAction",
             },
             NETWORK: {
-              target: 'networking',
-              guard: 'canTakeAction'
+              target: "networking",
+              guard: "canTakeAction",
             },
             END_TURN: {
-              target: 'checkingGameState',
-              actions: ['refillHand']
-            }
-          }
+              target: "checkingGameState",
+              actions: ["refillHand"],
+            },
+          },
         },
         building: {
           on: {
             SELECT_CARD: {
-              actions: ['selectCard']
+              actions: ["selectCard"],
             },
             CONFIRM_ACTION: {
-              target: 'selectingAction',
-              guard: 'hasSelectedCard',
-              exit: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
+              target: "selectingAction",
+              guard: "hasSelectedCard",
+              exit: [
+                "discardSelectedCard",
+                "decrementActions",
+                "clearSelectedCards",
+              ],
             },
             CANCEL_ACTION: {
-              target: 'selectingAction',
-              actions: ['clearSelectedCards']
-            }
-          }
+              target: "selectingAction",
+              actions: ["clearSelectedCards"],
+            },
+          },
         },
         developing: {
           on: {
             SELECT_CARD: {
-              actions: ['selectCard']
+              actions: ["selectCard"],
             },
             CONFIRM_ACTION: {
-              target: 'selectingAction',
-              guard: 'hasSelectedCard',
-              exit: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
+              target: "selectingAction",
+              guard: "hasSelectedCard",
+              exit: [
+                "discardSelectedCard",
+                "decrementActions",
+                "clearSelectedCards",
+              ],
             },
             CANCEL_ACTION: {
-              target: 'selectingAction',
-              actions: ['clearSelectedCards']
-            }
-          }
+              target: "selectingAction",
+              actions: ["clearSelectedCards"],
+            },
+          },
         },
         selling: {
           on: {
             SELECT_CARD: {
-              actions: ['selectCard']
+              actions: ["selectCard"],
             },
             CONFIRM_ACTION: {
-              target: 'selectingAction',
-              guard: 'hasSelectedCard',
-              exit: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
+              target: "selectingAction",
+              guard: "hasSelectedCard",
+              exit: [
+                "discardSelectedCard",
+                "decrementActions",
+                "clearSelectedCards",
+              ],
             },
             CANCEL_ACTION: {
-              target: 'selectingAction',
-              actions: ['clearSelectedCards']
-            }
-          }
+              target: "selectingAction",
+              actions: ["clearSelectedCards"],
+            },
+          },
         },
         takingLoan: {
           on: {
             SELECT_CARD: {
-              actions: ['selectCard']
+              actions: ["selectCard"],
             },
             CONFIRM_ACTION: {
-              target: 'selectingAction',
-              guard: 'hasSelectedCard',
-              actions: ['takeLoan'],
-              exit: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
+              target: "selectingAction",
+              guard: "hasSelectedCard",
+              actions: ["takeLoan"],
+              exit: [
+                "discardSelectedCard",
+                "decrementActions",
+                "clearSelectedCards",
+              ],
             },
             CANCEL_ACTION: {
-              target: 'selectingAction',
-              actions: ['clearSelectedCards']
-            }
-          }
+              target: "selectingAction",
+              actions: ["clearSelectedCards"],
+            },
+          },
         },
         scouting: {
           on: {
             SELECT_CARD: {
-              actions: ['selectScoutCard']
+              actions: ["selectScoutCard"],
             },
             CONFIRM_ACTION: {
-              target: 'selectingAction',
-              guard: 'canScout',
-              exit: ['discardScoutCards', 'drawWildCards', 'decrementActions', 'clearSelectedCards']
+              target: "selectingAction",
+              guard: "canScout",
+              exit: [
+                "discardScoutCards",
+                "drawWildCards",
+                "decrementActions",
+                "clearSelectedCards",
+              ],
             },
             CANCEL_ACTION: {
-              target: 'selectingAction',
-              actions: ['clearSelectedCards']
-            }
-          }
+              target: "selectingAction",
+              actions: ["clearSelectedCards"],
+            },
+          },
         },
         networking: {
           on: {
             SELECT_LINK: {
-              actions: ['selectLink'],
-              guard: 'canBuildLink'
+              actions: ["selectLink"],
+              guard: "canBuildLink",
             },
             CONFIRM_ACTION: [
               {
-                target: 'networking',
-                guard: 'canBuildSecondRailLink',
-                actions: ['buildLink', 'discardSelectedCard']
+                target: "networking",
+                guard: "canBuildSecondRailLink",
+                actions: ["buildLink", "discardSelectedCard"],
               },
               {
-                target: 'selectingAction',
-                guard: 'hasSelectedLink',
-                actions: ['buildLink', 'discardSelectedCard', 'decrementActions', 'clearSelectedLink']
-              }
+                target: "selectingAction",
+                guard: "hasSelectedLink",
+                actions: [
+                  "buildLink",
+                  "discardSelectedCard",
+                  "decrementActions",
+                  "clearSelectedLink",
+                ],
+              },
             ],
             CANCEL_ACTION: {
-              target: 'selectingAction',
-              actions: ['clearSelectedLink']
-            }
-          }
+              target: "selectingAction",
+              actions: ["clearSelectedLink"],
+            },
+          },
         },
         checkingGameState: {
           always: [
             {
-              guard: 'isGameOver',
-              target: '#brassGame.gameOver',
+              guard: "isGameOver",
+              target: "#brassGame.gameOver",
               actions: assign({
-                logs: ({ context }) => [
-                  ...context.logs,
-                  {
-                    message: 'Game Over!',
-                    type: 'system' as const,
-                    timestamp: new Date()
-                  }
-                ]
-              })
+                logs: ({ context }) =>
+                  createLogEntry(context, "Game Over!", "system"),
+              }),
             },
             {
-              guard: 'isRoundOver',
-              target: 'selectingAction',
-              actions: ['nextRound']
+              guard: "isRoundOver",
+              target: "selectingAction",
+              actions: ["nextRound"],
             },
             {
-              target: 'selectingAction',
-              actions: ['nextPlayer']
-            }
-          ]
-        }
-      }
+              target: "selectingAction",
+              actions: ["nextPlayer"],
+            },
+          ],
+        },
+      },
     },
     gameOver: {
-      type: 'final'
-    }
-  }
+      type: "final",
+    },
+  },
 });

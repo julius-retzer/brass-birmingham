@@ -4,7 +4,7 @@ import { cn } from '../lib/utils';
 
 export interface LogEntry {
   message: string;
-  type: 'action' | 'system' | 'info';
+  type: 'action' | 'system' | 'info' | 'error';
   timestamp: Date;
 }
 
@@ -32,7 +32,8 @@ export function GameLog({ logs }: GameLogProps) {
               'text-sm rounded p-2',
               log.type === 'system' && 'text-muted-foreground bg-muted/50',
               log.type === 'action' && 'text-primary bg-primary/10',
-              log.type === 'info' && 'text-foreground bg-card'
+              log.type === 'info' && 'text-foreground bg-card',
+              log.type === 'error' && 'text-destructive bg-destructive/10'
             )}
           >
             <span className="text-xs text-muted-foreground block mb-1">

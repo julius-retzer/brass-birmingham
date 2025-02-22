@@ -29,7 +29,8 @@ export default function Home() {
     selectedCard,
     selectedCardsForScout,
     spentMoney,
-    selectedLink
+    selectedLink,
+    links
   } = state.context;
 
   console.log(state.context);
@@ -185,6 +186,7 @@ export default function Home() {
                 key={player.id}
                 player={player}
                 isCurrentPlayer={index === currentPlayerIndex}
+                links={links}
               />
             ))}
           </div>

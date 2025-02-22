@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { ScrollArea } from '../components/ui/scroll-area';
+import { cn } from '../lib/utils';
 
 export interface LogEntry {
   message: string;
@@ -21,30 +23,30 @@ export function GameLog({ logs }: GameLogProps) {
   }, [logs]);
 
   return (
-    <div
-      ref={logContainerRef}
-      className="bg-gray-50 rounded-lg p-4 h-64 overflow-y-auto"
-    >
-      {logs.map((log, index) => (
-        <div
-          key={index}
-          className={`mb-2 text-sm ${
-            log.type === 'system'
-              ? 'text-gray-500'
-              : log.type === 'action'
-              ? 'text-blue-600'
-              : 'text-gray-700'
-          }`}
-        >
-          <span className="text-gray-400 mr-2">
-            {log.timestamp.toLocaleTimeString()}
-          </span>
-          {log.message}
-        </div>
-      ))}
-      {logs.length === 0 && (
-        <div className="text-gray-400 text-center">No actions yet</div>
-      )}
-    </div>
+    <ScrollArea className="h-[400px]">
+      <div ref={logContainerRef} className="space-y-2 pr-4">
+        {logs.map((log, index) => (
+          <div
+            key={index}
+            className={cn(
+              'text-sm rounded p-2',
+              log.type === 'system' && 'text-muted-foreground bg-muted/50',
+              log.type === 'action' && 'text-primary bg-primary/10',
+              log.type === 'info' && 'text-foreground bg-card'
+            )}
+          >
+            <span className="text-xs text-muted-foreground block mb-1">
+              {log.timestamp.toLocaleTimeString()}
+            </span>
+            {log.message}
+          </div>
+        ))}
+        {logs.length === 0 && (
+          <div className="text-muted-foreground text-center py-4">
+            No actions yet
+          </div>
+        )}
+      </div>
+    </ScrollArea>
   );
 }

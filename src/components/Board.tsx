@@ -86,39 +86,61 @@ function hasConnectionType(types: readonly ConnectionType[], type: ConnectionTyp
 }
 
 // Convert our connections to ReactFlow edges
-const edges: Edge[] = [...connections].map((connection) => {
+const edges: Edge[] = [...connections].flatMap((connection) => {
   const hasCanal = hasConnectionType(connection.types, 'canal');
   const hasRail = hasConnectionType(connection.types, 'rail');
 
-  let style: React.CSSProperties = {
+  const baseStyle: React.CSSProperties = {
     strokeWidth: 3,
   };
 
-  let className = '';
-
   if (hasCanal && hasRail) {
-    // Both canal and rail - dashed purple line
-    className = '[&>path]:stroke-purple-500';
-    style = {
-      ...style,
-      strokeDasharray: '8,4',
-    };
+    // Create two parallel edges for canal and rail
+    return [
+      {
+        id: `${connection.from}-${connection.to}-canal`,
+        source: connection.from,
+        target: connection.to,
+        type: 'default',
+        className: '[&>path]:stroke-blue-600',
+        style: {
+          ...baseStyle,
+          transform: 'translateY(-2px)',
+        },
+      },
+      {
+        id: `${connection.from}-${connection.to}-rail`,
+        source: connection.from,
+        target: connection.to,
+        type: 'default',
+        className: '[&>path]:stroke-orange-600',
+        style: {
+          ...baseStyle,
+          transform: 'translateY(2px)',
+        },
+      },
+    ];
   } else if (hasCanal) {
     // Canal only - solid blue line
-    className = '[&>path]:stroke-blue-600';
+    return [{
+      id: `${connection.from}-${connection.to}`,
+      source: connection.from,
+      target: connection.to,
+      type: 'default',
+      className: '[&>path]:stroke-blue-600',
+      style: baseStyle,
+    }];
   } else {
     // Rail only - solid orange line
-    className = '[&>path]:stroke-orange-600';
+    return [{
+      id: `${connection.from}-${connection.to}`,
+      source: connection.from,
+      target: connection.to,
+      type: 'default',
+      className: '[&>path]:stroke-orange-600',
+      style: baseStyle,
+    }];
   }
-
-  return {
-    id: `${connection.from}-${connection.to}`,
-    source: connection.from,
-    target: connection.to,
-    type: 'default',
-    className,
-    style,
-  };
 });
 
 // Node types configuration

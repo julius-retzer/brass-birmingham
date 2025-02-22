@@ -172,6 +172,7 @@ export default function Home() {
             era={era}
             onLinkSelect={handleLinkSelect}
             selectedLink={selectedLink}
+            players={players}
           />
         </div>
 

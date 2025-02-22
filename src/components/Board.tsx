@@ -1,8 +1,9 @@
 import { cities, connections, type CityId, type City, type ConnectionType } from '../data/board';
 import { Card } from './ui/card';
-import { ReactFlow, Background, type Node, type Edge, Handle, Position, useNodesState } from '@xyflow/react';
+import { ReactFlow, Background, type Node, type Edge, Handle, Position, useNodesState, BaseEdge, EdgeLabelRenderer } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback } from 'react';
+import { type Player } from '../store/gameStore';
 
 // Custom node component for cities
 function CityNode({ data }: { data: { label: string; type: City['type'] } }) {
@@ -92,14 +93,103 @@ interface BoardProps {
   era?: 'canal' | 'rail';
   onLinkSelect?: (from: CityId, to: CityId) => void;
   selectedLink?: { from: CityId; to: CityId } | null;
+  players: Player[];
 }
 
+// Helper function to find built links on a connection
+function findBuiltLinks(connection: typeof connections[number], players: Player[]) {
+  return players.flatMap(player =>
+    player.links.filter(link =>
+      (link.from === connection.from && link.to === connection.to) ||
+      (link.from === connection.to && link.to === connection.from)
+    ).map(link => ({ ...link, player }))
+  );
+}
+
+interface LinkEdgeData {
+  connection: typeof connections[number];
+  builtLinks: Array<{
+    type: 'canal' | 'rail';
+    player: Player;
+    from: CityId;
+    to: CityId;
+  }>;
+}
+
+interface LinkEdgeProps {
+  id: string;
+  sourceX: number;
+  sourceY: number;
+  targetX: number;
+  targetY: number;
+  style?: React.CSSProperties;
+  markerEnd?: string;
+  data: LinkEdgeData;
+}
+
+// Custom edge component for links
+function LinkEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  style,
+  markerEnd,
+  data
+}: LinkEdgeProps) {
+  const midX = (sourceX + targetX) / 2;
+  const midY = (sourceY + targetY) / 2;
+  const builtLinks = data.builtLinks;
+
+  return (
+    <>
+      <BaseEdge
+        id={id}
+        path={`M ${sourceX} ${sourceY} L ${targetX} ${targetY}`}
+        style={style}
+        markerEnd={markerEnd}
+      />
+      {builtLinks.length > 0 && (
+        <EdgeLabelRenderer>
+          <div
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${midX}px,${midY}px)`,
+              pointerEvents: 'all',
+            }}
+            className="flex gap-1 bg-background/80 rounded px-1 py-0.5"
+          >
+            {builtLinks.map((link, i) => (
+              <div
+                key={i}
+                className={`w-2 h-2 rounded-full ${link.type === 'canal' ? 'bg-blue-500' : 'bg-orange-500'}`}
+                title={`${link.player.name}'s ${link.type} link`}
+              />
+            ))}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
+}
+
+// Node types and edge types configuration
+const nodeTypes = {
+  cityNode: CityNode,
+};
+
+const edgeTypes = {
+  linkEdge: LinkEdge,
+};
+
 // Convert our connections to ReactFlow edges
-function getEdges({ isNetworking, era, selectedLink }: BoardProps): Edge[] {
+function getEdges({ isNetworking, era, selectedLink, players }: BoardProps): Edge[] {
   return [...connections].flatMap((connection) => {
     const hasCanal = hasConnectionType(connection.types, 'canal');
     const hasRail = hasConnectionType(connection.types, 'rail');
     const isSelected = selectedLink?.from === connection.from && selectedLink?.to === connection.to;
+    const builtLinks = findBuiltLinks(connection, players);
 
     // Skip connections that don't match the current era when networking
     if (isNetworking && era) {
@@ -119,25 +209,25 @@ function getEdges({ isNetworking, era, selectedLink }: BoardProps): Edge[] {
           id: `${connection.from}-${connection.to}-canal`,
           source: connection.from,
           target: connection.to,
-          type: 'default',
+          type: 'linkEdge',
           className: `[&>path]:stroke-blue-600 ${isSelected ? '[&>path]:stroke-[4px]' : ''}`,
           style: {
             ...baseStyle,
             transform: 'translateY(-2px)',
           },
-          data: { connection },
+          data: { connection, builtLinks },
         },
         {
           id: `${connection.from}-${connection.to}-rail`,
           source: connection.from,
           target: connection.to,
-          type: 'default',
+          type: 'linkEdge',
           className: `[&>path]:stroke-orange-600 ${isSelected ? '[&>path]:stroke-[4px]' : ''}`,
           style: {
             ...baseStyle,
             transform: 'translateY(2px)',
           },
-          data: { connection },
+          data: { connection, builtLinks },
         },
       ];
     } else if (hasCanal) {
@@ -146,10 +236,10 @@ function getEdges({ isNetworking, era, selectedLink }: BoardProps): Edge[] {
         id: `${connection.from}-${connection.to}`,
         source: connection.from,
         target: connection.to,
-        type: 'default',
+        type: 'linkEdge',
         className: `[&>path]:stroke-blue-600 ${isSelected ? '[&>path]:stroke-[4px]' : ''}`,
         style: baseStyle,
-        data: { connection },
+        data: { connection, builtLinks },
       }];
     } else {
       // Rail only - solid orange line
@@ -157,21 +247,16 @@ function getEdges({ isNetworking, era, selectedLink }: BoardProps): Edge[] {
         id: `${connection.from}-${connection.to}`,
         source: connection.from,
         target: connection.to,
-        type: 'default',
+        type: 'linkEdge',
         className: `[&>path]:stroke-orange-600 ${isSelected ? '[&>path]:stroke-[4px]' : ''}`,
         style: baseStyle,
-        data: { connection },
+        data: { connection, builtLinks },
       }];
     }
   });
 }
 
-// Node types configuration
-const nodeTypes = {
-  cityNode: CityNode,
-};
-
-export function Board({ isNetworking = false, era, onLinkSelect, selectedLink }: BoardProps) {
+export function Board({ isNetworking = false, era, onLinkSelect, selectedLink, players }: BoardProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
 
   const onNodeDrag = useCallback(() => {
@@ -194,7 +279,7 @@ export function Board({ isNetworking = false, era, onLinkSelect, selectedLink }:
     onLinkSelect(connection.from, connection.to);
   }, [isNetworking, onLinkSelect]);
 
-  const edges = getEdges({ isNetworking, era, selectedLink });
+  const edges = getEdges({ isNetworking, era, selectedLink, players });
 
   return (
     <Card className="relative w-full aspect-square">
@@ -203,6 +288,7 @@ export function Board({ isNetworking = false, era, onLinkSelect, selectedLink }:
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onNodeDrag={onNodeDrag}
           onEdgeClick={onEdgeClick}

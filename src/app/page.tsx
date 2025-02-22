@@ -28,6 +28,8 @@ export default function Home() {
     spentMoney
   } = state.context;
 
+  console.log(state.context);
+
   // Start a new game with 2 players for testing
   useEffect(() => {
     if (state.matches('setup')) {

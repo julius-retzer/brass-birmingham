@@ -224,6 +224,35 @@ export const gameStore = setup({
       discardPile: ({ context }) => {
         if (!context.selectedCard) return context.discardPile;
         return [...context.discardPile, context.selectedCard];
+      },
+      logs: ({ context }) => {
+        const currentPlayer = context.players[context.currentPlayerIndex];
+        if (!currentPlayer || !context.selectedCard) return context.logs;
+
+        let message = '';
+        switch (context.selectedCard.type) {
+          case 'location':
+            message = `${currentPlayer.name} discarded ${context.selectedCard.location} (${context.selectedCard.color})`;
+            break;
+          case 'industry':
+            message = `${currentPlayer.name} discarded ${context.selectedCard.industries.join('/')} industry card`;
+            break;
+          case 'wild_location':
+            message = `${currentPlayer.name} discarded wild location card`;
+            break;
+          case 'wild_industry':
+            message = `${currentPlayer.name} discarded wild industry card`;
+            break;
+        }
+
+        return [
+          ...context.logs,
+          {
+            message,
+            type: 'action' as const,
+            timestamp: new Date()
+          }
+        ];
       }
     }),
     discardScoutCards: assign({
@@ -243,6 +272,32 @@ export const gameStore = setup({
       },
       discardPile: ({ context }) => {
         return [...context.discardPile, ...context.selectedCardsForScout];
+      },
+      logs: ({ context }) => {
+        const currentPlayer = context.players[context.currentPlayerIndex];
+        if (!currentPlayer) return context.logs;
+
+        const cardDescriptions = context.selectedCardsForScout.map(card => {
+          switch (card.type) {
+            case 'location':
+              return `${card.location} (${card.color})`;
+            case 'industry':
+              return `${card.industries.join('/')} industry`;
+            case 'wild_location':
+              return 'wild location';
+            case 'wild_industry':
+              return 'wild industry';
+          }
+        });
+
+        return [
+          ...context.logs,
+          {
+            message: `${currentPlayer.name} scouted by discarding ${cardDescriptions.join(' and ')}`,
+            type: 'action' as const,
+            timestamp: new Date()
+          }
+        ];
       }
     }),
     drawWildCards: assign({
@@ -264,6 +319,19 @@ export const gameStore = setup({
       },
       wildLocationPile: ({ context }) => context.wildLocationPile.slice(1),
       wildIndustryPile: ({ context }) => context.wildIndustryPile.slice(1),
+      logs: ({ context }) => {
+        const currentPlayer = context.players[context.currentPlayerIndex];
+        if (!currentPlayer) return context.logs;
+
+        return [
+          ...context.logs,
+          {
+            message: `${currentPlayer.name} drew wild location and wild industry cards`,
+            type: 'action' as const,
+            timestamp: new Date()
+          }
+        ];
+      }
     }),
     takeLoan: assign({
       players: ({ context }) => {
@@ -279,6 +347,36 @@ export const gameStore = setup({
               }
             : player
         );
+      },
+      logs: ({ context }) => {
+        console.log(context);
+        const currentPlayer = context.players[context.currentPlayerIndex];
+        if (!currentPlayer || !context.selectedCard) return context.logs;
+
+        let cardDesc = '';
+        switch (context.selectedCard.type) {
+          case 'location':
+            cardDesc = `${context.selectedCard.location} (${context.selectedCard.color})`;
+            break;
+          case 'industry':
+            cardDesc = `${context.selectedCard.industries.join('/')} industry`;
+            break;
+          case 'wild_location':
+            cardDesc = 'wild location';
+            break;
+          case 'wild_industry':
+            cardDesc = 'wild industry';
+            break;
+        }
+
+        return [
+          ...context.logs,
+          {
+            message: `${currentPlayer.name} took a loan (£30, -3 income) using ${cardDesc}`,
+            type: 'action' as const,
+            timestamp: new Date()
+          }
+        ];
       }
     }),
     decrementActions: assign({
@@ -346,21 +444,6 @@ export const gameStore = setup({
           timestamp: new Date()
         }
       ]
-    }),
-    logAction: assign({
-      logs: ({ context, event }) => {
-        const currentPlayer = context.players[context.currentPlayerIndex];
-        if (!currentPlayer) return context.logs;
-
-        return [
-          ...context.logs,
-          {
-            message: `${currentPlayer.name} performed ${event.type}`,
-            type: 'action' as const,
-            timestamp: new Date()
-          }
-        ];
-      }
     })
   }
 }).createMachine({
@@ -435,8 +518,8 @@ export const gameStore = setup({
             },
             CONFIRM_ACTION: {
               target: 'selectingAction',
-              actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards'],
-              guard: 'hasSelectedCard'
+              guard: 'hasSelectedCard',
+              exit: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
             },
             CANCEL_ACTION: {
               target: 'selectingAction',
@@ -451,8 +534,8 @@ export const gameStore = setup({
             },
             CONFIRM_ACTION: {
               target: 'selectingAction',
-              actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards'],
-              guard: 'hasSelectedCard'
+              guard: 'hasSelectedCard',
+              exit: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
             },
             CANCEL_ACTION: {
               target: 'selectingAction',
@@ -467,8 +550,8 @@ export const gameStore = setup({
             },
             CONFIRM_ACTION: {
               target: 'selectingAction',
-              actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards'],
-              guard: 'hasSelectedCard'
+              guard: 'hasSelectedCard',
+              exit: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
             },
             CANCEL_ACTION: {
               target: 'selectingAction',
@@ -483,8 +566,9 @@ export const gameStore = setup({
             },
             CONFIRM_ACTION: {
               target: 'selectingAction',
-              actions: ['takeLoan', 'discardSelectedCard', 'decrementActions', 'clearSelectedCards'],
-              guard: 'hasSelectedCard'
+              guard: 'hasSelectedCard',
+              actions: ['takeLoan'],
+              exit: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
             },
             CANCEL_ACTION: {
               target: 'selectingAction',
@@ -499,13 +583,8 @@ export const gameStore = setup({
             },
             CONFIRM_ACTION: {
               target: 'selectingAction',
-              actions: [
-                'discardScoutCards',
-                'drawWildCards',
-                'decrementActions',
-                'clearSelectedCards'
-              ],
-              guard: 'canScout'
+              guard: 'canScout',
+              exit: ['discardScoutCards', 'drawWildCards', 'decrementActions', 'clearSelectedCards']
             },
             CANCEL_ACTION: {
               target: 'selectingAction',

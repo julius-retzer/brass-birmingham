@@ -1,9 +1,262 @@
 ---
-description:
-globs:
+description: XState example state machine 1
+globs: 
 ---
+import { setup, enqueueActions, assign } from 'xstate';
 
-# Your rule content
+function range(num: number): number[] {
+  return Array.from(Array(num).keys());
+}
 
-- You can @ files here
-- You can use markdown but dont have to
+export interface Tile {
+  index: number;
+  x: number;
+  y: number;
+}
+
+export const tilesMachine = setup({
+  types: {} as {
+    context: {
+      tiles: number[];
+      selected: Tile | undefined;
+      hovered: Tile | undefined;
+    };
+  },
+  guards: {
+    isAdjacent: ({ context: { selected, hovered } }) => {
+      if (!selected || !hovered) {
+        return false;
+      }
+      const { x: hx, y: hy } = hovered;
+      const { x: sx, y: sy } = selected;
+      return (
+        (hx === sx && Math.abs(hy - sy) === 1) ||
+        (hy === sy && Math.abs(hx - sx) === 1)
+      );
+    },
+    allTilesInOrder: ({ context: { tiles } }) =>
+      tiles.every((tile, idx) => tile === idx)
+  },
+  actions: {
+    clearSelectedTile: assign({
+      selected: undefined
+    }),
+    clearHoveredTile: assign({
+      hovered: undefined
+    }),
+    setSelectedTile: assign({
+      selected: ({ event }) => event.tile
+    }),
+    setHoveredTile: assign({
+      hovered: ({ event }) => event.tile
+    }),
+    swapTiles: assign({
+      tiles: ({ context: { tiles, selected, hovered } }) => {
+        return swap(tiles, hovered!.index, selected!.index);
+      }
+    }),
+    shuffleTiles: assign({
+      tiles: ({ context: { tiles } }) => {
+        const newTiles = [...tiles];
+        for (let i = newTiles.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [newTiles[i], newTiles[j]] = [newTiles[j], newTiles[i]];
+        }
+        return newTiles;
+      }
+    })
+  }
+}).createMachine({
+  context: {
+    tiles: range(16),
+    selected: undefined,
+    hovered: undefined
+  },
+  initial: 'start',
+  states: {
+    start: {},
+    gameOver: {
+      id: 'gameOver',
+      // make the game replayable
+      on: {
+        shuffle: { target: 'playing', actions: ['shuffleTiles'] }
+      }
+    },
+    playing: {
+      on: {
+        shuffle: { target: undefined }
+      },
+      states: {
+        selecting: {
+          id: 'selecting',
+          on: {
+            'tile.select': {
+              target: 'selected',
+              actions: ['setSelectedTile']
+            }
+          }
+        },
+        selected: {
+          on: {
+            'move.canceled': {
+              actions: ['clearSelectedTile', 'clearHoveredTile'],
+              target: 'selecting'
+            },
+            'tile.hover': [
+              {
+                actions: ['setHoveredTile']
+                // target: '.canSwapTiles'
+              }
+            ],
+            'tile.move': {
+              actions: enqueueActions(({ enqueue, check }) => {
+                if (check('isAdjacent')) {
+                  enqueue('swapTiles');
+                  enqueue('clearSelectedTile');
+                  enqueue('clearHoveredTile');
+                }
+              }),
+              target: '#selecting'
+            }
+          }
+        }
+      },
+      always: {
+        guard: 'allTilesInOrder',
+        target: '#gameOver'
+      },
+      initial: 'selecting'
+    }
+  },
+  on: {
+    shuffle: { target: '.playing', actions: ['shuffleTiles'] }
+  }
+});
+
+export function swap<T extends any[]>(arr: T, a: number, b: number): T {
+  [arr[a], arr[b]] = [arr[b], arr[a]];
+  return arr;
+}
+
+
+
+import './App.css';
+import { useMachine } from '@xstate/react';
+import { tilesMachine } from './tilesMachine';
+
+function TileGrid({
+  children,
+  image
+}: {
+  children: React.ReactNode;
+  image: string;
+}) {
+  return (
+    <div
+      style={{
+        height: '320px',
+        width: '320px',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gridTemplateRows: 'repeat(4, 1fr)',
+        backgroundImage: `url(${image})`,
+        backgroundSize: '600% center'
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// export const Tile = withDefaultProps(Box, ({ tile, highlight }) => ({
+//   height: "100%",
+//   width: "100%",
+//   backgroundImage: "inherit",
+//   backgroundSize: "600% center",
+//   backgroundPosition: `${(tile % 4) * -100}% ${Math.floor(tile / 4) * -100}%`,
+//   css: css({
+//     filter: highlight ? "brightness(1.1)" : "brightness(1)"
+//   }),
+//   userSelect: "none"
+// }));
+
+function Tile({
+  tile,
+  highlight,
+  ...divProps
+}: {
+  tile: number;
+  highlight: boolean;
+} & React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      style={{
+        height: '100%',
+        width: '100%',
+        backgroundImage: 'inherit',
+        backgroundSize: '600% center',
+        backgroundPosition: `${(tile % 4) * -100}% ${
+          Math.floor(tile / 4) * -100
+        }%`,
+        filter: highlight ? 'brightness(1.1)' : 'brightness(1)',
+        userSelect: 'none'
+      }}
+      {...divProps}
+    />
+  );
+}
+
+function App() {
+  const [state, send] = useMachine(tilesMachine);
+
+  return (
+    <div className="App">
+      <TileGrid image="https://source.unsplash.com/random/?city,night">
+        {state.context.tiles.map((tile, index) => {
+          const x = index % 4;
+          const y = Math.floor(index / 4);
+          const highlight =
+            index === state.context.hovered?.index ||
+            index === state.context.selected?.index;
+
+          return (
+            <Tile
+              key={tile}
+              tile={tile}
+              onMouseDown={() =>
+                send({
+                  type: 'tile.select',
+                  tile: {
+                    index,
+                    x,
+                    y
+                  }
+                })
+              }
+              onMouseEnter={() =>
+                send({
+                  type: 'tile.hover',
+                  tile: {
+                    index,
+                    x,
+                    y
+                  }
+                })
+              }
+              onMouseUp={() => send({ type: 'tile.move' })}
+              highlight={highlight}
+            />
+          );
+        })}
+      </TileGrid>
+      <button
+        onClick={() => send({ type: 'shuffle' })}
+        disabled={!state.can({ type: 'shuffle' })}
+      >
+        Shuffle
+      </button>
+    </div>
+  );
+}
+
+export default App;

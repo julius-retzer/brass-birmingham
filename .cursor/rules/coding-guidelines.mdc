@@ -10,6 +10,7 @@ Key Principles
 - Prefer iteration and modularization over code duplication.
 - Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError).
 - Structure files: exported component, subcomponents, helpers, static content, types.
+- For game state we are going to use xState state machine library
 
 Naming Conventions
 - Use lowercase with dashes for directories (e.g., components/auth-wizard).
@@ -41,5 +42,6 @@ Key Conventions
 - Favor server components and Next.js SSR.
 - Use only for Web API access in small components.
 - Avoid for data fetching or state management.
+
 
 Follow Next.js docs for Data Fetching, Rendering, and Routing.

@@ -11,10 +11,22 @@ import { Coins, Trophy, TrendingUp, CircleDot, Factory, Beer } from 'lucide-reac
 import { Board } from '../components/Board';
 import { PlayerHand } from '../components/PlayerHand';
 
+type ActionState = 'building' | 'developing' | 'selling' | 'takingLoan' | 'scouting';
 
 export default function Home() {
   const [state, send] = useMachine(gameStore);
-  const { players, currentPlayerIndex, era, round, actionsRemaining, resources, logs, selectedCard } = state.context;
+  const {
+    players,
+    currentPlayerIndex,
+    era,
+    round,
+    actionsRemaining,
+    resources,
+    logs,
+    selectedCard,
+    selectedCardsForScout,
+    spentMoney
+  } = state.context;
 
   // Start a new game with 2 players for testing
   useEffect(() => {
@@ -34,18 +46,16 @@ export default function Home() {
       .find(action => state.matches({ playing: action }))
     : null;
 
-
   const handleCardSelect = (card: Card) => {
-    if (!currentActionState) return;
+    send({ type: 'SELECT_CARD', cardId: card.id });
+  };
 
-    switch (currentActionState) {
-      case 'building':
-      case 'developing':
-      case 'selling':
-        send({ type: 'SELECT_CARD', cardId: card.id });
-        break;
-      // Scout will need special handling for selecting two cards
-    }
+  const handleAction = (action: 'BUILD' | 'DEVELOP' | 'SELL' | 'TAKE_LOAN' | 'SCOUT') => {
+    send({ type: action });
+  };
+
+  const handleConfirmAction = () => {
+    send({ type: 'CONFIRM_ACTION' });
   };
 
   const handleCancelAction = () => {
@@ -63,11 +73,28 @@ export default function Home() {
       case 'selling':
         return 'Select a card to sell';
       case 'takingLoan':
-        return 'Taking a loan...';
+        return 'Taking a loan will give you £30 and decrease your income by 3';
       case 'scouting':
-        return 'Select two cards to discard and get wild cards';
+        return `Select ${2 - selectedCardsForScout.length} cards to discard and get wild cards`;
       default:
         return null;
+    }
+  };
+
+  const canConfirmAction = () => {
+    if (!currentActionState) return false;
+
+    switch (currentActionState) {
+      case 'building':
+      case 'developing':
+      case 'selling':
+        return selectedCard !== null;
+      case 'takingLoan':
+        return true;
+      case 'scouting':
+        return selectedCardsForScout.length === 2;
+      default:
+        return false;
     }
   };
 
@@ -79,7 +106,7 @@ export default function Home() {
           <CardTitle className="text-3xl">Brass Birmingham</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-5 gap-4">
             <div>
               <h2 className="text-sm text-muted-foreground">Era</h2>
               <p className="text-xl font-semibold capitalize">{era}</p>
@@ -95,6 +122,10 @@ export default function Home() {
             <div>
               <h2 className="text-sm text-muted-foreground">Current Player</h2>
               <p className="text-xl font-semibold">{currentPlayer?.name ?? 'None'}</p>
+            </div>
+            <div>
+              <h2 className="text-sm text-muted-foreground">Money Spent</h2>
+              <p className="text-xl font-semibold">£{spentMoney}</p>
             </div>
           </div>
         </CardContent>
@@ -125,35 +156,35 @@ export default function Home() {
                 {isSelectingAction ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     <Button
-                      onClick={() => send({ type: 'BUILD' })}
+                      onClick={() => handleAction('BUILD')}
                       disabled={actionsRemaining <= 0}
                       variant="secondary"
                     >
                       Build
                     </Button>
                     <Button
-                      onClick={() => send({ type: 'DEVELOP' })}
+                      onClick={() => handleAction('DEVELOP')}
                       disabled={actionsRemaining <= 0}
                       variant="secondary"
                     >
                       Develop
                     </Button>
                     <Button
-                      onClick={() => send({ type: 'SELL' })}
+                      onClick={() => handleAction('SELL')}
                       disabled={actionsRemaining <= 0}
                       variant="secondary"
                     >
                       Sell
                     </Button>
                     <Button
-                      onClick={() => send({ type: 'TAKE_LOAN' })}
+                      onClick={() => handleAction('TAKE_LOAN')}
                       disabled={actionsRemaining <= 0}
                       variant="secondary"
                     >
                       Take Loan
                     </Button>
                     <Button
-                      onClick={() => send({ type: 'SCOUT' })}
+                      onClick={() => handleAction('SCOUT')}
                       disabled={actionsRemaining <= 0}
                       variant="secondary"
                     >
@@ -168,12 +199,19 @@ export default function Home() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex justify-end">
+                  <div className="flex justify-end gap-4">
                     <Button
                       onClick={handleCancelAction}
                       variant="secondary"
                     >
-                      Cancel Action
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleConfirmAction}
+                      disabled={!canConfirmAction()}
+                      variant="default"
+                    >
+                      Confirm
                     </Button>
                   </div>
                 )}
@@ -189,6 +227,7 @@ export default function Home() {
                 player={player}
                 isCurrentPlayer={index === currentPlayerIndex}
                 selectedCard={selectedCard}
+                selectedCards={currentActionState === 'scouting' ? selectedCardsForScout : undefined}
                 onCardSelect={index === currentPlayerIndex && currentActionState ? handleCardSelect : undefined}
               />
             ))}

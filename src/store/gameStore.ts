@@ -64,6 +64,8 @@ export interface GameState {
   wildLocationPile: Card[];
   wildIndustryPile: Card[];
   selectedCard: Card | null;
+  selectedCardsForScout: Card[];
+  spentMoney: number;
 }
 
 // Fisher-Yates shuffle algorithm
@@ -100,10 +102,13 @@ export const gameStore = setup({
       type: 'SCOUT';
     } | {
       type: 'SELECT_CARD';
+      cardId: string;
     } | {
-      type: 'END_TURN';
+      type: 'CONFIRM_ACTION';
     } | {
       type: 'CANCEL_ACTION';
+    } | {
+      type: 'END_TURN';
     };
   },
   guards: {
@@ -113,9 +118,11 @@ export const gameStore = setup({
     isRoundOver: ({ context }) =>
       context.currentPlayerIndex === context.players.length - 1,
     hasSelectedCard: ({ context }) => context.selectedCard !== null,
-    canScoutAction: ({ context, event }) => {
-     return true
-    }
+    canScout: ({ context }) => {
+      return context.selectedCardsForScout.length === 2;
+    },
+    isFirstRound: ({ context }) =>
+      context.era === 'canal' && context.round === 1,
   },
   actions: {
     initializeGame: assign(({ event }) => {
@@ -152,7 +159,7 @@ export const gameStore = setup({
         currentPlayerIndex: 0,
         era: 'canal' as const,
         round: 1,
-        actionsRemaining: 2,
+        actionsRemaining: 1, // First round of Canal Era only gets 1 action
         resources: {
           coal: 24,
           iron: 24,
@@ -168,44 +175,9 @@ export const gameStore = setup({
         wildLocationPile: wildCards.filter(card => card.type === 'wild_location'),
         wildIndustryPile: wildCards.filter(card => card.type === 'wild_industry'),
         selectedCard: null,
+        selectedCardsForScout: [],
+        spentMoney: 0,
       };
-    }),
-    decrementActions: assign({
-      actionsRemaining: ({ context }) => context.actionsRemaining - 1,
-      selectedCard: null,
-    }),
-    nextPlayer: assign({
-      currentPlayerIndex: ({ context }) =>
-        (context.currentPlayerIndex + 1) % context.players.length,
-      actionsRemaining: 2,
-      selectedCard: null,
-      logs: ({ context }) => {
-        const currentPlayer = context.players[context.currentPlayerIndex];
-        if (!currentPlayer) return context.logs;
-
-        return [
-          ...context.logs,
-          {
-            message: `${currentPlayer.name}'s turn ended`,
-            type: 'system' as const,
-            timestamp: new Date()
-          }
-        ];
-      }
-    }),
-    nextRound: assign({
-      round: ({ context }) => context.round + 1,
-      currentPlayerIndex: 0,
-      actionsRemaining: 2,
-      selectedCard: null,
-      logs: ({ context }) => [
-        ...context.logs,
-        {
-          message: `Round ${context.round} ended. Starting round ${context.round + 1}`,
-          type: 'system' as const,
-          timestamp: new Date()
-        }
-      ]
     }),
     selectCard: assign({
       selectedCard: ({ context, event }) => {
@@ -215,28 +187,62 @@ export const gameStore = setup({
         return player.hand.find(card => card.id === event.cardId) ?? null;
       }
     }),
-    discardCard: assign({
-      players: ({ context, event }) => {
-        if (event.type !== 'SCOUT') return context.players;
+    selectScoutCard: assign({
+      selectedCardsForScout: ({ context, event }) => {
+        if (event.type !== 'SELECT_CARD') return context.selectedCardsForScout;
+        const player = context.players[context.currentPlayerIndex];
+        if (!player) return context.selectedCardsForScout;
+
+        const card = player.hand.find(c => c.id === event.cardId);
+        if (!card) return context.selectedCardsForScout;
+
+        if (context.selectedCardsForScout.length < 2) {
+          return [...context.selectedCardsForScout, card];
+        }
+        return context.selectedCardsForScout;
+      }
+    }),
+    clearSelectedCards: assign({
+      selectedCard: null,
+      selectedCardsForScout: []
+    }),
+    discardSelectedCard: assign({
+      players: ({ context }) => {
         const currentPlayer = context.players[context.currentPlayerIndex];
-        if (!currentPlayer) return context.players;
+        if (!currentPlayer || !context.selectedCard) return context.players;
+
         const updatedHand = currentPlayer.hand.filter(
-          card => !event.cardIds.includes(card.id)
+          card => card.id !== context.selectedCard?.id
         );
+
         return context.players.map((player, index) =>
           index === context.currentPlayerIndex
             ? { ...player, hand: updatedHand }
             : player
         );
       },
-      discardPile: ({ context, event }) => {
-        if (event.type !== 'SCOUT') return context.discardPile;
+      discardPile: ({ context }) => {
+        if (!context.selectedCard) return context.discardPile;
+        return [...context.discardPile, context.selectedCard];
+      }
+    }),
+    discardScoutCards: assign({
+      players: ({ context }) => {
         const currentPlayer = context.players[context.currentPlayerIndex];
-        if (!currentPlayer) return context.discardPile;
-        const cardsToDiscard = currentPlayer.hand.filter(
-          card => event.cardIds.includes(card.id)
+        if (!currentPlayer) return context.players;
+
+        const updatedHand = currentPlayer.hand.filter(
+          card => !context.selectedCardsForScout.some(sc => sc.id === card.id)
         );
-        return [...context.discardPile, ...cardsToDiscard];
+
+        return context.players.map((player, index) =>
+          index === context.currentPlayerIndex
+            ? { ...player, hand: updatedHand }
+            : player
+        );
+      },
+      discardPile: ({ context }) => {
+        return [...context.discardPile, ...context.selectedCardsForScout];
       }
     }),
     drawWildCards: assign({
@@ -258,6 +264,88 @@ export const gameStore = setup({
       },
       wildLocationPile: ({ context }) => context.wildLocationPile.slice(1),
       wildIndustryPile: ({ context }) => context.wildIndustryPile.slice(1),
+    }),
+    takeLoan: assign({
+      players: ({ context }) => {
+        const currentPlayer = context.players[context.currentPlayerIndex];
+        if (!currentPlayer) return context.players;
+
+        return context.players.map((player, index) =>
+          index === context.currentPlayerIndex
+            ? {
+                ...player,
+                money: player.money + 30,
+                income: Math.max(0, player.income - 3)
+              }
+            : player
+        );
+      }
+    }),
+    decrementActions: assign({
+      actionsRemaining: ({ context }) => context.actionsRemaining - 1
+    }),
+    refillHand: assign({
+      players: ({ context }) => {
+        const currentPlayer = context.players[context.currentPlayerIndex];
+        if (!currentPlayer) return context.players;
+
+        const cardsNeeded = 8 - currentPlayer.hand.length;
+        if (cardsNeeded <= 0) return context.players;
+
+        const newCards = context.drawPile.slice(0, cardsNeeded);
+        const updatedHand = [...currentPlayer.hand, ...newCards];
+
+        return context.players.map((player, index) =>
+          index === context.currentPlayerIndex
+            ? { ...player, hand: updatedHand }
+            : player
+        );
+      },
+      drawPile: ({ context }) => {
+        const currentPlayer = context.players[context.currentPlayerIndex];
+        if (!currentPlayer) return context.drawPile;
+
+        const cardsNeeded = 8 - currentPlayer.hand.length;
+        return context.drawPile.slice(cardsNeeded);
+      }
+    }),
+    nextPlayer: assign({
+      currentPlayerIndex: ({ context }) =>
+        (context.currentPlayerIndex + 1) % context.players.length,
+      actionsRemaining: ({ context }) =>
+        context.era === 'canal' && context.round === 1 ? 1 : 2,
+      selectedCard: null,
+      selectedCardsForScout: [],
+      spentMoney: 0,
+      logs: ({ context }) => {
+        const currentPlayer = context.players[context.currentPlayerIndex];
+        if (!currentPlayer) return context.logs;
+
+        return [
+          ...context.logs,
+          {
+            message: `${currentPlayer.name}'s turn ended`,
+            type: 'system' as const,
+            timestamp: new Date()
+          }
+        ];
+      }
+    }),
+    nextRound: assign({
+      round: ({ context }) => context.round + 1,
+      currentPlayerIndex: 0,
+      actionsRemaining: 2,
+      selectedCard: null,
+      selectedCardsForScout: [],
+      spentMoney: 0,
+      logs: ({ context }) => [
+        ...context.logs,
+        {
+          message: `Round ${context.round} ended. Starting round ${context.round + 1}`,
+          type: 'system' as const,
+          timestamp: new Date()
+        }
+      ]
     }),
     logAction: assign({
       logs: ({ context, event }) => {
@@ -282,7 +370,7 @@ export const gameStore = setup({
     currentPlayerIndex: 0,
     era: 'canal',
     round: 1,
-    actionsRemaining: 2,
+    actionsRemaining: 1,
     resources: {
       coal: 24,
       iron: 24,
@@ -293,7 +381,9 @@ export const gameStore = setup({
     discardPile: [],
     wildLocationPile: [],
     wildIndustryPile: [],
-    selectedCard: null
+    selectedCard: null,
+    selectedCardsForScout: [],
+    spentMoney: 0
   },
   initial: 'setup',
   states: {
@@ -311,55 +401,86 @@ export const gameStore = setup({
       initial: 'selectingAction',
       states: {
         selectingAction: {
+          entry: ['refillHand'],
           on: {
-            BUILD: { target: 'building' },
-            DEVELOP: { target: 'developing' },
-            SELL: { target: 'selling' },
-            TAKE_LOAN: { target: 'takingLoan' },
-            SCOUT: { target: 'scouting' }
+            BUILD: {
+              target: 'building',
+              guard: 'canTakeAction'
+            },
+            DEVELOP: {
+              target: 'developing',
+              guard: 'canTakeAction'
+            },
+            SELL: {
+              target: 'selling',
+              guard: 'canTakeAction'
+            },
+            TAKE_LOAN: {
+              target: 'takingLoan',
+              guard: 'canTakeAction'
+            },
+            SCOUT: {
+              target: 'scouting',
+              guard: 'canTakeAction'
+            },
+            END_TURN: {
+              target: 'checkingGameState'
+            }
           }
         },
         building: {
           on: {
             SELECT_CARD: {
+              actions: ['selectCard']
+            },
+            CONFIRM_ACTION: {
               target: 'selectingAction',
-              actions: ['selectCard', 'decrementActions', 'logAction'],
+              actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards'],
               guard: 'hasSelectedCard'
             },
             CANCEL_ACTION: {
-              target: 'selectingAction'
+              target: 'selectingAction',
+              actions: ['clearSelectedCards']
             }
           }
         },
         developing: {
           on: {
             SELECT_CARD: {
+              actions: ['selectCard']
+            },
+            CONFIRM_ACTION: {
               target: 'selectingAction',
-              actions: ['selectCard', 'decrementActions', 'logAction'],
+              actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards'],
               guard: 'hasSelectedCard'
             },
             CANCEL_ACTION: {
-              target: 'selectingAction'
+              target: 'selectingAction',
+              actions: ['clearSelectedCards']
             }
           }
         },
         selling: {
           on: {
             SELECT_CARD: {
+              actions: ['selectCard']
+            },
+            CONFIRM_ACTION: {
               target: 'selectingAction',
-              actions: ['selectCard', 'decrementActions', 'logAction'],
+              actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards'],
               guard: 'hasSelectedCard'
             },
             CANCEL_ACTION: {
-              target: 'selectingAction'
+              target: 'selectingAction',
+              actions: ['clearSelectedCards']
             }
           }
         },
         takingLoan: {
           on: {
-            TAKE_LOAN: {
+            CONFIRM_ACTION: {
               target: 'selectingAction',
-              actions: ['decrementActions', 'logAction']
+              actions: ['takeLoan', 'decrementActions']
             },
             CANCEL_ACTION: {
               target: 'selectingAction'
@@ -368,13 +489,22 @@ export const gameStore = setup({
         },
         scouting: {
           on: {
-            SCOUT: {
+            SELECT_CARD: {
+              actions: ['selectScoutCard']
+            },
+            CONFIRM_ACTION: {
               target: 'selectingAction',
-              actions: ['discardCard', 'drawWildCards', 'decrementActions', 'logAction'],
-              guard: 'canScoutAction'
+              actions: [
+                'discardScoutCards',
+                'drawWildCards',
+                'decrementActions',
+                'clearSelectedCards'
+              ],
+              guard: 'canScout'
             },
             CANCEL_ACTION: {
-              target: 'selectingAction'
+              target: 'selectingAction',
+              actions: ['clearSelectedCards']
             }
           }
         },
@@ -388,7 +518,7 @@ export const gameStore = setup({
                   ...context.logs,
                   {
                     message: 'Game Over!',
-                    type: 'system',
+                    type: 'system' as const,
                     timestamp: new Date()
                   }
                 ]
@@ -404,11 +534,6 @@ export const gameStore = setup({
               actions: ['nextPlayer']
             }
           ]
-        }
-      },
-      on: {
-        END_TURN: {
-          target: '.checkingGameState'
         }
       }
     },

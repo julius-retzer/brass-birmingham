@@ -1,11 +1,16 @@
 import { setup, assign } from 'xstate';
-import type { LogEntry } from '../components/GameLog';
 import { type CityId } from '../data/board';
 import { type Card, type IndustryType, type CardType, type LocationColor, type BaseCard, type LocationCard, type IndustryCard, type WildLocationCard, type WildIndustryCard, getInitialCards, type CardDecks } from '../data/cards';
 import { on } from 'events';
 import { timestamp } from 'drizzle-orm/mysql-core';
 
-// Remove all card type definitions since they are now imported from cards.ts
+export type LogEntryType = 'system' | 'action' | 'info' | 'error';
+
+export interface LogEntry {
+  message: string;
+  type: LogEntryType;
+  timestamp: Date;
+}
 
 export interface Player {
   id: string;
@@ -127,6 +132,29 @@ export const gameStore = setup({
              context.era === 'rail' &&
              context.resources.beer > 0 &&
              context.secondLinkAllowed;
+    },
+    canBuildLink: ({ context, event }) => {
+      if (event.type !== 'SELECT_LINK') return false;
+
+      // Check if any player already has a link on this connection
+      const existingLink = context.players.some(player =>
+        player.links.some(link =>
+          (link.from === event.from && link.to === event.to) ||
+          (link.from === event.to && link.to === event.from)
+        )
+      );
+
+      if (existingLink) {
+        // Add an error message to the logs
+        context.logs.push({
+          message: `Cannot build a link between ${event.from} and ${event.to} as a link already exists there`,
+          type: 'error',
+          timestamp: new Date()
+        });
+        return false;
+      }
+
+      return true;
     }
   },
   actions: {
@@ -485,6 +513,8 @@ export const gameStore = setup({
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer || !context.selectedLink) return context.players;
 
+        const selectedLink = context.selectedLink; // Capture in variable to satisfy TypeScript
+
         return context.players.map((player, index) =>
           index === context.currentPlayerIndex
             ? {
@@ -499,8 +529,8 @@ export const gameStore = setup({
                 links: [
                   ...player.links,
                   {
-                    from: context.selectedLink.from,
-                    to: context.selectedLink.to,
+                    from: selectedLink.from,
+                    to: selectedLink.to,
                     type: context.era
                   }
                 ]
@@ -509,14 +539,16 @@ export const gameStore = setup({
         );
       },
       secondLinkAllowed: false,
-      logs: ({ context }) => {
+      logs: ({ context }): LogEntry[] => {
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer || !context.selectedLink) return context.logs;
+
+        const selectedLink = context.selectedLink; // Capture in variable to satisfy TypeScript
 
         return [
           ...context.logs,
           {
-            message: `${currentPlayer.name} built a ${context.era} link between ${context.selectedLink.from} and ${context.selectedLink.to}`,
+            message: `${currentPlayer.name} built a ${context.era} link between ${selectedLink.from} and ${selectedLink.to}`,
             type: 'action' as const,
             timestamp: new Date()
           }
@@ -679,7 +711,8 @@ export const gameStore = setup({
         networking: {
           on: {
             SELECT_LINK: {
-              actions: ['selectLink']
+              actions: ['selectLink'],
+              guard: 'canBuildLink'
             },
             CONFIRM_ACTION: [
               {

@@ -134,16 +134,6 @@ export default function Home() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          {/* Game Board */}
-          <CardUI>
-            <CardHeader>
-              <CardTitle>Game Board</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Board />
-            </CardContent>
-          </CardUI>
-
           {/* Player Hands */}
           <div className="space-y-4">
             {players.map((player, index) => (
@@ -157,6 +147,16 @@ export default function Home() {
               />
             ))}
           </div>
+
+          {/* Game Board */}
+          <CardUI>
+            <CardHeader>
+              <CardTitle>Game Board</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Board />
+            </CardContent>
+          </CardUI>
         </div>
 
         {/* Right Column */}

@@ -94,20 +94,10 @@ test('turn taking - player turn should switch after using all actions', () => {
 
   // Verify we're in the correct initial state
   let snapshot = actor.getSnapshot();
-  console.log('After START_GAME:', {
-    value: snapshot.value,
-    currentPlayerIndex: snapshot.context.currentPlayerIndex,
-    actionsRemaining: snapshot.context.actionsRemaining
-  });
 
   // Player 1 takes a loan action
   actor.send({ type: 'TAKE_LOAN' });
   snapshot = actor.getSnapshot();
-  console.log('After TAKE_LOAN:', {
-    value: snapshot.value,
-    currentPlayerIndex: snapshot.context.currentPlayerIndex,
-    actionsRemaining: snapshot.context.actionsRemaining
-  });
 
   // Get the first card from Player 1's hand to use for the loan
   const player1FirstCard = snapshot.context.players[0]?.hand[0];
@@ -116,20 +106,10 @@ test('turn taking - player turn should switch after using all actions', () => {
   // Select the card for the loan
   actor.send({ type: 'SELECT_CARD', cardId: player1FirstCard!.id });
   snapshot = actor.getSnapshot();
-  console.log('After SELECT_CARD:', {
-    value: snapshot.value,
-    currentPlayerIndex: snapshot.context.currentPlayerIndex,
-    actionsRemaining: snapshot.context.actionsRemaining
-  });
 
   // Confirm the loan action
   actor.send({ type: 'CONFIRM_ACTION' });
   snapshot = actor.getSnapshot();
-  console.log('After CONFIRM_ACTION:', {
-    value: snapshot.value,
-    currentPlayerIndex: snapshot.context.currentPlayerIndex,
-    actionsRemaining: snapshot.context.actionsRemaining
-  });
 
   // 3. Assert - Verify turn has switched to Player 2
   expect(snapshot.context.currentPlayerIndex).toBe(1); // Should now be Player 2's turn

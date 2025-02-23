@@ -6,7 +6,7 @@ import { gameStore } from '../store/gameStore';
 import { type Card } from '../data/cards';
 import { type CityId } from '../data/board';
 import { GameLog } from '../components/GameLog';
-import { Board } from '../components/Board';
+import { Board } from '../components/Board/Board';
 import { PlayerHand } from '../components/PlayerHand';
 import { PlayerCard } from '../components/PlayerCard';
 import { createBrowserInspector } from '@statelyai/inspect';

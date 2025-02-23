@@ -7,9 +7,10 @@ interface GameCardProps {
   card: CardType;
   isSelected?: boolean;
   onClick?: () => void;
+  disabled?: boolean;
 }
 
-export function GameCard({ card, isSelected = false, onClick }: GameCardProps) {
+export function GameCard({ card, isSelected = false, onClick, disabled = false }: GameCardProps) {
   const getCardIcon = () => {
     switch (card.type) {
       case 'location':
@@ -55,11 +56,13 @@ export function GameCard({ card, isSelected = false, onClick }: GameCardProps) {
   return (
     <Card
       className={cn(
-        'cursor-pointer transition-all hover:scale-105',
+        'transition-all',
         getCardColor(),
-        isSelected && 'ring-2 ring-primary ring-offset-2'
+        isSelected && 'ring-2 ring-primary ring-offset-2',
+        !disabled && 'hover:scale-105 cursor-pointer',
+        disabled && 'opacity-70 cursor-not-allowed'
       )}
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
     >
       <CardContent className="p-4">
         <div className="flex items-center gap-2 mb-2">

@@ -68,10 +68,70 @@ export default function Home() {
 
   const currentPlayer = players[currentPlayerIndex];
   const isSelectingAction = state.matches({ playing: 'actionSelection' });
-  const currentActionState = state.matches('playing') ?
-    (['building', 'developing', 'selling', 'takingLoan', 'scouting', 'networking'] as const)
-      .find(action => state.matches({ playing: { actions: action } }))
-    : null;
+
+  // Helper to safely get the current action and substate
+  const getCurrentAction = () => {
+    const playingState = state.value as { playing?: { actions?: Record<string, string> } };
+    if (!playingState.playing?.actions) return null;
+
+    const [action, states] = Object.entries(playingState.playing.actions)[0] ?? [null, null];
+    if (!action || !states) return null;
+
+    return {
+      action,
+      subState: states
+    };
+  };
+
+  // Helper to safely check if we're in a specific state
+  const isInState = (action: string, subState: string) => {
+    const current = getCurrentAction();
+    return current?.action === action && current?.subState === subState;
+  };
+
+  // Get the description of the current action for the UI
+  const getActionDescription = () => {
+    const current = getCurrentAction();
+    if (!current) return null;
+
+    const { action, subState } = current;
+
+    switch (action) {
+      case 'building':
+        return subState === 'selectingCard'
+          ? 'Select a location or industry card to build'
+          : 'Confirm building action';
+      case 'developing':
+        return subState === 'selectingCard'
+          ? 'Select an industry card to develop'
+          : 'Confirm development action';
+      case 'selling':
+        return subState === 'selectingCard'
+          ? 'Select a card to sell'
+          : 'Confirm selling action';
+      case 'takingLoan':
+        return subState === 'selectingCard'
+          ? 'Select a card to discard to take a loan (£30, -3 income)'
+          : 'Confirm loan action';
+      case 'scouting':
+        return `Select ${2 - selectedCardsForScout.length} cards to discard and get wild cards`;
+      case 'networking':
+        switch (subState) {
+          case 'selectingCard':
+            return 'Select a card to discard for networking';
+          case 'selectingLink':
+            return era === 'canal'
+              ? 'Select a canal connection to build (£3)'
+              : 'Select a rail connection to build (£5, requires coal)';
+          case 'confirmingLink':
+            return 'Confirm link building';
+          default:
+            return null;
+        }
+      default:
+        return null;
+    }
+  };
 
   const handleCardSelect = (card: Card) => {
     send({ type: 'SELECT_CARD', cardId: card.id });
@@ -89,51 +149,49 @@ export default function Home() {
     send({ type: 'CANCEL_ACTION' });
   };
 
-  const getActionDescription = () => {
-    if (!currentActionState) return null;
-
-    switch (currentActionState) {
-      case 'building':
-        return 'Select a location or industry card to build';
-      case 'developing':
-        return 'Select an industry card to develop';
-      case 'selling':
-        return 'Select a card to sell';
-      case 'takingLoan':
-        return 'Select a card to discard to take a loan (£30, -3 income)';
-      case 'scouting':
-        return `Select ${2 - selectedCardsForScout.length} cards to discard and get wild cards`;
-      case 'networking':
-        return state.context.era === 'canal'
-          ? 'Select a canal connection to build (£3)'
-          : state.context.secondLinkAllowed
-            ? 'Select a rail connection to build (£5, requires coal)'
-            : 'Select a second rail connection to build (part of £15 total, requires coal)';
-      default:
-        return null;
-    }
+  const handleLinkSelect = (from: CityId, to: CityId) => {
+    send({ type: 'SELECT_LINK', from, to });
   };
 
   const canConfirmAction = () => {
-    if (!currentActionState) return false;
+    const current = getCurrentAction();
+    if (!current) return false;
 
-    switch (currentActionState) {
+    const { action, subState } = current;
+
+    switch (action) {
       case 'building':
       case 'developing':
       case 'selling':
       case 'takingLoan':
-        return selectedCard !== null;
+        return subState.startsWith('confirming') && selectedCard !== null;
       case 'scouting':
         return selectedCardsForScout.length === 2;
       case 'networking':
-        return selectedLink !== null;
+        return subState === 'confirmingLink' && selectedLink !== null;
       default:
         return false;
     }
   };
 
-  const handleLinkSelect = (from: CityId, to: CityId) => {
-    send({ type: 'SELECT_LINK', from, to });
+  const isSelectingCards = () => {
+    const current = getCurrentAction();
+    if (!current) return false;
+
+    const { action, subState } = current;
+
+    switch (action) {
+      case 'building':
+      case 'developing':
+      case 'selling':
+      case 'takingLoan':
+      case 'networking':
+        return subState === 'selectingCard';
+      case 'scouting':
+        return subState === 'selectingCards' && selectedCardsForScout.length < 2;
+      default:
+        return false;
+    }
   };
 
   return (
@@ -173,7 +231,7 @@ export default function Home() {
         {/* Game Board */}
         <div>
           <Board
-            isNetworking={currentActionState === 'networking'}
+            isNetworking={isInState('networking', 'selectingLink')}
             era={era}
             onLinkSelect={handleLinkSelect}
             selectedLink={selectedLink}
@@ -194,6 +252,25 @@ export default function Home() {
             ))}
           </div>
 
+          {/* Game Status */}
+          <CardUI className="bg-muted/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between">
+                <span>Game Status</span>
+                <Badge variant={isSelectingAction ? "secondary" : "default"}>
+                  {isSelectingAction ? "Select Action" : getCurrentAction()?.action ?? "Unknown"}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-lg font-medium">
+                {isSelectingAction
+                  ? `${currentPlayer?.name}'s turn - ${actionsRemaining} action${actionsRemaining !== 1 ? 's' : ''} remaining`
+                  : getActionDescription() ?? "Unknown state"}
+              </p>
+            </CardContent>
+          </CardUI>
+
           {/* Current Player's Hand */}
           {currentPlayer && (
             <CardUI>
@@ -203,10 +280,11 @@ export default function Home() {
               <CardContent>
                 <PlayerHand
                   player={currentPlayer}
-                  isCurrentPlayer={true}
                   selectedCard={selectedCard}
-                  selectedCards={currentActionState === 'scouting' ? selectedCardsForScout : undefined}
-                  onCardSelect={currentActionState ? handleCardSelect : undefined}
+                  selectedCards={isInState('scouting', 'selectingCards') ? selectedCardsForScout : undefined}
+                  onCardSelect={isSelectingCards() ? handleCardSelect : undefined}
+                  currentAction={getCurrentAction()?.action}
+                  currentSubState={getCurrentAction()?.subState}
                 />
               </CardContent>
             </CardUI>
@@ -249,9 +327,7 @@ export default function Home() {
             <CardUI>
               <CardHeader>
                 <CardTitle>Actions</CardTitle>
-                {currentActionState && (
-                  <p className="text-sm text-muted-foreground">{getActionDescription()}</p>
-                )}
+
               </CardHeader>
               <CardContent>
                 {isSelectingAction ? (

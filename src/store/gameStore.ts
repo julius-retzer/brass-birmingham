@@ -617,99 +617,187 @@ export const gameStore = setup({
           states: {
             idle: {},
             building: {
-              on: {
-                SELECT_CARD: {
-                  actions: ['selectCard']
+              initial: 'selectingCard',
+              states: {
+                selectingCard: {
+                  on: {
+                    SELECT_CARD: {
+                      target: 'confirmingBuild',
+                      actions: ['selectCard']
+                    },
+                    CANCEL_ACTION: {
+                      target: '#brassGame.playing.actionSelection',
+                      actions: ['clearSelectedCards']
+                    }
+                  }
                 },
-                CONFIRM_ACTION: {
-                  target: '#brassGame.playing.actionSelection',
-                  guard: 'hasSelectedCard',
-                  actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
-                },
-                CANCEL_ACTION: {
-                  target: '#brassGame.playing.actionSelection',
-                  actions: ['clearSelectedCards']
+                confirmingBuild: {
+                  on: {
+                    CONFIRM_ACTION: {
+                      target: '#brassGame.playing.actionSelection',
+                      guard: 'hasSelectedCard',
+                      actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
+                    },
+                    CANCEL_ACTION: {
+                      target: 'selectingCard',
+                      actions: ['clearSelectedCards']
+                    }
+                  }
                 }
               }
             },
             developing: {
-              on: {
-                SELECT_CARD: {
-                  actions: ['selectCard']
+              initial: 'selectingCard',
+              states: {
+                selectingCard: {
+                  on: {
+                    SELECT_CARD: {
+                      target: 'confirmingDevelop',
+                      actions: ['selectCard']
+                    },
+                    CANCEL_ACTION: {
+                      target: '#brassGame.playing.actionSelection',
+                      actions: ['clearSelectedCards']
+                    }
+                  }
                 },
-                CONFIRM_ACTION: {
-                  target: '#brassGame.playing.actionSelection',
-                  guard: 'hasSelectedCard',
-                  actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
-                },
-                CANCEL_ACTION: {
-                  target: '#brassGame.playing.actionSelection',
-                  actions: ['clearSelectedCards']
+                confirmingDevelop: {
+                  on: {
+                    CONFIRM_ACTION: {
+                      target: '#brassGame.playing.actionSelection',
+                      guard: 'hasSelectedCard',
+                      actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
+                    },
+                    CANCEL_ACTION: {
+                      target: 'selectingCard',
+                      actions: ['clearSelectedCards']
+                    }
+                  }
                 }
               }
             },
             selling: {
-              on: {
-                SELECT_CARD: {
-                  actions: ['selectCard']
+              initial: 'selectingCard',
+              states: {
+                selectingCard: {
+                  on: {
+                    SELECT_CARD: {
+                      target: 'confirmingSell',
+                      actions: ['selectCard']
+                    },
+                    CANCEL_ACTION: {
+                      target: '#brassGame.playing.actionSelection',
+                      actions: ['clearSelectedCards']
+                    }
+                  }
                 },
-                CONFIRM_ACTION: {
-                  target: '#brassGame.playing.actionSelection',
-                  guard: 'hasSelectedCard',
-                  actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
-                },
-                CANCEL_ACTION: {
-                  target: '#brassGame.playing.actionSelection',
-                  actions: ['clearSelectedCards']
+                confirmingSell: {
+                  on: {
+                    CONFIRM_ACTION: {
+                      target: '#brassGame.playing.actionSelection',
+                      guard: 'hasSelectedCard',
+                      actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
+                    },
+                    CANCEL_ACTION: {
+                      target: 'selectingCard',
+                      actions: ['clearSelectedCards']
+                    }
+                  }
                 }
               }
             },
             takingLoan: {
-              on: {
-                SELECT_CARD: {
-                  actions: ['selectCard']
+              initial: 'selectingCard',
+              states: {
+                selectingCard: {
+                  on: {
+                    SELECT_CARD: {
+                      target: 'confirmingLoan',
+                      actions: ['selectCard']
+                    },
+                    CANCEL_ACTION: {
+                      target: '#brassGame.playing.actionSelection',
+                      actions: ['clearSelectedCards']
+                    }
+                  }
                 },
-                CONFIRM_ACTION: {
-                  target: '#brassGame.playing.actionSelection',
-                  guard: 'hasSelectedCard',
-                  actions: ['takeLoan', 'discardSelectedCard', 'decrementActions', 'clearSelectedCards']
-                },
-                CANCEL_ACTION: {
-                  target: '#brassGame.playing.actionSelection',
-                  actions: ['clearSelectedCards']
+                confirmingLoan: {
+                  on: {
+                    CONFIRM_ACTION: {
+                      target: '#brassGame.playing.actionSelection',
+                      guard: 'hasSelectedCard',
+                      actions: ['takeLoan', 'discardSelectedCard', 'decrementActions', 'clearSelectedCards']
+                    },
+                    CANCEL_ACTION: {
+                      target: 'selectingCard',
+                      actions: ['clearSelectedCards']
+                    }
+                  }
                 }
               }
             },
             scouting: {
-              on: {
-                SELECT_CARD: {
-                  actions: ['selectScoutCard']
-                },
-                CONFIRM_ACTION: {
-                  target: '#brassGame.playing.actionSelection',
-                  guard: 'canScout',
-                  actions: ['discardScoutCards', 'drawWildCards', 'decrementActions', 'clearSelectedCards']
-                },
-                CANCEL_ACTION: {
-                  target: '#brassGame.playing.actionSelection',
-                  actions: ['clearSelectedCards']
+              initial: 'selectingCards',
+              states: {
+                selectingCards: {
+                  on: {
+                    SELECT_CARD: {
+                      target: 'selectingCards',
+                      actions: ['selectScoutCard']
+                    },
+                    CONFIRM_ACTION: {
+                      target: '#brassGame.playing.actionSelection',
+                      guard: 'canScout',
+                      actions: ['discardScoutCards', 'drawWildCards', 'decrementActions', 'clearSelectedCards']
+                    },
+                    CANCEL_ACTION: {
+                      target: '#brassGame.playing.actionSelection',
+                      actions: ['clearSelectedCards']
+                    }
+                  }
                 }
               }
             },
             networking: {
-              on: {
-                SELECT_LINK: {
-                  actions: ['selectLink'],
-                  guard: 'canBuildLink'
+              initial: 'selectingCard',
+              states: {
+                selectingCard: {
+                  on: {
+                    SELECT_CARD: {
+                      target: 'selectingLink',
+                      actions: ['selectCard']
+                    },
+                    CANCEL_ACTION: {
+                      target: '#brassGame.playing.actionSelection',
+                      actions: ['clearSelectedCards']
+                    }
+                  }
                 },
-                CONFIRM_ACTION: {
-                  target: '#brassGame.playing.actionSelection',
-                  guard: 'hasSelectedLink',
-                  actions: ['buildLink', 'discardSelectedCard', 'decrementActions', 'clearSelectedLink']
+                selectingLink: {
+                  on: {
+                    SELECT_LINK: {
+                      target: 'confirmingLink',
+                      actions: ['selectLink'],
+                      guard: 'canBuildLink'
+                    },
+                    CANCEL_ACTION: {
+                      target: 'selectingCard',
+                      actions: ['clearSelectedCards']
+                    }
+                  }
                 },
-                CANCEL_ACTION: {
-                  target: '#brassGame.playing.actionSelection',
-                  actions: ['clearSelectedLink']
+                confirmingLink: {
+                  on: {
+                    CONFIRM_ACTION: {
+                      target: '#brassGame.playing.actionSelection',
+                      guard: 'hasSelectedLink',
+                      actions: ['buildLink', 'discardSelectedCard', 'decrementActions', 'clearSelectedLink']
+                    },
+                    CANCEL_ACTION: {
+                      target: 'selectingLink',
+                      actions: ['clearSelectedLink']
+                    }
+                  }
                 }
               }
             }

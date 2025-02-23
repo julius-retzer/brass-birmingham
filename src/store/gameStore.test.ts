@@ -318,3 +318,73 @@ test('turn taking - round 2', () => {
   });
 });
 
+test('hand refilling after actions', () => {
+  const { actor } = setupTestGame();
+  let snapshot = actor.getSnapshot();
+
+  // Get initial state
+  const initialPlayer1 = snapshot.context.players[0];
+  assert(initialPlayer1, 'Expected player 1 to exist');
+  expect(initialPlayer1.hand).toHaveLength(8);
+
+  // Player 1 takes their action in round 1
+  takeLoanAction(actor);
+  snapshot = actor.getSnapshot();
+
+  // Verify Player 1's hand was refilled
+  const player1AfterAction = snapshot.context.players[0];
+  assert(player1AfterAction, 'Expected player 1 to exist');
+  expect(player1AfterAction.hand).toHaveLength(8);
+
+  // Player 2 takes their action in round 1
+  takeLoanAction(actor);
+  snapshot = actor.getSnapshot();
+
+  // Verify Player 2's hand was refilled
+  const player2AfterAction = snapshot.context.players[1];
+  assert(player2AfterAction, 'Expected player 2 to exist');
+  expect(player2AfterAction.hand).toHaveLength(8);
+
+  // Round 2: Player 1 takes two actions
+  takeLoanAction(actor); // First action
+  snapshot = actor.getSnapshot();
+
+  // Verify hand after first action
+  const player1AfterFirstAction = snapshot.context.players[0];
+  assert(player1AfterFirstAction, 'Expected player 1 to exist');
+  expect(player1AfterFirstAction.hand).toHaveLength(8);
+
+  takeLoanAction(actor); // Second action
+  snapshot = actor.getSnapshot();
+
+  // Verify hand after second action
+  const player1AfterSecondAction = snapshot.context.players[0];
+  assert(player1AfterSecondAction, 'Expected player 1 to exist');
+  expect(player1AfterSecondAction.hand).toHaveLength(8);
+
+  // Track draw pile size
+  const drawPileSizeBefore = snapshot.context.drawPile.length;
+
+  // Player 2 takes two actions
+  takeLoanAction(actor); // First action
+  snapshot = actor.getSnapshot();
+
+  // Verify hand after first action
+  const player2AfterFirstAction = snapshot.context.players[1];
+  assert(player2AfterFirstAction, 'Expected player 2 to exist');
+  expect(player2AfterFirstAction.hand).toHaveLength(8);
+
+  takeLoanAction(actor); // Second action
+  snapshot = actor.getSnapshot();
+
+  // Verify hand after second action
+  const player2AfterSecondAction = snapshot.context.players[1];
+  assert(player2AfterSecondAction, 'Expected player 2 to exist');
+  expect(player2AfterSecondAction.hand).toHaveLength(8);
+
+  // Verify draw pile decreased by the correct amount
+  // Each player discarded 3 cards (1 in round 1, 2 in round 2) and drew 3 new ones
+  expect(snapshot.context.drawPile.length).toBe(drawPileSizeBefore - 3);
+  expect(snapshot.context.discardPile.length).toBe(6); // Total cards discarded
+});
+

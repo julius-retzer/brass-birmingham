@@ -13,11 +13,16 @@ import { Coins, Trophy, TrendingUp, CircleDot, Factory, Beer } from 'lucide-reac
 import { Board } from '../components/Board';
 import { PlayerHand } from '../components/PlayerHand';
 import { PlayerCard } from '../components/PlayerCard';
+import { createBrowserInspector } from '@statelyai/inspect';
 
-type ActionState = 'building' | 'developing' | 'selling' | 'takingLoan' | 'scouting' | 'networking';
+
+const { inspect } = createBrowserInspector();
 
 export default function Home() {
-  const [state, send] = useMachine(gameStore);
+  const [state, send] = useMachine(gameStore, {
+    inspect
+  });
+
   const {
     players,
     currentPlayerIndex,
@@ -62,10 +67,10 @@ export default function Home() {
   }, [state, send]);
 
   const currentPlayer = players[currentPlayerIndex];
-  const isSelectingAction = state.matches({ playing: 'selectingAction' });
+  const isSelectingAction = state.matches({ playing: 'actionSelection' });
   const currentActionState = state.matches('playing') ?
     (['building', 'developing', 'selling', 'takingLoan', 'scouting', 'networking'] as const)
-      .find(action => state.matches({ playing: action }))
+      .find(action => state.matches({ playing: { actions: action } }))
     : null;
 
   const handleCardSelect = (card: Card) => {

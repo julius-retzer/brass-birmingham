@@ -123,16 +123,6 @@ export const gameStore = setup({
     isFirstRound: ({ context }) =>
       context.era === 'canal' && context.round === 1,
     hasSelectedLink: ({ context }) => context.selectedLink !== null,
-    canBuildSecondLink: ({ context }) => {
-      // Can only build second link in rail era and if beer is available
-      return context.era === 'rail' && context.resources.beer > 0 && context.secondLinkAllowed;
-    },
-    canBuildSecondRailLink: ({ context }) => {
-      return context.selectedLink !== null &&
-             context.era === 'rail' &&
-             context.resources.beer > 0 &&
-             context.secondLinkAllowed;
-    },
     canBuildLink: ({ context, event }) => {
       if (event.type !== 'SELECT_LINK') return false;
 
@@ -593,175 +583,180 @@ export const gameStore = setup({
       }
     },
     playing: {
-      initial: 'selectingAction',
+      initial: 'turnStart',
       states: {
-        selectingAction: {
+        turnStart: {
+          always: [
+            { guard: 'isGameOver', target: '#brassGame.gameOver' },
+            { guard: 'isRoundOver', target: 'roundEnd' },
+            { target: 'actionSelection' }
+          ]
+        },
+        actionSelection: {
           on: {
             BUILD: {
-              target: 'building',
+              target: 'actions.building',
               guard: 'canTakeAction'
             },
             DEVELOP: {
-              target: 'developing',
+              target: 'actions.developing',
               guard: 'canTakeAction'
             },
             SELL: {
-              target: 'selling',
+              target: 'actions.selling',
               guard: 'canTakeAction'
             },
             TAKE_LOAN: {
-              target: 'takingLoan',
+              target: 'actions.takingLoan',
               guard: 'canTakeAction'
             },
             SCOUT: {
-              target: 'scouting',
+              target: 'actions.scouting',
               guard: 'canTakeAction'
             },
             NETWORK: {
-              target: 'networking',
+              target: 'actions.networking',
               guard: 'canTakeAction'
             },
             END_TURN: {
-              target: 'checkingGameState',
+              target: 'turnEnd',
               actions: ['refillHand']
             }
           }
         },
-        building: {
-          on: {
-            SELECT_CARD: {
-              actions: ['selectCard']
-            },
-            CONFIRM_ACTION: {
-              target: 'selectingAction',
-              guard: 'hasSelectedCard',
-              exit: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
-            },
-            CANCEL_ACTION: {
-              target: 'selectingAction',
-              actions: ['clearSelectedCards']
-            }
-          }
-        },
-        developing: {
-          on: {
-            SELECT_CARD: {
-              actions: ['selectCard']
-            },
-            CONFIRM_ACTION: {
-              target: 'selectingAction',
-              guard: 'hasSelectedCard',
-              exit: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
-            },
-            CANCEL_ACTION: {
-              target: 'selectingAction',
-              actions: ['clearSelectedCards']
-            }
-          }
-        },
-        selling: {
-          on: {
-            SELECT_CARD: {
-              actions: ['selectCard']
-            },
-            CONFIRM_ACTION: {
-              target: 'selectingAction',
-              guard: 'hasSelectedCard',
-              exit: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
-            },
-            CANCEL_ACTION: {
-              target: 'selectingAction',
-              actions: ['clearSelectedCards']
-            }
-          }
-        },
-        takingLoan: {
-          on: {
-            SELECT_CARD: {
-              actions: ['selectCard']
-            },
-            CONFIRM_ACTION: {
-              target: 'selectingAction',
-              guard: 'hasSelectedCard',
-              actions: ['takeLoan'],
-              exit: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
-            },
-            CANCEL_ACTION: {
-              target: 'selectingAction',
-              actions: ['clearSelectedCards']
-            }
-          }
-        },
-        scouting: {
-          on: {
-            SELECT_CARD: {
-              actions: ['selectScoutCard']
-            },
-            CONFIRM_ACTION: {
-              target: 'selectingAction',
-              guard: 'canScout',
-              exit: ['discardScoutCards', 'drawWildCards', 'decrementActions', 'clearSelectedCards']
-            },
-            CANCEL_ACTION: {
-              target: 'selectingAction',
-              actions: ['clearSelectedCards']
-            }
-          }
-        },
-        networking: {
-          on: {
-            SELECT_LINK: {
-              actions: ['selectLink'],
-              guard: 'canBuildLink'
-            },
-            CONFIRM_ACTION: [
-              {
-                target: 'networking',
-                guard: 'canBuildSecondRailLink',
-                actions: ['buildLink', 'discardSelectedCard']
-              },
-              {
-                target: 'selectingAction',
-                guard: 'hasSelectedLink',
-                actions: ['buildLink', 'discardSelectedCard', 'decrementActions', 'clearSelectedLink']
+        actions: {
+          initial: 'idle',
+          states: {
+            idle: {},
+            building: {
+              on: {
+                SELECT_CARD: {
+                  actions: ['selectCard']
+                },
+                CONFIRM_ACTION: {
+                  target: '#brassGame.playing.actionSelection',
+                  guard: 'hasSelectedCard',
+                  actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
+                },
+                CANCEL_ACTION: {
+                  target: '#brassGame.playing.actionSelection',
+                  actions: ['clearSelectedCards']
+                }
               }
-            ],
-            CANCEL_ACTION: {
-              target: 'selectingAction',
-              actions: ['clearSelectedLink']
+            },
+            developing: {
+              on: {
+                SELECT_CARD: {
+                  actions: ['selectCard']
+                },
+                CONFIRM_ACTION: {
+                  target: '#brassGame.playing.actionSelection',
+                  guard: 'hasSelectedCard',
+                  actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
+                },
+                CANCEL_ACTION: {
+                  target: '#brassGame.playing.actionSelection',
+                  actions: ['clearSelectedCards']
+                }
+              }
+            },
+            selling: {
+              on: {
+                SELECT_CARD: {
+                  actions: ['selectCard']
+                },
+                CONFIRM_ACTION: {
+                  target: '#brassGame.playing.actionSelection',
+                  guard: 'hasSelectedCard',
+                  actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
+                },
+                CANCEL_ACTION: {
+                  target: '#brassGame.playing.actionSelection',
+                  actions: ['clearSelectedCards']
+                }
+              }
+            },
+            takingLoan: {
+              on: {
+                SELECT_CARD: {
+                  actions: ['selectCard']
+                },
+                CONFIRM_ACTION: {
+                  target: '#brassGame.playing.actionSelection',
+                  guard: 'hasSelectedCard',
+                  actions: ['takeLoan', 'discardSelectedCard', 'decrementActions', 'clearSelectedCards']
+                },
+                CANCEL_ACTION: {
+                  target: '#brassGame.playing.actionSelection',
+                  actions: ['clearSelectedCards']
+                }
+              }
+            },
+            scouting: {
+              on: {
+                SELECT_CARD: {
+                  actions: ['selectScoutCard']
+                },
+                CONFIRM_ACTION: {
+                  target: '#brassGame.playing.actionSelection',
+                  guard: 'canScout',
+                  actions: ['discardScoutCards', 'drawWildCards', 'decrementActions', 'clearSelectedCards']
+                },
+                CANCEL_ACTION: {
+                  target: '#brassGame.playing.actionSelection',
+                  actions: ['clearSelectedCards']
+                }
+              }
+            },
+            networking: {
+              on: {
+                SELECT_LINK: {
+                  actions: ['selectLink'],
+                  guard: 'canBuildLink'
+                },
+                CONFIRM_ACTION: {
+                  target: '#brassGame.playing.actionSelection',
+                  guard: 'hasSelectedLink',
+                  actions: ['buildLink', 'discardSelectedCard', 'decrementActions', 'clearSelectedLink']
+                },
+                CANCEL_ACTION: {
+                  target: '#brassGame.playing.actionSelection',
+                  actions: ['clearSelectedLink']
+                }
+              }
             }
           }
         },
-        checkingGameState: {
-          always: [
-            {
-              guard: 'isGameOver',
-              target: '#brassGame.gameOver',
-              actions: assign({
-                logs: ({ context }) => [
-                  ...context.logs,
-                  {
-                    message: 'Game Over!',
-                    type: 'system' as const,
-                    timestamp: new Date()
-                  }
-                ]
-              })
-            },
-            {
-              guard: 'isRoundOver',
-              target: 'selectingAction',
-              actions: ['nextRound']
-            },
-            {
-              target: 'selectingAction',
-              actions: ['nextPlayer']
-            }
-          ]
+        turnEnd: {
+          entry: ['refillHand'],
+          always: { target: 'turnStart', actions: ['nextPlayer'] }
+        },
+        roundEnd: {
+          entry: assign({
+            logs: ({ context }) => [
+              ...context.logs,
+              {
+                message: `Round ${context.round} ended. Starting round ${context.round + 1}`,
+                type: 'system' as const,
+                timestamp: new Date()
+              }
+            ]
+          }),
+          always: { target: 'turnStart', actions: ['nextRound'] }
         }
       }
     },
     gameOver: {
+      entry: assign({
+        logs: ({ context }) => [
+          ...context.logs,
+          {
+            message: 'Game Over!',
+            type: 'system' as const,
+            timestamp: new Date()
+          }
+        ]
+      }),
       type: 'final'
     }
   }

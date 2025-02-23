@@ -1,13 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { cn } from '../lib/utils';
-
-export interface LogEntry {
-  message: string;
-  type: 'action' | 'system' | 'info';
-  timestamp: Date;
-}
-
+import { type LogEntry } from '../store/gameStore';
 interface GameLogProps {
   logs: LogEntry[];
 }

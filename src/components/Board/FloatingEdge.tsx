@@ -57,26 +57,19 @@ export function FloatingEdge({ id, source, target, markerEnd, style, data }: Flo
         style={style}
       />
       {builtLinks.length > 0 && (
-        <foreignObject
-          width={100}
-          height={40}
-          x={midX - 50}
-          y={midY - 20}
-          className="edgebutton-foreignobject"
-          requiredExtensions="http://www.w3.org/1999/xhtml"
-        >
-          <div className="flex gap-1 bg-background/80 rounded px-1 py-0.5">
-            {builtLinks.map((link, i) => (
-              <div
-                key={i}
-                className={`w-2 h-2 rounded-full ${
-                  link.type === 'canal' ? 'bg-blue-500' : 'bg-orange-500'
-                }`}
-                title={`${link.player.name}'s ${link.type} link`}
-              />
-            ))}
-          </div>
-        </foreignObject>
+        <g transform={`translate(${midX - (builtLinks.length * 6) / 2}, ${midY - 3})`}>
+          {builtLinks.map((link, i) => (
+            <circle
+              key={i}
+              cx={i * 6 + 3}
+              cy={3}
+              r={10}
+              className={link.type === 'canal' ? 'fill-blue-500' : 'fill-orange-500'}
+            >
+              <title>{`${link.player.name}'s ${link.type} link`}</title>
+            </circle>
+          ))}
+        </g>
       )}
     </>
   );

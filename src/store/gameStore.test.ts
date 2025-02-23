@@ -564,7 +564,6 @@ test.skip('round progression - game should advance rounds correctly', () => {
   if (!player1Card) throw new Error('Expected player 1 to have a card');
   actor.send({ type: 'SELECT_CARD', cardId: player1Card.id });
   actor.send({ type: 'CONFIRM' });
-  actor.send({ type: 'END_TURN' });
 
   // Use Player 2's action and end turn
   snapshot = actor.getSnapshot();
@@ -573,7 +572,7 @@ test.skip('round progression - game should advance rounds correctly', () => {
   if (!player2Card) throw new Error('Expected player 2 to have a card');
   actor.send({ type: 'SELECT_CARD', cardId: player2Card.id });
   actor.send({ type: 'CONFIRM' });
-  actor.send({ type: 'END_TURN' });
+
 
   snapshot = actor.getSnapshot();
 
@@ -584,7 +583,7 @@ test.skip('round progression - game should advance rounds correctly', () => {
 
 });
 
-test.skip('multiple actions in a turn - player should be able to take multiple actions', () => {
+test('multiple actions in a turn - player should be able to take multiple actions', () => {
   // 1. Arrange
   const actor = createActor(gameStore);
   actor.start();
@@ -614,25 +613,27 @@ test.skip('multiple actions in a turn - player should be able to take multiple a
   actor.send({ type: 'START_GAME', players: initialPlayers });
   let snapshot = actor.getSnapshot();
 
-  // Complete round 1 to get to 2 actions per turn
+  // Round 1
   actor.send({ type: 'TAKE_LOAN' });
   const player1FirstCard = snapshot.context.players[0]?.hand[0];
   if (!player1FirstCard) throw new Error('Expected player 1 to have a card');
+
   actor.send({ type: 'SELECT_CARD', cardId: player1FirstCard.id });
   actor.send({ type: 'CONFIRM' });
-  actor.send({ type: 'END_TURN' });
 
   actor.send({ type: 'TAKE_LOAN' });
   const player2FirstCard = snapshot.context.players[1]?.hand[0];
   if (!player2FirstCard) throw new Error('Expected player 2 to have a card');
   actor.send({ type: 'SELECT_CARD', cardId: player2FirstCard.id });
   actor.send({ type: 'CONFIRM' });
-  actor.send({ type: 'END_TURN' });
 
+  // Round 2  Player 1 Action 1
   snapshot = actor.getSnapshot();
+  debugLog(snapshot.context)
+  expect(snapshot.context.currentPlayerIndex).toBe(0);
+  expect(snapshot.context.round).toBe(2);
   expect(snapshot.context.actionsRemaining).toBe(2); // Should now have 2 actions
 
-  // Take first action (loan)
   actor.send({ type: 'TAKE_LOAN' });
   const firstActionCard = snapshot.context.players[0]?.hand[0];
   if (!firstActionCard) throw new Error('Expected player 1 to have a card');
@@ -640,7 +641,10 @@ test.skip('multiple actions in a turn - player should be able to take multiple a
   actor.send({ type: 'CONFIRM' });
 
   snapshot = actor.getSnapshot();
-  expect(snapshot.context.actionsRemaining).toBe(1); // Should have 1 action remaining
+  expect(snapshot.context.currentPlayerIndex).toBe(0);
+  expect(snapshot.context.actionsRemaining).toBe(1);
+
+  debugLog(snapshot.context)
 
   // Take second action (another loan)
   actor.send({ type: 'TAKE_LOAN' });
@@ -650,9 +654,10 @@ test.skip('multiple actions in a turn - player should be able to take multiple a
   actor.send({ type: 'CONFIRM' });
 
   snapshot = actor.getSnapshot();
+  debugLog(snapshot.context)
 
   // 3. Assert
-  expect(snapshot.context.actionsRemaining).toBe(0); // Should have used both actions
+  expect(snapshot.context.actionsRemaining).toBe(2); // Should have used both actions
   expect(snapshot.context.currentPlayerIndex).toBe(1); // Should have switched to Player 2
 
   const player1 = snapshot.context.players[0];

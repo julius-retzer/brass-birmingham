@@ -136,9 +136,7 @@ export const gameStore = setup({
       type: 'CONFIRM';
     } | {
       type: 'CANCEL';
-    } | {
-      type: 'END_TURN';
-    };
+    }
   },
   guards: {
     hasActionsRemaining: ({ context }) => context.actionsRemaining > 0,
@@ -263,6 +261,7 @@ export const gameStore = setup({
         const updatedHand = currentPlayer.hand.filter(
           card => card.id !== context.selectedCard?.id
         );
+
 
         return context.players.map((player, index) =>
           index === context.currentPlayerIndex

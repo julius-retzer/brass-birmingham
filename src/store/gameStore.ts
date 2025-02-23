@@ -77,7 +77,7 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-const DEBUG = false;
+const DEBUG = true;
 
 function debugLog(actionName: string, { context, event }: { context: GameState; event: { type: string } & Record<string, unknown> }) {
   if (DEBUG) {
@@ -89,7 +89,7 @@ function debugLog(actionName: string, { context, event }: { context: GameState; 
       selectedCard: context.selectedCard,
     };
 
-    console.log(`[Action: ${actionName}]`, {
+    console.log(`Action: 🔴 ${actionName}]`, {
       state,
       event
     });
@@ -131,9 +131,9 @@ export const gameStore = setup({
       type: 'SELECT_CARD';
       cardId: string;
     } | {
-      type: 'CONFIRM_ACTION';
+      type: 'CONFIRM';
     } | {
-      type: 'CANCEL_ACTION';
+      type: 'CANCEL';
     } | {
       type: 'END_TURN';
     };
@@ -659,7 +659,7 @@ export const gameStore = setup({
                       target: 'confirmingBuild',
                       actions: ['selectCard']
                     },
-                    CANCEL_ACTION: {
+                    CANCEL: {
                       target: '#brassGame.playing.selectingAction',
                       actions: ['clearSelectedCards']
                     }
@@ -667,12 +667,12 @@ export const gameStore = setup({
                 },
                 confirmingBuild: {
                   on: {
-                    CONFIRM_ACTION: {
+                    CONFIRM: {
                       target: '#brassGame.playing.startingAction',
                       guard: 'hasSelectedCard',
                       actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
                     },
-                    CANCEL_ACTION: {
+                    CANCEL: {
                       target: 'selectingCard',
                       actions: ['clearSelectedCards']
                     }
@@ -689,7 +689,7 @@ export const gameStore = setup({
                       target: 'confirmingDevelop',
                       actions: ['selectCard']
                     },
-                    CANCEL_ACTION: {
+                    CANCEL: {
                       target: '#brassGame.playing.selectingAction',
                       actions: ['clearSelectedCards']
                     }
@@ -697,12 +697,12 @@ export const gameStore = setup({
                 },
                 confirmingDevelop: {
                   on: {
-                    CONFIRM_ACTION: {
+                    CONFIRM: {
                       target: '#brassGame.playing.startingAction',
                       guard: 'hasSelectedCard',
                       actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
                     },
-                    CANCEL_ACTION: {
+                    CANCEL: {
                       target: 'selectingCard',
                       actions: ['clearSelectedCards']
                     }
@@ -719,7 +719,7 @@ export const gameStore = setup({
                       target: 'confirmingSell',
                       actions: ['selectCard']
                     },
-                    CANCEL_ACTION: {
+                    CANCEL: {
                       target: '#brassGame.playing.selectingAction',
                       actions: ['clearSelectedCards']
                     }
@@ -727,12 +727,12 @@ export const gameStore = setup({
                 },
                 confirmingSell: {
                   on: {
-                    CONFIRM_ACTION: {
+                    CONFIRM: {
                       target: '#brassGame.playing.startingAction',
                       guard: 'hasSelectedCard',
                       actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
                     },
-                    CANCEL_ACTION: {
+                    CANCEL: {
                       target: 'selectingCard',
                       actions: ['clearSelectedCards']
                     }
@@ -749,7 +749,7 @@ export const gameStore = setup({
                       target: 'confirmingLoan',
                       actions: ['selectCard']
                     },
-                    CANCEL_ACTION: {
+                    CANCEL: {
                       target: '#brassGame.playing.selectingAction',
                       actions: ['clearSelectedCards']
                     }
@@ -757,12 +757,12 @@ export const gameStore = setup({
                 },
                 confirmingLoan: {
                   on: {
-                    CONFIRM_ACTION: {
+                    CONFIRM: {
                       guard: 'hasSelectedCard',
                       target: '#brassGame.playing.actionEnd',
                       actions: ['takeLoan']
                     },
-                    CANCEL_ACTION: {
+                    CANCEL: {
                       target: 'selectingCard',
                       actions: ['clearSelectedCards']
                     }
@@ -779,12 +779,12 @@ export const gameStore = setup({
                       target: 'selectingCards',
                       actions: ['selectScoutCard']
                     },
-                    CONFIRM_ACTION: {
+                    CONFIRM: {
                       target: '#brassGame.playing.startingAction',
                       guard: 'canScout',
                       actions: ['discardScoutCards', 'drawWildCards', 'decrementActions', 'clearSelectedCards']
                     },
-                    CANCEL_ACTION: {
+                    CANCEL: {
                       target: '#brassGame.playing.selectingAction',
                       actions: ['clearSelectedCards']
                     }
@@ -801,7 +801,7 @@ export const gameStore = setup({
                       target: 'selectingLink',
                       actions: ['selectCard']
                     },
-                    CANCEL_ACTION: {
+                    CANCEL: {
                       target: '#brassGame.playing.selectingAction',
                       actions: ['clearSelectedCards']
                     }
@@ -814,7 +814,7 @@ export const gameStore = setup({
                       actions: ['selectLink'],
                       guard: 'canBuildLink'
                     },
-                    CANCEL_ACTION: {
+                    CANCEL: {
                       target: 'selectingCard',
                       actions: ['clearSelectedCards']
                     }
@@ -822,12 +822,12 @@ export const gameStore = setup({
                 },
                 confirmingLink: {
                   on: {
-                    CONFIRM_ACTION: {
+                    CONFIRM: {
                       target: '#brassGame.playing.selectingAction',
                       guard: 'hasSelectedLink',
                       actions: ['buildLink', 'discardSelectedCard', 'decrementActions', 'clearSelectedLink']
                     },
-                    CANCEL_ACTION: {
+                    CANCEL: {
                       target: 'selectingLink',
                       actions: ['clearSelectedLink']
                     }
@@ -857,7 +857,7 @@ export const gameStore = setup({
               )
             ]
           }),
-          always: { target: 'startingTurn', actions: ['nextRound'] }
+          // always: { target: 'startingTurn', actions: ['nextRound'] }
         }
       }
     },

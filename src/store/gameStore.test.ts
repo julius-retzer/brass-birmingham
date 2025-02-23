@@ -4,38 +4,45 @@ import { type GameState, gameStore } from './gameStore';
 import { type Card } from '~/data/cards';
 
 function logInspectEvent(inspectEvent: InspectionEvent) {
-  if (inspectEvent.type === '@xstate.event') {
-    console.log('\n🔵 Event:', {
-      type: inspectEvent.event.type,
-      data: inspectEvent.event
-    });
-    return;
-  }
-
-  if (inspectEvent.type === '@xstate.snapshot') {
-    const snapshot = inspectEvent.snapshot;
-    if ('context' in snapshot) {
-      const context = snapshot.context as GameState;
-      console.log('🟢 State Context:', {
-        currentPlayerIndex: context.currentPlayerIndex,
-        actionsRemaining: context.actionsRemaining,
-        round: context.round,
-        era: context.era,
-        selectedCard: context.selectedCard?.id,
-        selectedCardsForScout: context.selectedCardsForScout.map((c: Card) => c.id),
-        selectedLink: context.selectedLink,
-        spentMoney: context.spentMoney,
+  switch (inspectEvent.type) {
+    case '@xstate.event': {
+      console.log('\n🔵 Event:', {
+        type: inspectEvent.event.type,
+        data: inspectEvent.event
       });
+      break;
     }
-    return;
-  }
 
-  if (inspectEvent.type === '@xstate.action') {
-    console.log('🟣 Action:', {
-      type: inspectEvent.action.type,
-      action: inspectEvent.action.type
-    });
-    return;
+    case '@xstate.snapshot': {
+      const snapshot = inspectEvent.snapshot;
+      if ('context' in snapshot) {
+        const context = snapshot.context as GameState;
+        console.log('🟢 State Context:', {
+          currentPlayerIndex: context.currentPlayerIndex,
+          actionsRemaining: context.actionsRemaining,
+          round: context.round,
+          era: context.era,
+          selectedCard: context.selectedCard?.id,
+          selectedCardsForScout: context.selectedCardsForScout.map((c: Card) => c.id),
+          selectedLink: context.selectedLink,
+          spentMoney: context.spentMoney,
+          players: context.players.map((p) => ({
+            hand: p.hand.map((c) => c.id)
+          }))
+        });
+      }
+      break;
+    }
+
+    case '@xstate.action': {
+      console.log('🟣 Action:', {
+        type: inspectEvent.action.type,
+        params: inspectEvent.action.params
+      });
+      break;
+    }
+
+
   }
 }
 
@@ -148,22 +155,14 @@ test.only('turn taking - player turn should switch after using all actions', () 
   snapshot = actor.getSnapshot();
 
   // Confirm the loan action
-  actor.send({ type: 'CONFIRM_ACTION' });
+  actor.send({ type: 'CONFIRM' });
   snapshot = actor.getSnapshot();
 
   // 3. Assert - Verify turn has switched to Player 2
   expect(snapshot.context.actionsRemaining).toBe(1); // First round of Canal Era
   expect(snapshot.context.currentPlayerIndex).toBe(1); // Should now be Player 2's turn
 
-  // // Verify Player 1's money and income changed from the loan
-  // const player1 = snapshot.context.players[0];
-  // expect(player1?.money).toBe(60); // Original 30 + 30 from loan
-  // expect(player1?.income).toBe(7); // Original 10 - 3 from loan
 
-  // // Verify the action was logged
-  // const lastLog = snapshot.context.logs[snapshot.context.logs.length - 1];
-  // expect(lastLog?.type).toBe('action');
-  // expect(lastLog?.message).toContain('took a loan');
 });
 
 test.skip('scouting - player should be able to scout for wild cards', () => {
@@ -210,7 +209,7 @@ test.skip('scouting - player should be able to scout for wild cards', () => {
   actor.send({ type: 'SELECT_CARD', cardId: player1Cards[1]!.id });
 
   // Confirm scouting action
-  actor.send({ type: 'CONFIRM_ACTION' });
+  actor.send({ type: 'CONFIRM' });
   snapshot = actor.getSnapshot();
 
   // 3. Assert
@@ -264,7 +263,7 @@ test.skip('networking - player should be able to build links', () => {
   actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'dudley' });
 
   // Confirm the action
-  actor.send({ type: 'CONFIRM_ACTION' });
+  actor.send({ type: 'CONFIRM' });
   snapshot = actor.getSnapshot();
 
   // 3. Assert
@@ -312,7 +311,7 @@ test.skip('round progression - game should advance rounds correctly', () => {
   actor.send({ type: 'TAKE_LOAN' });
   const player1Card = snapshot.context.players[0]?.hand[0];
   actor.send({ type: 'SELECT_CARD', cardId: player1Card!.id });
-  actor.send({ type: 'CONFIRM_ACTION' });
+  actor.send({ type: 'CONFIRM' });
   actor.send({ type: 'END_TURN' });
 
   // Use Player 2's action and end turn
@@ -320,7 +319,7 @@ test.skip('round progression - game should advance rounds correctly', () => {
   actor.send({ type: 'TAKE_LOAN' });
   const player2Card = snapshot.context.players[1]?.hand[0];
   actor.send({ type: 'SELECT_CARD', cardId: player2Card!.id });
-  actor.send({ type: 'CONFIRM_ACTION' });
+  actor.send({ type: 'CONFIRM' });
   actor.send({ type: 'END_TURN' });
 
   snapshot = actor.getSnapshot();
@@ -366,13 +365,13 @@ test.skip('multiple actions in a turn - player should be able to take multiple a
   actor.send({ type: 'TAKE_LOAN' });
   const player1FirstCard = snapshot.context.players[0]?.hand[0];
   actor.send({ type: 'SELECT_CARD', cardId: player1FirstCard!.id });
-  actor.send({ type: 'CONFIRM_ACTION' });
+  actor.send({ type: 'CONFIRM' });
   actor.send({ type: 'END_TURN' });
 
   actor.send({ type: 'TAKE_LOAN' });
   const player2FirstCard = snapshot.context.players[1]?.hand[0];
   actor.send({ type: 'SELECT_CARD', cardId: player2FirstCard!.id });
-  actor.send({ type: 'CONFIRM_ACTION' });
+  actor.send({ type: 'CONFIRM' });
   actor.send({ type: 'END_TURN' });
 
   snapshot = actor.getSnapshot();
@@ -382,7 +381,7 @@ test.skip('multiple actions in a turn - player should be able to take multiple a
   actor.send({ type: 'TAKE_LOAN' });
   const firstActionCard = snapshot.context.players[0]?.hand[0];
   actor.send({ type: 'SELECT_CARD', cardId: firstActionCard!.id });
-  actor.send({ type: 'CONFIRM_ACTION' });
+  actor.send({ type: 'CONFIRM' });
 
   snapshot = actor.getSnapshot();
   expect(snapshot.context.actionsRemaining).toBe(1); // Should have 1 action remaining
@@ -391,7 +390,7 @@ test.skip('multiple actions in a turn - player should be able to take multiple a
   actor.send({ type: 'TAKE_LOAN' });
   const secondActionCard = snapshot.context.players[0]?.hand[0];
   actor.send({ type: 'SELECT_CARD', cardId: secondActionCard!.id });
-  actor.send({ type: 'CONFIRM_ACTION' });
+  actor.send({ type: 'CONFIRM' });
 
   snapshot = actor.getSnapshot();
 

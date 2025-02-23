@@ -78,7 +78,7 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-const DEBUG = true;
+const DEBUG = false;
 
 function debugLog(actionName: string, { context, event }: { context: GameState; event: { type: string } & Record<string, unknown> }) {
   if (DEBUG) {

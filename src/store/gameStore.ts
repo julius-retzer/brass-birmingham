@@ -1,6 +1,7 @@
 import { setup, assign, createMachine, Action } from 'xstate';
 import { type CityId } from '../data/board';
 import { type Card, type IndustryType, type CardType, type LocationColor, type BaseCard, type LocationCard, type IndustryCard, type WildLocationCard, type WildIndustryCard, getInitialCards, type CardDecks } from '../data/cards';
+import { on } from 'events';
 
 
 export type LogEntryType = 'system' | 'action' | 'info' | 'error';
@@ -591,7 +592,14 @@ export const gameStore = setup({
   initial: 'setup',
   on: {
     '*': {
-      actions: [({ event }) => {
+      actions: [({ event, context }) => {
+        const toLog = {
+          context: context.currentPlayerIndex,
+          selectedCard: context.selectedCard?.id,
+          event: event.type,
+          state: context.era
+        };
+        console.log(JSON.stringify(toLog, null, 2));
         throw new Error(`Invalid call of event ${event.type}`);
       }]
     }

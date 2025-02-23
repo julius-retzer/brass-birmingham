@@ -202,7 +202,7 @@ test('taking loan action', () => {
   });
 
   // Verify card was discarded
-  expect(finalPlayer.hand).toHaveLength(7);
+  expect(finalPlayer.hand).toHaveLength(8);
   expect(finalPlayer.hand.find(c => c.id === cardToDiscard.id)).toBeUndefined();
   expect(snapshot.context.discardPile).toHaveLength(1);
   expect(snapshot.context.discardPile[0]?.id).toBe(cardToDiscard.id);
@@ -327,6 +327,9 @@ test('hand refilling after actions', () => {
   assert(initialPlayer1, 'Expected player 1 to exist');
   expect(initialPlayer1.hand).toHaveLength(8);
 
+  // Track initial draw pile size
+  const initialDrawPileSize = snapshot.context.drawPile.length;
+
   // Player 1 takes their action in round 1
   takeLoanAction(actor);
   snapshot = actor.getSnapshot();
@@ -362,9 +365,6 @@ test('hand refilling after actions', () => {
   assert(player1AfterSecondAction, 'Expected player 1 to exist');
   expect(player1AfterSecondAction.hand).toHaveLength(8);
 
-  // Track draw pile size
-  const drawPileSizeBefore = snapshot.context.drawPile.length;
-
   // Player 2 takes two actions
   takeLoanAction(actor); // First action
   snapshot = actor.getSnapshot();
@@ -383,8 +383,8 @@ test('hand refilling after actions', () => {
   expect(player2AfterSecondAction.hand).toHaveLength(8);
 
   // Verify draw pile decreased by the correct amount
-  // Each player discarded 3 cards (1 in round 1, 2 in round 2) and drew 3 new ones
-  expect(snapshot.context.drawPile.length).toBe(drawPileSizeBefore - 3);
+  // Each player discarded 6 cards total (1 in round 1, 2 in round 2) and drew 6 new ones
+  expect(snapshot.context.drawPile.length).toBe(initialDrawPileSize - 6);
   expect(snapshot.context.discardPile.length).toBe(6); // Total cards discarded
 });
 

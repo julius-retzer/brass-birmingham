@@ -384,40 +384,42 @@ export const gameStore = setup({
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer) return context.players;
 
+        const updatedHand = currentPlayer.hand.filter(
+          card => card.id !== context.selectedCard?.id
+        );
+
         return context.players.map((player, index) =>
           index === context.currentPlayerIndex
             ? {
                 ...player,
+                hand: updatedHand,
                 money: player.money + 30,
                 income: Math.max(0, player.income - 3)
               }
             : player
         );
       },
+      discardPile: ({ context }) => {
+        if (!context.selectedCard) {
+          throw new Error('Card not found');
+        }
+        return [...context.discardPile, context.selectedCard];
+      },
+      selectedCard: null,
+      actionsRemaining: ({ context }) => context.actionsRemaining - 1,
       logs: ({ context }) => {
         const currentPlayer = context.players[context.currentPlayerIndex];
-        if (!currentPlayer || !context.selectedCard) return context.logs;
-
-        let cardDesc = '';
-        switch (context.selectedCard.type) {
-          case 'location':
-            cardDesc = `${context.selectedCard.location} (${context.selectedCard.color})`;
-            break;
-          case 'industry':
-            cardDesc = `${context.selectedCard.industries.join('/')} industry`;
-            break;
-          case 'wild_location':
-            cardDesc = 'wild location';
-            break;
-          case 'wild_industry':
-            cardDesc = 'wild industry';
-            break;
+        if (!currentPlayer ) {
+          throw new Error('Player not found');
+        }
+        if (!context.selectedCard) {
+          throw new Error('Card not found');
         }
 
         return [
           ...context.logs,
           createLogEntry(
-            `${currentPlayer.name} took a loan (£30, -3 income) using ${cardDesc}`,
+            `${currentPlayer.name} took a loan (£30, -3 income) using ${context.selectedCard.id}`,
             'action'
           )
         ];
@@ -433,7 +435,9 @@ export const gameStore = setup({
       players: ({ context, event }) => {
         debugLog('refillHand', { context, event });
         const currentPlayer = context.players[context.currentPlayerIndex];
-        if (!currentPlayer) return context.players;
+        if (!currentPlayer) {
+          throw new Error('Current player not found');
+        }
 
         const cardsNeeded = 8 - currentPlayer.hand.length;
         if (cardsNeeded <= 0) return context.players;
@@ -449,9 +453,13 @@ export const gameStore = setup({
       },
       drawPile: ({ context }) => {
         const currentPlayer = context.players[context.currentPlayerIndex];
-        if (!currentPlayer) return context.drawPile;
+        if (!currentPlayer) {
+          throw new Error('Current player not found');
+        }
 
         const cardsNeeded = 8 - currentPlayer.hand.length;
+        if (cardsNeeded <= 0) return context.drawPile;
+
         return context.drawPile.slice(cardsNeeded);
       }
     }),
@@ -941,16 +949,29 @@ export const gameStore = setup({
                               throw new Error('Player not found');
                             }
 
+                            const updatedHand = currentPlayer.hand.filter(
+                              card => card.id !== context.selectedCard?.id
+                            );
+
                             return context.players.map((player, index) =>
                               index === context.currentPlayerIndex
                                 ? {
                                     ...player,
+                                    hand: updatedHand,
                                     money: player.money + 30,
                                     income: Math.max(0, player.income - 3)
                                   }
                                 : player
                             );
                           },
+                          discardPile: ({ context }) => {
+                            if (!context.selectedCard) {
+                              throw new Error('Card not found');
+                            }
+                            return [...context.discardPile, context.selectedCard];
+                          },
+                          selectedCard: null,
+                          actionsRemaining: ({ context }) => context.actionsRemaining - 1,
                           logs: ({ context }) => {
                             const currentPlayer = context.players[context.currentPlayerIndex];
                             if (!currentPlayer ) {
@@ -959,7 +980,6 @@ export const gameStore = setup({
                             if (!context.selectedCard) {
                               throw new Error('Card not found');
                             }
-
 
                             return [
                               ...context.logs,
@@ -1281,15 +1301,17 @@ export const gameStore = setup({
           entry: [
             assign({
               players: ({ context, event }) => {
-                debugLog('actionComplete', { context, event });
+                debugLog('refillHand', { context, event });
                 const currentPlayer = context.players[context.currentPlayerIndex];
-                if (!currentPlayer || !context.selectedCard) {
-                  throw new Error('Player or card not found');
+                if (!currentPlayer) {
+                  throw new Error('Current player not found');
                 }
 
-                const updatedHand = currentPlayer.hand.filter(
-                  card => card.id !== context.selectedCard?.id
-                );
+                const cardsNeeded = 8 - currentPlayer.hand.length;
+                if (cardsNeeded <= 0) return context.players;
+
+                const newCards = context.drawPile.slice(0, cardsNeeded);
+                const updatedHand = [...currentPlayer.hand, ...newCards];
 
                 return context.players.map((player, index) =>
                   index === context.currentPlayerIndex
@@ -1297,18 +1319,18 @@ export const gameStore = setup({
                     : player
                 );
               },
-              discardPile: ({ context }) => {
-                if (!context.selectedCard) {
-                  throw new Error('Card not found');
+              drawPile: ({ context }) => {
+                const currentPlayer = context.players[context.currentPlayerIndex];
+                if (!currentPlayer) {
+                  throw new Error('Current player not found');
                 }
-                return [...context.discardPile, context.selectedCard];
-              },
-              selectedCard: null,
-              actionsRemaining: ({ context, event }) => {
-                debugLog('decrementActions', { context, event });
-                return context.actionsRemaining - 1;
+
+                const cardsNeeded = 8 - currentPlayer.hand.length;
+                if (cardsNeeded <= 0) return context.drawPile;
+
+                return context.drawPile.slice(cardsNeeded);
               }
-            }),
+            })
           ],
           always: [
             {

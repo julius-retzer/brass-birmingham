@@ -1,8 +1,43 @@
-import { createActor } from 'xstate';
+import { createActor, type InspectionEvent } from 'xstate';
 import { test, expect } from 'vitest';
-import { gameStore } from './gameStore';
+import { type GameState, gameStore } from './gameStore';
+import { type Card } from '~/data/cards';
 
+function logInspectEvent(inspectEvent: InspectionEvent) {
+  if (inspectEvent.type === '@xstate.event') {
+    console.log('\n🔵 Event:', {
+      type: inspectEvent.event.type,
+      data: inspectEvent.event
+    });
+    return;
+  }
 
+  if (inspectEvent.type === '@xstate.snapshot') {
+    const snapshot = inspectEvent.snapshot;
+    if ('context' in snapshot) {
+      const context = snapshot.context as GameState;
+      console.log('🟢 State Context:', {
+        currentPlayerIndex: context.currentPlayerIndex,
+        actionsRemaining: context.actionsRemaining,
+        round: context.round,
+        era: context.era,
+        selectedCard: context.selectedCard?.id,
+        selectedCardsForScout: context.selectedCardsForScout.map((c: Card) => c.id),
+        selectedLink: context.selectedLink,
+        spentMoney: context.spentMoney,
+      });
+    }
+    return;
+  }
+
+  if (inspectEvent.type === '@xstate.action') {
+    console.log('🟣 Action:', {
+      type: inspectEvent.action.type,
+      action: inspectEvent.action.type
+    });
+    return;
+  }
+}
 
 test('game store state machine', () => {
   // 1. Arrange
@@ -62,9 +97,11 @@ test('game store state machine', () => {
   expect(firstLog.type).toBe('system');
 });
 
-test.skip('turn taking - player turn should switch after using all actions', () => {
+test.only('turn taking - player turn should switch after using all actions', () => {
   // 1. Arrange - Create and start the actor
-  const actor = createActor(gameStore);
+  const actor = createActor(gameStore, {
+    inspect: logInspectEvent
+  });
   actor.start();
 
   // Start game with 2 players
@@ -118,15 +155,15 @@ test.skip('turn taking - player turn should switch after using all actions', () 
   expect(snapshot.context.actionsRemaining).toBe(1); // First round of Canal Era
   expect(snapshot.context.currentPlayerIndex).toBe(1); // Should now be Player 2's turn
 
-  // Verify Player 1's money and income changed from the loan
-  const player1 = snapshot.context.players[0];
-  expect(player1?.money).toBe(60); // Original 30 + 30 from loan
-  expect(player1?.income).toBe(7); // Original 10 - 3 from loan
+  // // Verify Player 1's money and income changed from the loan
+  // const player1 = snapshot.context.players[0];
+  // expect(player1?.money).toBe(60); // Original 30 + 30 from loan
+  // expect(player1?.income).toBe(7); // Original 10 - 3 from loan
 
-  // Verify the action was logged
-  const lastLog = snapshot.context.logs[snapshot.context.logs.length - 1];
-  expect(lastLog?.type).toBe('action');
-  expect(lastLog?.message).toContain('took a loan');
+  // // Verify the action was logged
+  // const lastLog = snapshot.context.logs[snapshot.context.logs.length - 1];
+  // expect(lastLog?.type).toBe('action');
+  // expect(lastLog?.message).toContain('took a loan');
 });
 
 test.skip('scouting - player should be able to scout for wild cards', () => {

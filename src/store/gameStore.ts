@@ -77,7 +77,7 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-const DEBUG = true;
+const DEBUG = false;
 
 function debugLog(actionName: string, { context, event }: { context: GameState; event: { type: string } & Record<string, unknown> }) {
   if (DEBUG) {
@@ -85,7 +85,8 @@ function debugLog(actionName: string, { context, event }: { context: GameState; 
       currentPlayerIndex: context.currentPlayerIndex,
       actionsRemaining: context.actionsRemaining,
       round: context.round,
-      era: context.era
+      era: context.era,
+      selectedCard: context.selectedCard,
     };
 
     console.log(`[Action: ${actionName}]`, {
@@ -138,7 +139,7 @@ export const gameStore = setup({
     };
   },
   guards: {
-    canTakeAction: ({ context }) => context.actionsRemaining > 0,
+    hasActionsRemaining: ({ context }) => context.actionsRemaining > 0,
     isGameOver: ({ context }) =>
       context.era === 'rail' && context.round >= 8,
     isRoundOver: ({ context }) =>
@@ -619,8 +620,8 @@ export const gameStore = setup({
         },
         startingAction: {
             always: [
-            { guard: ({ context }) =>{ return context.actionsRemaining > 0}, target: 'selectingAction' },
-            { target: 'turnEnd' }
+            { guard: 'hasActionsRemaining', target: 'selectingAction' },
+            { target: 'actionEnd' }
           ]
         },
         selectingAction: {
@@ -758,8 +759,8 @@ export const gameStore = setup({
                   on: {
                     CONFIRM_ACTION: {
                       guard: 'hasSelectedCard',
-                      target: '#brassGame.playing.startingAction',
-                      actions: ['takeLoan', 'discardSelectedCard', 'decrementActions', 'clearSelectedCards']
+                      target: '#brassGame.playing.actionEnd',
+                      actions: ['takeLoan']
                     },
                     CANCEL_ACTION: {
                       target: 'selectingCard',
@@ -836,10 +837,15 @@ export const gameStore = setup({
             }
           }
         },
+        actionEnd: {
+          entry: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards', 'refillHand'],
+          always: [{ guard: 'hasActionsRemaining', target: 'selectingAction' }, { target: 'turnEnd' }]
+        },
         turnEnd: {
-          entry: ['refillHand'],
           always: {
-            target: 'startingTurn', actions: ['nextPlayer'] }
+            target: 'startingTurn',
+            actions: ['nextPlayer']
+          }
         },
         roundEnd: {
           entry: assign({

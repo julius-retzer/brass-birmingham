@@ -1,9 +1,7 @@
 import { setup, assign } from 'xstate';
 import { type CityId } from '../data/board';
 import { type Card, type IndustryType, type CardType, type LocationColor, type BaseCard, type LocationCard, type IndustryCard, type WildLocationCard, type WildIndustryCard, getInitialCards, type CardDecks } from '../data/cards';
-import { on } from 'events';
-import { timestamp } from 'drizzle-orm/mysql-core';
-import { type } from 'os';
+
 
 export type LogEntryType = 'system' | 'action' | 'info' | 'error';
 
@@ -77,6 +75,24 @@ function shuffleArray<T>(array: T[]): T[] {
     }
   }
   return shuffled;
+}
+
+const DEBUG = true;
+
+function debugLog(actionName: string, { context, event }: { context: GameState; event: { type: string } & Record<string, unknown> }) {
+  if (DEBUG) {
+    const state = {
+      currentPlayerIndex: context.currentPlayerIndex,
+      actionsRemaining: context.actionsRemaining,
+      round: context.round,
+      era: context.era
+    };
+
+    console.log(`[Action: ${actionName}]`, {
+      state,
+      event
+    });
+  }
 }
 
 function createLogEntry(message: string, type: LogEntryType): LogEntry {
@@ -158,8 +174,9 @@ export const gameStore = setup({
     }
   },
   actions: {
-    initializeGame: assign(({ event }) => {
+    initializeGame: assign(({ event, context }) => {
       if (event.type !== 'START_GAME') return {};
+      debugLog('initializeGame', { context, event });
 
       // Initialize card piles based on player count
       const playerCount = event.players.length;
@@ -207,6 +224,7 @@ export const gameStore = setup({
     }),
     selectCard: assign({
       selectedCard: ({ context, event }) => {
+        debugLog('selectCard', { context, event });
         if (event.type !== 'SELECT_CARD') return null;
         const player = context.players[context.currentPlayerIndex];
         if (!player) return null;
@@ -215,6 +233,7 @@ export const gameStore = setup({
     }),
     selectScoutCard: assign({
       selectedCardsForScout: ({ context, event }) => {
+        debugLog('selectScoutCard', { context, event });
         if (event.type !== 'SELECT_CARD') return context.selectedCardsForScout;
         const player = context.players[context.currentPlayerIndex];
         if (!player) return context.selectedCardsForScout;
@@ -233,7 +252,8 @@ export const gameStore = setup({
       selectedCardsForScout: []
     }),
     discardSelectedCard: assign({
-      players: ({ context }) => {
+      players: ({ context, event }) => {
+        debugLog('discardSelectedCard', { context, event });
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer || !context.selectedCard) return context.players;
 
@@ -278,7 +298,8 @@ export const gameStore = setup({
       }
     }),
     discardScoutCards: assign({
-      players: ({ context }) => {
+      players: ({ context, event }) => {
+        debugLog('discardScoutCards', { context, event });
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer) return context.players;
 
@@ -322,7 +343,8 @@ export const gameStore = setup({
       }
     }),
     drawWildCards: assign({
-      players: ({ context }) => {
+      players: ({ context, event }) => {
+        debugLog('drawWildCards', { context, event });
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer) return context.players;
 
@@ -354,7 +376,8 @@ export const gameStore = setup({
       }
     }),
     takeLoan: assign({
-      players: ({ context }) => {
+      players: ({ context, event }) => {
+        debugLog('takeLoan', { context, event });
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer) return context.players;
 
@@ -398,13 +421,14 @@ export const gameStore = setup({
       }
     }),
     decrementActions: assign({
-      actionsRemaining: ({ context }) => {
-        console.log(context.actionsRemaining);
+      actionsRemaining: ({ context, event }) => {
+        debugLog('decrementActions', { context, event });
         return context.actionsRemaining - 1;
       }
     }),
     refillHand: assign({
-      players: ({ context }) => {
+      players: ({ context, event }) => {
+        debugLog('refillHand', { context, event });
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer) return context.players;
 
@@ -429,8 +453,10 @@ export const gameStore = setup({
       }
     }),
     nextPlayer: assign({
-      currentPlayerIndex: ({ context }) =>
-        (context.currentPlayerIndex + 1) % context.players.length,
+      currentPlayerIndex: ({ context, event }) => {
+        debugLog('nextPlayer', { context, event });
+        return (context.currentPlayerIndex + 1) % context.players.length;
+      },
       actionsRemaining: ({ context }) =>
         context.era === 'canal' && context.round === 1 ? 1 : 2,
       selectedCard: null,
@@ -450,7 +476,10 @@ export const gameStore = setup({
       }
     }),
     nextRound: assign({
-      round: ({ context }) => context.round + 1,
+      round: ({ context, event }) => {
+        debugLog('nextRound', { context, event });
+        return context.round + 1;
+      },
       currentPlayerIndex: 0,
       actionsRemaining: 2,
       selectedCard: null,
@@ -465,7 +494,8 @@ export const gameStore = setup({
       ]
     }),
     selectLink: assign({
-      selectedLink: ({ event }) => {
+      selectedLink: ({ event, context }) => {
+        debugLog('selectLink', { context, event });
         if (event.type !== 'SELECT_LINK') return null;
         return {
           from: event.from,
@@ -478,7 +508,8 @@ export const gameStore = setup({
       secondLinkAllowed: true
     }),
     buildLink: assign({
-      spentMoney: ({ context }) => {
+      spentMoney: ({ context, event }) => {
+        debugLog('buildLink', { context, event });
         // Canal era: £3 per link
         // Rail era: £5 for first link, £15 for two links
         if (context.era === 'canal') {

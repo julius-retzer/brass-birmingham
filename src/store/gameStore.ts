@@ -1,17 +1,9 @@
-import { setup, assign, createMachine, Action } from 'xstate';
+import { setup, assign } from 'xstate';
 import { type CityId } from '../data/board';
-import { type Card, type IndustryType, type CardType, type LocationColor, type BaseCard, type LocationCard, type IndustryCard, type WildLocationCard, type WildIndustryCard, getInitialCards, type CardDecks } from '../data/cards';
-import { on } from 'events';
+import { type Card, type IndustryType, type WildLocationCard, type WildIndustryCard, getInitialCards, type CardDecks } from '../data/cards';
+import { type GameState, type LogEntry, type LogEntryType, createLogEntry, getCurrentPlayer, findCardInHand, removeCardFromHand, updatePlayerInList } from './machines/types';
+import { loanMachine } from './machines/loanMachine';
 import { type } from 'os';
-
-
-export type LogEntryType = 'system' | 'action' | 'info' | 'error';
-
-export interface LogEntry {
-  message: string;
-  type: LogEntryType;
-  timestamp: Date;
-}
 
 export interface Player {
   id: string;
@@ -226,6 +218,9 @@ export const gameStore = setup({
     context: GameState;
     events: GameEvent;
   },
+  actors: {
+    loanMachine,
+  },
   guards: {
     hasActionsRemaining: ({ context }) => context.actionsRemaining > 0,
     isGameOver: ({ context }) =>
@@ -298,7 +293,7 @@ export const gameStore = setup({
           state: context.era
         };
         console.log(JSON.stringify(toLog, null, 2));
-        throw new Error(`Invalid call of event ${event.type}`);
+        console.warn('Invalid call of event', event.type);
       }]
     }
   },
@@ -535,75 +530,25 @@ export const gameStore = setup({
               }
             },
             takingLoan: {
-              initial: 'selectingCard',
-              states: {
-                selectingCard: {
-                  on: {
-                    SELECT_CARD: {
-                      target: 'confirmingLoan',
-                      actions: [assign({
-                        selectedCard: ({ context, event }) => {
-                          debugLog('selectCard', { context, event });
-                          if (event.type !== 'SELECT_CARD') return null;
-                          const player = getCurrentPlayer(context);
-                          return findCardInHand(player, event.cardId);
-                        }
-                      })]
-                    },
-                    CANCEL: {
-                      target: '#brassGame.playing.playerTurn',
-                      actions: [assign({
-                        selectedCard: null,
-                        selectedCardsForScout: []
-                      })]
-                    }
-                  }
+              invoke: {
+                src: loanMachine,
+                input: ({ context }) => context,
+                onDone: {
+                  actions: ({ event }) => {
+                    console.log(event.output);
+                  },
+                  target: '#brassGame.playing.actionComplete',
                 },
-                confirmingLoan: {
-                  on: {
-                    CONFIRM: {
-                      target: '#brassGame.playing.actionComplete',
-                      actions: [
-                        assign(({ context }) => {
-                          const currentPlayer = getCurrentPlayer(context);
-                          if (!context.selectedCard) {
-                            throw new Error('Card not found');
-                          }
-
-                          const discardResult = discardSelectedCard({ context, event: { type: 'CONFIRM' } });
-                          const actionResult = decrementActions({ context, event: { type: 'CONFIRM' } });
-
-                          if (!discardResult.players) {
-                            throw new Error('Players array not found after discard');
-                          }
-
-                          return {
-                            players: updatePlayerInList(discardResult.players, context.currentPlayerIndex, {
-                              money: currentPlayer.money + 30,
-                              income: Math.max(0, currentPlayer.income - 3)
-                            }),
-                            discardPile: discardResult.discardPile,
-                            selectedCard: discardResult.selectedCard,
-                            actionsRemaining: actionResult.actionsRemaining,
-                            logs: [
-                              ...context.logs,
-                              createLogEntry(
-                                `${currentPlayer.name} took a loan (£30, -3 income) using ${context.selectedCard.id}`,
-                                'action'
-                              )
-                            ]
-                          };
-                        })
-                      ]
-                    },
-                    CANCEL: {
-                      target: 'selectingCard',
-                      actions: [assign({
-                        selectedCard: null,
-                        selectedCardsForScout: []
-                      })]
-                    }
-                  }
+                onError: {
+                  actions: assign(({ context }) => {
+                    console.error('loanMachine error', context);
+                    return context;
+                  })
+                }
+              },
+              on: {
+                CANCEL: {
+                  target: '#brassGame.playing.playerTurn'
                 }
               }
             },

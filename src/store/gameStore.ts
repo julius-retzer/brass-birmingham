@@ -3,6 +3,7 @@ import { type CityId } from '../data/board';
 import { type Card, type IndustryType, type CardType, type LocationColor, type BaseCard, type LocationCard, type IndustryCard, type WildLocationCard, type WildIndustryCard, getInitialCards, type CardDecks } from '../data/cards';
 import { on } from 'events';
 import { timestamp } from 'drizzle-orm/mysql-core';
+import { type } from 'os';
 
 export type LogEntryType = 'system' | 'action' | 'info' | 'error';
 
@@ -368,7 +369,6 @@ export const gameStore = setup({
         );
       },
       logs: ({ context }) => {
-        console.log(context);
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer || !context.selectedCard) return context.logs;
 
@@ -398,7 +398,10 @@ export const gameStore = setup({
       }
     }),
     decrementActions: assign({
-      actionsRemaining: ({ context }) => context.actionsRemaining - 1
+      actionsRemaining: ({ context }) => {
+        console.log(context.actionsRemaining);
+        return context.actionsRemaining - 1;
+      }
     }),
     refillHand: assign({
       players: ({ context }) => {
@@ -537,6 +540,7 @@ export const gameStore = setup({
     })
   }
 }).createMachine({
+  /** @xstate-layout N4IgpgJg5mDOIC5QCMBOBDWsDi6C2YAdLGAC4CuADgMQDKAKgIIBK9A+towLICiA2gAYAuolCUA9rACWpKeIB2okAA9EAJgAsARkIAOLWoCsAgOwDdATgtaAbKYA0IAJ6ItbwgLUBmDfuNfrOy8AX2DHNEwcfCJKABt0Jyl5KGJSdFRZZPpyVHlqQREkEAlpWQUlVQQTNUcXBC8TLUMPG0MTdtaBK10NUPCMLFwCQjiEpJTYNIzx7Nz8rUKxSRk5RSLK22tCIwEutRsLAQ0LNRrnRC8m3UJDS00BL1MTLxs+kAjB6JH4xOTU9MyUFmeT4akWxWWZTWoA2Bx0Oz2ByOJzOdUeWgshBsXkMFjMJkOVkMbw+UWGo1+EzAsTAAGNAYx6atqAAhACqAEkADIAEQKShKK3K61cBJshEO2I0Zlujy8Xlq6hMNhMhC0OIs2N0BLUGNeYXeAzJMR+42I1LpDKZCmoPJ4ADUeFyAPIABX5RUFUIqosaEsMXnuhi0vl0nkVCDU1mu2NxNjD+zUumJBtJQxNYz+JBpTOSjKhdCdXI9S1Kqx9CC0YeaGgEsar2P2ul0EaaXjVwaCWgEWhM2t0IVTRvT30zVJzVoLTAA0jw2C7GAA5EsQsvCmGiwwaQgaBp2EzHZX6EwRqMHNUag613Q2XpDyIjilm7OW8b55m0ADCzrZ9BXXvLEVKz7VVdCTU5dR7aVNFPG9rnVOMbFvAJB36B8vifLMLVzKB3xtRceHoAB1Z1mGnf9IUAjdgNaFp9k8FVsVsGxYN7LFL0MfYmgPEwSWHDDTSwic32tPIeEXHk2HoNlmGXYQBUo9cVHUF41B3OsAlaEDA1bYMPF2I4o1xaUBADPj0PJQSUkoMBUAAM3EVA8BEqFCGQcgpFiCBn2wwFP3SCBCy5HhP3YT8WD5eTPUU6FlMrUxMTUB4MQPGw1DMCwFXOSNfDU3dwNuWtey0czPksscRlshynJc1Y3I8ryfOE5J-NQQLwsXT8nTYRhQo5Z05PBAClNhLYEROJFjlOU9TG3Tj1T7DQkWTO80LKjNKUq+zHOcvNRPqzzvL+WkFDsqQauSFkGvagaADEOWYLger6gaKLXWLRvhYxEUOKbUXUXsBB3A9jHVMMMQ0VbDQsjazRs7aLtw-b3MOs0TvkM7Eauw7qA6rquWe+h+sGhT3orbsCW2ZK8SW9KuiyupvBvYG8U8E5JTUUrjVHTb4eq3akdciAwAAN2pcRKCa18WoCoKQrCiK3qFD7XA0iVAwaYMcU2VttGaWxql7W943aEr73Wnm4aqnbaoUQhhbF2IJalnDWvapd8cJ4mle9IDNi+3YJt+lEI0aTFqjxKMjmeECucfKytv5235Ht0Xxcl47TvOgWeTTp2aG-Rd7ser3Xqi0tlfJuFtm+oPkWm7KwfbdVTDaHt9CQqG0wEiq+Ztvahbz53M4x7Pxlzx2Jdxj3ut6omy6GmLybVzLvBMLXOwsVtLkSkMumlHEjzjnveetxG8JT7NYhdvzZdoJ15bYcLmEixeyb98xmgPXw7CMYxrBPNlOwmIcTSlrASXYSUzZrW5phayZ8BYX3NLEa+QlpZQDdtPTqs8Xok2iu-ai-sa6B32MHBujMHhYk7EcXw2gNDpWPuVU+CNEH7SvmjLOiNaDUliLjO6D0npz29uXVclc-bV3GqQ+u-1IxWCxNHdKAROLBmVIw2Gfw+7nzYTwjho8uE8KwZ7IRC9SZiMIZ-Qg38byeEMP-XsEYtbqVsL2fs1hoHQwtnAxO-dBZ1TSAAa3GFycQ6BL6+XGJg++wVQpP0ViI4aKt4qUzFBYTiaUwKahYo3Hsal6J4hOFWSGN41GWw0Qg5OhAAlBJCWE5qGDZZ4xwfPPBFdfaEIkbXKRf0IxFJ3LebsJxfC3DaLxc2sCE6aNYa5KpyRgmhMIOjTGAs5l5ELsXQRuCfZUTikQyRk0Q7ZS3NubQ1RAxNE1BYXwJSvGTIqTMqAKyFmcOWTUwxTThFvzMTshKliLlpPApkiMgRCCPD7IYbEph5SpOuRM8pA86qwBOuQQEyD0Fu1gHLGJz9X6mLaTskMmIbxLROdqCwzYsl1FsElLESV5SXH6ZkmFvc4W+Ltoi8QyKb4RIChitZAjS4tNEXiz6xCfrSN0pcCUhwwbaiaEy5hSd4VsqRSil8rseVvIJsYwVCSq5jU6fs8hopTAgoYofXEVYAjyqtiwip8gyAAHdHKBLQeqtqmKFYvy2SNRAYYgY9nBfGHojQehb2ykldoHh9i3APG4A8+xrVlNtUqlO9rSBOtQC68caKGkzy1Zs+JS9xH6pIYamRVZKF-3XjeMwUZUIePGcy5NrLU2OudVy2ZSR-EevnByRc5FC0EPxccKhTEwzgK8D0GalM0kxu0L2eh+oYHxybYqlthA00ZqzainCXIu2aoFd6xJfqPBNCQs2aUhSw2UrJToSFxLvrYgaIm+BzakGbvbSPJZQT918pLtqo9eqA5iu6Y3SwiVzDNiuHvTmYyV0Kp8e+ttmbdHfs7fIbtjT83NMA37U41w+zqiMDYK4CZWxkvbG0Hwt5H3ylGcuk+ZoKC5B4PIQKuHqLeDSupbEmo2jah0tlQMAYsQGDMK0NKeIX2EFQBytjrH2ODq+RsKDNw0q5VsZcBoMjHi0VjJqNwDR5QhlCAaeQ4hhbwCKN3AguLtmVBgtlAAtJoEpJAKCUDsz6ysS0dw9EnRc9UxwKWuB8KK+hTY63uJs+oqAXnElDJ3AGEM6psQx0AXUbENwDK6mlHiHEDC4OMazFMQEwJ4vk2MGpAprMkJcevRcM9egAjeGlJYaoSFpNqsnNs3VQFdSXJuEtW98pdRGFbAebY+wginODZxaTtyU0VaAgGdsGhkvaBeEZ9oEZ5TXCKjN9mrQE1FaYTatdSCpAQBpMt8xWXtZakgVBDQp4SPXEncZbUwYkwLZZUglGjVki3bitYrEtYkJWB1GlGRpwyUSgJI0B4+HOy-bfcja6Hb6ltWB5UQ4MZwcHHyYmGHxxtyLQCGYG8yXUcXfR6jL9Y9LrXRx64RRHhhucSSvvZ4p5voeGVHWabq3TI08Q-tB26dxgs4QD0ZoLwyXSlaL2XULZG7eB0I0bQngDCpJGaLrRg9J4Z2zW6iA0vLDtnl8GpXhtVeUvoaqYM-ZmyryM-rqZdUJf51Q4zqAE907S4MG0SxyodcCfAbrQMehuzrchtUB48Z3cVPYUD-BynfUqjVGBUbptbzrZ6UYCUPY0qcWqGYOsSeU3INQSb2+2O0-CsQNYfW2fAy58hoYCMaUNeC8OJOgwLwl0Nvg+dsXrkU8pEWb77hKDA-pUxLcG8BLMqBjxF3-YUqCSyiQrYetMXSmvtp9M9AWaVnm5I9sHw9DgxFNJxGMC1wwx9jSz2HX0X+JnaTUfvxJ-qnzO69yvXq0vZk3l0JfpDEYCGLQpcq2J4NuCRkYIbBiKkt4JXuuvco8lPojGfg3iAZWGzreKYJCkhAGEtLAVGEXvQgVhNEYGgUguypyqnsAd5m4D2HoMbCSgSOShKs3LSrWLYlwdiHQWwiqpjuioHm2NHu0PoDQpDOGI3IbDcM8OtvuAGKZLoMIa5B+ihkwUKngbcDoOtpcJtmlg0Blq4BbkoT4CGpclQV3B-rFt4gbnVNodugATLEAXod5pJklsYalttuYZGOYCAoRg0JAqkhYJoS4chm4eEuhv4tLlYO2MmJct4MMlQTNINhDuOmSn2MmCmAxp-ofmPtEemp+pPs8j+hhoHtoI-kmClEooMjDl0KqJsP5kMtYJEado4cxvIAptLjsNuMruYAgQIcqK2LeGqPlM8GEfHgONJrJuQPJmxgMRDENgcPoKNkHrtj8u0CcMYPQgUnvg4YQFANEM6GLKgAMb5voDsJTlYLYA4EJkGmpm0FuCDL2CmKEEAA */
   id: 'brassGame',
   context: {
     players: [],
@@ -573,48 +577,44 @@ export const gameStore = setup({
       }
     },
     playing: {
-      initial: 'turnStart',
+      initial: 'startingTurn',
       states: {
-        turnStart: {
+        startingTurn: {
           always: [
             { guard: 'isGameOver', target: '#brassGame.gameOver' },
             { guard: 'isRoundOver', target: 'roundEnd' },
-            { target: 'actionSelection' }
+            { target: 'startingAction' }
           ]
         },
-        actionSelection: {
+        startingAction: {
+            always: [
+            { guard: ({ context }) =>{ return context.actionsRemaining > 0}, target: 'selectingAction' },
+            { target: 'turnEnd' }
+          ]
+        },
+        selectingAction: {
           on: {
             BUILD: {
-              target: 'actions.building',
-              guard: 'canTakeAction'
+              target: 'performingAction.building',
             },
             DEVELOP: {
-              target: 'actions.developing',
-              guard: 'canTakeAction'
+              target: 'performingAction.developing',
             },
             SELL: {
-              target: 'actions.selling',
-              guard: 'canTakeAction'
+              target: 'performingAction.selling',
             },
             TAKE_LOAN: {
-              target: 'actions.takingLoan',
-              guard: 'canTakeAction'
+              target: 'performingAction.takingLoan',
             },
             SCOUT: {
-              target: 'actions.scouting',
-              guard: 'canTakeAction'
+              target: 'performingAction.scouting',
             },
             NETWORK: {
-              target: 'actions.networking',
-              guard: 'canTakeAction'
+              target: 'performingAction.networking',
             },
-            END_TURN: {
-              target: 'turnEnd',
-              actions: ['refillHand']
-            }
           }
         },
-        actions: {
+        performingAction: {
           initial: 'idle',
           states: {
             idle: {},
@@ -628,7 +628,7 @@ export const gameStore = setup({
                       actions: ['selectCard']
                     },
                     CANCEL_ACTION: {
-                      target: '#brassGame.playing.actionSelection',
+                      target: '#brassGame.playing.selectingAction',
                       actions: ['clearSelectedCards']
                     }
                   }
@@ -636,7 +636,7 @@ export const gameStore = setup({
                 confirmingBuild: {
                   on: {
                     CONFIRM_ACTION: {
-                      target: '#brassGame.playing.actionSelection',
+                      target: '#brassGame.playing.startingAction',
                       guard: 'hasSelectedCard',
                       actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
                     },
@@ -658,7 +658,7 @@ export const gameStore = setup({
                       actions: ['selectCard']
                     },
                     CANCEL_ACTION: {
-                      target: '#brassGame.playing.actionSelection',
+                      target: '#brassGame.playing.selectingAction',
                       actions: ['clearSelectedCards']
                     }
                   }
@@ -666,7 +666,7 @@ export const gameStore = setup({
                 confirmingDevelop: {
                   on: {
                     CONFIRM_ACTION: {
-                      target: '#brassGame.playing.actionSelection',
+                      target: '#brassGame.playing.startingAction',
                       guard: 'hasSelectedCard',
                       actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
                     },
@@ -688,7 +688,7 @@ export const gameStore = setup({
                       actions: ['selectCard']
                     },
                     CANCEL_ACTION: {
-                      target: '#brassGame.playing.actionSelection',
+                      target: '#brassGame.playing.selectingAction',
                       actions: ['clearSelectedCards']
                     }
                   }
@@ -696,7 +696,7 @@ export const gameStore = setup({
                 confirmingSell: {
                   on: {
                     CONFIRM_ACTION: {
-                      target: '#brassGame.playing.actionSelection',
+                      target: '#brassGame.playing.startingAction',
                       guard: 'hasSelectedCard',
                       actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
                     },
@@ -718,7 +718,7 @@ export const gameStore = setup({
                       actions: ['selectCard']
                     },
                     CANCEL_ACTION: {
-                      target: '#brassGame.playing.actionSelection',
+                      target: '#brassGame.playing.selectingAction',
                       actions: ['clearSelectedCards']
                     }
                   }
@@ -726,8 +726,8 @@ export const gameStore = setup({
                 confirmingLoan: {
                   on: {
                     CONFIRM_ACTION: {
-                      target: '#brassGame.playing.actionSelection',
                       guard: 'hasSelectedCard',
+                      target: '#brassGame.playing.startingAction',
                       actions: ['takeLoan', 'discardSelectedCard', 'decrementActions', 'clearSelectedCards']
                     },
                     CANCEL_ACTION: {
@@ -748,12 +748,12 @@ export const gameStore = setup({
                       actions: ['selectScoutCard']
                     },
                     CONFIRM_ACTION: {
-                      target: '#brassGame.playing.actionSelection',
+                      target: '#brassGame.playing.startingAction',
                       guard: 'canScout',
                       actions: ['discardScoutCards', 'drawWildCards', 'decrementActions', 'clearSelectedCards']
                     },
                     CANCEL_ACTION: {
-                      target: '#brassGame.playing.actionSelection',
+                      target: '#brassGame.playing.selectingAction',
                       actions: ['clearSelectedCards']
                     }
                   }
@@ -770,7 +770,7 @@ export const gameStore = setup({
                       actions: ['selectCard']
                     },
                     CANCEL_ACTION: {
-                      target: '#brassGame.playing.actionSelection',
+                      target: '#brassGame.playing.selectingAction',
                       actions: ['clearSelectedCards']
                     }
                   }
@@ -791,7 +791,7 @@ export const gameStore = setup({
                 confirmingLink: {
                   on: {
                     CONFIRM_ACTION: {
-                      target: '#brassGame.playing.actionSelection',
+                      target: '#brassGame.playing.selectingAction',
                       guard: 'hasSelectedLink',
                       actions: ['buildLink', 'discardSelectedCard', 'decrementActions', 'clearSelectedLink']
                     },
@@ -807,7 +807,8 @@ export const gameStore = setup({
         },
         turnEnd: {
           entry: ['refillHand'],
-          always: { target: 'turnStart', actions: ['nextPlayer'] }
+          always: {
+            target: 'startingTurn', actions: ['nextPlayer'] }
         },
         roundEnd: {
           entry: assign({
@@ -819,7 +820,7 @@ export const gameStore = setup({
               )
             ]
           }),
-          always: { target: 'turnStart', actions: ['nextRound'] }
+          always: { target: 'startingTurn', actions: ['nextRound'] }
         }
       }
     },

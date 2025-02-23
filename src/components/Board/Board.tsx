@@ -1,6 +1,6 @@
 import { cities, connections, type CityId, type City, type ConnectionType } from '../../data/board';
 import { Card } from '../ui/card';
-import { ReactFlow, Background, type Node, type Edge, Position, useNodesState, MarkerType } from '@xyflow/react';
+import { ReactFlow, Background, type Node, type Edge, Position, useNodesState, MarkerType, Handle } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback } from 'react';
 import { type Player } from '../../store/gameStore';
@@ -20,6 +20,7 @@ interface CityNodeProps {
   data: {
     label: string;
     type: City['type'];
+    id: string;
   };
 }
 
@@ -51,17 +52,31 @@ function CityNode({ data }: CityNodeProps) {
   const isMerchant = data.type === 'merchant';
 
   return (
-    <div
-      className={cn(
-        'flex items-center justify-center rounded-md border-2 shadow-sm',
-        isMerchant
-          ? 'bg-secondary border-secondary/50'
-          : 'bg-primary border-primary/50'
-      )}
-      style={{ width: size.width, height: size.height }}
-    >
-      <span className="text-sm font-medium text-center text-background">{data.label}</span>
-    </div>
+    <>
+      <Handle
+        type="source"
+        position={Position.Top}
+        id={`${data.id}-handle`}
+        style={{ visibility: 'hidden' }}
+      />
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id={`${data.id}-handle`}
+        style={{ visibility: 'hidden' }}
+      />
+      <div
+        className={cn(
+          'flex items-center justify-center rounded-md border-2 shadow-sm',
+          isMerchant
+            ? 'bg-secondary border-secondary/50'
+            : 'bg-primary border-primary/50'
+        )}
+        style={{ width: size.width, height: size.height }}
+      >
+        <span className="text-sm font-medium text-center text-background">{data.label}</span>
+      </div>
+    </>
   );
 }
 
@@ -105,6 +120,8 @@ function getEdges({ isNetworking, era, selectedLink, players }: BoardProps): Edg
       type: 'floating' as const,
       style: baseStyle,
       data: { connection, builtLinks },
+      sourceHandle: `${connection.from}-handle`,
+      targetHandle: `${connection.to}-handle`,
     };
 
     if (hasCanal && hasRail) {
@@ -227,7 +244,8 @@ const initialNodes: Node[] = Object.entries(cities).map(([id, city]) => ({
   },
   data: {
     label: city.name,
-    type: city.type
+    type: city.type,
+    id
   },
   draggable: true,
 }));

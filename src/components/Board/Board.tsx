@@ -1,10 +1,11 @@
 import { cities, connections, type CityId, type City, type ConnectionType } from '../../data/board';
 import { Card } from '../ui/card';
-import { ReactFlow, Background, type Node, type Edge, Handle, Position, useNodesState, BaseEdge, EdgeLabelRenderer } from '@xyflow/react';
+import { ReactFlow, Background, type Node, type Edge, Position, useNodesState, MarkerType } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback } from 'react';
 import { type Player } from '../../store/gameStore';
 import { cn } from '../../lib/utils';
+import { FloatingEdge } from './FloatingEdge';
 
 // Types
 interface BoardProps {
@@ -32,21 +33,16 @@ interface LinkEdgeData extends Record<string, unknown> {
   }>;
 }
 
-interface LinkEdgeProps {
-  id: string;
-  sourceX: number;
-  sourceY: number;
-  targetX: number;
-  targetY: number;
-  style?: React.CSSProperties;
-  markerEnd?: string;
-  data: LinkEdgeData;
-}
-
 // Constants
 const CITY_SIZES = {
-  merchant: 55,
-  regular: 50,
+  merchant: {
+    width: 100,
+    height: 70,
+  },
+  regular: {
+    width: 90,
+    height: 60,
+  },
 } as const;
 
 // Components
@@ -55,70 +51,17 @@ function CityNode({ data }: CityNodeProps) {
   const isMerchant = data.type === 'merchant';
 
   return (
-    <>
-      <Handle type="target" position={Position.Top} />
-      <div
-        className={cn(
-          'flex items-center justify-center rounded-full border-2 transition-colors',
-          isMerchant
-            ? 'bg-secondary/20 border-secondary hover:bg-secondary/30'
-            : 'bg-primary/20 border-primary hover:bg-primary/30'
-        )}
-        style={{ width: size, height: size }}
-      >
-        <span className="text-xs font-medium text-center">{data.label}</span>
-      </div>
-      <Handle type="source" position={Position.Bottom} />
-    </>
-  );
-}
-
-function LinkEdge({
-  id,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
-  style,
-  markerEnd,
-  data
-}: LinkEdgeProps) {
-  const { builtLinks } = data;
-  const midX = (sourceX + targetX) / 2;
-  const midY = (sourceY + targetY) / 2;
-
-  return (
-    <>
-      <BaseEdge
-        id={id}
-        path={`M ${sourceX} ${sourceY} L ${targetX} ${targetY}`}
-        style={style}
-        markerEnd={markerEnd}
-      />
-      {builtLinks.length > 0 && (
-        <EdgeLabelRenderer>
-          <div
-            style={{
-              position: 'absolute',
-              transform: `translate(-50%, -50%) translate(${midX}px,${midY}px)`,
-              pointerEvents: 'all',
-            }}
-            className="flex gap-1 bg-background/80 rounded px-1 py-0.5"
-          >
-            {builtLinks.map((link, i) => (
-              <div
-                key={i}
-                className={cn(
-                  'w-2 h-2 rounded-full',
-                  link.type === 'canal' ? 'bg-blue-500' : 'bg-orange-500'
-                )}
-                title={`${link.player.name}'s ${link.type} link`}
-              />
-            ))}
-          </div>
-        </EdgeLabelRenderer>
+    <div
+      className={cn(
+        'flex items-center justify-center rounded-md border-2 shadow-sm',
+        isMerchant
+          ? 'bg-secondary border-secondary/50'
+          : 'bg-primary border-primary/50'
       )}
-    </>
+      style={{ width: size.width, height: size.height }}
+    >
+      <span className="text-sm font-medium text-center text-background">{data.label}</span>
+    </div>
   );
 }
 
@@ -159,9 +102,10 @@ function getEdges({ isNetworking, era, selectedLink, players }: BoardProps): Edg
     const commonEdgeProps = {
       source: connection.from,
       target: connection.to,
-      type: 'linkEdge' as const,
+      type: 'floating' as const,
       style: baseStyle,
       data: { connection, builtLinks },
+      markerEnd: { type: MarkerType.Arrow },
     };
 
     if (hasCanal && hasRail) {
@@ -222,7 +166,7 @@ export function Board({ isNetworking = false, era, onLinkSelect, selectedLink, p
           nodes={nodes}
           edges={getEdges({ isNetworking, era, selectedLink, players })}
           nodeTypes={{ cityNode: CityNode }}
-          edgeTypes={{ linkEdge: LinkEdge }}
+          edgeTypes={{ floating: FloatingEdge }}
           onNodesChange={onNodesChange}
           onNodeDrag={onNodeDrag}
           onEdgeClick={onEdgeClick}

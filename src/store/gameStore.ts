@@ -106,37 +106,125 @@ function createLogEntry(message: string, type: LogEntryType): LogEntry {
   };
 }
 
+// Replace the GameEvent type with types from the machine
+type GameEvent = {
+  type: 'START_GAME';
+  players: Array<Omit<Player, 'hand' | 'links' | 'industries'>>;
+} | {
+  type: 'BUILD';
+} | {
+  type: 'DEVELOP';
+} | {
+  type: 'SELL';
+} | {
+  type: 'TAKE_LOAN';
+} | {
+  type: 'SCOUT';
+} | {
+  type: 'NETWORK';
+} | {
+  type: 'SELECT_LINK';
+  from: CityId;
+  to: CityId;
+} | {
+  type: 'SELECT_CARD';
+  cardId: string;
+} | {
+  type: 'CONFIRM';
+} | {
+  type: 'CANCEL';
+};
+
+type AssignArgs = {
+  context: GameState;
+  event: GameEvent;
+};
+
+// Update utility functions with proper types
+function findCardInHand(player: Player, cardId: string): Card | null {
+  return player.hand.find(card => card.id === cardId) ?? null;
+}
+
+function removeCardFromHand(player: Player, cardId: string | undefined): Card[] {
+  if (!cardId) return player.hand;
+  return player.hand.filter(card => card.id !== cardId);
+}
+
+function updatePlayerInList(players: Player[], currentPlayerIndex: number, updatedPlayer: Partial<Player>): Player[] {
+  return players.map((player, index) =>
+    index === currentPlayerIndex
+      ? { ...player, ...updatedPlayer }
+      : player
+  );
+}
+
+function getCurrentPlayer(context: GameState): Player {
+  const player = context.players[context.currentPlayerIndex];
+  if (!player) {
+    throw new Error('Current player not found');
+  }
+  return player;
+}
+
+function discardSelectedCard(args: AssignArgs): Partial<GameState> {
+  const currentPlayer = getCurrentPlayer(args.context);
+  if (!args.context.selectedCard) {
+    throw new Error('Card not found');
+  }
+
+  const updatedHand = removeCardFromHand(currentPlayer, args.context.selectedCard.id);
+
+  return {
+    players: updatePlayerInList(args.context.players, args.context.currentPlayerIndex, { hand: updatedHand }),
+    discardPile: [...args.context.discardPile, args.context.selectedCard],
+    selectedCard: null
+  };
+}
+
+function refillPlayerHand(args: AssignArgs): Partial<GameState> {
+  const currentPlayer = getCurrentPlayer(args.context);
+  const cardsNeeded = 8 - currentPlayer.hand.length;
+
+  if (cardsNeeded <= 0) {
+    return {
+      players: args.context.players,
+      drawPile: args.context.drawPile
+    };
+  }
+
+  const newCards = args.context.drawPile.slice(0, cardsNeeded);
+  const updatedHand = [...currentPlayer.hand, ...newCards];
+
+  return {
+    players: updatePlayerInList(args.context.players, args.context.currentPlayerIndex, { hand: updatedHand }),
+    drawPile: args.context.drawPile.slice(cardsNeeded)
+  };
+}
+
+function decrementActions(args: AssignArgs): Partial<GameState> {
+  return {
+    actionsRemaining: args.context.actionsRemaining - 1
+  };
+}
+
+function getCardDescription(card: Card): string {
+  switch (card.type) {
+    case 'location':
+      return `${card.location} (${card.color})`;
+    case 'industry':
+      return `${card.industries.join('/')} industry`;
+    case 'wild_location':
+      return 'wild location';
+    case 'wild_industry':
+      return 'wild industry';
+  }
+}
+
 // Setup the machine with proper typing
 export const gameStore = setup({
   types: {} as {
     context: GameState;
-    events: {
-      type: 'START_GAME';
-      players: Array<Omit<Player, 'hand' | 'links' | 'industries'>>;
-    } | {
-      type: 'BUILD';
-    } | {
-      type: 'DEVELOP';
-    } | {
-      type: 'SELL';
-    } | {
-      type: 'TAKE_LOAN';
-    } | {
-      type: 'SCOUT';
-    } | {
-      type: 'NETWORK';
-    } | {
-      type: 'SELECT_LINK';
-      from: CityId;
-      to: CityId;
-    } | {
-      type: 'SELECT_CARD';
-      cardId: string;
-    } | {
-      type: 'CONFIRM';
-    } | {
-      type: 'CANCEL';
-    }
+    events: GameEvent;
   },
   guards: {
     hasActionsRemaining: ({ context }) => context.actionsRemaining > 0,
@@ -175,7 +263,7 @@ export const gameStore = setup({
     }
   },
 }).createMachine({
-  /** @xstate-layout N4IgpgJg5mDOIC5QCMBOBDWsDi6C2YAdLGAC4CuADgMQDKAKgIIBK9A+towLICiA2gAYAuolCUA9rACWpKeIB2okAA9EAJgAsARkIAOLWoCsAgOwDdATgtaAbKYA0IAJ6ItbwgLUBmDfuNfrOy8AX2DHNEwcfCJKABt0Jyl5KGJSdFRZZPpyVHlqQREkEAlpWQUlVQQTNUcXBC8TLUMPG0MTdtaBK10NUPCMLFwCQjiEpJTYNIzx7Nz8rUKxSRk5RSLK22tCIwEutRsLAQ0LNRrnRC8m3UJDS00BL1MTLxs+kAjB6JH4xOTU9MyUFmeT4akWxWWZTWoA2Bx0Oz2ByOJzOdUeWgshBsXkMFjMJkOVkMbw+UWGo1+EzAsTAAGNAYx6atqAAhACqAEkADIAEQKShKK3K61cBJshEO2I0Zlujy8Xlq6hMNhMhC0OIs2N0BLUGNeYXeAzJMR+42I1LpDKZCmoPJ4ADUeFyAPIABX5RUFUIqosaEsMXnuhi0vl0nkVCDU1mu2NxNjD+zUumJBtJQxNYz+JBpTOSjKhdCdXI9S1Kqx9CC0YeaGgEsar2P2ul0EaaXjVwaCWgEWhM2t0IVTRvT30zVJzVoLTAA0jw2C7GAA5EsQsvCmGiwwaQgaBp2EzHZX6EwRqMHNUag613Q2XpDyIjilm7OW8b55m0ADCzrZ9BXXvLEVKz7VVdCTU5dR7aVNFPG9rnVOMbFvAJB36B8vifLMLVzKB3xtRceHoAB1Z1mGnf9IUAjdgNaFp9k8FVsVsGxYN7LFL0MfYmgPEwSWHDDTSwic32tPIeEXHk2HoNlmGXYQBUo9cVHUF41B3OsAlaEDA1bYMPF2I4o1xaUBADPj0PJQSUkoMBUAAM3EVA8BEqFCGQcgpFiCBn2wwFP3SCBCy5HhP3YT8WD5eTPUU6FlMrUxMTUB4MQPGw1DMCwFXOSNfDU3dwNuWtey0czPksscRlshynJc1Y3I8ryfOE5J-NQQLwsXT8nTYRhQo5Z05PBAClNhLYEROJFjlOU9TG3Tj1T7DQkWTO80LKjNKUq+zHOcvNRPqzzvL+WkFDsqQauSFkGvagaADEOWYLger6gaKLXWLRvhYxEUOKbUXUXsBB3A9jHVMMMQ0VbDQsjazRs7aLtw-b3MOs0TvkM7Eauw7qA6rquWe+h+sGhT3orbsCW2ZK8SW9KuiyupvBvYG8U8E5JTUUrjVHTb4eq3akdciAwAAN2pcRKCa18WoCoKQrCiK3qFD7XA0iVAwaYMcU2VttGaWxql7W943aEr73Wnm4aqnbaoUQhhbF2IJalnDWvapd8cJ4mle9IDNi+3YJt+lEI0aTFqjxKMjmeECucfKytv5235Ht0Xxcl47TvOgWeTTp2aG-Rd7ser3Xqi0tlfJuFtm+oPkWm7KwfbdVTDaHt9CQqG0wEiq+Ztvahbz53M4x7Pxlzx2Jdxj3ut6omy6GmLybVzLvBMLXOwsVtLkSkMumlHEjzjnveetxG8JT7NYhdvzZdoJ15bYcLmEixeyb98xmgPXw7CMYxrBPNlOwmIcTSlrASXYSUzZrW5phayZ8BYX3NLEa+QlpZQDdtPTqs8Xok2iu-ai-sa6B32MHBujMHhYk7EcXw2gNDpWPuVU+CNEH7SvmjLOiNaDUliLjO6D0npz29uXVclc-bV3GqQ+u-1IxWCxNHdKAROLBmVIw2Gfw+7nzYTwjho8uE8KwZ7IRC9SZiMIZ-Qg38byeEMP-XsEYtbqVsL2fs1hoHQwtnAxO-dBZ1TSAAa3GFycQ6BL6+XGJg++wVQpP0ViI4aKt4qUzFBYTiaUwKahYo3Hsal6J4hOFWSGN41GWw0Qg5OhAAlBJCWE5qGDZZ4xwfPPBFdfaEIkbXKRf0IxFJ3LebsJxfC3DaLxc2sCE6aNYa5KpyRgmhMIOjTGAs5l5ELsXQRuCfZUTikQyRk0Q7ZS3NubQ1RAxNE1BYXwJSvGTIqTMqAKyFmcOWTUwxTThFvzMTshKliLlpPApkiMgRCCPD7IYbEph5SpOuRM8pA86qwBOuQQEyD0Fu1gHLGJz9X6mLaTskMmIbxLROdqCwzYsl1FsElLESV5SXH6ZkmFvc4W+Ltoi8QyKb4RIChitZAjS4tNEXiz6xCfrSN0pcCUhwwbaiaEy5hSd4VsqRSil8rseVvIJsYwVCSq5jU6fs8hopTAgoYofXEVYAjyqtiwip8gyAAHdHKBLQeqtqmKFYvy2SNRAYYgY9nBfGHojQehb2ykldoHh9i3APG4A8+xrVlNtUqlO9rSBOtQC68caKGkzy1Zs+JS9xH6pIYamRVZKF-3XjeMwUZUIePGcy5NrLU2OudVy2ZSR-EevnByRc5FC0EPxccKhTEwzgK8D0GalM0kxu0L2eh+oYHxybYqlthA00ZqzainCXIu2aoFd6xJfqPBNCQs2aUhSw2UrJToSFxLvrYgaIm+BzakGbvbSPJZQT918pLtqo9eqA5iu6Y3SwiVzDNiuHvTmYyV0Kp8e+ttmbdHfs7fIbtjT83NMA37U41w+zqiMDYK4CZWxkvbG0Hwt5H3ylGcuk+ZoKC5B4PIQKuHqLeDSupbEmo2jah0tlQMAYsQGDMK0NKeIX2EFQBytjrH2ODq+RsKDNw0q5VsZcBoMjHi0VjJqNwDR5QhlCAaeQ4hhbwCKN3AguLtmVBgtlAAtJoEpJAKCUDsz6ysS0dw9EnRc9UxwKWuB8KK+hTY63uJs+oqAXnElDJ3AGEM6psQx0AXUbENwDK6mlHiHEDC4OMazFMQEwJ4vk2MGpAprMkJcevRcM9egAjeGlJYaoSFpNqsnNs3VQFdSXJuEtW98pdRGFbAebY+wginODZxaTtyU0VaAgGdsGhkvaBeEZ9oEZ5TXCKjN9mrQE1FaYTatdSCpAQBpMt8xWXtZakgVBDQp4SPXEncZbUwYkwLZZUglGjVki3bitYrEtYkJWB1GlGRpwyUSgJI0B4+HOy-bfcja6Hb6ltWB5UQ4MZwcHHyYmGHxxtyLQCGYG8yXUcXfR6jL9Y9LrXRx64RRHhhucSSvvZ4p5voeGVHWabq3TI08Q-tB26dxgs4QD0ZoLwyXSlaL2XULZG7eB0I0bQngDCpJGaLrRg9J4Z2zW6iA0vLDtnl8GpXhtVeUvoaqYM-ZmyryM-rqZdUJf51Q4zqAE907S4MG0SxyodcCfAbrQMehuzrchtUB48Z3cVPYUD-BynfUqjVGBUbptbzrZ6UYCUPY0qcWqGYOsSeU3INQSb2+2O0-CsQNYfW2fAy58hoYCMaUNeC8OJOgwLwl0Nvg+dsXrkU8pEWb77hKDA-pUxLcG8BLMqBjxF3-YUqCSyiQrYetMXSmvtp9M9AWaVnm5I9sHw9DgxFNJxGMC1wwx9jSz2HX0X+JnaTUfvxJ-qnzO69yvXq0vZk3l0JfpDEYCGLQpcq2J4NuCRkYIbBiKkt4JXuuvco8lPojGfg3iAZWGzreKYJCkhAGEtLAVGEXvQgVhNEYGgUguypyqnsAd5m4D2HoMbCSgSOShKs3LSrWLYlwdiHQWwiqpjuioHm2NHu0PoDQpDOGI3IbDcM8OtvuAGKZLoMIa5B+ihkwUKngbcDoOtpcJtmlg0Blq4BbkoT4CGpclQV3B-rFt4gbnVNodugATLEAXod5pJklsYalttuYZGOYCAoRg0JAqkhYJoS4chm4eEuhv4tLlYO2MmJct4MMlQTNINhDuOmSn2MmCmAxp-ofmPtEemp+pPs8j+hhoHtoI-kmClEooMjDl0KqJsP5kMtYJEado4cxvIAptLjsNuMruYAgQIcqK2LeGqPlM8GEfHgONJrJuQPJmxgMRDENgcPoKNkHrtj8u0CcMYPQgUnvg4YQFANEM6GLKgAMb5voDsJTlYLYA4EJkGmpm0FuCDL2CmKEEAA */
+  /** @xstate-layout N4IgpgJg5mDOIC5QCMBOBDWsDi6C2YAxAFQDaADALqKgAOA9rAJYAuT9AdjSAJ6IC0AZgCs5ADQgAHogCMADgDsAJgB0SmTPLkAnHO3DtSgCxKAvqYlpMOfGBWwwLAK61CAZQAqAQQBKHgPrYXgCyAKIU1EggDMxsnNzSCMYyKnIySqIK5HraMgBs5AoSfAgaKeRKgkZpooK5BYLmlhhYuAQqtAA26DxMHFAd3TxgqB5OqByEAEIAqgCSADIAIhHcMazsXFGJleQqgunCxYhKynKpcgbVCsLpck0gVq22gz19A109I2MThEuhADVQgsAPIABVWUXWcS2oB2gj2BwyxySCly+0u2mutyU9wsjxaNnan16-Vew1G40mbmBC0hdEYG3i2xOCP2hxRuOEgguV0UOLxzWsbTsJPe5O+VMI3gA0qF-KCvAA5enRRkwhKsxEc3gneoYvk3O4PJ5E0VDcUkyW-NwAYRBMw8quhm01STZSKOuqS2gU5zkmOxxvxppF5MtQ2tkyVoQ8AHUQT4Zc71a6We7tcjvQijClBIH+cGhc9iRayVbKb8U7E03CteysyUDuQeQHDQKTYSw2LyyMAGb0VB4d5eADGMJUyCcTE6EHFDk6YHH71t6FQEHcwNCtoCtt8Kyoa1TzLrpUK2jULZkvqMeVOOkEnOqqiMglxGTkRnIMgUMk7wpeHsPn7Qdh36McJynGc5zJBclzYfpV3XQg9yVW1gWrJlYSkWR8lUO9RCMIxfUMO8lCfKoVFfd9hE-b9f3-EtzTeXtUAHIcR2XThJ2nWdxVHTg+yYDj+imXiN3tJUADE5h8YJMI1KISgyLQVEKAo7zyPJuQRL1EhkYQvxUPJ+QUZQtCxBRGhDLtALLYC2NAzjIPE-jBOEsCoDE6CUOVdC6UPKFj2w5TRD2dTyE07TBF0iR9MMvYTJuMylAsowrMYs1w1Y9jPIgzYVAgMAADcwE6ehaHnMr4JXNcNxpBZt13fcFNrHCzzyHltDfQQjREfJtBRGRc2EFR8mUH88lvRQGJsgDSxYhzcucgqitK8rKtg6rl0QurfLQjDAoZGsT3ajR0v2QylGu7Sf3UOQhsEPIFDG571AUKaktm4ssqAjoQJEqB8u4tayoqtyOCEwGlhKsHXEkmS5Na06SmGt9Uk0IxDPS1Knoes7DJep7dDRRQqkKTLu3s-7HMB4GOEK2GNohqHPJh9aKv2-zkZC2RqIx8gsaI8y8bi2RCf2PISZJ8mFEpuzFpp5bwK4hmF06KrFx2qAkPqrcd38PcfAPSJjqwt1NEuFQFCIuQCgyURciKb0CgvER0q-NEtFSv85qY7KlqclWJ3VzWat25DUO5o61RO7D9IG17nsKMz8iIr0SmEPI80Jz3tG9795YW0lA7p1X7DKjWyQEyGPPeNxK5QkFpNk+SY5dFHEE0lRtBI2inuzzqxdKbkialu3iO6t9fSL5iS6VoOgfL0Pq-cwGG86ToucO03Y-NpSu6UPIe77uQB-yR8Cd6yXdCm3uYqUGe-d+6naABvLy5YdAAGt3gWeh0Bq22ghHWe0GpNUNi1duwULbnmttoKWwgj7vgQXkIa35VBHx0Gie6ts8izwDgvMuE4v6-36P-QBFctYgN1tvAKu8O7x1wp1NQ8g5BaGGtUYiRgUQIKMGoV2OD5B4IIX9N+tMP4kJ-n-ABDMa6sxkYApuLckbQLjtwVGFQLz5xMCIR+yC9LizqMZO648tLclvKI1+78VrcVIYouRa9PIUMmFHHeR51EHzPI-HugtKhINIlmeKxjs7KDMdFSxz8qaK3EcrJeIcBJOBAVQ8OoD1ywE3I1A2RsTYeP3qec6F4J5TR-IoXQdshp3kSrjGKadrxaSsTEmxwcCqwESckuC2tdYZIRq3HmGjZATRUMIKyWMCg3F0vjfSI1UjESvILIiX4zBRIVvPWJi96b2HaWHLpdUel+XcUFTxoBUZDJGVULOhRuTkFosPYaBlZn52bIspZjS1nNPiQVDgjgADug4yEDE6TQsB+tmrG36emdh4UDJaQDOlYRg1vSpTMmpI+tEbYaBtkfN5loPmbO+SwP5qAAUpN2ZHA59C8mKVPAGHkr4jSdU6lZMynItGou0ooXMP4TD4JWcXXFEjbEMwJUSklQK-59G-pkiBCw5hKmTGo-JZ1hoXm0p1eQgtCj5h4UiuBSCOUYu5divlc8BVxPxb8-5OyQELElXQiFBTjA8iesoJ62QrqX2UleYZaLOWYp5TinKGzy4iqtavWugNbUcClb01RDCYFeNSr6V6uhXzVAMNeO5Jk9jqE0DoPQBhjDLJ+tE95gqWncVDcSlmddyF2rcZSo5SqvXJoGp+KomJM1nWzawvNuh9CGBMIGgY6BVa2noHgLojgiAOrOr+YyaIkoZ0QM2VsBYjS4mHSoUdMJx2TsXCwGdMh43HLnSkZ6CD+QogONnXkWJCybpNYQ75kgWBgkjKgQgs79IsKvI2Fd6ginro7A8Dg9AirwCiKGWwVK2qJH4DITkPIkEiBbKcGKZkiLWRLS8BwzhaCwdOtM4+XD8wINyFUBBj1+EqT8UfOQj8DjDsI0w0oDy-3LoQAcGjV4fzdU6uwqaW6Kw-Gwowt04gkWXHOPmdsRYCTzVNUG4hbVxPplzF1a5ttF21JRF+FIWQDjT3zkgmQ2GFP+zEXi8uTAICLhY7Alh-UBMF04ZybOMngPyeg-y5TkiCpQT4v0Bz6nb36BzNcBBunvQ2xzSM3IR9KNn19jh3zpd-PcUCzBQFwDarrhC6efO5wpqRSliRZB5EkXcOtu2302RoopYsy-Jp5bPmZdcuGhRolxIFbOuhtSt59DXTSlZTkYU1IfUikfaKulhPWYnKDZmwWm3UvareFI4WFllM6gcR6pxjJvQ+pUXuX5hBzda5sxb4MtrULyxAXriQ9DOvHulW6E18aoxMC9W4igAxPcqBlJ9VmLvlyu5tAY8ja1QHZnDB7sgMgvTMtnR+ZNPZDX5mkQW2MRYmXO+a5eld3hw4QOtnuWnIs7cQ96UzqRCb3zPtkKoePg0h0Jzd1Jutie5FGvISob5U5TSxiiO8BmptPLSJUBpQPrEg9Z5vGt69K7E-SGiYZAZs6Twfr6YXR8T5on7lpC+zOVN2OkeQ2RxPSebe01F3b3pB3WwKHoG5P5ND5mNxlhm9jzeUPFRHe7K24OIHzheSoREMicM-FidBxgTEI9zb3FDHuhUqG91AFxKhIeRot4Hoj8OrLGU9lq8xVQ0Hek0D4nR-j9EEWTxWtW2zltm1W4kW8x9rcU+i6jHSY1cZOxGca1LSn0sp7afQJJ1q7uQeb0Htj3IMZmUxy8ioQ0zmjMuRMm5gomulrNSzr5lrq1N73i3xAVvyfba77ILfauNKaV5+Znzw+iGe5UFWsVuX-fE7vBeLG3GzNMq9TOxep6D7B+hmZZBaIGB15tbCqH4f63Z1rRpc7dS05Yj+KXC6KspYgHa6CCwkxthnbS4tb44Tjv4K7OKSrK65j+i4jXhWQDpFrYEvRtppqdraBbo7qbB7pTqHrE78BUZIq9yqBtj3obrb5P7PpgCvrvpfCoD8GCFNjcoGhiEgZD4qBQC2AgilTyG56sbGDHwS6ZDZC9z5CFDXomTnBZwjK5y3A3DmDmBAA */
   id: 'brassGame',
   context: {
     players: [],
@@ -268,7 +356,7 @@ export const gameStore = setup({
             };
           }),
           guard: ({ event }) =>
-            event.players.length >= 2 && event.players.length <= 4
+            event.type === 'START_GAME' && event.players.length >= 2 && event.players.length <= 4
         }
       }
     },
@@ -303,9 +391,8 @@ export const gameStore = setup({
                         selectedCard: ({ context, event }) => {
                           debugLog('selectingCard', { context, event });
                           if (event.type !== 'SELECT_CARD') return null;
-                          const player = context.players[context.currentPlayerIndex];
-                          if (!player) return null;
-                          return player.hand.find(card => card.id === event.cardId) ?? null;
+                          const player = getCurrentPlayer(context);
+                          return findCardInHand(player, event.cardId);
                         }
                       })]
                     },
@@ -323,28 +410,8 @@ export const gameStore = setup({
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
                       actions: [
-                        assign({
-                          players: ({ context, event }) => {
-                            debugLog('confirmingBuild', { context, event });
-                            const currentPlayer = context.players[context.currentPlayerIndex];
-                            if (!currentPlayer || !context.selectedCard) return context.players;
-
-                            const updatedHand = currentPlayer.hand.filter(
-                              card => card.id !== context.selectedCard?.id
-                            );
-
-                            return context.players.map((player, index) =>
-                              index === context.currentPlayerIndex
-                                ? { ...player, hand: updatedHand }
-                                : player
-                            );
-                          },
-                          discardPile: ({ context }) => {
-                            if (!context.selectedCard) return context.discardPile;
-                            return [...context.discardPile, context.selectedCard];
-                          },
-                          selectedCard: null,
-                        }),
+                        assign(discardSelectedCard),
+                        assign(decrementActions)
                       ]
                     },
                     CANCEL: {
@@ -369,9 +436,8 @@ export const gameStore = setup({
                         selectedCard: ({ context, event }) => {
                           debugLog('selectCard', { context, event });
                           if (event.type !== 'SELECT_CARD') return null;
-                          const player = context.players[context.currentPlayerIndex];
-                          if (!player) return null;
-                          return player.hand.find(card => card.id === event.cardId) ?? null;
+                          const player = getCurrentPlayer(context);
+                          return findCardInHand(player, event.cardId);
                         }
                       })]
                     },
@@ -389,38 +455,8 @@ export const gameStore = setup({
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
                       actions: [
-                        assign({
-                          players: ({ context, event }) => {
-                            debugLog('discardSelectedCard', { context, event });
-                            const currentPlayer = context.players[context.currentPlayerIndex];
-                            if (!currentPlayer || !context.selectedCard) return context.players;
-
-                            const updatedHand = currentPlayer.hand.filter(
-                              card => card.id !== context.selectedCard?.id
-                            );
-
-                            return context.players.map((player, index) =>
-                              index === context.currentPlayerIndex
-                                ? { ...player, hand: updatedHand }
-                                : player
-                            );
-                          },
-                          discardPile: ({ context }) => {
-                            if (!context.selectedCard) return context.discardPile;
-                            return [...context.discardPile, context.selectedCard];
-                          },
-                          selectedCard: null
-                        }),
-                        assign({
-                          actionsRemaining: ({ context, event }) => {
-                            debugLog('decrementActions', { context, event });
-                            return context.actionsRemaining - 1;
-                          }
-                        }),
-                        assign({
-                          selectedCard: null,
-                          selectedCardsForScout: []
-                        })
+                        assign(discardSelectedCard),
+                        assign(decrementActions)
                       ]
                     },
                     CANCEL: {
@@ -445,9 +481,8 @@ export const gameStore = setup({
                         selectedCard: ({ context, event }) => {
                           debugLog('selectCard', { context, event });
                           if (event.type !== 'SELECT_CARD') return null;
-                          const player = context.players[context.currentPlayerIndex];
-                          if (!player) return null;
-                          return player.hand.find(card => card.id === event.cardId) ?? null;
+                          const player = getCurrentPlayer(context);
+                          return findCardInHand(player, event.cardId);
                         }
                       })]
                     },
@@ -465,38 +500,8 @@ export const gameStore = setup({
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
                       actions: [
-                        assign({
-                          players: ({ context, event }) => {
-                            debugLog('discardSelectedCard', { context, event });
-                            const currentPlayer = context.players[context.currentPlayerIndex];
-                            if (!currentPlayer || !context.selectedCard) return context.players;
-
-                            const updatedHand = currentPlayer.hand.filter(
-                              card => card.id !== context.selectedCard?.id
-                            );
-
-                            return context.players.map((player, index) =>
-                              index === context.currentPlayerIndex
-                                ? { ...player, hand: updatedHand }
-                                : player
-                            );
-                          },
-                          discardPile: ({ context }) => {
-                            if (!context.selectedCard) return context.discardPile;
-                            return [...context.discardPile, context.selectedCard];
-                          },
-                          selectedCard: null
-                        }),
-                        assign({
-                          actionsRemaining: ({ context, event }) => {
-                            debugLog('decrementActions', { context, event });
-                            return context.actionsRemaining - 1;
-                          }
-                        }),
-                        assign({
-                          selectedCard: null,
-                          selectedCardsForScout: []
-                        })
+                        assign(discardSelectedCard),
+                        assign(decrementActions)
                       ]
                     },
                     CANCEL: {
@@ -520,11 +525,9 @@ export const gameStore = setup({
                       actions: [assign({
                         selectedCard: ({ context, event }) => {
                           debugLog('selectCard', { context, event });
-                          const player = context.players[context.currentPlayerIndex];
-                          if (!player) {
-                            throw new Error('Player not found');
-                          }
-                          return player.hand.find(card => card.id === event.cardId) ?? null;
+                          if (event.type !== 'SELECT_CARD') return null;
+                          const player = getCurrentPlayer(context);
+                          return findCardInHand(player, event.cardId);
                         }
                       })]
                     },
@@ -542,55 +545,37 @@ export const gameStore = setup({
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
                       actions: [
-                        assign({
-                          players: ({ context, event }) => {
-                            debugLog('confirmingLoan', { context, event });
-                            const currentPlayer = context.players[context.currentPlayerIndex];
-                            if (!currentPlayer) {
-                              throw new Error('Player not found');
-                            }
+                        assign(({ context }) => {
+                          const currentPlayer = getCurrentPlayer(context);
+                          if (!context.selectedCard) {
+                            throw new Error('Card not found');
+                          }
 
-                            const updatedHand = currentPlayer.hand.filter(
-                              card => card.id !== context.selectedCard?.id
-                            );
+                          const discardResult = discardSelectedCard({ context, event: { type: 'CONFIRM' } });
+                          const actionResult = decrementActions({ context, event: { type: 'CONFIRM' } });
 
-                            return context.players.map((player, index) =>
-                              index === context.currentPlayerIndex
-                                ? {
-                                    ...player,
-                                    hand: updatedHand,
-                                    money: player.money + 30,
-                                    income: Math.max(0, player.income - 3)
-                                  }
-                                : player
-                            );
-                          },
-                          discardPile: ({ context }) => {
-                            if (!context.selectedCard) {
-                              throw new Error('Card not found');
-                            }
-                            return [...context.discardPile, context.selectedCard];
-                          },
-                          selectedCard: null,
-                          actionsRemaining: ({ context }) => context.actionsRemaining - 1,
-                          logs: ({ context }) => {
-                            const currentPlayer = context.players[context.currentPlayerIndex];
-                            if (!currentPlayer ) {
-                              throw new Error('Player not found');
-                            }
-                            if (!context.selectedCard) {
-                              throw new Error('Card not found');
-                            }
+                          if (!discardResult.players) {
+                            throw new Error('Players array not found after discard');
+                          }
 
-                            return [
+                          return {
+                            players: updatePlayerInList(discardResult.players, context.currentPlayerIndex, {
+                              money: currentPlayer.money + 30,
+                              income: Math.max(0, currentPlayer.income - 3)
+                            }),
+                            discardPile: discardResult.discardPile,
+                            selectedCard: discardResult.selectedCard,
+                            actionsRemaining: actionResult.actionsRemaining,
+                            logs: [
                               ...context.logs,
                               createLogEntry(
                                 `${currentPlayer.name} took a loan (£30, -3 income) using ${context.selectedCard.id}`,
                                 'action'
                               )
-                            ];
-                          }
-                        })]
+                            ]
+                          };
+                        })
+                      ]
                     },
                     CANCEL: {
                       target: 'selectingCard',
@@ -820,9 +805,8 @@ export const gameStore = setup({
                                 ? {
                                     ...player,
                                     money: player.money - (
-                                      context.era === 'canal'
-                                        ? 3 // Canal era: £3 per link
-                                        : 5 // Rail era: £5 for first link
+                                      (context.era === 'canal' ? // Canal era: £3 per link
+                                      3 : 5) // Rail era: £5 for first link
                                     ),
                                     links: [
                                       ...player.links,
@@ -900,38 +884,7 @@ export const gameStore = setup({
         },
         actionComplete: {
           entry: [
-            assign({
-              players: ({ context, event }) => {
-                debugLog('refillHand', { context, event });
-                const currentPlayer = context.players[context.currentPlayerIndex];
-                if (!currentPlayer) {
-                  throw new Error('Current player not found');
-                }
-
-                const cardsNeeded = 8 - currentPlayer.hand.length;
-                if (cardsNeeded <= 0) return context.players;
-
-                const newCards = context.drawPile.slice(0, cardsNeeded);
-                const updatedHand = [...currentPlayer.hand, ...newCards];
-
-                return context.players.map((player, index) =>
-                  index === context.currentPlayerIndex
-                    ? { ...player, hand: updatedHand }
-                    : player
-                );
-              },
-              drawPile: ({ context }) => {
-                const currentPlayer = context.players[context.currentPlayerIndex];
-                if (!currentPlayer) {
-                  throw new Error('Current player not found');
-                }
-
-                const cardsNeeded = 8 - currentPlayer.hand.length;
-                if (cardsNeeded <= 0) return context.drawPile;
-
-                return context.drawPile.slice(cardsNeeded);
-              }
-            })
+            assign(refillPlayerHand)
           ],
           always: [
             {

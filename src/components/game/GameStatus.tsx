@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 interface GameStatusProps {
   isActionSelection: boolean;
   currentAction: string | undefined;
-  description: string | undefined;
+  description: string;
 }
 
 export function GameStatus({
@@ -23,7 +23,7 @@ export function GameStatus({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-lg font-medium">{description ?? "Unknown state"}</p>
+        <p className="text-lg font-medium">{description}</p>
       </CardContent>
     </Card>
   );

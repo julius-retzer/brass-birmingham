@@ -73,56 +73,55 @@ export default function Home() {
   }, [state, send]);
 
   const currentPlayer = players[currentPlayerIndex];
-  const isActionSelection = state.matches({ playing: 'actionSelection' });
+  const isActionSelection = state.matches({ playing: 'playerTurn' });
 
   // Get the current action from state matches
   const getCurrentAction = () => {
     // Build
-    if (state.matches({ playing: { actions: { building: 'selectingCard' } } })) {
+    if (state.matches({ playing: { performingAction: { building: 'selectingCard' } } })) {
       return { action: 'build', subState: 'selectingCard' };
     }
-    if (state.matches({ playing: { actions: { building: 'confirmingBuild' } } })) {
+    if (state.matches({ playing: { performingAction: { building: 'confirmingBuild' } } })) {
       return { action: 'build', subState: 'confirming' };
     }
 
     // Develop
-    if (state.matches({ playing: { actions: { developing: 'selectingCard' } } })) {
+    if (state.matches({ playing: { performingAction: { developing: 'selectingCard' } } })) {
       return { action: 'develop', subState: 'selectingCard' };
     }
-    if (state.matches({ playing: { actions: { developing: 'confirmingDevelop' } } })) {
+    if (state.matches({ playing: { performingAction: { developing: 'confirmingDevelop' } } })) {
       return { action: 'develop', subState: 'confirming' };
     }
 
     // Sell
-    if (state.matches({ playing: { actions: { selling: 'selectingCard' } } })) {
+    if (state.matches({ playing: { performingAction: { selling: 'selectingCard' } } })) {
       return { action: 'sell', subState: 'selectingCard' };
     }
-    if (state.matches({ playing: { actions: { selling: 'confirmingSell' } } })) {
+    if (state.matches({ playing: { performingAction: { selling: 'confirmingSell' } } })) {
       return { action: 'sell', subState: 'confirming' };
     }
 
     // Loan
-    if (state.matches({ playing: { actions: { takingLoan: 'selectingCard' } } })) {
+    if (state.matches({ playing: { performingAction: { takingLoan: 'selectingCard' } } })) {
       return { action: 'loan', subState: 'selectingCard' };
     }
-    if (state.matches({ playing: { actions: { takingLoan: 'confirmingLoan' } } })) {
+    if (state.matches({ playing: { performingAction: { takingLoan: 'confirmingLoan' } } })) {
       return { action: 'loan', subState: 'confirming' };
     }
 
     // Scout
-    if (state.matches({ playing: { actions: { scouting: 'selectingCards' } } })) {
+    if (state.matches({ playing: { performingAction: { scouting: 'selectingCards' } } })) {
       return { action: 'scouting', subState: 'selectingCards' };
     }
 
-
     // Network
-    if (state.matches({ playing: { actions: { networking: 'selectingCard' } } })) {
+    if (state.matches({ playing: { performingAction: { networking: 'selectingCard' } } })) {
       return { action: 'networking', subState: 'selectingCard' };
     }
-    if (state.matches({ playing: { actions: { networking: 'selectingLink' } } })) {
+    if (state.matches({ playing: { performingAction: { networking: 'selectingLink' } } })) {
       return { action: 'networking', subState: 'selectingLink' };
     }
-    if (state.matches({ playing: { actions: { networking: 'confirmingLink' } } })) {
+    if (state.matches({ playing: { performingAction: { networking: 'confirmingLink' } } })) {
       return { action: 'networking', subState: 'confirmingLink' };
     }
 
@@ -192,11 +191,11 @@ export default function Home() {
   };
 
   const handleConfirmAction = () => {
-    send({ type: 'CONFIRM_ACTION' });
+    send({ type: 'CONFIRM' });
   };
 
   const handleCancelAction = () => {
-    send({ type: 'CANCEL_ACTION' });
+    send({ type: 'CANCEL' });
   };
 
   const handleLinkSelect = (from: CityId, to: CityId) => {
@@ -283,7 +282,7 @@ export default function Home() {
           <GameStatus
             isActionSelection={isActionSelection}
             currentAction={getCurrentAction()?.action}
-            description={getActionDescription() ?? "Unknown state"}
+            description={getActionDescription() ?? "Waiting for action..."}
           />
 
           {/* Current Player's Hand */}

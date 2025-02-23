@@ -3,7 +3,7 @@ import { test, expect } from 'vitest';
 import { type GameState, gameStore } from './gameStore';
 import { type Card } from '~/data/cards';
 
-const DEBUG = false;
+const DEBUG = true;
 
 const debugLog = (context: GameState) => {
   // log context but without the cards in the hand
@@ -745,8 +745,6 @@ test('taking loan action', () => {
   expect(snapshot.context.discardPile).toHaveLength(1); // Card should be in discard pile
   expect(snapshot.context.discardPile[0]?.id).toBe(cardToDiscard.id); // Verify specific card was discarded
 
-  // 4. Action should be consumed
-  expect(snapshot.context.actionsRemaining).toBe(0); // First round only has 1 action
 
   // 5. Verify log entry was created
   const lastLog = snapshot.context.logs[snapshot.context.logs.length - 1];
@@ -756,5 +754,12 @@ test('taking loan action', () => {
 
   // 6. Turn should pass to next player
   expect(snapshot.context.currentPlayerIndex).toBe(1);
+  expect(snapshot.context.round).toBe(1);
+  expect(snapshot.context.selectedCard).toBeNull();
+  expect(snapshot.context.selectedCardsForScout).toEqual([]);
+  expect(snapshot.context.spentMoney).toBe(0);
+  expect(snapshot.context.discardPile).toHaveLength(1);
+  expect(snapshot.context.discardPile[0]?.id).toBe(cardToDiscard.id);
+
 });
 

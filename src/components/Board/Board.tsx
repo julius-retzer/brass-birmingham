@@ -105,7 +105,6 @@ function getEdges({ isNetworking, era, selectedLink, players }: BoardProps): Edg
       type: 'floating' as const,
       style: baseStyle,
       data: { connection, builtLinks },
-      markerEnd: { type: MarkerType.Arrow },
     };
 
     if (hasCanal && hasRail) {

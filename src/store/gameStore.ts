@@ -76,6 +76,14 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
+function createLogEntry(message: string, type: LogEntryType): LogEntry {
+  return {
+    message,
+    type,
+    timestamp: new Date(),
+  };
+}
+
 // Setup the machine with proper typing
 export const gameStore = setup({
   types: {} as {
@@ -136,11 +144,10 @@ export const gameStore = setup({
 
       if (existingLink) {
         // Add an error message to the logs
-        context.logs.push({
-          message: `Cannot build a link between ${event.from} and ${event.to} as a link already exists there`,
-          type: 'error',
-          timestamp: new Date()
-        });
+        context.logs.push(createLogEntry(
+          `Cannot build a link between ${event.from} and ${event.to} as a link already exists there`,
+          'error'
+        ));
         return false;
       }
 
@@ -183,11 +190,7 @@ export const gameStore = setup({
           iron: 24,
           beer: 24,
         },
-        logs: [{
-          message: 'Game started',
-          type: 'system' as const,
-          timestamp: new Date()
-        }],
+        logs: [createLogEntry('Game started', 'system')],
         drawPile: shuffledCards.slice(currentIndex),
         discardPile: [],
         wildLocationPile: wildLocationCards,
@@ -267,11 +270,7 @@ export const gameStore = setup({
 
         return [
           ...context.logs,
-          {
-            message,
-            type: 'action' as const,
-            timestamp: new Date()
-          }
+          createLogEntry(message, 'action')
         ];
       }
     }),
@@ -312,11 +311,10 @@ export const gameStore = setup({
 
         return [
           ...context.logs,
-          {
-            message: `${currentPlayer.name} scouted by discarding ${cardDescriptions.join(' and ')}`,
-            type: 'action' as const,
-            timestamp: new Date()
-          }
+          createLogEntry(
+            `${currentPlayer.name} scouted by discarding ${cardDescriptions.join(' and ')}`,
+            'action'
+          )
         ];
       }
     }),
@@ -345,11 +343,10 @@ export const gameStore = setup({
 
         return [
           ...context.logs,
-          {
-            message: `${currentPlayer.name} drew wild location and wild industry cards`,
-            type: 'action' as const,
-            timestamp: new Date()
-          }
+          createLogEntry(
+            `${currentPlayer.name} drew wild location and wild industry cards`,
+            'action'
+          )
         ];
       }
     }),
@@ -391,11 +388,10 @@ export const gameStore = setup({
 
         return [
           ...context.logs,
-          {
-            message: `${currentPlayer.name} took a loan (£30, -3 income) using ${cardDesc}`,
-            type: 'action' as const,
-            timestamp: new Date()
-          }
+          createLogEntry(
+            `${currentPlayer.name} took a loan (£30, -3 income) using ${cardDesc}`,
+            'action'
+          )
         ];
       }
     }),
@@ -441,11 +437,10 @@ export const gameStore = setup({
 
         return [
           ...context.logs,
-          {
-            message: `${currentPlayer.name}'s turn ended`,
-            type: 'system' as const,
-            timestamp: new Date()
-          }
+          createLogEntry(
+            `${currentPlayer.name}'s turn ended`,
+            'system'
+          )
         ];
       }
     }),
@@ -458,11 +453,10 @@ export const gameStore = setup({
       spentMoney: 0,
       logs: ({ context }) => [
         ...context.logs,
-        {
-          message: `Round ${context.round} ended. Starting round ${context.round + 1}`,
-          type: 'system' as const,
-          timestamp: new Date()
-        }
+        createLogEntry(
+          `Round ${context.round} ended. Starting round ${context.round + 1}`,
+          'system'
+        )
       ]
     }),
     selectLink: assign({
@@ -485,7 +479,7 @@ export const gameStore = setup({
         if (context.era === 'canal') {
           return context.spentMoney + 3;
         }
-        return context.spentMoney + (context.secondLinkAllowed ? 5 : 15);
+        return context.spentMoney + 5;
       },
       resources: ({ context }) => {
         // Only consume coal in rail era
@@ -493,8 +487,6 @@ export const gameStore = setup({
           return {
             ...context.resources,
             coal: context.resources.coal - 1,
-            // If building second link, consume beer
-            beer: context.secondLinkAllowed ? context.resources.beer : context.resources.beer - 1
           };
         }
         return context.resources;
@@ -512,9 +504,7 @@ export const gameStore = setup({
                 money: player.money - (
                   context.era === 'canal'
                     ? 3 // Canal era: £3 per link
-                    : context.secondLinkAllowed
-                      ? 5 // Rail era: £5 for first link
-                      : 15 // Rail era: £15 for two links
+                    : 5 // Rail era: £5 for first link
                 ),
                 links: [
                   ...player.links,
@@ -528,7 +518,6 @@ export const gameStore = setup({
             : player
         );
       },
-      secondLinkAllowed: false,
       logs: ({ context }): LogEntry[] => {
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer || !context.selectedLink) return context.logs;
@@ -537,11 +526,10 @@ export const gameStore = setup({
 
         return [
           ...context.logs,
-          {
-            message: `${currentPlayer.name} built a ${context.era} link between ${selectedLink.from} and ${selectedLink.to}`,
-            type: 'action' as const,
-            timestamp: new Date()
-          }
+          createLogEntry(
+            `${currentPlayer.name} built a ${context.era} link between ${selectedLink.from} and ${selectedLink.to}`,
+            'action'
+          )
         ];
       }
     })
@@ -735,11 +723,10 @@ export const gameStore = setup({
           entry: assign({
             logs: ({ context }) => [
               ...context.logs,
-              {
-                message: `Round ${context.round} ended. Starting round ${context.round + 1}`,
-                type: 'system' as const,
-                timestamp: new Date()
-              }
+              createLogEntry(
+                `Round ${context.round} ended. Starting round ${context.round + 1}`,
+                'system'
+              )
             ]
           }),
           always: { target: 'turnStart', actions: ['nextRound'] }
@@ -750,11 +737,7 @@ export const gameStore = setup({
       entry: assign({
         logs: ({ context }) => [
           ...context.logs,
-          {
-            message: 'Game Over!',
-            type: 'system' as const,
-            timestamp: new Date()
-          }
+          createLogEntry('Game Over!', 'system')
         ]
       }),
       type: 'final'

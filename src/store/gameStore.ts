@@ -953,8 +953,11 @@ export const gameStore = setup({
                           },
                           logs: ({ context }) => {
                             const currentPlayer = context.players[context.currentPlayerIndex];
-                            if (!currentPlayer || !context.selectedCard) {
-                              throw new Error('Player or card not found');
+                            if (!currentPlayer ) {
+                              throw new Error('Player not found');
+                            }
+                            if (!context.selectedCard) {
+                              throw new Error('Card not found');
                             }
 
 

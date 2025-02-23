@@ -410,8 +410,27 @@ export const gameStore = setup({
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
                       actions: [
-                        assign(discardSelectedCard),
-                        assign(decrementActions)
+                        assign(({ context }) => {
+                          const currentPlayer = getCurrentPlayer(context);
+                          if (!context.selectedCard) {
+                            throw new Error('Card not found');
+                          }
+
+                          const discardResult = discardSelectedCard({ context, event: { type: 'CONFIRM' } });
+                          const actionResult = decrementActions({ context, event: { type: 'CONFIRM' } });
+
+                          return {
+                            ...discardResult,
+                            actionsRemaining: actionResult.actionsRemaining,
+                            logs: [
+                              ...context.logs,
+                              createLogEntry(
+                                `${currentPlayer.name} built using ${getCardDescription(context.selectedCard)}`,
+                                'action'
+                              )
+                            ]
+                          };
+                        })
                       ]
                     },
                     CANCEL: {

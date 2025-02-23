@@ -223,6 +223,68 @@ test('taking loan action', () => {
   });
 });
 
+test('building action', () => {
+  const { actor } = setupTestGame();
+  let snapshot = actor.getSnapshot();
+
+  // Store initial state for comparison
+  const initialPlayer = snapshot.context.players[0];
+  assert(initialPlayer, 'Expected player 1 to exist');
+  const initialHand = [...initialPlayer.hand];
+  const initialDiscardPile = [...snapshot.context.discardPile];
+
+  // Verify initial state
+  expect(snapshot.value).toEqual({ playing: 'playerTurn' });
+  verifyPlayerState(initialPlayer, {
+    money: 30,
+    income: 10
+  });
+  expect(initialHand).toHaveLength(8);
+  expect(initialDiscardPile).toHaveLength(0);
+
+  // Start build action
+  actor.send({ type: 'BUILD' });
+  snapshot = actor.getSnapshot();
+  expect(snapshot.value).toEqual({ playing: { performingAction: { building: 'selectingCard' } } });
+
+  // Select a card to build with
+  const cardToBuild = initialHand[0];
+  assert(cardToBuild, 'Expected at least one card in hand');
+  actor.send({ type: 'SELECT_CARD', cardId: cardToBuild.id });
+  snapshot = actor.getSnapshot();
+
+  // Verify card selection
+  expect(snapshot.value).toEqual({ playing: { performingAction: { building: 'confirmingBuild' } } });
+  expect(snapshot.context.selectedCard?.id).toBe(cardToBuild.id);
+
+  // Confirm build
+  actor.send({ type: 'CONFIRM' });
+  snapshot = actor.getSnapshot();
+
+  // Get final player state
+  const finalPlayer = snapshot.context.players[0];
+  assert(finalPlayer, 'Expected player 1 to exist');
+
+  // Verify card was discarded
+  expect(finalPlayer.hand).toHaveLength(8); // Hand should be refilled
+  expect(finalPlayer.hand.find(c => c.id === cardToBuild.id)).toBeUndefined();
+  expect(snapshot.context.discardPile).toHaveLength(1);
+  expect(snapshot.context.discardPile[0]?.id).toBe(cardToBuild.id);
+
+  // Verify action was decremented
+  verifyGameState(snapshot, {
+    currentPlayerIndex: 1, // Turn should have passed to next player
+    actionsRemaining: 1,
+    selectedCard: null
+  });
+
+  // Verify log entry
+  const lastLog = snapshot.context.logs[snapshot.context.logs.length - 1];
+  expect(lastLog?.type).toBe('action');
+  expect(lastLog?.message).toContain('Player 1');
+  expect(lastLog?.message).toContain('built');
+});
+
 test('turn taking - round 1', () => {
   const { actor } = setupTestGame();
   let snapshot = actor.getSnapshot();

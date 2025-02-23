@@ -3,7 +3,10 @@ import { test, expect } from 'vitest';
 import { type GameState, gameStore } from './gameStore';
 import { type Card } from '~/data/cards';
 
+const DEBUG = false;
+
 function logInspectEvent(inspectEvent: InspectionEvent) {
+  if (!DEBUG) return;
   switch (inspectEvent.type) {
     case '@xstate.event': {
       console.log('\n🔵 Event:', {
@@ -48,7 +51,9 @@ function logInspectEvent(inspectEvent: InspectionEvent) {
 
 test('game store state machine', () => {
   // 1. Arrange
-  const actor = createActor(gameStore);
+  const actor = createActor(gameStore, {
+    inspect: logInspectEvent
+  });
 
   // 2. Act
   actor.start();
@@ -82,7 +87,7 @@ test('game store state machine', () => {
 
   // Verify game started and is in playing state
   const snapshot = actor.getSnapshot();
-  expect(snapshot.value).toEqual({ playing: 'selectingAction' });
+  expect(snapshot.value).toEqual({ playing: 'playerTurn' });
 
   // Verify initial game state
   const { context } = snapshot;
@@ -104,7 +109,7 @@ test('game store state machine', () => {
   expect(firstLog.type).toBe('system');
 });
 
-test.only('turn taking - player turn should switch after using all actions', () => {
+test('turn taking - player turn should switch after using all actions', () => {
   // 1. Arrange - Create and start the actor
   const actor = createActor(gameStore, {
     inspect: logInspectEvent
@@ -138,7 +143,7 @@ test.only('turn taking - player turn should switch after using all actions', () 
 
   // Verify initial turn state
   let snapshot = actor.getSnapshot();
-  expect(snapshot.value).toEqual({ playing: 'selectingAction' });
+  expect(snapshot.value).toEqual({ playing: 'playerTurn' });
   expect(snapshot.context.actionsRemaining).toBe(1); // First round of Canal Era only gets 1 action
   expect(snapshot.context.currentPlayerIndex).toBe(0); // Player 1's turn
   expect(snapshot.context.round).toBe(1);
@@ -151,7 +156,7 @@ test.only('turn taking - player turn should switch after using all actions', () 
   snapshot = actor.getSnapshot();
 
   // Verify turn switched to Player 2
-  expect(snapshot.value).toEqual({ playing: 'selectingAction' });
+  expect(snapshot.value).toEqual({ playing: 'playerTurn' });
   expect(snapshot.context.currentPlayerIndex).toBe(1); // Should now be Player 2's turn
   expect(snapshot.context.actionsRemaining).toBe(1); // First round still has 1 action
   expect(snapshot.context.round).toBe(1); // Still in first round
@@ -164,7 +169,7 @@ test.only('turn taking - player turn should switch after using all actions', () 
   snapshot = actor.getSnapshot();
 
   // Verify round advanced and back to Player 1
-  expect(snapshot.value).toEqual({ playing: 'selectingAction' });
+  expect(snapshot.value).toEqual({ playing: 'playerTurn' });
   expect(snapshot.context.currentPlayerIndex).toBe(0); // Back to Player 1
   expect(snapshot.context.round).toBe(2); // Advanced to round 2
   expect(snapshot.context.actionsRemaining).toBe(2); // Regular rounds have 2 actions
@@ -177,7 +182,7 @@ test.only('turn taking - player turn should switch after using all actions', () 
   snapshot = actor.getSnapshot();
 
   // Verify still Player 1's turn with one action remaining
-  expect(snapshot.value).toEqual({ playing: 'selectingAction' });
+  expect(snapshot.value).toEqual({ playing: 'playerTurn' });
   expect(snapshot.context.currentPlayerIndex).toBe(0); // Still Player 1
   expect(snapshot.context.actionsRemaining).toBe(1); // One action remaining
   expect(snapshot.context.round).toBe(2);
@@ -190,7 +195,7 @@ test.only('turn taking - player turn should switch after using all actions', () 
   snapshot = actor.getSnapshot();
 
   // Verify turn switched to Player 2 after both actions used
-  expect(snapshot.value).toEqual({ playing: 'selectingAction' });
+  expect(snapshot.value).toEqual({ playing: 'playerTurn' });
   expect(snapshot.context.currentPlayerIndex).toBe(1); // Switched to Player 2
   expect(snapshot.context.actionsRemaining).toBe(2); // Reset to 2 actions for Player 2
   expect(snapshot.context.round).toBe(2); // Still in round 2

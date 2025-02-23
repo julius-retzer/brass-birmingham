@@ -77,7 +77,7 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-const DEBUG = true;
+const DEBUG = false;
 
 function debugLog(actionName: string, { context, event }: { context: GameState; event: { type: string } & Record<string, unknown> }) {
   if (DEBUG) {
@@ -143,7 +143,7 @@ export const gameStore = setup({
     isGameOver: ({ context }) =>
       context.era === 'rail' && context.round >= 8,
     isRoundOver: ({ context }) =>
-      context.currentPlayerIndex === context.players.length - 1,
+      context.currentPlayerIndex === context.players.length - 1 && context.actionsRemaining === 0,
     hasSelectedCard: ({ context }) => context.selectedCard !== null,
     canScout: ({ context }) => {
       return context.selectedCardsForScout.length === 2;
@@ -453,28 +453,20 @@ export const gameStore = setup({
         return context.drawPile.slice(cardsNeeded);
       }
     }),
-    nextPlayer: assign({
-      currentPlayerIndex: ({ context, event }) => {
-        debugLog('nextPlayer', { context, event });
-        return (context.currentPlayerIndex + 1) % context.players.length;
-      },
-      actionsRemaining: ({ context }) =>
-        context.era === 'canal' && context.round === 1 ? 1 : 2,
-      selectedCard: null,
-      selectedCardsForScout: [],
-      spentMoney: 0,
-      logs: ({ context }) => {
-        const currentPlayer = context.players[context.currentPlayerIndex];
-        if (!currentPlayer) return context.logs;
+    nextPlayer: assign(({ context }) => {
+      const nextPlayerIndex = (context.currentPlayerIndex + 1) % context.players.length;
+      const isRoundOver = nextPlayerIndex === 0;
+      const nextRound = isRoundOver ? context.round + 1 : context.round;
+      const isFirstRound = context.era === 'canal' && nextRound === 1;
 
-        return [
-          ...context.logs,
-          createLogEntry(
-            `${currentPlayer.name}'s turn ended`,
-            'system'
-          )
-        ];
-      }
+      return {
+        currentPlayerIndex: nextPlayerIndex,
+        actionsRemaining: isFirstRound ? 1 : 2, // 1 action for first round, 2 for all others
+        round: nextRound,
+        selectedCard: null,
+        selectedCardsForScout: [],
+        spentMoney: 0
+      };
     }),
     nextRound: assign({
       round: ({ context, event }) => {
@@ -609,41 +601,19 @@ export const gameStore = setup({
       }
     },
     playing: {
-      initial: 'startingTurn',
+      initial: 'playerTurn',
       states: {
-        startingTurn: {
+        playerTurn: {
           always: [
-            { guard: 'isGameOver', target: '#brassGame.gameOver' },
-            { guard: 'isRoundOver', target: 'roundEnd' },
-            { target: 'startingAction' }
-          ]
-        },
-        startingAction: {
-            always: [
-            { guard: 'hasActionsRemaining', target: 'selectingAction' },
-            { target: 'actionEnd' }
-          ]
-        },
-        selectingAction: {
+            { guard: 'isGameOver', target: '#brassGame.gameOver' }
+          ],
           on: {
-            BUILD: {
-              target: 'performingAction.building',
-            },
-            DEVELOP: {
-              target: 'performingAction.developing',
-            },
-            SELL: {
-              target: 'performingAction.selling',
-            },
-            TAKE_LOAN: {
-              target: 'performingAction.takingLoan',
-            },
-            SCOUT: {
-              target: 'performingAction.scouting',
-            },
-            NETWORK: {
-              target: 'performingAction.networking',
-            },
+            BUILD: { target: 'performingAction.building' },
+            DEVELOP: { target: 'performingAction.developing' },
+            SELL: { target: 'performingAction.selling' },
+            TAKE_LOAN: { target: 'performingAction.takingLoan' },
+            SCOUT: { target: 'performingAction.scouting' },
+            NETWORK: { target: 'performingAction.networking' },
           }
         },
         performingAction: {
@@ -660,7 +630,7 @@ export const gameStore = setup({
                       actions: ['selectCard']
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.selectingAction',
+                      target: '#brassGame.playing.playerTurn',
                       actions: ['clearSelectedCards']
                     }
                   }
@@ -668,7 +638,7 @@ export const gameStore = setup({
                 confirmingBuild: {
                   on: {
                     CONFIRM: {
-                      target: '#brassGame.playing.startingAction',
+                      target: '#brassGame.playing.actionComplete',
                       guard: 'hasSelectedCard',
                       actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
                     },
@@ -690,7 +660,7 @@ export const gameStore = setup({
                       actions: ['selectCard']
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.selectingAction',
+                      target: '#brassGame.playing.playerTurn',
                       actions: ['clearSelectedCards']
                     }
                   }
@@ -698,7 +668,7 @@ export const gameStore = setup({
                 confirmingDevelop: {
                   on: {
                     CONFIRM: {
-                      target: '#brassGame.playing.startingAction',
+                      target: '#brassGame.playing.actionComplete',
                       guard: 'hasSelectedCard',
                       actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
                     },
@@ -720,7 +690,7 @@ export const gameStore = setup({
                       actions: ['selectCard']
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.selectingAction',
+                      target: '#brassGame.playing.playerTurn',
                       actions: ['clearSelectedCards']
                     }
                   }
@@ -728,7 +698,7 @@ export const gameStore = setup({
                 confirmingSell: {
                   on: {
                     CONFIRM: {
-                      target: '#brassGame.playing.startingAction',
+                      target: '#brassGame.playing.actionComplete',
                       guard: 'hasSelectedCard',
                       actions: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards']
                     },
@@ -750,7 +720,7 @@ export const gameStore = setup({
                       actions: ['selectCard']
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.selectingAction',
+                      target: '#brassGame.playing.playerTurn',
                       actions: ['clearSelectedCards']
                     }
                   }
@@ -759,7 +729,7 @@ export const gameStore = setup({
                   on: {
                     CONFIRM: {
                       guard: 'hasSelectedCard',
-                      target: '#brassGame.playing.actionEnd',
+                      target: '#brassGame.playing.actionComplete',
                       actions: ['takeLoan']
                     },
                     CANCEL: {
@@ -780,12 +750,12 @@ export const gameStore = setup({
                       actions: ['selectScoutCard']
                     },
                     CONFIRM: {
-                      target: '#brassGame.playing.startingAction',
+                      target: '#brassGame.playing.actionComplete',
                       guard: 'canScout',
                       actions: ['discardScoutCards', 'drawWildCards', 'decrementActions', 'clearSelectedCards']
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.selectingAction',
+                      target: '#brassGame.playing.playerTurn',
                       actions: ['clearSelectedCards']
                     }
                   }
@@ -802,7 +772,7 @@ export const gameStore = setup({
                       actions: ['selectCard']
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.selectingAction',
+                      target: '#brassGame.playing.playerTurn',
                       actions: ['clearSelectedCards']
                     }
                   }
@@ -823,7 +793,7 @@ export const gameStore = setup({
                 confirmingLink: {
                   on: {
                     CONFIRM: {
-                      target: '#brassGame.playing.selectingAction',
+                      target: '#brassGame.playing.actionComplete',
                       guard: 'hasSelectedLink',
                       actions: ['buildLink', 'discardSelectedCard', 'decrementActions', 'clearSelectedLink']
                     },
@@ -837,27 +807,23 @@ export const gameStore = setup({
             }
           }
         },
-        actionEnd: {
+        actionComplete: {
           entry: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards', 'refillHand'],
-          always: [{ guard: 'hasActionsRemaining', target: 'selectingAction' }, { target: 'turnEnd' }]
+          always: [
+            {
+              guard: 'hasActionsRemaining',
+              target: 'playerTurn'
+            },
+            {
+              target: 'nextPlayer'
+            }
+          ]
         },
-        turnEnd: {
+        nextPlayer: {
+          entry: ['nextPlayer'],
           always: {
-            target: 'startingTurn',
-            actions: ['nextPlayer']
+            target: 'playerTurn'
           }
-        },
-        roundEnd: {
-          entry: assign({
-            logs: ({ context }) => [
-              ...context.logs,
-              createLogEntry(
-                `Round ${context.round} ended. Starting round ${context.round + 1}`,
-                'system'
-              )
-            ]
-          }),
-          // always: { target: 'startingTurn', actions: ['nextRound'] }
         }
       }
     },

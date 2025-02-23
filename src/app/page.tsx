@@ -2,25 +2,27 @@
 
 import { useEffect } from 'react';
 import { useMachine } from '@xstate/react';
-import { gameStore, type Player } from '../store/gameStore';
+import { gameStore } from '../store/gameStore';
 import { type Card } from '../data/cards';
 import { type CityId } from '../data/board';
 import { GameLog } from '../components/GameLog';
 import { Card as CardUI, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Coins, Trophy, TrendingUp, CircleDot, Factory, Beer } from 'lucide-react';
+import {CircleDot, Factory, Beer } from 'lucide-react';
 import { Board } from '../components/Board';
 import { PlayerHand } from '../components/PlayerHand';
 import { PlayerCard } from '../components/PlayerCard';
 import { createBrowserInspector } from '@statelyai/inspect';
 
 
-const { inspect } = createBrowserInspector();
+const inspector = createBrowserInspector({
+  autoStart: false,
+});
 
 export default function Home() {
   const [state, send] = useMachine(gameStore, {
-    inspect
+    inspect: inspector.inspect
   });
 
   const {
@@ -67,20 +69,60 @@ export default function Home() {
   }, [state, send]);
 
   const currentPlayer = players[currentPlayerIndex];
-  const isSelectingAction = state.matches({ playing: 'actionSelection' });
+  const isActionSelection = state.matches({ playing: 'actionSelection' });
 
-  // Helper to safely get the current action and substate
+  // Get the current action from state matches
   const getCurrentAction = () => {
-    const playingState = state.value as { playing?: { actions?: Record<string, string> } };
-    if (!playingState.playing?.actions) return null;
+    // Build
+    if (state.matches({ playing: { actions: { building: 'selectingCard' } } })) {
+      return { action: 'build', subState: 'selectingCard' };
+    }
+    if (state.matches({ playing: { actions: { building: 'confirmingBuild' } } })) {
+      return { action: 'build', subState: 'confirming' };
+    }
 
-    const [action, states] = Object.entries(playingState.playing.actions)[0] ?? [null, null];
-    if (!action || !states) return null;
+    // Develop
+    if (state.matches({ playing: { actions: { developing: 'selectingCard' } } })) {
+      return { action: 'develop', subState: 'selectingCard' };
+    }
+    if (state.matches({ playing: { actions: { developing: 'confirmingDevelop' } } })) {
+      return { action: 'develop', subState: 'confirming' };
+    }
 
-    return {
-      action,
-      subState: states
-    };
+    // Sell
+    if (state.matches({ playing: { actions: { selling: 'selectingCard' } } })) {
+      return { action: 'sell', subState: 'selectingCard' };
+    }
+    if (state.matches({ playing: { actions: { selling: 'confirmingSell' } } })) {
+      return { action: 'sell', subState: 'confirming' };
+    }
+
+    // Loan
+    if (state.matches({ playing: { actions: { takingLoan: 'selectingCard' } } })) {
+      return { action: 'loan', subState: 'selectingCard' };
+    }
+    if (state.matches({ playing: { actions: { takingLoan: 'confirmingLoan' } } })) {
+      return { action: 'loan', subState: 'confirming' };
+    }
+
+    // Scout
+    if (state.matches({ playing: { actions: { scouting: 'selectingCards' } } })) {
+      return { action: 'scouting', subState: 'selectingCards' };
+    }
+
+
+    // Network
+    if (state.matches({ playing: { actions: { networking: 'selectingCard' } } })) {
+      return { action: 'networking', subState: 'selectingCard' };
+    }
+    if (state.matches({ playing: { actions: { networking: 'selectingLink' } } })) {
+      return { action: 'networking', subState: 'selectingLink' };
+    }
+    if (state.matches({ playing: { actions: { networking: 'confirmingLink' } } })) {
+      return { action: 'networking', subState: 'confirmingLink' };
+    }
+
+    return null;
   };
 
   // Helper to safely check if we're in a specific state
@@ -91,25 +133,29 @@ export default function Home() {
 
   // Get the description of the current action for the UI
   const getActionDescription = () => {
+    if (isActionSelection) {
+      return `${currentPlayer?.name}'s turn - ${actionsRemaining} action${actionsRemaining !== 1 ? 's' : ''} remaining`;
+    }
+
     const current = getCurrentAction();
     if (!current) return null;
 
     const { action, subState } = current;
 
     switch (action) {
-      case 'building':
+      case 'build':
         return subState === 'selectingCard'
           ? 'Select a location or industry card to build'
           : 'Confirm building action';
-      case 'developing':
+      case 'develop':
         return subState === 'selectingCard'
           ? 'Select an industry card to develop'
           : 'Confirm development action';
-      case 'selling':
+      case 'sell':
         return subState === 'selectingCard'
           ? 'Select a card to sell'
           : 'Confirm selling action';
-      case 'takingLoan':
+      case 'loan':
         return subState === 'selectingCard'
           ? 'Select a card to discard to take a loan (£30, -3 income)'
           : 'Confirm loan action';
@@ -160,10 +206,10 @@ export default function Home() {
     const { action, subState } = current;
 
     switch (action) {
-      case 'building':
-      case 'developing':
-      case 'selling':
-      case 'takingLoan':
+      case 'build':
+      case 'develop':
+      case 'sell':
+      case 'loan':
         return subState.startsWith('confirming') && selectedCard !== null;
       case 'scouting':
         return selectedCardsForScout.length === 2;
@@ -181,10 +227,10 @@ export default function Home() {
     const { action, subState } = current;
 
     switch (action) {
-      case 'building':
-      case 'developing':
-      case 'selling':
-      case 'takingLoan':
+      case 'build':
+      case 'develop':
+      case 'sell':
+      case 'loan':
       case 'networking':
         return subState === 'selectingCard';
       case 'scouting':
@@ -224,6 +270,15 @@ export default function Home() {
               <p className="text-xl font-semibold">£{spentMoney}</p>
             </div>
           </div>
+          <div className="mt-4 flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => inspector.start()}
+            >
+              Start State Inspector
+            </Button>
+          </div>
         </CardContent>
       </CardUI>
 
@@ -257,14 +312,14 @@ export default function Home() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center justify-between">
                 <span>Game Status</span>
-                <Badge variant={isSelectingAction ? "secondary" : "default"}>
-                  {isSelectingAction ? "Select Action" : getCurrentAction()?.action ?? "Unknown"}
+                <Badge variant={isActionSelection ? "secondary" : "default"}>
+                  {isActionSelection ? "Select Action" : getCurrentAction()?.action ?? "Unknown"}
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-lg font-medium">
-                {isSelectingAction
+                {isActionSelection
                   ? `${currentPlayer?.name}'s turn - ${actionsRemaining} action${actionsRemaining !== 1 ? 's' : ''} remaining`
                   : getActionDescription() ?? "Unknown state"}
               </p>
@@ -330,7 +385,7 @@ export default function Home() {
 
               </CardHeader>
               <CardContent>
-                {isSelectingAction ? (
+                {isActionSelection ? (
                   <div className="grid grid-cols-1 gap-2">
                     <Button
                       onClick={() => handleAction('BUILD')}

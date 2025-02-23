@@ -6,6 +6,7 @@ import { useCallback } from 'react';
 import { type Player } from '../../store/gameStore';
 import { cn } from '../../lib/utils';
 import { FloatingEdge } from './FloatingEdge';
+import { IndustryIcon } from './IndustryIcon';
 
 // Types
 interface BoardProps {
@@ -20,6 +21,7 @@ interface CityNodeProps {
   data: {
     label: string;
     type: City['type'];
+    industries?: City['industries'];
   };
 }
 
@@ -53,7 +55,7 @@ function CityNode({ data }: CityNodeProps) {
   return (
     <div
       className={cn(
-        'flex items-center justify-center rounded-md border-2 shadow-sm',
+        'flex flex-col items-center justify-center rounded-md border-2 shadow-sm',
         isMerchant
           ? 'bg-secondary border-secondary/50'
           : 'bg-primary border-primary/50'
@@ -61,6 +63,13 @@ function CityNode({ data }: CityNodeProps) {
       style={{ width: size.width, height: size.height }}
     >
       <span className="text-sm font-medium text-center text-background">{data.label}</span>
+      {data.industries && (
+        <div className="flex flex-wrap gap-1 mt-1 justify-center px-1">
+          {data.industries.map((industry) => (
+            <IndustryIcon key={industry} type={industry} className="text-background" />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -227,7 +236,8 @@ const initialNodes: Node[] = Object.entries(cities).map(([id, city]) => ({
   },
   data: {
     label: city.name,
-    type: city.type
+    type: city.type,
+    industries: 'industries' in city ? city.industries : undefined
   },
   draggable: true,
 }));

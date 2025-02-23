@@ -1,26 +1,108 @@
+import type { IndustryType } from './cards';
+
 // Cities in Brass Birmingham
 export const cities = {
   // Cities
-  birmingham: { name: 'Birmingham', type: 'city' },
-  coventry: { name: 'Coventry', type: 'city' },
-  dudley: { name: 'Dudley', type: 'city' },
-  wolverhampton: { name: 'Wolverhampton', type: 'city' },
-  walsall: { name: 'Walsall', type: 'city' },
-  redditch: { name: 'Redditch', type: 'city' },
-  worcester: { name: 'Worcester', type: 'city' },
-  kidderminster: { name: 'Kidderminster', type: 'city' },
-  cannock: { name: 'Cannock', type: 'city' },
-  tamworth: { name: 'Tamworth', type: 'city' },
-  nuneaton: { name: 'Nuneaton', type: 'city' },
-  coalbrookdale: { name: 'Coalbrookdale', type: 'city' },
-  stone: { name: 'Stone', type: 'city' },
-  stafford: { name: 'Stafford', type: 'city' },
-  stoke: { name: 'Stoke-on-Trent', type: 'city' },
-  leek: { name: 'Leek', type: 'city' },
-  uttoxeter: { name: 'Uttoxeter', type: 'city' },
-  burton: { name: 'Burton upon Trent', type: 'city' },
-  derby: { name: 'Derby', type: 'city' },
-  belper: { name: 'Belper', type: 'city' },
+  birmingham: {
+    name: 'Birmingham',
+    type: 'city',
+    industries: ['cotton', 'manufacturer', 'coal', 'iron', 'brewery']
+  },
+  coventry: {
+    name: 'Coventry',
+    type: 'city',
+    industries: ['cotton', 'manufacturer', 'coal']
+  },
+  dudley: {
+    name: 'Dudley',
+    type: 'city',
+    industries: ['coal', 'iron', 'brewery']
+  },
+  wolverhampton: {
+    name: 'Wolverhampton',
+    type: 'city',
+    industries: ['manufacturer', 'coal', 'iron']
+  },
+  walsall: {
+    name: 'Walsall',
+    type: 'city',
+    industries: ['iron', 'coal', 'manufacturer']
+  },
+  redditch: {
+    name: 'Redditch',
+    type: 'city',
+    industries: ['iron', 'manufacturer']
+  },
+  worcester: {
+    name: 'Worcester',
+    type: 'city',
+    industries: ['brewery', 'pottery']
+  },
+  kidderminster: {
+    name: 'Kidderminster',
+    type: 'city',
+    industries: ['cotton', 'brewery']
+  },
+  cannock: {
+    name: 'Cannock',
+    type: 'city',
+    industries: ['coal', 'iron', 'brewery']
+  },
+  tamworth: {
+    name: 'Tamworth',
+    type: 'city',
+    industries: ['coal', 'manufacturer']
+  },
+  nuneaton: {
+    name: 'Nuneaton',
+    type: 'city',
+    industries: ['cotton', 'coal']
+  },
+  coalbrookdale: {
+    name: 'Coalbrookdale',
+    type: 'city',
+    industries: ['iron', 'coal']
+  },
+  stone: {
+    name: 'Stone',
+    type: 'city',
+    industries: ['brewery', 'manufacturer']
+  },
+  stafford: {
+    name: 'Stafford',
+    type: 'city',
+    industries: ['manufacturer', 'cotton']
+  },
+  stoke: {
+    name: 'Stoke-on-Trent',
+    type: 'city',
+    industries: ['pottery', 'coal', 'iron']
+  },
+  leek: {
+    name: 'Leek',
+    type: 'city',
+    industries: ['cotton', 'manufacturer']
+  },
+  uttoxeter: {
+    name: 'Uttoxeter',
+    type: 'city',
+    industries: ['brewery', 'cotton']
+  },
+  burton: {
+    name: 'Burton upon Trent',
+    type: 'city',
+    industries: ['brewery', 'coal']
+  },
+  derby: {
+    name: 'Derby',
+    type: 'city',
+    industries: ['cotton', 'manufacturer', 'brewery']
+  },
+  belper: {
+    name: 'Belper',
+    type: 'city',
+    industries: ['cotton', 'manufacturer']
+  },
 
   // External Markets (Merchants)
   warrington: { name: 'Warrington', type: 'merchant' },
@@ -94,6 +176,7 @@ export type ConnectionType = 'canal' | 'rail';
 export interface City {
   name: string;
   type: CityType;
+  industries?: IndustryType[];
 }
 
 export interface Connection {

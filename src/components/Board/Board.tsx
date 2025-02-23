@@ -113,13 +113,13 @@ function getEdges({ isNetworking, era, selectedLink, players }: BoardProps): Edg
           ...commonEdgeProps,
           id: `${connection.from}-${connection.to}-canal`,
           className: cn('[&>path]:stroke-blue-600', isSelected && '[&>path]:stroke-[4px]'),
-          style: { ...baseStyle, transform: 'translateY(-2px)' },
+          style: { ...baseStyle, transform: 'translate(-3px, -3px)' },
         },
         {
           ...commonEdgeProps,
           id: `${connection.from}-${connection.to}-rail`,
           className: cn('[&>path]:stroke-orange-600', isSelected && '[&>path]:stroke-[4px]'),
-          style: { ...baseStyle, transform: 'translateY(2px)' },
+          style: { ...baseStyle, transform: 'translate(3px, 3px)' },
         },
       ];
     }

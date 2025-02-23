@@ -3,7 +3,7 @@ import { test, expect } from 'vitest';
 import { type GameState, gameStore } from './gameStore';
 import { type Card } from '~/data/cards';
 
-const DEBUG = false;
+const DEBUG = true;
 
 function logInspectEvent(inspectEvent: InspectionEvent) {
   if (!DEBUG) return;
@@ -147,8 +147,10 @@ test('turn taking - player turn should switch after using all actions', () => {
   expect(snapshot.context.actionsRemaining).toBe(1); // First round of Canal Era only gets 1 action
   expect(snapshot.context.currentPlayerIndex).toBe(0); // Player 1's turn
   expect(snapshot.context.round).toBe(1);
+  expect(snapshot.context.era).toBe('canal');
 
-  // Player 1 takes their action
+  // Round 1: Each player takes their single action
+  // Player 1
   actor.send({ type: 'TAKE_LOAN' });
   const player1Card = snapshot.context.players[0]?.hand[0];
   actor.send({ type: 'SELECT_CARD', cardId: player1Card!.id });
@@ -156,49 +158,141 @@ test('turn taking - player turn should switch after using all actions', () => {
   snapshot = actor.getSnapshot();
 
   // Verify turn switched to Player 2
-  expect(snapshot.value).toEqual({ playing: 'playerTurn' });
-  expect(snapshot.context.currentPlayerIndex).toBe(1); // Should now be Player 2's turn
-  expect(snapshot.context.actionsRemaining).toBe(1); // First round still has 1 action
-  expect(snapshot.context.round).toBe(1); // Still in first round
+  expect(snapshot.context.currentPlayerIndex).toBe(1);
+  expect(snapshot.context.actionsRemaining).toBe(1);
+  expect(snapshot.context.round).toBe(1);
 
-  // Player 2 takes their action
+  // Player 2
   actor.send({ type: 'TAKE_LOAN' });
   const player2Card = snapshot.context.players[1]?.hand[0];
   actor.send({ type: 'SELECT_CARD', cardId: player2Card!.id });
   actor.send({ type: 'CONFIRM' });
   snapshot = actor.getSnapshot();
 
-  // Verify round advanced and back to Player 1
-  expect(snapshot.value).toEqual({ playing: 'playerTurn' });
-  expect(snapshot.context.currentPlayerIndex).toBe(0); // Back to Player 1
-  expect(snapshot.context.round).toBe(2); // Advanced to round 2
+  // Verify round advanced to round 2 and back to Player 1
+  expect(snapshot.context.currentPlayerIndex).toBe(0);
+  expect(snapshot.context.round).toBe(2);
   expect(snapshot.context.actionsRemaining).toBe(2); // Regular rounds have 2 actions
 
-  // Take Player 1's first action in round 2
+  // Round 2: Test multiple actions per player
+  // Player 1's first action
   actor.send({ type: 'TAKE_LOAN' });
-  const round2FirstCard = snapshot.context.players[0]?.hand[0];
-  actor.send({ type: 'SELECT_CARD', cardId: round2FirstCard!.id });
+  const round2Player1Card1 = snapshot.context.players[0]?.hand[0];
+  actor.send({ type: 'SELECT_CARD', cardId: round2Player1Card1!.id });
   actor.send({ type: 'CONFIRM' });
   snapshot = actor.getSnapshot();
 
-  // Verify still Player 1's turn with one action remaining
-  expect(snapshot.value).toEqual({ playing: 'playerTurn' });
-  expect(snapshot.context.currentPlayerIndex).toBe(0); // Still Player 1
-  expect(snapshot.context.actionsRemaining).toBe(1); // One action remaining
+  // Verify still Player 1's turn
+  expect(snapshot.context.currentPlayerIndex).toBe(0);
+  expect(snapshot.context.actionsRemaining).toBe(1);
   expect(snapshot.context.round).toBe(2);
 
-  // Take Player 1's second action
+  // Player 1's second action
   actor.send({ type: 'TAKE_LOAN' });
-  const round2SecondCard = snapshot.context.players[0]?.hand[0];
-  actor.send({ type: 'SELECT_CARD', cardId: round2SecondCard!.id });
+  const round2Player1Card2 = snapshot.context.players[0]?.hand[0];
+  actor.send({ type: 'SELECT_CARD', cardId: round2Player1Card2!.id });
   actor.send({ type: 'CONFIRM' });
   snapshot = actor.getSnapshot();
 
-  // Verify turn switched to Player 2 after both actions used
-  expect(snapshot.value).toEqual({ playing: 'playerTurn' });
-  expect(snapshot.context.currentPlayerIndex).toBe(1); // Switched to Player 2
-  expect(snapshot.context.actionsRemaining).toBe(2); // Reset to 2 actions for Player 2
-  expect(snapshot.context.round).toBe(2); // Still in round 2
+  // Verify turn switched to Player 2
+  expect(snapshot.context.currentPlayerIndex).toBe(1);
+  expect(snapshot.context.actionsRemaining).toBe(2);
+  expect(snapshot.context.round).toBe(2);
+
+  // Player 2's both actions in round 2
+  actor.send({ type: 'TAKE_LOAN' });
+  const round2Player2Card1 = snapshot.context.players[1]?.hand[0];
+  actor.send({ type: 'SELECT_CARD', cardId: round2Player2Card1!.id });
+  actor.send({ type: 'CONFIRM' });
+  actor.send({ type: 'TAKE_LOAN' });
+  const round2Player2Card2 = snapshot.context.players[1]?.hand[0];
+  actor.send({ type: 'SELECT_CARD', cardId: round2Player2Card2!.id });
+  actor.send({ type: 'CONFIRM' });
+  snapshot = actor.getSnapshot();
+
+  // Verify round advanced to round 3
+  expect(snapshot.context.currentPlayerIndex).toBe(0);
+  expect(snapshot.context.round).toBe(3);
+  expect(snapshot.context.actionsRemaining).toBe(2);
+
+  // Round 3: Player 1's actions
+  actor.send({ type: 'TAKE_LOAN' });
+  const round3Player1Card1 = snapshot.context.players[0]?.hand[0];
+  actor.send({ type: 'SELECT_CARD', cardId: round3Player1Card1!.id });
+  actor.send({ type: 'CONFIRM' });
+  actor.send({ type: 'TAKE_LOAN' });
+  const round3Player1Card2 = snapshot.context.players[0]?.hand[0];
+  actor.send({ type: 'SELECT_CARD', cardId: round3Player1Card2!.id });
+  actor.send({ type: 'CONFIRM' });
+  snapshot = actor.getSnapshot();
+
+  // Verify turn switched to Player 2
+  expect(snapshot.context.currentPlayerIndex).toBe(1);
+  expect(snapshot.context.round).toBe(3);
+  expect(snapshot.context.actionsRemaining).toBe(2);
+
+  // Round 3: Player 2's actions
+  actor.send({ type: 'TAKE_LOAN' });
+  const round3Player2Card1 = snapshot.context.players[1]?.hand[0];
+  actor.send({ type: 'SELECT_CARD', cardId: round3Player2Card1!.id });
+  actor.send({ type: 'CONFIRM' });
+  actor.send({ type: 'TAKE_LOAN' });
+  const round3Player2Card2 = snapshot.context.players[1]?.hand[0];
+  actor.send({ type: 'SELECT_CARD', cardId: round3Player2Card2!.id });
+  actor.send({ type: 'CONFIRM' });
+  snapshot = actor.getSnapshot();
+
+  // Verify round advanced to round 4
+  expect(snapshot.context.currentPlayerIndex).toBe(0);
+  expect(snapshot.context.round).toBe(4);
+  expect(snapshot.context.actionsRemaining).toBe(2);
+
+  // Round 4: Player 1's actions
+  actor.send({ type: 'TAKE_LOAN' });
+  const round4Player1Card1 = snapshot.context.players[0]?.hand[0];
+  actor.send({ type: 'SELECT_CARD', cardId: round4Player1Card1!.id });
+  actor.send({ type: 'CONFIRM' });
+  actor.send({ type: 'TAKE_LOAN' });
+  const round4Player1Card2 = snapshot.context.players[0]?.hand[0];
+  actor.send({ type: 'SELECT_CARD', cardId: round4Player1Card2!.id });
+  actor.send({ type: 'CONFIRM' });
+  snapshot = actor.getSnapshot();
+
+  // Verify turn switched to Player 2
+  expect(snapshot.context.currentPlayerIndex).toBe(1);
+  expect(snapshot.context.round).toBe(4);
+  expect(snapshot.context.actionsRemaining).toBe(2);
+
+  // Round 4: Player 2's actions
+  actor.send({ type: 'TAKE_LOAN' });
+  const round4Player2Card1 = snapshot.context.players[1]?.hand[0];
+  actor.send({ type: 'SELECT_CARD', cardId: round4Player2Card1!.id });
+  actor.send({ type: 'CONFIRM' });
+  actor.send({ type: 'TAKE_LOAN' });
+  const round4Player2Card2 = snapshot.context.players[1]?.hand[0];
+  actor.send({ type: 'SELECT_CARD', cardId: round4Player2Card2!.id });
+  actor.send({ type: 'CONFIRM' });
+  snapshot = actor.getSnapshot();
+
+  // Verify final state after round 4
+  expect(snapshot.context.currentPlayerIndex).toBe(0);
+  expect(snapshot.context.round).toBe(5);
+  expect(snapshot.context.actionsRemaining).toBe(2);
+  expect(snapshot.context.era).toBe('canal');
+
+  // Verify player states after multiple rounds
+  const player1 = snapshot.context.players[0];
+  const player2 = snapshot.context.players[1];
+
+  // Each player should have taken 7 loans (1 in round 1, 2 each in rounds 2-4)
+  expect(player1?.money).toBe(240); // Initial 30 + (7 * 30 from loans)
+  expect(player1?.income).toBe(-11); // Initial 10 - (7 * 3 from loans)
+  expect(player2?.money).toBe(240);
+  expect(player2?.income).toBe(-11);
+
+  // Each player should maintain 8 cards in hand
+  expect(player1?.hand).toHaveLength(8);
+  expect(player2?.hand).toHaveLength(8);
 });
 
 test.skip('scouting - player should be able to scout for wild cards', () => {

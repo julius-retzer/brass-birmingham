@@ -15,6 +15,8 @@ export interface LogEntry {
 export interface Player {
   id: string;
   name: string;
+  color: 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'orange';
+  character: 'Richard Arkwright' | 'Eliza Tinsley' | 'Isambard Kingdom Brunel' | 'George Stephenson' | 'Robert Owen' | 'Henry Bessemer';
   money: number;
   victoryPoints: number;
   income: number;
@@ -90,7 +92,7 @@ export const gameStore = setup({
     context: GameState;
     events: {
       type: 'START_GAME';
-      players: Omit<Player, 'hand'>[];
+      players: Array<Omit<Player, 'hand' | 'links' | 'industries'>>;
     } | {
       type: 'BUILD';
     } | {

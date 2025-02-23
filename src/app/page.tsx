@@ -51,6 +51,8 @@ export default function Home() {
           money: 30,
           victoryPoints: 0,
           income: 10,
+          color: 'red' as const,
+          character: 'Richard Arkwright' as const,
           links: [],
           industries: []
         },
@@ -60,6 +62,8 @@ export default function Home() {
           money: 30,
           victoryPoints: 0,
           income: 10,
+          color: 'green' as const,
+          character: 'Eliza Tinsley' as const,
           links: [],
           industries: []
         },

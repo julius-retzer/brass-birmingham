@@ -3,6 +3,7 @@ import { getEdgeParams } from './edgeUtils';
 import type { Player } from '../../store/gameStore';
 import type { CityId } from '../../data/board';
 import type { InternalNode } from './edgeUtils';
+import { cn } from '../../lib/utils';
 
 interface FloatingEdgeProps {
   id: string;
@@ -57,14 +58,24 @@ export function FloatingEdge({ id, source, target, markerEnd, style, data }: Flo
         style={style}
       />
       {builtLinks.length > 0 && (
-        <g transform={`translate(${midX - (builtLinks.length * 6) / 2}, ${midY - 3})`}>
+        <g transform={`translate(${midX - (builtLinks.length * 16) / 2}, ${midY - 8})`}>
           {builtLinks.map((link, i) => (
             <circle
               key={i}
-              cx={i * 6 + 3}
-              cy={3}
-              r={10}
-              className={link.type === 'canal' ? 'fill-blue-500' : 'fill-orange-500'}
+              cx={i * 16 + 8}
+              cy={8}
+              r={7}
+              className={cn(
+                {
+                  'fill-red-500': link.player.color === 'red',
+                  'fill-blue-500': link.player.color === 'blue',
+                  'fill-green-500': link.player.color === 'green',
+                  'fill-yellow-400': link.player.color === 'yellow',
+                  'fill-purple-500': link.player.color === 'purple',
+                  'fill-orange-500': link.player.color === 'orange',
+                },
+                'stroke-background stroke-2'
+              )}
             >
               <title>{`${link.player.name}'s ${link.type} link`}</title>
             </circle>

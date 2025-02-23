@@ -136,33 +136,64 @@ test.only('turn taking - player turn should switch after using all actions', () 
   // 2. Act - Start the game
   actor.send({ type: 'START_GAME', players: initialPlayers });
 
-  // Verify we're in the correct initial state
+  // Verify initial turn state
   let snapshot = actor.getSnapshot();
+  expect(snapshot.value).toEqual({ playing: 'selectingAction' });
   expect(snapshot.context.actionsRemaining).toBe(1); // First round of Canal Era only gets 1 action
   expect(snapshot.context.currentPlayerIndex).toBe(0); // Player 1's turn
+  expect(snapshot.context.round).toBe(1);
 
-
-  // Player 1 takes a loan action
+  // Player 1 takes their action
   actor.send({ type: 'TAKE_LOAN' });
-  snapshot = actor.getSnapshot();
-
-  // Get the first card from Player 1's hand to use for the loan
-  const player1FirstCard = snapshot.context.players[0]?.hand[0];
-  expect(player1FirstCard).toBeDefined();
-
-  // Select the card for the loan
-  actor.send({ type: 'SELECT_CARD', cardId: player1FirstCard!.id });
-  snapshot = actor.getSnapshot();
-
-  // Confirm the loan action
+  const player1Card = snapshot.context.players[0]?.hand[0];
+  actor.send({ type: 'SELECT_CARD', cardId: player1Card!.id });
   actor.send({ type: 'CONFIRM' });
   snapshot = actor.getSnapshot();
 
-  // 3. Assert - Verify turn has switched to Player 2
-  expect(snapshot.context.actionsRemaining).toBe(1); // First round of Canal Era
+  // Verify turn switched to Player 2
+  expect(snapshot.value).toEqual({ playing: 'selectingAction' });
   expect(snapshot.context.currentPlayerIndex).toBe(1); // Should now be Player 2's turn
+  expect(snapshot.context.actionsRemaining).toBe(1); // First round still has 1 action
+  expect(snapshot.context.round).toBe(1); // Still in first round
 
+  // Player 2 takes their action
+  actor.send({ type: 'TAKE_LOAN' });
+  const player2Card = snapshot.context.players[1]?.hand[0];
+  actor.send({ type: 'SELECT_CARD', cardId: player2Card!.id });
+  actor.send({ type: 'CONFIRM' });
+  snapshot = actor.getSnapshot();
 
+  // Verify round advanced and back to Player 1
+  expect(snapshot.value).toEqual({ playing: 'selectingAction' });
+  expect(snapshot.context.currentPlayerIndex).toBe(0); // Back to Player 1
+  expect(snapshot.context.round).toBe(2); // Advanced to round 2
+  expect(snapshot.context.actionsRemaining).toBe(2); // Regular rounds have 2 actions
+
+  // Take Player 1's first action in round 2
+  actor.send({ type: 'TAKE_LOAN' });
+  const round2FirstCard = snapshot.context.players[0]?.hand[0];
+  actor.send({ type: 'SELECT_CARD', cardId: round2FirstCard!.id });
+  actor.send({ type: 'CONFIRM' });
+  snapshot = actor.getSnapshot();
+
+  // Verify still Player 1's turn with one action remaining
+  expect(snapshot.value).toEqual({ playing: 'selectingAction' });
+  expect(snapshot.context.currentPlayerIndex).toBe(0); // Still Player 1
+  expect(snapshot.context.actionsRemaining).toBe(1); // One action remaining
+  expect(snapshot.context.round).toBe(2);
+
+  // Take Player 1's second action
+  actor.send({ type: 'TAKE_LOAN' });
+  const round2SecondCard = snapshot.context.players[0]?.hand[0];
+  actor.send({ type: 'SELECT_CARD', cardId: round2SecondCard!.id });
+  actor.send({ type: 'CONFIRM' });
+  snapshot = actor.getSnapshot();
+
+  // Verify turn switched to Player 2 after both actions used
+  expect(snapshot.value).toEqual({ playing: 'selectingAction' });
+  expect(snapshot.context.currentPlayerIndex).toBe(1); // Switched to Player 2
+  expect(snapshot.context.actionsRemaining).toBe(2); // Reset to 2 actions for Player 2
+  expect(snapshot.context.round).toBe(2); // Still in round 2
 });
 
 test.skip('scouting - player should be able to scout for wild cards', () => {

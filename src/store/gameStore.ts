@@ -273,6 +273,7 @@ export const gameStore = setup({
         if (!context.selectedCard) return context.discardPile;
         return [...context.discardPile, context.selectedCard];
       },
+      selectedCard: null,
       logs: ({ context }) => {
         const currentPlayer = context.players[context.currentPlayerIndex];
         if (!currentPlayer || !context.selectedCard) return context.logs;
@@ -823,7 +824,7 @@ export const gameStore = setup({
           }
         },
         actionComplete: {
-          entry: ['discardSelectedCard', 'decrementActions', 'clearSelectedCards', 'refillHand'],
+          entry: ['discardSelectedCard', 'decrementActions'],
           always: [
             {
               guard: 'hasActionsRemaining',

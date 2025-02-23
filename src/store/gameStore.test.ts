@@ -5,6 +5,13 @@ import { type Card } from '~/data/cards';
 
 const DEBUG = false;
 
+const debugLog = (context: GameState) => {
+  // log context but without the cards in the hand
+  const { players, logs, drawPile, discardPile, wildLocationPile, ...rest } = context;
+  const playersHands = context.players.map((p) => p.hand.map((c) => c.id));
+  console.log('🔥 context', rest, playersHands);
+}
+
 function logInspectEvent(inspectEvent: InspectionEvent) {
   if (!DEBUG) return;
   switch (inspectEvent.type) {
@@ -269,7 +276,7 @@ test.skip('turn taking - round 2', () => {
   actor.send({ type: 'SELECT_CARD', cardId: round2Player2Card2.id });
   actor.send({ type: 'CONFIRM' });
   snapshot = actor.getSnapshot();
-
+  debugLog( snapshot.context);
   // Verify round advanced to round 3
   expect(snapshot.context.currentPlayerIndex).toBe(0);
   expect(snapshot.context.round).toBe(3);
@@ -651,5 +658,103 @@ test.skip('multiple actions in a turn - player should be able to take multiple a
   const player1 = snapshot.context.players[0];
   expect(player1?.money).toBe(120); // Original 30 + 30 (round 1) + 30 + 30 (round 2)
   expect(player1?.income).toBe(1); // Original 10 - 3 - 3 - 3 = 1
+});
+
+test('taking loan action', () => {
+  // 1. Arrange - Create and start the actor
+  const actor = createActor(gameStore, {
+    inspect: logInspectEvent
+  });
+  actor.start();
+
+  // Start game with 2 players
+  const initialPlayers = [
+    {
+      id: '1',
+      name: 'Player 1',
+      color: 'red' as const,
+      character: 'Richard Arkwright' as const,
+      money: 30,
+      victoryPoints: 0,
+      income: 10
+    },
+    {
+      id: '2',
+      name: 'Player 2',
+      color: 'blue' as const,
+      character: 'Eliza Tinsley' as const,
+      money: 30,
+      victoryPoints: 0,
+      income: 10
+    }
+  ];
+
+  // 2. Act - Start the game
+  actor.send({ type: 'START_GAME', players: initialPlayers });
+  let snapshot = actor.getSnapshot();
+
+  // Store initial state for comparison
+  const initialPlayer = snapshot.context.players[0];
+  if (!initialPlayer) throw new Error('Expected player 1 to exist');
+  const initialHand = [...initialPlayer.hand];
+  const initialDiscardPile = [...snapshot.context.discardPile];
+
+  // Verify initial state
+  expect(snapshot.value).toEqual({ playing: 'playerTurn' });
+  expect(initialPlayer.money).toBe(30);
+  expect(initialPlayer.income).toBe(10);
+  expect(initialHand).toHaveLength(8);
+  expect(initialDiscardPile).toHaveLength(0);
+
+  // Take loan action
+  actor.send({ type: 'TAKE_LOAN' });
+  snapshot = actor.getSnapshot();
+
+  // Verify state after initiating loan
+  expect(snapshot.value).toEqual({ playing: { performingAction: { takingLoan: 'selectingCard' } } });
+
+  // Select a card to discard
+  const cardToDiscard = initialHand[0];
+  if (!cardToDiscard) throw new Error('Expected at least one card in hand');
+  actor.send({ type: 'SELECT_CARD', cardId: cardToDiscard.id });
+  snapshot = actor.getSnapshot();
+
+  // Verify card selection state
+  expect(snapshot.value).toEqual({ playing: { performingAction: { takingLoan: 'confirmingLoan' } } });
+  expect(snapshot.context.selectedCard?.id).toBe(cardToDiscard.id);
+
+
+  // Confirm the loan
+  actor.send({ type: 'CONFIRM' });
+  snapshot = actor.getSnapshot();
+
+  // Get final player state
+  const finalPlayer = snapshot.context.players[0];
+  if (!finalPlayer) throw new Error('Expected player 1 to exist');
+
+  // Verify all aspects of taking a loan
+  // 1. Money should increase by 30
+  expect(finalPlayer.money).toBe(60); // Initial 30 + 30 from loan
+
+  // 2. Income should decrease by 3
+  expect(finalPlayer.income).toBe(7); // Initial 10 - 3 from loan
+
+  // 3. Selected card should be discarded
+  expect(finalPlayer.hand).toHaveLength(7); // One card less
+  expect(finalPlayer.hand.find(c => c.id === cardToDiscard.id)).toBeUndefined(); // Card should not be in hand
+  expect(snapshot.context.discardPile).toHaveLength(1); // Card should be in discard pile
+  expect(snapshot.context.discardPile[0]?.id).toBe(cardToDiscard.id); // Verify specific card was discarded
+
+  // 4. Action should be consumed
+  expect(snapshot.context.actionsRemaining).toBe(0); // First round only has 1 action
+
+  // 5. Verify log entry was created
+  const lastLog = snapshot.context.logs[snapshot.context.logs.length - 1];
+  expect(lastLog?.type).toBe('action');
+  expect(lastLog?.message).toContain('took a loan');
+  expect(lastLog?.message).toContain('Player 1');
+
+  // 6. Turn should pass to next player
+  expect(snapshot.context.currentPlayerIndex).toBe(1);
 });
 

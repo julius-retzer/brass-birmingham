@@ -21,7 +21,7 @@ const inspector = createBrowserInspector({
 })
 
 export default function Home() {
-  const [state, send] = useMachine(gameStore, {
+  const [snapshot, send] = useMachine(gameStore, {
     inspect: inspector.inspect,
   })
 
@@ -37,13 +37,14 @@ export default function Home() {
     selectedCardsForScout,
     spentMoney,
     selectedLink,
-  } = state.context
+  } = snapshot.context
 
-  console.log(state.context)
+  console.log('snapshot.context', snapshot.context)
+  console.log('snapshot.value', snapshot.value)
 
   // Start a new game with 2 players for testing
   useEffect(() => {
-    if (state.matches('setup')) {
+    if (snapshot.matches('setup')) {
       const initialPlayers = [
         {
           id: '1',
@@ -70,23 +71,24 @@ export default function Home() {
       ]
       send({ type: 'START_GAME', players: initialPlayers })
     }
-  }, [state, send])
+  }, [snapshot, send])
 
   const currentPlayer = players[currentPlayerIndex]
-  const isActionSelection = state.matches({ playing: 'action' })
+  const isActionSelection = snapshot.matches({ playing: 'action' })
 
+  console.log('🚀 ~ Home ~ isActionSelection:', isActionSelection)
   // Get the current action from state matches
   const getCurrentAction = () => {
     // Build
     if (
-      state.matches({
+      snapshot.matches({
         playing: { action: { building: 'selectingCard' } },
       })
     ) {
       return { action: 'build', subState: 'selectingCard' }
     }
     if (
-      state.matches({
+      snapshot.matches({
         playing: { action: { building: 'confirmingBuild' } },
       })
     ) {
@@ -95,14 +97,14 @@ export default function Home() {
 
     // Develop
     if (
-      state.matches({
+      snapshot.matches({
         playing: { action: { developing: 'selectingCard' } },
       })
     ) {
       return { action: 'develop', subState: 'selectingCard' }
     }
     if (
-      state.matches({
+      snapshot.matches({
         playing: { action: { developing: 'confirmingDevelop' } },
       })
     ) {
@@ -111,14 +113,14 @@ export default function Home() {
 
     // Sell
     if (
-      state.matches({
+      snapshot.matches({
         playing: { action: { selling: 'selectingCard' } },
       })
     ) {
       return { action: 'sell', subState: 'selectingCard' }
     }
     if (
-      state.matches({
+      snapshot.matches({
         playing: { action: { selling: 'confirmingSell' } },
       })
     ) {
@@ -127,14 +129,14 @@ export default function Home() {
 
     // Loan
     if (
-      state.matches({
+      snapshot.matches({
         playing: { action: { takingLoan: 'selectingCard' } },
       })
     ) {
       return { action: 'loan', subState: 'selectingCard' }
     }
     if (
-      state.matches({
+      snapshot.matches({
         playing: { action: { takingLoan: 'confirmingLoan' } },
       })
     ) {
@@ -143,34 +145,34 @@ export default function Home() {
 
     // Scout
     if (
-      state.matches({
+      snapshot.matches({
         playing: { action: { scouting: 'selectingCards' } },
       })
     ) {
-      return { action: 'scouting', subState: 'selectingCards' }
+      return { action: 'scout', subState: 'selectingCards' }
     }
 
     // Network
     if (
-      state.matches({
+      snapshot.matches({
         playing: { action: { networking: 'selectingCard' } },
       })
     ) {
-      return { action: 'networking', subState: 'selectingCard' }
+      return { action: 'network', subState: 'selectingCard' }
     }
     if (
-      state.matches({
+      snapshot.matches({
         playing: { action: { networking: 'selectingLink' } },
       })
     ) {
-      return { action: 'networking', subState: 'selectingLink' }
+      return { action: 'network', subState: 'selectingLink' }
     }
     if (
-      state.matches({
+      snapshot.matches({
         playing: { action: { networking: 'confirmingLink' } },
       })
     ) {
-      return { action: 'networking', subState: 'confirmingLink' }
+      return { action: 'network', subState: 'confirmingLink' }
     }
 
     return null
@@ -210,9 +212,9 @@ export default function Home() {
         return subState === 'selectingCard'
           ? 'Select a card to discard to take a loan (£30, -3 income)'
           : 'Confirm loan action'
-      case 'scouting':
+      case 'scout':
         return `Select ${2 - selectedCardsForScout.length} cards to discard and get wild cards`
-      case 'networking':
+      case 'network':
         switch (subState) {
           case 'selectingCard':
             return 'Select a card to discard for networking'
@@ -264,9 +266,9 @@ export default function Home() {
       case 'sell':
       case 'loan':
         return subState.startsWith('confirming') && selectedCard !== null
-      case 'scouting':
+      case 'scout':
         return selectedCardsForScout.length === 2
-      case 'networking':
+      case 'network':
         return subState === 'confirmingLink' && selectedLink !== null
       default:
         return false
@@ -284,9 +286,9 @@ export default function Home() {
       case 'develop':
       case 'sell':
       case 'loan':
-      case 'networking':
+      case 'network':
         return subState === 'selectingCard'
-      case 'scouting':
+      case 'scout':
         return subState === 'selectingCards' && selectedCardsForScout.length < 2
       default:
         return false
@@ -308,7 +310,7 @@ export default function Home() {
         {/* Game Board */}
         <div>
           <Board
-            isNetworking={isInState('networking', 'selectingLink')}
+            isNetworking={isInState('network', 'selectingLink')}
             era={era}
             onLinkSelect={handleLinkSelect}
             selectedLink={selectedLink}
@@ -341,7 +343,7 @@ export default function Home() {
               player={currentPlayer}
               selectedCard={selectedCard}
               selectedCards={
-                isInState('scouting', 'selectingCards')
+                isInState('scout', 'selectingCards')
                   ? selectedCardsForScout
                   : undefined
               }
@@ -354,14 +356,10 @@ export default function Home() {
           <ResourcesDisplay resources={resources} />
 
           {/* Actions */}
-          {state.matches('playing') && (
+          {snapshot.matches('playing') && (
             <ActionButtons
-              isActionSelection={isActionSelection}
-              actionsRemaining={actionsRemaining}
-              canConfirmAction={canConfirmAction()}
-              onAction={handleAction}
-              onConfirm={handleConfirmAction}
-              onCancel={handleCancelAction}
+              snapshot={snapshot}
+              send={send}
             />
           )}
 
@@ -373,7 +371,7 @@ export default function Home() {
       </div>
 
       {/* Game Over State */}
-      {state.matches('gameOver') && <GameOver />}
+      {snapshot.matches('gameOver') && <GameOver />}
     </main>
   )
 }

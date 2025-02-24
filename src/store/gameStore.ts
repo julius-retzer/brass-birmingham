@@ -1,6 +1,4 @@
-import { on } from 'events'
-import { type } from 'os'
-import { Action, assign, createMachine, setup } from 'xstate'
+import { type Actor, assign, setup, StateFrom } from 'xstate'
 import { type CityId } from '../data/board'
 import {
   type BaseCard,
@@ -169,11 +167,6 @@ type GameEvent =
       type: 'CANCEL'
     }
 
-type AssignArgs = {
-  context: GameState
-  event: GameEvent
-}
-
 // Update utility functions with proper types
 function findCardInHand(player: Player, cardId: string): Card | null {
   return player.hand.find((card) => card.id === cardId) ?? null
@@ -217,6 +210,12 @@ function getCardDescription(card: Card): string {
       return 'wild industry'
   }
 }
+
+export type GameStore = typeof gameStore
+
+export type GameStoreSnapshot = StateFrom<typeof gameStore>
+export type GameStoreSend = Actor<typeof gameStore>['send']
+export type GameStoreActor = Actor<typeof gameStore>
 
 // Setup the machine with proper typing
 export const gameStore = setup({
@@ -478,6 +477,7 @@ export const gameStore = setup({
                   },
                 },
                 confirmingBuild: {
+                  tags: ['confirmingAction'],
                   on: {
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
@@ -536,6 +536,7 @@ export const gameStore = setup({
                   },
                 },
                 confirmingDevelop: {
+                  tags: ['confirmingAction'],
                   on: {
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
@@ -575,6 +576,7 @@ export const gameStore = setup({
                   },
                 },
                 confirmingSell: {
+                  tags: ['confirmingAction'],
                   on: {
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
@@ -614,6 +616,7 @@ export const gameStore = setup({
                   },
                 },
                 confirmingLoan: {
+                  tags: ['confirmingAction'],
                   on: {
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',

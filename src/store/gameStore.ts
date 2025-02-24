@@ -226,6 +226,16 @@ export const gameStore = setup({
     context: GameState;
     events: GameEvent;
   },
+  actions: {
+    selectCard: assign({
+      selectedCard: ({ context, event }) => {
+        debugLog('selectCard', { context, event });
+        if (event.type !== 'SELECT_CARD') return null;
+        const player = getCurrentPlayer(context);
+        return findCardInHand(player, event.cardId);
+      }
+    })
+  },
   guards: {
     hasActionsRemaining: ({ context }) => context.actionsRemaining > 0,
     isGameOver: ({ context }) =>
@@ -451,14 +461,7 @@ export const gameStore = setup({
                   on: {
                     SELECT_CARD: {
                       target: 'confirmingDevelop',
-                      actions: [assign({
-                        selectedCard: ({ context, event }) => {
-                          debugLog('selectCard', { context, event });
-                          if (event.type !== 'SELECT_CARD') return null;
-                          const player = getCurrentPlayer(context);
-                          return findCardInHand(player, event.cardId);
-                        }
-                      })]
+                      actions: 'selectCard'
                     },
                     CANCEL: {
                       target: '#brassGame.playing.playerTurn',
@@ -496,14 +499,7 @@ export const gameStore = setup({
                   on: {
                     SELECT_CARD: {
                       target: 'confirmingSell',
-                      actions: [assign({
-                        selectedCard: ({ context, event }) => {
-                          debugLog('selectCard', { context, event });
-                          if (event.type !== 'SELECT_CARD') return null;
-                          const player = getCurrentPlayer(context);
-                          return findCardInHand(player, event.cardId);
-                        }
-                      })]
+                      actions: 'selectCard'
                     },
                     CANCEL: {
                       target: '#brassGame.playing.playerTurn',
@@ -541,14 +537,7 @@ export const gameStore = setup({
                   on: {
                     SELECT_CARD: {
                       target: 'confirmingLoan',
-                      actions: [assign({
-                        selectedCard: ({ context, event }) => {
-                          debugLog('selectCard', { context, event });
-                          if (event.type !== 'SELECT_CARD') return null;
-                          const player = getCurrentPlayer(context);
-                          return findCardInHand(player, event.cardId);
-                        }
-                      })]
+                      actions: 'selectCard'
                     },
                     CANCEL: {
                       target: '#brassGame.playing.playerTurn',
@@ -743,15 +732,7 @@ export const gameStore = setup({
                   on: {
                     SELECT_CARD: {
                       target: 'selectingLink',
-                      actions: assign({
-                        selectedCard: ({ context, event }) => {
-                          debugLog('selectCard', { context, event });
-                          if (event.type !== 'SELECT_CARD') return null;
-                          const player = context.players[context.currentPlayerIndex];
-                          if (!player) return null;
-                          return player.hand.find(card => card.id === event.cardId) ?? null;
-                        }
-                      })
+                      actions: 'selectCard'
                     },
                     CANCEL: {
                       target: '#brassGame.playing.playerTurn',

@@ -205,34 +205,6 @@ function getCurrentPlayer(context: GameState): Player {
   return player
 }
 
-function discardSelectedCard(args: AssignArgs): Partial<GameState> {
-  const currentPlayer = getCurrentPlayer(args.context)
-  if (!args.context.selectedCard) {
-    throw new Error('Card not found')
-  }
-
-  const updatedHand = removeCardFromHand(
-    currentPlayer,
-    args.context.selectedCard.id,
-  )
-
-  return {
-    players: updatePlayerInList(
-      args.context.players,
-      args.context.currentPlayerIndex,
-      { hand: updatedHand },
-    ),
-    discardPile: [...args.context.discardPile, args.context.selectedCard],
-    selectedCard: null,
-  }
-}
-
-function decrementActions(args: AssignArgs): Partial<GameState> {
-  return {
-    actionsRemaining: args.context.actionsRemaining - 1,
-  }
-}
-
 function getCardDescription(card: Card): string {
   switch (card.type) {
     case 'location':
@@ -260,6 +232,36 @@ export const gameStore = setup({
         const player = getCurrentPlayer(context)
         return findCardInHand(player, event.cardId)
       },
+    }),
+
+    discardSelectedCard: assign(({ context, event }) => {
+      debugLog('discardSelectedCard', { context, event })
+      const currentPlayer = getCurrentPlayer(context)
+      if (!context.selectedCard) {
+        throw new Error('Card not found')
+      }
+
+      const updatedHand = removeCardFromHand(
+        currentPlayer,
+        context.selectedCard.id,
+      )
+
+      return {
+        players: updatePlayerInList(
+          context.players,
+          context.currentPlayerIndex,
+          { hand: updatedHand },
+        ),
+        discardPile: [...context.discardPile, context.selectedCard],
+        selectedCard: null,
+      }
+    }),
+
+    decrementActions: assign(({ context }) => {
+      debugLog('decrementActions', { context, event: { type: 'DECREMENT' } })
+      return {
+        actionsRemaining: context.actionsRemaining - 1,
+      }
     }),
 
     refillPlayerHand: assign(({ context }) => {
@@ -401,6 +403,7 @@ export const gameStore = setup({
             return {
               players,
               currentPlayerIndex: 0,
+
               era: 'canal' as const,
               round: 1,
               actionsRemaining: 1, // First round of Canal Era only gets 1 action
@@ -480,33 +483,24 @@ export const gameStore = setup({
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
                       actions: [
-                        assign(({ context }) => {
-                          const currentPlayer = getCurrentPlayer(context)
-                          if (!context.selectedCard) {
-                            throw new Error('Card not found')
-                          }
+                        assign({
+                          logs: ({ context }) => {
+                            const currentPlayer = getCurrentPlayer(context)
+                            if (!context.selectedCard) {
+                              throw new Error('Card not found')
+                            }
 
-                          const discardResult = discardSelectedCard({
-                            context,
-                            event: { type: 'CONFIRM' },
-                          })
-                          const actionResult = decrementActions({
-                            context,
-                            event: { type: 'CONFIRM' },
-                          })
-
-                          return {
-                            ...discardResult,
-                            actionsRemaining: actionResult.actionsRemaining,
-                            logs: [
+                            return [
                               ...context.logs,
                               createLogEntry(
                                 `${currentPlayer.name} built using ${getCardDescription(context.selectedCard)}`,
                                 'action',
                               ),
-                            ],
-                          }
+                            ]
+                          },
                         }),
+                        'discardSelectedCard',
+                        'decrementActions',
                       ],
                     },
                     CANCEL: {
@@ -546,10 +540,7 @@ export const gameStore = setup({
                   on: {
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
-                      actions: [
-                        assign(discardSelectedCard),
-                        assign(decrementActions),
-                      ],
+                      actions: ['discardSelectedCard', 'decrementActions'],
                     },
                     CANCEL: {
                       target: 'selectingCard',
@@ -588,10 +579,7 @@ export const gameStore = setup({
                   on: {
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
-                      actions: [
-                        assign(discardSelectedCard),
-                        assign(decrementActions),
-                      ],
+                      actions: ['discardSelectedCard', 'decrementActions'],
                     },
                     CANCEL: {
                       target: 'selectingCard',
@@ -637,33 +625,15 @@ export const gameStore = setup({
                             throw new Error('Card not found')
                           }
 
-                          const discardResult = discardSelectedCard({
-                            context,
-                            event: { type: 'CONFIRM' },
-                          })
-                          const actionResult = decrementActions({
-                            context,
-                            event: { type: 'CONFIRM' },
-                          })
-
-                          if (!discardResult.players) {
-                            throw new Error(
-                              'Players array not found after discard',
-                            )
-                          }
-
                           return {
                             players: updatePlayerInList(
-                              discardResult.players,
+                              context.players,
                               context.currentPlayerIndex,
                               {
                                 money: currentPlayer.money + 30,
                                 income: Math.max(0, currentPlayer.income - 3),
                               },
                             ),
-                            discardPile: discardResult.discardPile,
-                            selectedCard: discardResult.selectedCard,
-                            actionsRemaining: actionResult.actionsRemaining,
                             logs: [
                               ...context.logs,
                               createLogEntry(
@@ -673,6 +643,8 @@ export const gameStore = setup({
                             ],
                           }
                         }),
+                        'discardSelectedCard',
+                        'decrementActions',
                       ],
                     },
                     CANCEL: {
@@ -965,40 +937,8 @@ export const gameStore = setup({
                             ]
                           },
                         }),
-                        assign({
-                          players: ({ context, event }) => {
-                            debugLog('discardSelectedCard', { context, event })
-                            const currentPlayer =
-                              context.players[context.currentPlayerIndex]
-                            if (!currentPlayer || !context.selectedCard)
-                              return context.players
-
-                            const updatedHand = currentPlayer.hand.filter(
-                              (card) => card.id !== context.selectedCard?.id,
-                            )
-
-                            return context.players.map((player, index) =>
-                              index === context.currentPlayerIndex
-                                ? { ...player, hand: updatedHand }
-                                : player,
-                            )
-                          },
-                          discardPile: ({ context }) => {
-                            if (!context.selectedCard)
-                              return context.discardPile
-                            return [
-                              ...context.discardPile,
-                              context.selectedCard,
-                            ]
-                          },
-                          selectedCard: null,
-                        }),
-                        assign({
-                          actionsRemaining: ({ context, event }) => {
-                            debugLog('decrementActions', { context, event })
-                            return context.actionsRemaining - 1
-                          },
-                        }),
+                        'discardSelectedCard',
+                        'decrementActions',
                         assign({
                           selectedLink: null,
                           secondLinkAllowed: true,

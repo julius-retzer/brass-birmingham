@@ -1,18 +1,26 @@
-import { setup, assign, sendTo } from 'xstate'
+import {
+  setup,
+  assign,
+  type ActorRefFrom,
+  type AnyActorRef,
+  sendTo,
+  ActorRefFromLogic,
+} from 'xstate'
+import { Player } from './gameStore'
 
 // Simplified player interface
 export interface PlayerContext {
-  id: string
-  name: string
   money: number
   actionsRemaining: number
 }
+
+// Simplified game state
 
 // Events that can happen in the game
 type GameEvent =
   | {
       type: 'START_GAME'
-      players: Array<{ id: string; name: string; money: number }>
+      players: Array<{ name: string }>
     }
   | { type: 'TAKE_ACTION' }
   | { type: 'END_TURN' }
@@ -35,13 +43,11 @@ const playerMachine = setup({
   },
 }).createMachine({
   id: 'player',
-  initial: 'idle',
   context: {
-    id: '',
-    name: '',
-    money: 0,
+    money: 30,
     actionsRemaining: 2,
   },
+  initial: 'idle',
   states: {
     idle: {
       on: {
@@ -61,12 +67,7 @@ const playerMachine = setup({
 })
 
 export interface GameState {
-  players: ReturnType<
-    typeof setup<{
-      context: PlayerContext
-      events: PlayerEvent
-    }>
-  >['createActor'][]
+  players: ActorRefFromLogic<typeof playerMachine>[]
   currentPlayerIndex: number
   round: number
   logs: string[]
@@ -106,17 +107,12 @@ export const gameStorePoc = setup({
             assign({
               players: ({ spawn, event }) =>
                 event.players.map((player) =>
-                  spawn(
-                    playerMachine.provide({
-                      input: {
-                        id: player.id,
-                        name: player.name,
-                        money: player.money,
-                      },
-                    }),
-                  ),
+                  spawn(playerMachine, {
+                    input: {
+                      name: player.name,
+                    },
+                  }),
                 ),
-              logs: () => ['Game started'],
             }),
           ],
         },
@@ -125,23 +121,11 @@ export const gameStorePoc = setup({
     playing: {
       on: {
         TAKE_ACTION: {
-          guard: ({ context }) => {
-            const currentPlayer = context.players[context.currentPlayerIndex]
-            return currentPlayer?.getSnapshot().context.actionsRemaining > 0
-          },
           actions: [
-            ({ context }) => {
-              const currentPlayer = context.players[context.currentPlayerIndex]
-              if (currentPlayer) {
-                currentPlayer.send({ type: 'TAKE_ACTION' })
-              }
-            },
-            assign({
-              logs: ({ context }) => [
-                ...context.logs,
-                `Player ${context.currentPlayerIndex + 1} took an action`,
-              ],
-            }),
+            sendTo(
+              ({ context }) => context.players[context.currentPlayerIndex],
+              { type: 'TAKE_ACTION' },
+            ),
           ],
           target: 'checkTurn',
         },

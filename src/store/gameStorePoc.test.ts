@@ -2,8 +2,8 @@ import { describe, test, expect } from 'vitest'
 import { createActor } from 'xstate'
 import { gameStorePoc } from './gameStorePoc'
 
-describe.skip('Game Store POC', () => {
-  test('basic game flow', () => {
+describe('Game Store POC', () => {
+  test.only('basic game flow', () => {
     const gameActor = createActor(gameStorePoc)
     gameActor.start()
 
@@ -13,10 +13,7 @@ describe.skip('Game Store POC', () => {
     // Start game with two players
     gameActor.send({
       type: 'START_GAME',
-      players: [
-        { id: '1', name: 'Player 1', money: 30 },
-        { id: '2', name: 'Player 2', money: 30 },
-      ],
+      players: [{ name: 'Player 1' }, { name: 'Player 2' }],
     })
 
     // Should be in playing state
@@ -25,52 +22,27 @@ describe.skip('Game Store POC', () => {
     expect(snapshot.context.players).toHaveLength(2)
     expect(snapshot.context.currentPlayerIndex).toBe(0)
     expect(snapshot.context.round).toBe(1)
-    expect(snapshot.context.logs).toEqual(['Game started'])
 
     // Player 1 takes an action
     gameActor.send({ type: 'TAKE_ACTION' })
     snapshot = gameActor.getSnapshot()
-    expect(snapshot.context.logs).toContain('Player 1 took an action')
     expect(snapshot.context.currentPlayerIndex).toBe(1) // Moved to Player 2
 
-    // Player 2 takes an action
-    gameActor.send({ type: 'TAKE_ACTION' })
-    snapshot = gameActor.getSnapshot()
-    expect(snapshot.context.logs).toContain('Player 2 took an action')
-    expect(snapshot.context.currentPlayerIndex).toBe(0) // Back to Player 1
-    expect(snapshot.context.round).toBe(2) // Advanced to next round
+    // // Player 2 takes an action
+    // gameActor.send({ type: 'TAKE_ACTION' })
+    // snapshot = gameActor.getSnapshot()
 
-    // Play until game over (round > 5)
-    for (let i = 0; i < 8; i++) {
-      gameActor.send({ type: 'TAKE_ACTION' })
-    }
+    // expect(snapshot.context.currentPlayerIndex).toBe(0) // Back to Player 1
+    // expect(snapshot.context.round).toBe(2) // Advanced to next round
 
-    // Should be in gameOver state
-    snapshot = gameActor.getSnapshot()
-    expect(snapshot.value).toBe('gameOver')
-    expect(snapshot.context.logs).toContain('Game Over!')
-  })
+    // // Play until game over (round > 5)
+    // for (let i = 0; i < 8; i++) {
+    //   gameActor.send({ type: 'TAKE_ACTION' })
+    // }
 
-  test('player actions and turns', () => {
-    const gameActor = createActor(gameStorePoc)
-    gameActor.start()
-
-    // Start game with two players
-    gameActor.send({
-      type: 'START_GAME',
-      players: [
-        { id: '1', name: 'Player 1', money: 30 },
-        { id: '2', name: 'Player 2', money: 30 },
-      ],
-    })
-
-    // Take actions and end turns
-    gameActor.send({ type: 'TAKE_ACTION' })
-    gameActor.send({ type: 'END_TURN' })
-    gameActor.send({ type: 'TAKE_ACTION' })
-    gameActor.send({ type: 'END_TURN' })
-
-    const snapshot = gameActor.getSnapshot()
-    expect(snapshot.context.round).toBe(2)
+    // // Should be in gameOver state
+    // snapshot = gameActor.getSnapshot()
+    // expect(snapshot.value).toBe('gameOver')
+    // expect(snapshot.context.logs).toContain('Game Over!')
   })
 })

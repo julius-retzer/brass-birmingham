@@ -1,0 +1,291 @@
+import { type IndustryType } from './cards'
+
+export interface IndustryTile {
+  type: IndustryType
+  level: number
+  cost: number
+  income: number
+  victoryPoints: number
+  beerRequired?: number
+  resourcesProduced?: number
+  canBuildInRailEra: boolean
+  count: number // How many tiles of this level are available
+}
+
+export interface IndustryTileSet {
+  type: IndustryType
+  tiles: IndustryTile[]
+}
+
+export const availableIndustryTiles: IndustryTileSet[] = [
+  {
+    type: 'cotton',
+    tiles: [
+      {
+        type: 'cotton',
+        level: 1,
+        cost: 12,
+        income: 5,
+        victoryPoints: 5,
+        beerRequired: 1,
+        canBuildInRailEra: false,
+        count: 4,
+      },
+      {
+        type: 'cotton',
+        level: 2,
+        cost: 14,
+        income: 5,
+        victoryPoints: 5,
+        beerRequired: 1,
+        canBuildInRailEra: true,
+        count: 3,
+      },
+      {
+        type: 'cotton',
+        level: 3,
+        cost: 16,
+        income: 6,
+        victoryPoints: 9,
+        beerRequired: 1,
+        canBuildInRailEra: true,
+        count: 2,
+      },
+      {
+        type: 'cotton',
+        level: 4,
+        cost: 18,
+        income: 7,
+        victoryPoints: 12,
+        beerRequired: 2,
+        canBuildInRailEra: true,
+        count: 2,
+      },
+    ],
+  },
+  {
+    type: 'iron',
+    tiles: [
+      {
+        type: 'iron',
+        level: 1,
+        cost: 5,
+        income: 3,
+        victoryPoints: 3,
+        resourcesProduced: 4,
+        canBuildInRailEra: false,
+        count: 1,
+      },
+      {
+        type: 'iron',
+        level: 2,
+        cost: 7,
+        income: 3,
+        victoryPoints: 5,
+        resourcesProduced: 4,
+        canBuildInRailEra: true,
+        count: 1,
+      },
+      {
+        type: 'iron',
+        level: 3,
+        cost: 9,
+        income: 4,
+        victoryPoints: 7,
+        resourcesProduced: 5,
+        canBuildInRailEra: true,
+        count: 1,
+      },
+      {
+        type: 'iron',
+        level: 4,
+        cost: 12,
+        income: 4,
+        victoryPoints: 9,
+        resourcesProduced: 6,
+        canBuildInRailEra: true,
+        count: 1,
+      },
+    ],
+  },
+  {
+    type: 'brewery',
+    tiles: [
+      {
+        type: 'brewery',
+        level: 1,
+        cost: 5,
+        income: 4,
+        victoryPoints: 4,
+        resourcesProduced: 1,
+        canBuildInRailEra: false,
+        count: 2,
+      },
+      {
+        type: 'brewery',
+        level: 2,
+        cost: 7,
+        income: 4,
+        victoryPoints: 6,
+        resourcesProduced: 2,
+        canBuildInRailEra: true,
+        count: 2,
+      },
+      {
+        type: 'brewery',
+        level: 3,
+        cost: 9,
+        income: 5,
+        victoryPoints: 8,
+        resourcesProduced: 2,
+        canBuildInRailEra: true,
+        count: 2,
+      },
+      {
+        type: 'brewery',
+        level: 4,
+        cost: 12,
+        income: 6,
+        victoryPoints: 10,
+        resourcesProduced: 3,
+        canBuildInRailEra: true,
+        count: 1,
+      },
+    ],
+  },
+  {
+    type: 'pottery',
+    tiles: [
+      {
+        type: 'pottery',
+        level: 1,
+        cost: 17,
+        income: 1,
+        victoryPoints: 1,
+        beerRequired: 1,
+        canBuildInRailEra: true,
+        count: 2,
+      },
+      {
+        type: 'pottery',
+        level: 2,
+        cost: 19,
+        income: 2,
+        victoryPoints: 2,
+        beerRequired: 1,
+        canBuildInRailEra: true,
+        count: 1,
+      },
+      {
+        type: 'pottery',
+        level: 3,
+        cost: 21,
+        income: 3,
+        victoryPoints: 3,
+        beerRequired: 2,
+        canBuildInRailEra: true,
+        count: 1,
+      },
+      {
+        type: 'pottery',
+        level: 4,
+        cost: 23,
+        income: 4,
+        victoryPoints: 4,
+        beerRequired: 2,
+        canBuildInRailEra: true,
+        count: 1,
+      },
+    ],
+  },
+  {
+    type: 'manufacturer',
+    tiles: [
+      {
+        type: 'manufacturer',
+        level: 1,
+        cost: 8,
+        income: 3,
+        victoryPoints: 3,
+        beerRequired: 1,
+        canBuildInRailEra: false,
+        count: 4,
+      },
+      {
+        type: 'manufacturer',
+        level: 2,
+        cost: 10,
+        income: 3,
+        victoryPoints: 4,
+        beerRequired: 1,
+        canBuildInRailEra: true,
+        count: 3,
+      },
+      {
+        type: 'manufacturer',
+        level: 3,
+        cost: 12,
+        income: 4,
+        victoryPoints: 5,
+        beerRequired: 1,
+        canBuildInRailEra: true,
+        count: 2,
+      },
+      {
+        type: 'manufacturer',
+        level: 4,
+        cost: 14,
+        income: 4,
+        victoryPoints: 6,
+        beerRequired: 2,
+        canBuildInRailEra: true,
+        count: 2,
+      },
+    ],
+  },
+  {
+    type: 'coal',
+    tiles: [
+      {
+        type: 'coal',
+        level: 1,
+        cost: 5,
+        income: 3,
+        victoryPoints: 3,
+        resourcesProduced: 4,
+        canBuildInRailEra: false,
+        count: 2,
+      },
+      {
+        type: 'coal',
+        level: 2,
+        cost: 7,
+        income: 3,
+        victoryPoints: 4,
+        resourcesProduced: 4,
+        canBuildInRailEra: true,
+        count: 2,
+      },
+      {
+        type: 'coal',
+        level: 3,
+        cost: 8,
+        income: 4,
+        victoryPoints: 5,
+        resourcesProduced: 5,
+        canBuildInRailEra: true,
+        count: 2,
+      },
+      {
+        type: 'coal',
+        level: 4,
+        cost: 10,
+        income: 5,
+        victoryPoints: 6,
+        resourcesProduced: 6,
+        canBuildInRailEra: true,
+        count: 1,
+      },
+    ],
+  },
+]

@@ -15,7 +15,7 @@ import {
   type WildLocationCard,
   getInitialCards,
 } from '../data/cards'
-
+import { availableIndustryTiles } from '../data/availableIndustryTiles'
 export type LogEntryType = 'system' | 'action' | 'info' | 'error'
 
 export interface LogEntry {
@@ -398,6 +398,7 @@ export const gameStore = setup({
               hand: hands[index] ?? [],
               links: [],
               industries: [],
+              availableIndustryTiles,
             }))
 
             return {

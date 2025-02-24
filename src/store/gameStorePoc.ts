@@ -123,6 +123,7 @@ export const gameStorePoc = setup({
         TAKE_ACTION: {
           actions: [
             sendTo(
+              // @ts-expect-error
               ({ context }) => context.players[context.currentPlayerIndex],
               { type: 'TAKE_ACTION' },
             ),

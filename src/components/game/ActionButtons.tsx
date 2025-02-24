@@ -8,7 +8,6 @@ interface ActionButtonsProps {
   onAction: (
     action: 'BUILD' | 'DEVELOP' | 'SELL' | 'TAKE_LOAN' | 'SCOUT' | 'NETWORK',
   ) => void
-  onEndTurn: () => void
   onConfirm: () => void
   onCancel: () => void
 }
@@ -18,7 +17,6 @@ export function ActionButtons({
   actionsRemaining,
   canConfirmAction,
   onAction,
-  onEndTurn,
   onConfirm,
   onCancel,
 }: ActionButtonsProps) {
@@ -77,13 +75,6 @@ export function ActionButtons({
               className="w-full"
             >
               Network
-            </Button>
-            <Button
-              onClick={onEndTurn}
-              variant="default"
-              className="w-full mt-4"
-            >
-              End Turn
             </Button>
           </div>
         ) : (

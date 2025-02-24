@@ -299,7 +299,7 @@ export default function Home() {
         era={era}
         round={round}
         actionsRemaining={actionsRemaining}
-        currentPlayerName={currentPlayer?.name}
+        currentPlayerName={currentPlayer?.name ?? ''}
         spentMoney={spentMoney}
         onStartInspector={() => inspector.start()}
       />
@@ -360,7 +360,6 @@ export default function Home() {
               actionsRemaining={actionsRemaining}
               canConfirmAction={canConfirmAction()}
               onAction={handleAction}
-              onEndTurn={() => send({ type: 'END_TURN' })}
               onConfirm={handleConfirmAction}
               onCancel={handleCancelAction}
             />

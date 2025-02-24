@@ -11,8 +11,9 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "dev": "next dev --turbo",
-    "lint": "next lint",
-    "lint:fix": "next lint --fix",
+    "lint": "biome lint",
+    "lint:fix": "biome lint --write",
+    "lint:check": "biome check",
     "preview": "next build && next start",
     "start": "next start",
     "typecheck": "tsc --noEmit",
@@ -80,6 +81,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@biomejs/biome": "1.9.4",
     "@types/eslint": "^8.56.10",
     "@types/node": "^20.14.10",
     "@types/react": "^18.3.3",

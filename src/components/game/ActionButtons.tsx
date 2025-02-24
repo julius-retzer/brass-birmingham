@@ -1,27 +1,41 @@
 import { type GameStoreSnapshot, type GameStoreSend } from '~/store/gameStore'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import { cn } from '~/lib/utils'
 
 interface ActionButtonsProps {
   snapshot: GameStoreSnapshot
   send: GameStoreSend
 }
+
 export function ActionButtons({
   snapshot,
   send,
 }: ActionButtonsProps) {
+  const isSelectingAction = snapshot.matches({ playing: { action: 'selectingAction' } })
+  const isConfirmingAction = snapshot.hasTag('confirmingAction')
+  const isSelectingCard = snapshot.hasTag('selectingCard')
+  const isConfirmingLink = snapshot.matches({ playing: { action: { networking: 'confirmingLink' } } })
+  const actionsRemaining = snapshot.context.actionsRemaining
+
+  const isActive = isSelectingAction || isConfirmingAction || isSelectingCard || isConfirmingLink
 
   return (
-    <Card>
+     <Card
+      className={cn(
+        'transition-colors duration-200',
+        isActive ? 'border-primary' : 'border-muted',
+      )}
+    >
       <CardHeader>
         <CardTitle>Actions</CardTitle>
       </CardHeader>
       <CardContent>
-        {!snapshot.hasTag('confirmingAction') ? (
+        {isSelectingAction && (
           <div className="grid grid-cols-1 gap-2">
             <Button
               onClick={() => send({ type: 'BUILD' })}
-              disabled={snapshot.context.actionsRemaining <= 0}
+              disabled={actionsRemaining <= 0}
               variant="secondary"
               className="w-full"
             >
@@ -29,7 +43,7 @@ export function ActionButtons({
             </Button>
             <Button
               onClick={() => send({ type: 'DEVELOP' })}
-              disabled={snapshot.context.actionsRemaining <= 0}
+              disabled={actionsRemaining <= 0}
               variant="secondary"
               className="w-full"
             >
@@ -37,7 +51,7 @@ export function ActionButtons({
             </Button>
             <Button
               onClick={() => send({ type: 'SELL' })}
-              disabled={snapshot.context.actionsRemaining <= 0}
+              disabled={actionsRemaining <= 0}
               variant="secondary"
               className="w-full"
             >
@@ -45,7 +59,7 @@ export function ActionButtons({
             </Button>
             <Button
               onClick={() => send({ type: 'TAKE_LOAN' })}
-              disabled={snapshot.context.actionsRemaining <= 0}
+              disabled={actionsRemaining <= 0}
               variant="secondary"
               className="w-full"
             >
@@ -53,7 +67,7 @@ export function ActionButtons({
             </Button>
             <Button
               onClick={() => send({ type: 'SCOUT' })}
-              disabled={snapshot.context.actionsRemaining <= 0}
+              disabled={actionsRemaining <= 0}
               variant="secondary"
               className="w-full"
             >
@@ -61,24 +75,31 @@ export function ActionButtons({
             </Button>
             <Button
               onClick={() => send({ type: 'NETWORK' })}
-              disabled={snapshot.context.actionsRemaining <= 0}
+              disabled={actionsRemaining <= 0}
               variant="secondary"
               className="w-full"
             >
               Network
             </Button>
           </div>
-        ) : (
+        )}
+        {(isConfirmingAction || isSelectingCard || isConfirmingLink) && (
           <div className="flex flex-col gap-2">
+            {isConfirmingAction && (
+              <Button
+                onClick={() => send({ type: 'CONFIRM' })}
+                disabled={!snapshot.can({ type: 'CONFIRM' })}
+                variant="default"
+                className="w-full"
+              >
+                Confirm
+              </Button>
+            )}
             <Button
-              onClick={() => send({ type: 'CONFIRM' })}
-              disabled={!snapshot.can({ type: 'CONFIRM' })}
-              variant="default"
+              onClick={() => send({ type: 'CANCEL' })}
+              variant="secondary"
               className="w-full"
             >
-              Confirm
-            </Button>
-            <Button onClick={() => send({ type: 'CANCEL' })} variant="secondary" className="w-full">
               Cancel
             </Button>
           </div>

@@ -61,7 +61,6 @@ export function PlayerHand({
 
   const getCardTooltip = (card: Card) => {
     if (!currentAction) return 'No action selected'
-    if (!onCardSelect) return 'Cannot select cards right now'
 
     switch (currentAction) {
       case 'building':

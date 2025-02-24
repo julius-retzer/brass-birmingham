@@ -451,6 +451,7 @@ export const gameStore = setup({
               initial: 'selectingCard',
               states: {
                 selectingCard: {
+                  tags: ['selectingCard'],
                   on: {
                     SELECT_CARD: {
                       target: 'confirmingBuild',
@@ -519,6 +520,7 @@ export const gameStore = setup({
               initial: 'selectingCard',
               states: {
                 selectingCard: {
+                  tags: ['selectingCard'],
                   on: {
                     SELECT_CARD: {
                       target: 'confirmingDevelop',
@@ -559,6 +561,7 @@ export const gameStore = setup({
               initial: 'selectingCard',
               states: {
                 selectingCard: {
+                  tags: ['selectingCard'],
                   on: {
                     SELECT_CARD: {
                       target: 'confirmingSell',
@@ -581,6 +584,7 @@ export const gameStore = setup({
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
                       actions: ['discardSelectedCard', 'decrementActions'],
+                      guard: 'hasSelectedCard',
                     },
                     CANCEL: {
                       target: 'selectingCard',
@@ -599,6 +603,7 @@ export const gameStore = setup({
               initial: 'selectingCard',
               states: {
                 selectingCard: {
+                  tags: ['selectingCard'],
                   on: {
                     SELECT_CARD: {
                       target: 'confirmingLoan',
@@ -666,6 +671,7 @@ export const gameStore = setup({
               initial: 'selectingCards',
               states: {
                 selectingCards: {
+                  tags: ['selectingCard'],
                   on: {
                     SELECT_CARD: {
                       target: 'selectingCards',
@@ -867,6 +873,7 @@ export const gameStore = setup({
                   },
                 },
                 confirmingLink: {
+                  tags: ['confirmingAction'],
                   on: {
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',

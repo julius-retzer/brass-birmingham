@@ -181,25 +181,7 @@ function discardSelectedCard(args: AssignArgs): Partial<GameState> {
   };
 }
 
-function refillPlayerHand(args: AssignArgs): Partial<GameState> {
-  const currentPlayer = getCurrentPlayer(args.context);
-  const cardsNeeded = 8 - currentPlayer.hand.length;
 
-  if (cardsNeeded <= 0) {
-    return {
-      players: args.context.players,
-      drawPile: args.context.drawPile
-    };
-  }
-
-  const newCards = args.context.drawPile.slice(0, cardsNeeded);
-  const updatedHand = [...currentPlayer.hand, ...newCards];
-
-  return {
-    players: updatePlayerInList(args.context.players, args.context.currentPlayerIndex, { hand: updatedHand }),
-    drawPile: args.context.drawPile.slice(cardsNeeded)
-  };
-}
 
 function decrementActions(args: AssignArgs): Partial<GameState> {
   return {
@@ -234,7 +216,27 @@ export const gameStore = setup({
         const player = getCurrentPlayer(context);
         return findCardInHand(player, event.cardId);
       }
-    })
+    }),
+
+    refillPlayerHand: assign(({context}) => {
+      const currentPlayer = getCurrentPlayer(context);
+      const cardsNeeded = 8 - currentPlayer.hand.length;
+
+ if (cardsNeeded <= 0) {
+    return {
+      players: context.players,
+      drawPile: context.drawPile
+    };
+  }
+
+  const newCards = context.drawPile.slice(0, cardsNeeded);
+  const updatedHand = [...currentPlayer.hand, ...newCards];
+
+  return {
+    players: updatePlayerInList(context.players, context.currentPlayerIndex, { hand: updatedHand }),
+    drawPile: context.drawPile.slice(cardsNeeded)
+      };
+    }),
   },
   guards: {
     hasActionsRemaining: ({ context }) => context.actionsRemaining > 0,
@@ -884,7 +886,7 @@ export const gameStore = setup({
         },
         actionComplete: {
           entry: [
-            assign(refillPlayerHand)
+           'refillPlayerHand'
           ],
           always: [
             {

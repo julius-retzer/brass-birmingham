@@ -1,13 +1,13 @@
-import { Button } from '../ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 
 interface GameHeaderProps {
-  era: string;
-  round: number;
-  actionsRemaining: number;
-  currentPlayerName: string;
-  spentMoney: number;
-  onStartInspector: () => void;
+  era: string
+  round: number
+  actionsRemaining: number
+  currentPlayerName: string
+  spentMoney: number
+  onStartInspector: () => void
 }
 
 export function GameHeader({
@@ -16,7 +16,7 @@ export function GameHeader({
   actionsRemaining,
   currentPlayerName,
   spentMoney,
-  onStartInspector
+  onStartInspector,
 }: GameHeaderProps) {
   return (
     <Card className="mb-8">
@@ -39,7 +39,9 @@ export function GameHeader({
           </div>
           <div>
             <h2 className="text-sm text-muted-foreground">Current Player</h2>
-            <p className="text-xl font-semibold">{currentPlayerName ?? 'None'}</p>
+            <p className="text-xl font-semibold">
+              {currentPlayerName ?? 'None'}
+            </p>
           </div>
           <div>
             <h2 className="text-sm text-muted-foreground">Money Spent</h2>
@@ -47,15 +49,11 @@ export function GameHeader({
           </div>
         </div>
         <div className="mt-4 flex justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onStartInspector}
-          >
+          <Button variant="outline" size="sm" onClick={onStartInspector}>
             Start State Inspector
           </Button>
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }

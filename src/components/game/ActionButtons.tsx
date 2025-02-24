@@ -1,14 +1,16 @@
-import { Button } from '../ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 
 interface ActionButtonsProps {
-  isActionSelection: boolean;
-  actionsRemaining: number;
-  canConfirmAction: boolean;
-  onAction: (action: 'BUILD' | 'DEVELOP' | 'SELL' | 'TAKE_LOAN' | 'SCOUT' | 'NETWORK') => void;
-  onEndTurn: () => void;
-  onConfirm: () => void;
-  onCancel: () => void;
+  isActionSelection: boolean
+  actionsRemaining: number
+  canConfirmAction: boolean
+  onAction: (
+    action: 'BUILD' | 'DEVELOP' | 'SELL' | 'TAKE_LOAN' | 'SCOUT' | 'NETWORK',
+  ) => void
+  onEndTurn: () => void
+  onConfirm: () => void
+  onCancel: () => void
 }
 
 export function ActionButtons({
@@ -18,7 +20,7 @@ export function ActionButtons({
   onAction,
   onEndTurn,
   onConfirm,
-  onCancel
+  onCancel,
 }: ActionButtonsProps) {
   return (
     <Card>
@@ -94,16 +96,12 @@ export function ActionButtons({
             >
               Confirm
             </Button>
-            <Button
-              onClick={onCancel}
-              variant="secondary"
-              className="w-full"
-            >
+            <Button onClick={onCancel} variant="secondary" className="w-full">
               Cancel
             </Button>
           </div>
         )}
       </CardContent>
     </Card>
-  );
+  )
 }

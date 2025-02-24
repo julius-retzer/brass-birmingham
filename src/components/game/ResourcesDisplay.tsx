@@ -1,14 +1,14 @@
-import { CircleDot, Factory, Beer } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Beer, CircleDot, Factory } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 
 interface Resources {
-  coal: number;
-  iron: number;
-  beer: number;
+  coal: number
+  iron: number
+  beer: number
 }
 
 interface ResourcesDisplayProps {
-  resources: Resources;
+  resources: Resources
 }
 
 export function ResourcesDisplay({ resources }: ResourcesDisplayProps) {
@@ -43,5 +43,5 @@ export function ResourcesDisplay({ resources }: ResourcesDisplayProps) {
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }

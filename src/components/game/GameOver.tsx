@@ -1,4 +1,4 @@
-import { Card, CardContent } from '../ui/card';
+import { Card, CardContent } from '../ui/card'
 
 export function GameOver() {
   return (
@@ -8,5 +8,5 @@ export function GameOver() {
         {/* Add victory points display and winner announcement here */}
       </CardContent>
     </Card>
-  );
+  )
 }

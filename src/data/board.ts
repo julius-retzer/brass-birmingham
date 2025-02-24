@@ -28,7 +28,7 @@ export const cities = {
   oxford: { name: 'Oxford', type: 'merchant' },
   nottingham: { name: 'Nottingham', type: 'merchant' },
   shrewsbury: { name: 'Shrewsbury', type: 'merchant' },
-} as const;
+} as const
 
 // Connections between cities
 // Each connection can be either 'canal' (Canal Era) or 'rail' (Rail Era) or both
@@ -84,20 +84,20 @@ export const connections = [
   { from: 'gloucester', to: 'redditch', types: ['canal', 'rail'] },
   { from: 'gloucester', to: 'oxford', types: ['canal', 'rail'] },
   { from: 'redditch', to: 'oxford', types: ['canal', 'rail'] },
-] as const;
+] as const
 
 // Types for type safety
-export type CityId = keyof typeof cities;
-export type CityType = 'city' | 'merchant';
-export type ConnectionType = 'canal' | 'rail';
+export type CityId = keyof typeof cities
+export type CityType = 'city' | 'merchant'
+export type ConnectionType = 'canal' | 'rail'
 
 export interface City {
-  name: string;
-  type: CityType;
+  name: string
+  type: CityType
 }
 
 export interface Connection {
-  from: CityId;
-  to: CityId;
-  types: ConnectionType[];
+  from: CityId
+  to: CityId
+  types: ConnectionType[]
 }

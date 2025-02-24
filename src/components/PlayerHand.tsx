@@ -1,19 +1,19 @@
-import { type Card } from '../data/cards';
-import { type Player } from '../store/gameStore';
-import { GameCard } from './GameCard';
-import { Card as CardUI, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Coins, TrendingUp, Trophy } from 'lucide-react';
+import { Coins, TrendingUp, Trophy } from 'lucide-react'
+import { type Card } from '../data/cards'
+import { cn } from '../lib/utils'
+import { type Player } from '../store/gameStore'
+import { GameCard } from './GameCard'
+import { Badge } from './ui/badge'
+import { CardContent, CardHeader, CardTitle, Card as CardUI } from './ui/card'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "./ui/tooltip";
-import { cn } from '../lib/utils';
+} from './ui/tooltip'
 
 interface PlayerStatsProps {
-  player: Player;
+  player: Player
 }
 
 function PlayerStats({ player }: PlayerStatsProps) {
@@ -32,16 +32,16 @@ function PlayerStats({ player }: PlayerStatsProps) {
         <span>{player.victoryPoints}</span>
       </div>
     </div>
-  );
+  )
 }
 
 interface PlayerHandProps {
-  player: Player;
-  selectedCard?: Card | null;
-  selectedCards?: Card[];
-  onCardSelect?: (card: Card) => void;
-  currentAction?: string;
-  currentSubState?: string;
+  player: Player
+  selectedCard?: Card | null
+  selectedCards?: Card[]
+  onCardSelect?: (card: Card) => void
+  currentAction?: string
+  currentSubState?: string
 }
 
 export function PlayerHand({
@@ -50,53 +50,53 @@ export function PlayerHand({
   selectedCards,
   onCardSelect,
   currentAction,
-  currentSubState
+  currentSubState,
 }: PlayerHandProps) {
   const isCardSelected = (card: Card) => {
     if (selectedCards) {
-      return selectedCards.some(sc => sc.id === card.id);
+      return selectedCards.some((sc) => sc.id === card.id)
     }
-    return selectedCard?.id === card.id;
-  };
+    return selectedCard?.id === card.id
+  }
 
   const getCardTooltip = (card: Card) => {
-    if (!currentAction) return "No action selected";
-    if (!onCardSelect) return "Cannot select cards right now";
+    if (!currentAction) return 'No action selected'
+    if (!onCardSelect) return 'Cannot select cards right now'
 
     switch (currentAction) {
       case 'building':
-        return "Select this card to build an industry or location";
+        return 'Select this card to build an industry or location'
       case 'developing':
-        return "Select this card to develop an industry";
+        return 'Select this card to develop an industry'
       case 'selling':
-        return "Select this card to sell";
+        return 'Select this card to sell'
       case 'takingLoan':
-        return "Select this card to discard and take a £30 loan";
+        return 'Select this card to discard and take a £30 loan'
       case 'scouting':
         if (selectedCards && selectedCards.length >= 2) {
-          return "Already selected 2 cards for scouting";
+          return 'Already selected 2 cards for scouting'
         }
-        return "Select this card as one of two cards to discard for wild cards";
+        return 'Select this card as one of two cards to discard for wild cards'
       case 'networking':
-        return "Select this card to discard for building a link";
+        return 'Select this card to discard for building a link'
       default:
-        return "Cannot select cards right now";
+        return 'Cannot select cards right now'
     }
-  };
+  }
 
   return (
     <CardUI
       className={cn(
         'transition-colors duration-200',
-        onCardSelect ? 'border-primary' : 'border-muted'
+        onCardSelect ? 'border-primary' : 'border-muted',
       )}
     >
       <CardHeader>
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <CardTitle>{player.name}&apos;s Hand</CardTitle>
-            <Badge variant={onCardSelect ? "default" : "secondary"}>
-              {currentAction ? currentSubState : "Waiting"}
+            <Badge variant={onCardSelect ? 'default' : 'secondary'}>
+              {currentAction ? currentSubState : 'Waiting'}
             </Badge>
           </div>
           <PlayerStats player={player} />
@@ -126,5 +126,5 @@ export function PlayerHand({
         </div>
       </CardContent>
     </CardUI>
-  );
+  )
 }

@@ -1,38 +1,45 @@
-import { getBezierPath, useInternalNode } from '@xyflow/react';
-import { getEdgeParams } from './edgeUtils';
-import type { Player } from '../../store/gameStore';
-import type { CityId } from '../../data/board';
-import type { InternalNode } from './edgeUtils';
-import { cn } from '../../lib/utils';
+import { getBezierPath, useInternalNode } from '@xyflow/react'
+import type { CityId } from '../../data/board'
+import { cn } from '../../lib/utils'
+import type { Player } from '../../store/gameStore'
+import { getEdgeParams } from './edgeUtils'
+import type { InternalNode } from './edgeUtils'
 
 interface FloatingEdgeProps {
-  id: string;
-  source: string;
-  target: string;
-  markerEnd?: string;
-  style?: React.CSSProperties;
+  id: string
+  source: string
+  target: string
+  markerEnd?: string
+  style?: React.CSSProperties
   data?: {
     builtLinks: Array<{
-      type: 'canal' | 'rail';
-      player: Player;
-      from: CityId;
-      to: CityId;
-    }>;
-  };
+      type: 'canal' | 'rail'
+      player: Player
+      from: CityId
+      to: CityId
+    }>
+  }
 }
 
-export function FloatingEdge({ id, source, target, markerEnd, style, data }: FloatingEdgeProps) {
-  const sourceNode = useInternalNode(source);
-  const targetNode = useInternalNode(target);
+export function FloatingEdge({
+  id,
+  source,
+  target,
+  markerEnd,
+  style,
+  data,
+}: FloatingEdgeProps) {
+  const sourceNode = useInternalNode(source)
+  const targetNode = useInternalNode(target)
 
   if (!sourceNode?.measured?.width || !targetNode?.measured?.width) {
-    return null;
+    return null
   }
 
   const { sx, sy, tx, ty, sourcePos, targetPos } = getEdgeParams(
     sourceNode as InternalNode,
-    targetNode as InternalNode
-  );
+    targetNode as InternalNode,
+  )
 
   const [edgePath] = getBezierPath({
     sourceX: sx,
@@ -41,12 +48,12 @@ export function FloatingEdge({ id, source, target, markerEnd, style, data }: Flo
     targetPosition: targetPos,
     targetX: tx,
     targetY: ty,
-  });
+  })
 
-  const midX = (sx + tx) / 2;
-  const midY = (sy + ty) / 2;
+  const midX = (sx + tx) / 2
+  const midY = (sy + ty) / 2
 
-  const builtLinks = data?.builtLinks ?? [];
+  const builtLinks = data?.builtLinks ?? []
 
   return (
     <>
@@ -58,7 +65,9 @@ export function FloatingEdge({ id, source, target, markerEnd, style, data }: Flo
         style={style}
       />
       {builtLinks.length > 0 && (
-        <g transform={`translate(${midX - (builtLinks.length * 16) / 2}, ${midY - 8})`}>
+        <g
+          transform={`translate(${midX - (builtLinks.length * 16) / 2}, ${midY - 8})`}
+        >
           {builtLinks.map((link, i) => (
             <circle
               key={i}
@@ -74,7 +83,7 @@ export function FloatingEdge({ id, source, target, markerEnd, style, data }: Flo
                   'fill-purple-500': link.player.color === 'purple',
                   'fill-orange-500': link.player.color === 'orange',
                 },
-                'stroke-background stroke-2'
+                'stroke-background stroke-2',
               )}
             >
               <title>{`${link.player.name}'s ${link.type} link`}</title>
@@ -83,5 +92,5 @@ export function FloatingEdge({ id, source, target, markerEnd, style, data }: Flo
         </g>
       )}
     </>
-  );
+  )
 }

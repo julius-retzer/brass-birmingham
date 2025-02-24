@@ -1,37 +1,52 @@
-import { cities, connections, type CityId, type City, type ConnectionType } from '../../data/board';
-import { Card } from '../ui/card';
-import { ReactFlow, Background, type Node, type Edge, Position, useNodesState, MarkerType, Handle } from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-import { useCallback } from 'react';
-import { type Player } from '../../store/gameStore';
-import { cn } from '../../lib/utils';
-import { FloatingEdge } from './FloatingEdge';
+import {
+  Background,
+  type Edge,
+  Handle,
+  MarkerType,
+  type Node,
+  Position,
+  ReactFlow,
+  useNodesState,
+} from '@xyflow/react'
+import {
+  type City,
+  type CityId,
+  type ConnectionType,
+  cities,
+  connections,
+} from '../../data/board'
+import { Card } from '../ui/card'
+import '@xyflow/react/dist/style.css'
+import { useCallback } from 'react'
+import { cn } from '../../lib/utils'
+import { type Player } from '../../store/gameStore'
+import { FloatingEdge } from './FloatingEdge'
 
 // Types
 interface BoardProps {
-  isNetworking?: boolean;
-  era?: 'canal' | 'rail';
-  onLinkSelect?: (from: CityId, to: CityId) => void;
-  selectedLink?: { from: CityId; to: CityId } | null;
-  players: Player[];
+  isNetworking?: boolean
+  era?: 'canal' | 'rail'
+  onLinkSelect?: (from: CityId, to: CityId) => void
+  selectedLink?: { from: CityId; to: CityId } | null
+  players: Player[]
 }
 
 interface CityNodeProps {
   data: {
-    label: string;
-    type: City['type'];
-    id: string;
-  };
+    label: string
+    type: City['type']
+    id: string
+  }
 }
 
 interface LinkEdgeData extends Record<string, unknown> {
-  connection: typeof connections[number];
+  connection: (typeof connections)[number]
   builtLinks: Array<{
-    type: 'canal' | 'rail';
-    player: Player;
-    from: CityId;
-    to: CityId;
-  }>;
+    type: 'canal' | 'rail'
+    player: Player
+    from: CityId
+    to: CityId
+  }>
 }
 
 // Constants
@@ -44,12 +59,13 @@ const CITY_SIZES = {
     width: 90,
     height: 60,
   },
-} as const;
+} as const
 
 // Components
 function CityNode({ data }: CityNodeProps) {
-  const size = data.type === 'merchant' ? CITY_SIZES.merchant : CITY_SIZES.regular;
-  const isMerchant = data.type === 'merchant';
+  const size =
+    data.type === 'merchant' ? CITY_SIZES.merchant : CITY_SIZES.regular
+  const isMerchant = data.type === 'merchant'
 
   return (
     <>
@@ -70,47 +86,63 @@ function CityNode({ data }: CityNodeProps) {
           'flex items-center justify-center rounded-md border-2 shadow-sm',
           isMerchant
             ? 'bg-secondary border-secondary/50'
-            : 'bg-primary border-primary/50'
+            : 'bg-primary border-primary/50',
         )}
         style={{ width: size.width, height: size.height }}
       >
-        <span className="text-sm font-medium text-center text-background">{data.label}</span>
+        <span className="text-sm font-medium text-center text-background">
+          {data.label}
+        </span>
       </div>
     </>
-  );
+  )
 }
 
 // Helpers
-function hasConnectionType(types: readonly ConnectionType[], type: ConnectionType): boolean {
-  return types.includes(type);
+function hasConnectionType(
+  types: readonly ConnectionType[],
+  type: ConnectionType,
+): boolean {
+  return types.includes(type)
 }
 
-function findBuiltLinks(connection: typeof connections[number], players: Player[]) {
-  return players.flatMap(player =>
+function findBuiltLinks(
+  connection: (typeof connections)[number],
+  players: Player[],
+) {
+  return players.flatMap((player) =>
     player.links
-      .filter(link =>
-        (link.from === connection.from && link.to === connection.to) ||
-        (link.from === connection.to && link.to === connection.from)
+      .filter(
+        (link) =>
+          (link.from === connection.from && link.to === connection.to) ||
+          (link.from === connection.to && link.to === connection.from),
       )
-      .map(link => ({ ...link, player }))
-  );
+      .map((link) => ({ ...link, player })),
+  )
 }
 
-function getEdges({ isNetworking, era, selectedLink, players }: BoardProps): Edge[] {
+function getEdges({
+  isNetworking,
+  era,
+  selectedLink,
+  players,
+}: BoardProps): Edge[] {
   const baseStyle: React.CSSProperties = {
     strokeWidth: 3,
     cursor: isNetworking ? 'pointer' : 'default',
-  };
+  }
 
   return connections.flatMap((connection) => {
-    const hasCanal = hasConnectionType(connection.types, 'canal');
-    const hasRail = hasConnectionType(connection.types, 'rail');
-    const isSelected = selectedLink?.from === connection.from && selectedLink?.to === connection.to;
-    const builtLinks = findBuiltLinks(connection, players);
+    const hasCanal = hasConnectionType(connection.types, 'canal')
+    const hasRail = hasConnectionType(connection.types, 'rail')
+    const isSelected =
+      selectedLink?.from === connection.from &&
+      selectedLink?.to === connection.to
+    const builtLinks = findBuiltLinks(connection, players)
 
     if (isNetworking && era) {
       if ((era === 'canal' && !hasCanal) || (era === 'rail' && !hasRail)) {
-        return [];
+        return []
       }
     }
 
@@ -122,58 +154,78 @@ function getEdges({ isNetworking, era, selectedLink, players }: BoardProps): Edg
       data: { connection, builtLinks },
       sourceHandle: `${connection.from}-handle`,
       targetHandle: `${connection.to}-handle`,
-    };
+    }
 
     if (hasCanal && hasRail) {
       return [
         {
           ...commonEdgeProps,
           id: `${connection.from}-${connection.to}-canal`,
-          className: cn('[&>path]:stroke-blue-600', isSelected && '[&>path]:stroke-[4px]'),
+          className: cn(
+            '[&>path]:stroke-blue-600',
+            isSelected && '[&>path]:stroke-[4px]',
+          ),
           style: { ...baseStyle, transform: 'translate(-3px, -3px)' },
         },
         {
           ...commonEdgeProps,
           id: `${connection.from}-${connection.to}-rail`,
-          className: cn('[&>path]:stroke-orange-600', isSelected && '[&>path]:stroke-[4px]'),
+          className: cn(
+            '[&>path]:stroke-orange-600',
+            isSelected && '[&>path]:stroke-[4px]',
+          ),
           style: { ...baseStyle, transform: 'translate(3px, 3px)' },
         },
-      ];
+      ]
     }
 
-    return [{
-      ...commonEdgeProps,
-      id: `${connection.from}-${connection.to}`,
-      className: cn(
-        hasCanal ? '[&>path]:stroke-blue-600' : '[&>path]:stroke-orange-600',
-        isSelected && '[&>path]:stroke-[4px]'
-      ),
-    }];
-  });
+    return [
+      {
+        ...commonEdgeProps,
+        id: `${connection.from}-${connection.to}`,
+        className: cn(
+          hasCanal ? '[&>path]:stroke-blue-600' : '[&>path]:stroke-orange-600',
+          isSelected && '[&>path]:stroke-[4px]',
+        ),
+      },
+    ]
+  })
 }
 
 // Main component
-export function Board({ isNetworking = false, era, onLinkSelect, selectedLink, players }: BoardProps) {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+export function Board({
+  isNetworking = false,
+  era,
+  onLinkSelect,
+  selectedLink,
+  players,
+}: BoardProps) {
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
 
   const onNodeDrag = useCallback(() => {
     if (process.env.NODE_ENV === 'development') {
-      const newPositions = nodes.reduce((acc, node) => ({
-        ...acc,
-        [node.id]: {
-          x: Math.round(node.position.x / 10),
-          y: Math.round(node.position.y / 10)
-        }
-      }), {} as Record<string, { x: number; y: number }>);
-      console.log('New positions:', JSON.stringify(newPositions, null, 2));
+      const newPositions = nodes.reduce(
+        (acc, node) => ({
+          ...acc,
+          [node.id]: {
+            x: Math.round(node.position.x / 10),
+            y: Math.round(node.position.y / 10),
+          },
+        }),
+        {} as Record<string, { x: number; y: number }>,
+      )
+      console.log('New positions:', JSON.stringify(newPositions, null, 2))
     }
-  }, [nodes]);
+  }, [nodes])
 
-  const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
-    if (!isNetworking || !onLinkSelect || !edge.data) return;
-    const data = edge.data as LinkEdgeData;
-    onLinkSelect(data.connection.from, data.connection.to);
-  }, [isNetworking, onLinkSelect]);
+  const onEdgeClick = useCallback(
+    (event: React.MouseEvent, edge: Edge) => {
+      if (!isNetworking || !onLinkSelect || !edge.data) return
+      const data = edge.data as LinkEdgeData
+      onLinkSelect(data.connection.from, data.connection.to)
+    },
+    [isNetworking, onLinkSelect],
+  )
 
   return (
     <Card className="relative w-full aspect-square">
@@ -195,7 +247,7 @@ export function Board({ isNetworking = false, era, onLinkSelect, selectedLink, p
         </ReactFlow>
       </div>
     </Card>
-  );
+  )
 }
 
 // Approximate positions based on the actual game board layout
@@ -232,7 +284,7 @@ const cityPositions: Record<CityId, { x: number; y: number }> = {
   oxford: { x: 85, y: 60 },
   nottingham: { x: 85, y: 10 },
   shrewsbury: { x: 5, y: 45 },
-};
+}
 
 // Initial positions based on the actual game board layout
 const initialNodes: Node[] = Object.entries(cities).map(([id, city]) => ({
@@ -240,12 +292,12 @@ const initialNodes: Node[] = Object.entries(cities).map(([id, city]) => ({
   type: 'cityNode',
   position: {
     x: cityPositions[id as CityId].x * 10,
-    y: cityPositions[id as CityId].y * 10
+    y: cityPositions[id as CityId].y * 10,
   },
   data: {
     label: city.name,
     type: city.type,
-    id
+    id,
   },
   draggable: true,
-}));
+}))

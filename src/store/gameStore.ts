@@ -328,7 +328,7 @@ export const gameStore = setup({
     },
   },
 }).createMachine({
-  /** @xstate-layout N4IgpgJg5mDOIC5QCMBOBDWsDi6C2YAxAFQDaADALqKgAOA9rAJYAuT9AdjSAJ6IC0AZgCs5ADQgAHogCMADgDsAJgB0SmTPLkAnHO3DtSgCxKAvqYlpMOfGBWwwLAK61CAZQAqAQQBKHgPrYXgCyAKIU1EggDMxsnNzSCMYyKnIySqIK5HraMgBs5AoSfAgaKeRKgkZpooK5BYLmlhhYuAQqtAA26DxMHFAd3TxgqB5OqByEAEIAqgCSADIAIhHcMazsXFGJleQqgunCxYhKynKpcgbVCsLpck0gVq22gz19A109I2MThEuhADVQgsAPIABVWUXWcS2oB2gj2BwyxySCly+0u2mutyU9wsjxaNnan16-Vew1G40mbmBC0hdEYG3i2xOCP2hxRuOEgguV0UOLxzWsbTsJPe5O+VMI3gA0qF-KCvAA5enRRkwhKsxEc3gneoYvk3O4PJ5E0VDcUkyW-NwAYRBMw8quhm01STZSKOuqS2gU5zkmOxxvxppF5MtQ2tkyVoQ8AHUQT4Zc71a6We7tcjvQijClBIH+cGhc9iRayVbKb8U7E03CteysyUDuQeQHDQKTYSw2LyyMAGb0VB4d5eADGMJUyCcTE6EHFDk6YHH71t6FQEHcwNCtoCtt8Kyoa1TzLrpUK2jULZkvqMeVOOkEnOqqiMglxGTkRnIMgUMk7wpeHsPn7Qdh36McJynGc5zJBclzYfpV3XQg9yVW1gWrJlYSkWR8lUO9RCMIxfUMO8lCfKoVFfd9hE-b9f3-EtzTeXtUAHIcR2XThJ2nWdxVHTg+yYDj+imXiN3tJUADE5h8YJMI1KISgyLQVEKAo7zyPJuQRL1EhkYQvxUPJ+QUZQtCxBRGhDLtALLYC2NAzjIPE-jBOEsCoDE6CUOVdC6UPKFj2w5TRD2dTyE07TBF0iR9MMvYTJuMylAsowrMYs1w1Y9jPIgzYVAgMAADcwE6ehaHnMr4JXNcNxpBZt13fcFNrHCzzyHltDfQQjREfJtBRGRc2EFR8mUH88lvRQGJsgDSxYhzcucgqitK8rKtg6rl0QurfLQjDAoZGsT3ajR0v2QylGu7Sf3UOQhsEPIFDG571AUKaktm4ssqAjoQJEqB8u4tayoqtyOCEwGlhKsHXEkmS5Na06SmGt9Uk0IxDPS1Knoes7DJep7dDRRQqkKTLu3s-7HMB4GOEK2GNohqHPJh9aKv2-zkZC2RqIx8gsaI8y8bi2RCf2PISZJ8mFEpuzFpp5bwK4hmF06KrFx2qAkPqrcd38PcfAPSJjqwt1NEuFQFCIuQCgyURciKb0CgvER0q-NEtFSv85qY7KlqclWJ3VzWat25DUO5o61RO7D9IG17nsKMz8iIr0SmEPI80Jz3tG9795YW0lA7p1X7DKjWyQEyGPPeNxK5QkFpNk+SY5dFHEE0lRtBI2inuzzqxdKbkialu3iO6t9fSL5iS6VoOgfL0Pq-cwGG86ToucO03Y-NpSu6UPIe77uQB-yR8Cd6yXdCm3uYqUGe-d+6naABvLy5YdAAGt3gWeh0Bq22ghHWe0GpNUNi1duwULbnmttoKWwgj7vgQXkIa35VBHx0Gie6ts8izwDgvMuE4v6-36P-QBFctYgN1tvAKu8O7x1wp1NQ8g5BaGGtUYiRgUQIKMGoV2OD5B4IIX9N+tMP4kJ-n-ABDMa6sxkYApuLckbQLjtwVGFQLz5xMCIR+yC9LizqMZO648tLclvKI1+78VrcVIYouRa9PIUMmFHHeR51EHzPI-HugtKhINIlmeKxjs7KDMdFSxz8qaK3EcrJeIcBJOBAVQ8OoD1ywE3I1A2RsTYeP3qec6F4J5TR-IoXQdshp3kSrjGKadrxaSsTEmxwcCqwESckuC2tdYZIRq3HmGjZATRUMIKyWMCg3F0vjfSI1UjESvILIiX4zBRIVvPWJi96b2HaWHLpdUel+XcUFTxoBUZDJGVULOhRuTkFosPYaBlZn52bIspZjS1nNPiQVDgjgADug4yEDE6TQsB+tmrG36emdh4UDJaQDOlYRg1vSpTMmpI+tEbYaBtkfN5loPmbO+SwP5qAAUpN2ZHA59C8mKVPAGHkr4jSdU6lZMynItGou0ooXMP4TD4JWcXXFEjbEMwJUSklQK-59G-pkiBCw5hKmTGo-JZ1hoXm0p1eQgtCj5h4UiuBSCOUYu5divlc8BVxPxb8-5OyQELElXQiFBTjA8iesoJ62QrqX2UleYZaLOWYp5TinKGzy4iqtavWugNbUcClb01RDCYFeNSr6V6uhXzVAMNeO5Jk9jqE0DoPQBhjDLJ+tE95gqWncVDcSlmddyF2rcZSo5SqvXJoGp+KomJM1nWzawvNuh9CGBMIGgY6BVa2noHgLojgiAOrOr+YyaIkoZ0QM2VsBYjS4mHSoUdMJx2TsXCwGdMh43HLnSkZ6CD+QogONnXkWJCybpNYQ75kgWBgkjKgQgs79IsKvI2Fd6ginro7A8Dg9AirwCiKGWwVK2qJH4DITkPIkEiBbKcGKZkiLWRLS8BwzhaCwdOtM4+XD8wINyFUBBj1+EqT8UfOQj8DjDsI0w0oDy-3LoQAcGjV4fzdU6uwqaW6Kw-Gwowt04gkWXHOPmdsRYCTzVNUG4hbVxPplzF1a5ttF21JRF+FIWQDjT3zkgmQ2GFP+zEXi8uTAICLhY7Alh-UBMF04ZybOMngPyeg-y5TkiCpQT4v0Bz6nb36BzNcBBunvQ2xzSM3IR9KNn19jh3zpd-PcUCzBQFwDarrhC6efO5wpqRSliRZB5EkXcOtu2302RoopYsy-Jp5bPmZdcuGhRolxIFbOuhtSt59DXTSlZTkYU1IfUikfaKulhPWYnKDZmwWm3UvareFI4WFllM6gcR6pxjJvQ+pUXuX5hBzda5sxb4MtrULyxAXriQ9DOvHulW6E18aoxMC9W4igAxPcqBlJ9VmLvlyu5tAY8ja1QHZnDB7sgMgvTMtnR+ZNPZDX5mkQW2MRYmXO+a5eld3hw4QOtnuWnIs7cQ96UzqRCb3zPtkKoePg0h0Jzd1Jutie5FGvISob5U5TSxiiO8BmptPLSJUBpQPrEg9Z5vGt69K7E-SGiYZAZs6Twfr6YXR8T5on7lpC+zOVN2OkeQ2RxPSebe01F3b3pB3WwKHoG5P5ND5mNxlhm9jzeUPFRHe7K24OIHzheSoREMicM-FidBxgTEI9zb3FDHuhUqG91AFxKhIeRot4Hoj8OrLGU9lq8xVQ0Hek0D4nR-j9EEWTxWtW2zltm1W4kW8x9rcU+i6jHSY1cZOxGca1LSn0sp7afQJJ1q7uQeb0Htj3IMZmUxy8ioQ0zmjMuRMm5gomulrNSzr5lrq1N73i3xAVvyfba77ILfauNKaV5+Znzw+iGe5UFWsVuX-fE7vBeLG3GzNMq9TOxep6D7B+hmZZBaIGB15tbCqH4f63Z1rRpc7dS05Yj+KXC6KspYgHa6CCwkxthnbS4tb44Tjv4K7OKSrK65j+i4jXhWQDpFrYEvRtppqdraBbo7qbB7pTqHrE78BUZIq9yqBtj3obrb5P7PpgCvrvpfCoD8GCFNjcoGhiEgZD4qBQC2AgilTyG56sbGDHwS6ZDZC9z5CFDXomTnBZwjK5y3A3DmDmBAA */
+  /** @xstate-layout N4IgpgJg5mDOIC5QCMBOBDWsDi6C2YAxAFQDaADALqKgAOA9rAJYAuT9AdjSAB6ICMAJgBsAdgB0ggMwAWUQA4pg8qICccgDQgAngMEBffVrSYc+MONhgWAV1qEAygBUAggCUnAfWwuAsgFEKaiQQBmY2Tm4+BH4ZQXEleSFlaXl5ES1dBBkZAFZxURFcqVzRcnJhflF+XMNjDCxcAnFaABt0bSYOKBb27TBUJxtUDkIAIQBVAEkAGQARIO4w1nYuEOi8mXFVYXlREuEZfikpfnlMxHlyLdVyUpPinLF+OpATRvNejq6eto6BoYjQhzfwANX8MwA8gAFRYhZYRNagDa5G67fa5Q7HU7nHR6FTiJKxYSyYSlQSiUSvd5mZp-TrdL79QbDUYOCEzOF0RgrSLrRCbbbog5HE5nC4xSrkApnCnyXKqUTCHbyakNWkWek-JkA1mEVwAaX8nihLgAclzQjzEVEBaihXsRdjxXiEMpjuJhII5KdVDtyDsZGrTE1NX1tfTdUCHABhSETJyWhGrW3Ze0qjFYsW4rKCQT8VTiFSiXIiGTleTlqlGN7q0NMiN9KOjM3+JwAdUhbgNSetKf5abRjsxopxEpE8mE4iEhQxeSk5SkwY+dPDjMjLKBvfC-eRiFKEtOgkLJzuuXkOyEZ2XGob66bm444mQNiYrQg2qsrTAAGM2N0Y3QVAIEcCF-BjLwY3cBYqCWPs+T3BAlXiPYZEnJVZDOchBAldJ4hqUo5Cw6QdhvestXvf5H2fV930-MBvz-H5AOAwgoLNGMIW3XkkV4ARjnyYsklUb0pGEEkpAlc94kKSoSWwsSrlVGsaXItdfgfQEnxfN8P0ZH9OAAMyYVA8B+MZaJAuMzQAMSmNxfG4m0ByqctxBkXZVAXGRVExLzJNdNRpX4AsC1yFQ0iVF4VLrT4KI0qitJo3TtQMjhjNM8zLLY81OM5WD4Xg3joiuKcykESd0PLFQJVkyRsKJMkpEKE4yLi9SdWoiAwAANwY+haHoxj-ygFiQPZGZwMg6CnN3PikL2QkKUVClqsETEJWSQTKjkaoQtqGKQ3a75KOZJLur61oBqG38RrGnKOK4gruR3BD5pC9Jtma2QAyqETKglVR5U9HERN8nyqza1cToSs7WXEC7+sG-SjJMszujmXqkbYyFbPsxznqtV7ioEUQ3I8i9vN85UTk25Qp3WqohCB8SjihsMYc686sau5GejSjL0agTHLoGh68tmt6StOT1cgVfZKSB0tck25np3IeUjnPHzFGEdm71h5tLAY1obqYgCgPGsCIM8KC3Bg4IXp41N0nkBJbmEa5K098TNq9CQVWPPMZFJLz9firn4a-U3GS-W7mMt8WnsdonnZcgtpQUELqkOEpSxkTapDScRinlCk83IIRS3DjqNyS6PUtRzLugcE2cbxhzJZJmIyelCmvOuan-L9gNp3PWRClyWUDvqI7oYZQ3qIblH0rRn5W9aVok-ylPkyly5CkkM5PfPeUL2PTbiniSufPUIGTkUJdDpXDmF8jkZxBYdAAGsfhmeh0BPjjubUaicJpTVtjNQme9u5XHyLIIuBxSyexqq6ZQC5CRkzJiOY+qga6czrvDL+v9uj-0AcbYaCdWLsQltAoqqZs5TjJJUP0+ZZDFFUJtNQ-B3I5DUIqKeZN8Fv0IR-Yhf8AFPgFmvUhkj252U7nQ4mDDe7uU8lTPytNXQFiBoSIuBYSjlnCnLYRjZEpEJ-hI8h0jm5QDIaMGhyc4LKIHJWQsVR8xAziAqRUAUsgGJuPmHIigkgKCfrPF+Bt35AIMjYEaFD44W2ArAUCk0bZ2wds4tOiEfbuREvmfMSQ5aFHHNIKcSgSzVQ8pUCkpjTpG1gLE+JwC7qWxSdZBRBNd70Jcqo-uGiaZ+MQHmK4BRVBCFPCWI8dTF71yaWbVpyTt5dxdncacqExIVTuJSHCaCqhTj9HEb0twlQhxmdE8QHBrAAHd6CoBIT0FpVCrZpOmvbFZA41BbGqJOPOAYPIFnHGUKQCQdl7FCiocJtY56vzMXDD+VyWC3PuQs55yylHZPeuefIwKqjNQatcXZuYPIgvUCWPM-AxCFHUOc0RT5EXIoeQkkBMwujf1SRAmYUwzQ9gxc5RCIUCzq3GdhMQIkKiiCBWsvY1QKhKDiGkWlml4YMruUyp5pC2Xou6S4xCISS7VLEqiESaROFoM9hIOIUggZ+gXEDasETbwRzpZcm5arG6r1sayjg7KOn4w+QKvp6jB6aKGW6NCAdpLlC9CFM5z8nW12VQit1KKV6Cz-lqxxO8sn8veiIEFU9MQlkrAuQ4whxye0LCJI4ZQ1CUmqA66FkSI7oCYpwGM9A8BtGsEQAN80jhVuFDg7Mh5dj1Xldawpk4DDxrUpzVtiIO1du-CwXt-AdWYuiHmCkkhxIqBJPk3Y5btGHELJOKoxRK5egqHg2dx035XJ4CwaED5CB9o2KPDMToR1oLQtsYoJwvIXlrYqu9884VG0RrzD16aMY8zFlm0g66c1zWljwsk8tmpqDLirbR+aixyTJCkJmSrzEfyg9dNNMjhbwfsIhwQG7c1odlphxWOHC5TxLnJBq3plDV1eBweg3V4AhFUuYFD+8EAAFp+C1VJQBgseRK6gcdfWKwthaASe7poV0FN-1HlRLsUKM8m0Jphlp1MJQ3ZfuHWOE9PD5yyCOOiW4NRSPwt4jA1M5YDlDqzHZrIPl8h5jkgobCGFoqqfvRBpeDFElQBcG2zzPTEKChs-5l0-i5bxEKYzUtNRrxgdhfU6iOk6LdAswOVEWwjw4intekKEoSRu3KiWMmzUQ5iHc0bMrelHlxZAWNSriEFTxFq2cer7pZOukUFscK1R1ByDQta7rpXLIweoxZXSw35peQc0e9a1SLwAxm9asZaQSRayuEIVb3NRZ8x29EPyu7URlIrtUza1x0Ma0M2JHzesitRJdRRvmzLFkQEe4gSoEgihWq9MoD7eHmruWOPwO45c0hxFu-DEHG3bEiyRpDhA1N3L5n2Ns1alK6ZxAKNcSkcRjjewB1F8DJX64mx+ETytS04HkiUpK7ROQ5uxD9IqL0HkTGA+dUmoBHPY4DfB1z0oPOzyFH537NyvpxXljQsUEzYnWezKjnL-mTchYb1aETv0ByS1ejEHsdIGv8iVBqJTPIRTG0G+K0bsRljZGAKJ+eMqSQKpNQ8vmY9-jKyWqCcUSlGsiPY99w8+xYPnlc9kAUEPk5Hgxsj8M64IKQsFmPH93YQYpeJrI0+cR-upFm6scl3Vu39hfRLF5XXpxfZoK9iXKo56ZUhxUEnmJ9A4mc8Ks3p7553YqDyOM5WpxxyxDdukSpaF1rKn17FQ3FzGlj+aQr55ImnZMahxUWf2CF-rSX2gk4MOlLfQqMqPYI-XVIvdRVyfm79xKjHp7X5cZDfM1XMKeKtEiMlNHG9N-VVVNfrShJJCHb-M-BAcXf-BPa1FfC+NBaoHFCqfYYJItPMGAlNdVI-TVH1K3EkBICZfyBnRWIFfMIsBHcgWQEQS7CvFnb3C5WAplGxIWb1b+InRnN2CqWIJQEkBUPXRggtFgtg8SJzc5BdVYJdbtVdInZQa4f-ZhCoaPCqP2b0T0faMVC8cKKoc5R9Z9B8DQ61YKAMBtaqNxP2EKacdQU1DDH0fWKAcwSEPqVADQlwkPEOPMIDEOHTLIU4bCPRa4Vg7WDrCvQwIAA */
   id: 'brassGame',
   context: {
     players: [],
@@ -436,20 +436,18 @@ export const gameStore = setup({
       initial: 'playerTurn',
       states: {
         playerTurn: {
+          initial: 'selectingAction',
           always: [{ guard: 'isGameOver', target: '#brassGame.gameOver' }],
           on: {
-            BUILD: { target: 'performingAction.building' },
-            DEVELOP: { target: 'performingAction.developing' },
-            SELL: { target: 'performingAction.selling' },
-            TAKE_LOAN: { target: 'performingAction.takingLoan' },
-            SCOUT: { target: 'performingAction.scouting' },
-            NETWORK: { target: 'performingAction.networking' },
+            BUILD: { target: '.building' },
+            DEVELOP: { target: '.developing' },
+            SELL: { target: '.selling' },
+            TAKE_LOAN: { target: '.takingLoan' },
+            SCOUT: { target: '.scouting' },
+            NETWORK: { target: '.networking' },
           },
-        },
-        performingAction: {
-          initial: 'idle',
           states: {
-            idle: {},
+            selectingAction: {},
             building: {
               initial: 'selectingCard',
               states: {
@@ -543,15 +541,28 @@ export const gameStore = setup({
                       target: '#brassGame.playing.actionComplete',
                       actions: ['discardSelectedCard', 'decrementActions'],
                     },
-                    CANCEL: {
-                      target: 'selectingCard',
-                      actions: [
-                        assign({
-                          selectedCard: null,
-                          selectedCardsForScout: [],
-                        }),
-                      ],
-                    },
+                    CANCEL: [
+                      {
+                        target: 'selectingCard',
+
+                        actions: [
+                          assign({
+                            selectedCard: null,
+                            selectedCardsForScout: [],
+                          }),
+                        ],
+
+                        guard: 'New guard',
+                      },
+                      {
+                        target: 'selectingCard',
+                        guard: 'canPlay',
+                      },
+                      {
+                        target: '#brassGame.playing.playerTurn.selling',
+                        reenter: true,
+                      },
+                    ],
                   },
                 },
               },

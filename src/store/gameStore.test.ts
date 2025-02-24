@@ -194,7 +194,7 @@ test('taking loan action', () => {
 
   // Verify initial state
   expect(snapshot.value).toMatchObject({
-    playing: { playerTurn: 'selectingAction' },
+    playing: { action: 'selectingAction' },
   })
 
   verifyPlayerState(initialPlayer, {
@@ -255,7 +255,7 @@ test('building action', () => {
 
   // Verify initial state
   expect(snapshot.value).toMatchObject({
-    playing: { playerTurn: 'selectingAction' },
+    playing: { action: 'selectingAction' },
   })
   verifyPlayerState(initialPlayer, {
     money: 30,
@@ -269,7 +269,7 @@ test('building action', () => {
   snapshot = actor.getSnapshot()
   expect(snapshot.value).toMatchObject({
     playing: {
-      playerTurn: { building: 'selectingCard' },
+      action: { building: 'selectingCard' },
     },
   })
 
@@ -282,7 +282,7 @@ test('building action', () => {
   // Verify card selection
   expect(snapshot.value).toMatchObject({
     playing: {
-      playerTurn: { building: 'confirmingBuild' },
+      action: { building: 'confirmingBuild' },
     },
   })
   expect(snapshot.context.selectedCard?.id).toBe(cardToBuild.id)
@@ -328,7 +328,7 @@ test('network action - canal era', () => {
 
   // Verify initial state
   expect(snapshot.value).toMatchObject({
-    playing: { playerTurn: 'selectingAction' },
+    playing: { action: 'selectingAction' },
   })
   verifyPlayerState(initialPlayer, {
     money: 30,
@@ -342,7 +342,7 @@ test('network action - canal era', () => {
   actor.send({ type: 'NETWORK' })
   snapshot = actor.getSnapshot()
   expect(snapshot.value).toMatchObject({
-    playing: { playerTurn: { networking: 'selectingCard' } },
+    playing: { action: { networking: 'selectingCard' } },
   })
 
   // Select a card to build link with
@@ -353,7 +353,7 @@ test('network action - canal era', () => {
 
   // Verify card selection
   expect(snapshot.value).toMatchObject({
-    playing: { playerTurn: { networking: 'selectingLink' } },
+    playing: { action: { networking: 'selectingLink' } },
   })
   expect(snapshot.context.selectedCard?.id).toBe(cardToUse.id)
 
@@ -363,7 +363,7 @@ test('network action - canal era', () => {
 
   // Verify link selection
   expect(snapshot.value).toMatchObject({
-    playing: { playerTurn: { networking: 'confirmingLink' } },
+    playing: { action: { networking: 'confirmingLink' } },
   })
   expect(snapshot.context.selectedLink).toEqual({
     from: 'birmingham',
@@ -427,7 +427,7 @@ test('turn taking - round 1', () => {
 
   // Verify initial turn state
   expect(snapshot.value).toMatchObject({
-    playing: { playerTurn: 'selectingAction' },
+    playing: { action: 'selectingAction' },
   })
   verifyGameState(snapshot, {
     actionsRemaining: 1,

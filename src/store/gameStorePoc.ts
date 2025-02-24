@@ -1,26 +1,18 @@
-import {
-  setup,
-  assign,
-  type ActorRefFrom,
-  type AnyActorRef,
-  sendTo,
-  ActorRefFromLogic,
-} from 'xstate'
-import { Player } from './gameStore'
+import { setup, assign, sendTo } from 'xstate'
 
 // Simplified player interface
 export interface PlayerContext {
+  id: string
   name: string
   money: number
   actionsRemaining: number
 }
 
-// Simplified game state
-
 // Events that can happen in the game
 type GameEvent =
   | {
       type: 'START_GAME'
+      players: Array<{ id: string; name: string; money: number }>
     }
   | { type: 'TAKE_ACTION' }
   | { type: 'END_TURN' }
@@ -42,21 +34,20 @@ const playerMachine = setup({
     canTakeAction: ({ context }) => context.actionsRemaining > 0,
   },
 }).createMachine({
+  id: 'player',
+  initial: 'idle',
   context: {
+    id: '',
     name: '',
     money: 0,
     actionsRemaining: 2,
   },
-  initial: 'idle',
   states: {
     idle: {
       on: {
         TAKE_ACTION: {
           target: 'acting',
           guard: 'canTakeAction',
-          actions: ({ context }) => {
-            console.log('👻 ~ context: from child', context)
-          },
         },
       },
     },
@@ -70,7 +61,12 @@ const playerMachine = setup({
 })
 
 export interface GameState {
-  players: ActorRefFromLogic<typeof playerMachine>[]
+  players: ReturnType<
+    typeof setup<{
+      context: PlayerContext
+      events: PlayerEvent
+    }>
+  >['createActor'][]
   currentPlayerIndex: number
   round: number
   logs: string[]
@@ -91,18 +87,6 @@ export const gameStorePoc = setup({
           ? context.round + 1
           : context.round,
     })),
-    logAction: assign(({ context, event }) => {
-      const currentPlayer = context.players[context.currentPlayerIndex]
-      return {
-        logs:
-          event.type === 'TAKE_ACTION' && currentPlayer
-            ? [
-                ...context.logs,
-                `${currentPlayer.getSnapshot().context.name} took an action`,
-              ]
-            : context.logs,
-      }
-    }),
   },
 }).createMachine({
   id: 'game',
@@ -115,23 +99,25 @@ export const gameStorePoc = setup({
   initial: 'setup',
   states: {
     setup: {
-      entry: [
-        assign({
-          players: ({ spawn }) => {
-            return [spawn(playerMachine), spawn(playerMachine)]
-          },
-        }),
-      ],
       on: {
         START_GAME: {
           target: 'playing',
           actions: [
-            ({ context }) => {
-              // console.log('👻 ~ context:', context.players)
-            },
-            assign(({ context }) => ({
-              logs: ['Game started'],
-            })),
+            assign({
+              players: ({ spawn, event }) =>
+                event.players.map((player) =>
+                  spawn(
+                    playerMachine.provide({
+                      input: {
+                        id: player.id,
+                        name: player.name,
+                        money: player.money,
+                      },
+                    }),
+                  ),
+                ),
+              logs: () => ['Game started'],
+            }),
           ],
         },
       },
@@ -139,17 +125,23 @@ export const gameStorePoc = setup({
     playing: {
       on: {
         TAKE_ACTION: {
+          guard: ({ context }) => {
+            const currentPlayer = context.players[context.currentPlayerIndex]
+            return currentPlayer?.getSnapshot().context.actionsRemaining > 0
+          },
           actions: [
-            sendTo(
-              ({ context }) => {
-                const player1 = context.players[0]
-                return player1
-              },
-              {
-                type: 'TAKE_ACTION',
-              },
-            ),
-            'logAction',
+            ({ context }) => {
+              const currentPlayer = context.players[context.currentPlayerIndex]
+              if (currentPlayer) {
+                currentPlayer.send({ type: 'TAKE_ACTION' })
+              }
+            },
+            assign({
+              logs: ({ context }) => [
+                ...context.logs,
+                `Player ${context.currentPlayerIndex + 1} took an action`,
+              ],
+            }),
           ],
           target: 'checkTurn',
         },

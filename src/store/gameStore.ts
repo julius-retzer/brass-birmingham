@@ -433,9 +433,9 @@ export const gameStore = setup({
       },
     },
     playing: {
-      initial: 'playerTurn',
+      initial: 'action',
       states: {
-        playerTurn: {
+        action: {
           initial: 'selectingAction',
           always: [{ guard: 'isGameOver', target: '#brassGame.gameOver' }],
           on: {
@@ -467,7 +467,7 @@ export const gameStore = setup({
                       ],
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.playerTurn',
+                      target: '#brassGame.playing.action',
                       actions: [
                         assign({
                           selectedCard: null,
@@ -525,7 +525,7 @@ export const gameStore = setup({
                       actions: 'selectCard',
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.playerTurn',
+                      target: '#brassGame.playing.action',
                       actions: [
                         assign({
                           selectedCard: null,
@@ -541,28 +541,15 @@ export const gameStore = setup({
                       target: '#brassGame.playing.actionComplete',
                       actions: ['discardSelectedCard', 'decrementActions'],
                     },
-                    CANCEL: [
-                      {
-                        target: 'selectingCard',
-
-                        actions: [
-                          assign({
-                            selectedCard: null,
-                            selectedCardsForScout: [],
-                          }),
-                        ],
-
-                        guard: 'New guard',
-                      },
-                      {
-                        target: 'selectingCard',
-                        guard: 'canPlay',
-                      },
-                      {
-                        target: '#brassGame.playing.playerTurn.selling',
-                        reenter: true,
-                      },
-                    ],
+                    CANCEL: {
+                      target: 'selectingCard',
+                      actions: [
+                        assign({
+                          selectedCard: null,
+                          selectedCardsForScout: [],
+                        }),
+                      ],
+                    },
                   },
                 },
               },
@@ -577,7 +564,7 @@ export const gameStore = setup({
                       actions: 'selectCard',
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.playerTurn',
+                      target: '#brassGame.playing.action',
                       actions: [
                         assign({
                           selectedCard: null,
@@ -616,7 +603,7 @@ export const gameStore = setup({
                       actions: 'selectCard',
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.playerTurn',
+                      target: '#brassGame.playing.action',
                       actions: [
                         assign({
                           selectedCard: null,
@@ -815,7 +802,7 @@ export const gameStore = setup({
                       ],
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.playerTurn',
+                      target: '#brassGame.playing.action',
                       actions: [
                         assign({
                           selectedCard: null,
@@ -837,7 +824,7 @@ export const gameStore = setup({
                       actions: 'selectCard',
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.playerTurn',
+                      target: '#brassGame.playing.action',
                       actions: [
                         assign({
                           selectedCard: null,
@@ -977,7 +964,7 @@ export const gameStore = setup({
           always: [
             {
               guard: 'hasActionsRemaining',
-              target: 'playerTurn',
+              target: 'action',
             },
             {
               target: 'nextPlayer',
@@ -1005,7 +992,7 @@ export const gameStore = setup({
             }),
           ],
           always: {
-            target: 'playerTurn',
+            target: 'action',
           },
         },
       },

@@ -73,21 +73,21 @@ export default function Home() {
   }, [state, send])
 
   const currentPlayer = players[currentPlayerIndex]
-  const isActionSelection = state.matches({ playing: 'playerTurn' })
+  const isActionSelection = state.matches({ playing: 'action' })
 
   // Get the current action from state matches
   const getCurrentAction = () => {
     // Build
     if (
       state.matches({
-        playing: { performingAction: { building: 'selectingCard' } },
+        playing: { action: { building: 'selectingCard' } },
       })
     ) {
       return { action: 'build', subState: 'selectingCard' }
     }
     if (
       state.matches({
-        playing: { performingAction: { building: 'confirmingBuild' } },
+        playing: { action: { building: 'confirmingBuild' } },
       })
     ) {
       return { action: 'build', subState: 'confirming' }
@@ -96,14 +96,14 @@ export default function Home() {
     // Develop
     if (
       state.matches({
-        playing: { performingAction: { developing: 'selectingCard' } },
+        playing: { action: { developing: 'selectingCard' } },
       })
     ) {
       return { action: 'develop', subState: 'selectingCard' }
     }
     if (
       state.matches({
-        playing: { performingAction: { developing: 'confirmingDevelop' } },
+        playing: { action: { developing: 'confirmingDevelop' } },
       })
     ) {
       return { action: 'develop', subState: 'confirming' }
@@ -112,14 +112,14 @@ export default function Home() {
     // Sell
     if (
       state.matches({
-        playing: { performingAction: { selling: 'selectingCard' } },
+        playing: { action: { selling: 'selectingCard' } },
       })
     ) {
       return { action: 'sell', subState: 'selectingCard' }
     }
     if (
       state.matches({
-        playing: { performingAction: { selling: 'confirmingSell' } },
+        playing: { action: { selling: 'confirmingSell' } },
       })
     ) {
       return { action: 'sell', subState: 'confirming' }
@@ -128,14 +128,14 @@ export default function Home() {
     // Loan
     if (
       state.matches({
-        playing: { performingAction: { takingLoan: 'selectingCard' } },
+        playing: { action: { takingLoan: 'selectingCard' } },
       })
     ) {
       return { action: 'loan', subState: 'selectingCard' }
     }
     if (
       state.matches({
-        playing: { performingAction: { takingLoan: 'confirmingLoan' } },
+        playing: { action: { takingLoan: 'confirmingLoan' } },
       })
     ) {
       return { action: 'loan', subState: 'confirming' }
@@ -144,7 +144,7 @@ export default function Home() {
     // Scout
     if (
       state.matches({
-        playing: { performingAction: { scouting: 'selectingCards' } },
+        playing: { action: { scouting: 'selectingCards' } },
       })
     ) {
       return { action: 'scouting', subState: 'selectingCards' }
@@ -153,21 +153,21 @@ export default function Home() {
     // Network
     if (
       state.matches({
-        playing: { performingAction: { networking: 'selectingCard' } },
+        playing: { action: { networking: 'selectingCard' } },
       })
     ) {
       return { action: 'networking', subState: 'selectingCard' }
     }
     if (
       state.matches({
-        playing: { performingAction: { networking: 'selectingLink' } },
+        playing: { action: { networking: 'selectingLink' } },
       })
     ) {
       return { action: 'networking', subState: 'selectingLink' }
     }
     if (
       state.matches({
-        playing: { performingAction: { networking: 'confirmingLink' } },
+        playing: { action: { networking: 'confirmingLink' } },
       })
     ) {
       return { action: 'networking', subState: 'confirmingLink' }

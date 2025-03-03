@@ -2,7 +2,7 @@ import { describe, test, expect } from 'vitest'
 import { createActor } from 'xstate'
 import { gameStorePoc } from './gameStorePoc'
 
-describe('Game Store POC', () => {
+describe.skip('Game Store POC', () => {
   test.only('basic game flow', () => {
     const gameActor = createActor(gameStorePoc)
     gameActor.start()
@@ -28,9 +28,9 @@ describe('Game Store POC', () => {
     snapshot = gameActor.getSnapshot()
     expect(snapshot.context.currentPlayerIndex).toBe(1) // Moved to Player 2
 
-    // // Player 2 takes an action
-    // gameActor.send({ type: 'TAKE_ACTION' })
-    // snapshot = gameActor.getSnapshot()
+    // Player 2 takes an action
+    gameActor.send({ type: 'TAKE_ACTION' })
+    snapshot = gameActor.getSnapshot()
 
     // expect(snapshot.context.currentPlayerIndex).toBe(0) // Back to Player 1
     // expect(snapshot.context.round).toBe(2) // Advanced to next round

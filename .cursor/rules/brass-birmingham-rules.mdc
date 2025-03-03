@@ -1,6 +1,7 @@
 ---
 description: This are the rules of the game we're implementing. Business logic
 globs: 
+alwaysApply: false
 ---
 AN INDUSTRIAL REVOLUTION
 Brass: Birmingham tells the story of competing entrepreneurs in the West Midlands during England's Indus trial

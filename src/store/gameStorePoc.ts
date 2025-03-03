@@ -59,6 +59,9 @@ const playerMachine = setup({
     },
     acting: {
       entry: 'decrementActions',
+      action: ({ context }) => {
+        console.log('acting', context)
+      },
       always: {
         target: 'idle',
       },

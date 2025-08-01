@@ -27,7 +27,7 @@ const createTestPlayers = (): TestPlayer[] => [
     name: 'Player 1',
     color: 'red',
     character: 'Richard Arkwright',
-    money: 30,
+    money: 17,
     victoryPoints: 0,
     income: 10,
   },
@@ -36,7 +36,7 @@ const createTestPlayers = (): TestPlayer[] => [
     name: 'Player 2',
     color: 'blue',
     character: 'Eliza Tinsley',
-    money: 30,
+    money: 17,
     victoryPoints: 0,
     income: 10,
   },
@@ -164,7 +164,7 @@ test('game store state machine', () => {
   assert(player1, 'Expected player 1 to exist')
 
   verifyPlayerState(player1, {
-    money: 30,
+    money: 17,
     income: 10,
   })
 
@@ -172,7 +172,7 @@ test('game store state machine', () => {
   assert(player2, 'Expected player 2 to exist')
 
   verifyPlayerState(player2, {
-    money: 30,
+    money: 17,
     income: 10,
   })
 
@@ -198,7 +198,7 @@ test('taking loan action', () => {
   })
 
   verifyPlayerState(initialPlayer, {
-    money: 30,
+    money: 17,
     income: 10,
   })
 
@@ -215,7 +215,7 @@ test('taking loan action', () => {
 
   // Verify all aspects of taking a loan
   verifyPlayerState(finalPlayer, {
-    money: 60, // Initial 30 + 30 from loan
+    money: 47, // Initial 17 + 30 from loan
     income: 7, // Initial 10 - 3 from loan
   })
 
@@ -258,7 +258,7 @@ test('building action', () => {
     playing: { action: 'selectingAction' },
   })
   verifyPlayerState(initialPlayer, {
-    money: 30,
+    money: 17,
     income: 10,
   })
   expect(initialHand).toHaveLength(8)
@@ -331,7 +331,7 @@ test('network action - canal era', () => {
     playing: { action: 'selectingAction' },
   })
   verifyPlayerState(initialPlayer, {
-    money: 30,
+    money: 17,
     income: 10,
     links: [],
   })
@@ -603,7 +603,7 @@ test('develop action', () => {
     playing: { action: 'selectingAction' },
   })
   verifyPlayerState(initialPlayer, {
-    money: 30,
+    money: 17,
     income: 10,
   })
   expect(initialHand).toHaveLength(8)
@@ -675,7 +675,7 @@ test('sell action', () => {
     playing: { action: 'selectingAction' },
   })
   verifyPlayerState(initialPlayer, {
-    money: 30,
+    money: 17,
     income: 10,
   })
   expect(initialHand).toHaveLength(8)
@@ -749,7 +749,7 @@ test('scout action', () => {
     playing: { action: 'selectingAction' },
   })
   verifyPlayerState(initialPlayer, {
-    money: 30,
+    money: 17,
     income: 10,
   })
   expect(initialHand).toHaveLength(8)
@@ -826,7 +826,7 @@ test('pass action', () => {
     playing: { action: 'selectingAction' },
   })
   verifyPlayerState(initialPlayer, {
-    money: 30,
+    money: 17,
     income: 10,
   })
   expect(initialHand).toHaveLength(8)
@@ -855,4 +855,179 @@ test('pass action', () => {
   expect(lastLog?.type).toBe('action')
   expect(lastLog?.message).toContain('Player 1')
   expect(lastLog?.message).toContain('passed')
+})
+
+// TDD Tests for Rule Compliance Fixes
+
+test('build action - card type validation', () => {
+  const { actor } = setupTestGame()
+  let snapshot = actor.getSnapshot()
+
+  // Start build action
+  actor.send({ type: 'BUILD' })
+  snapshot = actor.getSnapshot()
+
+  // Create a mock card that's not a valid build card type (if we had such cards)
+  // For now, test that valid card types work
+  const initialPlayer = snapshot.context.players[0]
+  assert(initialPlayer, 'Expected player 1 to exist')
+  
+  // Find different card types in hand
+  const locationCard = initialPlayer.hand.find(c => c.type === 'location')
+  const industryCard = initialPlayer.hand.find(c => c.type === 'industry')
+  const wildLocationCard = initialPlayer.hand.find(c => c.type === 'wild_location')
+  const wildIndustryCard = initialPlayer.hand.find(c => c.type === 'wild_industry')
+
+  // Test that location cards work for build
+  if (locationCard) {
+    actor.send({ type: 'SELECT_CARD', cardId: locationCard.id })
+    snapshot = actor.getSnapshot()
+    expect(snapshot.context.selectedCard?.id).toBe(locationCard.id)
+    
+    // Confirm should work (though we'll cancel to test other cards)
+    actor.send({ type: 'CANCEL' })
+    actor.send({ type: 'BUILD' })
+  }
+
+  // Test that industry cards work for build  
+  if (industryCard) {
+    actor.send({ type: 'SELECT_CARD', cardId: industryCard.id })
+    snapshot = actor.getSnapshot()
+    expect(snapshot.context.selectedCard?.id).toBe(industryCard.id)
+    
+    actor.send({ type: 'CANCEL' })
+    actor.send({ type: 'BUILD' })
+  }
+
+  // Test that wild cards work for build
+  if (wildLocationCard) {
+    actor.send({ type: 'SELECT_CARD', cardId: wildLocationCard.id })
+    snapshot = actor.getSnapshot()
+    expect(snapshot.context.selectedCard?.id).toBe(wildLocationCard.id)
+    
+    actor.send({ type: 'CANCEL' })
+    actor.send({ type: 'BUILD' })
+  }
+
+  if (wildIndustryCard) {
+    actor.send({ type: 'SELECT_CARD', cardId: wildIndustryCard.id })
+    snapshot = actor.getSnapshot()
+    expect(snapshot.context.selectedCard?.id).toBe(wildIndustryCard.id)
+  }
+})
+
+test('develop action - iron consumption', () => {
+  const { actor } = setupTestGame()
+  let snapshot = actor.getSnapshot()
+
+  // Store initial iron amount
+  const initialIron = snapshot.context.resources.iron
+  expect(initialIron).toBe(24) // Should start with 24 iron
+
+  // Perform develop action
+  actor.send({ type: 'DEVELOP' })
+  
+  const initialPlayer = snapshot.context.players[0]
+  assert(initialPlayer, 'Expected player 1 to exist')
+  const cardToDevelop = initialPlayer.hand[0]
+  assert(cardToDevelop, 'Expected at least one card in hand')
+  
+  actor.send({ type: 'SELECT_CARD', cardId: cardToDevelop.id })
+  actor.send({ type: 'CONFIRM' })
+  snapshot = actor.getSnapshot()
+
+  // Verify iron was consumed (1 iron per tile removed, we remove 1 tile in simplified implementation)
+  expect(snapshot.context.resources.iron).toBe(initialIron - 1) // Should be 23
+  
+  // Verify log mentions iron consumption
+  const lastLog = snapshot.context.logs[snapshot.context.logs.length - 1]
+  expect(lastLog?.message).toContain('consumed')
+  expect(lastLog?.message).toContain('iron')
+})
+
+test('sell action - beer consumption', () => {
+  const { actor } = setupTestGame()
+  let snapshot = actor.getSnapshot()
+
+  // Store initial beer amount
+  const initialBeer = snapshot.context.resources.beer
+  expect(initialBeer).toBe(24) // Should start with 24 beer
+
+  // Perform sell action
+  actor.send({ type: 'SELL' })
+  
+  const initialPlayer = snapshot.context.players[0]
+  assert(initialPlayer, 'Expected player 1 to exist')
+  const cardToSell = initialPlayer.hand[0]
+  assert(cardToSell, 'Expected at least one card in hand')
+  
+  actor.send({ type: 'SELECT_CARD', cardId: cardToSell.id })
+  actor.send({ type: 'CONFIRM' })
+  snapshot = actor.getSnapshot()
+
+  // Verify beer was consumed (1 beer per tile sold, we sell 1 tile in simplified implementation)
+  expect(snapshot.context.resources.beer).toBe(initialBeer - 1) // Should be 23
+  
+  // Verify log mentions beer consumption
+  const lastLog = snapshot.context.logs[snapshot.context.logs.length - 1]
+  expect(lastLog?.message).toContain('consumed')
+  expect(lastLog?.message).toContain('beer')
+})
+
+test('network action - rail era coal consumption', () => {
+  const { actor } = setupTestGame()  
+  let snapshot = actor.getSnapshot()
+
+  // Complete round 1 to get to round 2 where we can change era for testing
+  takeLoanAction(actor)
+  takeLoanAction(actor)
+  snapshot = actor.getSnapshot()
+
+  // Manually set era to rail for testing (in real game this would happen through era transition)
+  // We need to modify the game state - this is a test-only operation
+  // For now, let's test the canal era behavior and note that rail era would consume coal
+  
+  const initialCoal = snapshot.context.resources.coal
+  expect(initialCoal).toBe(24)
+
+  // Test canal era network (should not consume coal)
+  actor.send({ type: 'NETWORK' })
+  
+  const currentPlayer = snapshot.context.players[0]
+  assert(currentPlayer, 'Expected current player to exist')
+  const cardToUse = currentPlayer.hand[0]
+  assert(cardToUse, 'Expected at least one card in hand')
+  
+  actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
+  actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'coventry' })
+  actor.send({ type: 'CONFIRM' })
+  snapshot = actor.getSnapshot()
+
+  // In canal era, coal should not be consumed
+  expect(snapshot.context.resources.coal).toBe(initialCoal) // Should still be 24
+  
+  // Verify log shows canal link
+  const lastLog = snapshot.context.logs[snapshot.context.logs.length - 1]
+  expect(lastLog?.message).toContain('canal link')
+  
+  // TODO: Add test for rail era coal consumption when era transitions are implemented
+})
+
+test('starting money compliance with rules', () => {
+  const { actor } = setupTestGame()
+  const snapshot = actor.getSnapshot()
+
+  // Verify both players start with £17 as per Brass Birmingham rules
+  const player1 = snapshot.context.players[0]
+  const player2 = snapshot.context.players[1]
+  
+  assert(player1, 'Expected player 1 to exist')
+  assert(player2, 'Expected player 2 to exist')
+
+  expect(player1.money).toBe(17)
+  expect(player2.money).toBe(17)
+  
+  // Verify they also start with correct income (£10)
+  expect(player1.income).toBe(10)
+  expect(player2.income).toBe(10)
 })

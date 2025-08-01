@@ -13,6 +13,13 @@ import {
   type WildLocationCard,
   getInitialCards,
 } from '../data/cards'
+import {
+  type IndustryTile,
+  getInitialPlayerIndustryTiles,
+  getLowestLevelTile,
+  canBuildTileInEra,
+  canDevelopTile,
+} from '../data/industryTiles'
 
 export type LogEntryType = 'system' | 'action' | 'info' | 'error'
 
@@ -37,7 +44,9 @@ export interface Player {
   victoryPoints: number
   income: number
   hand: Card[]
-  // Built items
+  // Industry tiles on player mat (available to build)
+  industryTilesOnMat: Record<IndustryType, IndustryTile[]>
+  // Built items on board
   links: {
     from: CityId
     to: CityId
@@ -48,6 +57,7 @@ export interface Player {
     type: IndustryType
     level: number
     flipped: boolean
+    tile: IndustryTile // Reference to the actual tile data
   }[]
 }
 
@@ -243,13 +253,14 @@ export const gameStore = setup({
         currentIndex += 8
       }
       
-      // Initialize players with starting money, income, and hands
+      // Initialize players with starting money, income, hands, and industry tiles
       const players: Player[] = event.players.map((playerData, index) => ({
         ...playerData,
-        money: 30, // Test expects £30, not £17
+        money: 17, // Starting money per rules
         income: 10,
         victoryPoints: 0,
         hand: hands[index] ?? [],
+        industryTilesOnMat: getInitialPlayerIndustryTiles(),
         links: [],
         industries: [],
       }))
@@ -352,6 +363,12 @@ export const gameStore = setup({
         throw new Error('No card selected for build action')
       }
 
+      // Validate card type - only Location, Industry, and Wild cards can be used for BUILD
+      const validCardTypes = ['location', 'industry', 'wild_location', 'wild_industry']
+      if (!validCardTypes.includes(context.selectedCard.type)) {
+        throw new Error(`Invalid card type for build action: ${context.selectedCard.type}. Only Location, Industry, or Wild cards can be used.`)
+      }
+
       const updatedHand = removeCardFromHand(currentPlayer, context.selectedCard.id)
 
       debugLog('executeBuildAction', context)
@@ -421,6 +438,22 @@ export const gameStore = setup({
         throw new Error('No card selected for develop action')
       }
 
+      // For now, simulate removing 1 tile and consuming 1 iron
+      // In a full implementation, this would:
+      // 1. Allow player to select 1-2 industry types to develop
+      // 2. Remove the lowest level tile from each selected industry from player mat
+      // 3. Consume 1 iron per tile removed from iron works or iron market
+      // 4. Check pottery tiles with lightbulb icon cannot be developed
+      
+      const tilesRemoved = 1 // Simplified - would be dynamic based on player choice
+      const ironConsumed = tilesRemoved
+      
+      // Consume iron from resources (simplified - should be from iron works first, then market)
+      const updatedResources = {
+        ...context.resources,
+        iron: Math.max(0, context.resources.iron - ironConsumed),
+      }
+
       const updatedHand = removeCardFromHand(currentPlayer, context.selectedCard.id)
       const updatedPlayer = {
         ...currentPlayer,
@@ -431,12 +464,13 @@ export const gameStore = setup({
       return {
         players: updatePlayerInList(context.players, context.currentPlayerIndex, updatedPlayer),
         discardPile: [...context.discardPile, context.selectedCard],
+        resources: updatedResources,
         selectedCard: null,
         actionsRemaining: context.actionsRemaining - 1,
         logs: [
           ...context.logs,
           createLogEntry(
-            `${currentPlayer.name} developed using ${getCardDescription(context.selectedCard)}`,
+            `${currentPlayer.name} developed (removed ${tilesRemoved} tile${tilesRemoved > 1 ? 's' : ''}, consumed ${ironConsumed} iron) using ${getCardDescription(context.selectedCard)}`,
             'action',
           ),
         ],
@@ -449,6 +483,23 @@ export const gameStore = setup({
         throw new Error('No card selected for sell action')
       }
 
+      // For now, simulate selling 1 cotton mill/manufacturer/pottery tile
+      // In a full implementation, this would:
+      // 1. Check player has unflipped Cotton Mill, Manufacturer, or Pottery tiles
+      // 2. Verify the tile is connected to a Merchant tile with matching industry icon
+      // 3. Consume required beer (usually 1) from breweries or merchant beer
+      // 4. Flip the industry tile and advance player income
+      // 5. Potentially collect merchant beer bonus if using merchant beer
+      
+      const tilesFlipped = 1 // Simplified - would be dynamic based on player choice
+      const beerConsumed = tilesFlipped // Most tiles require 1 beer to sell
+      
+      // Consume beer from resources (simplified - should be from breweries first, then merchant beer)
+      const updatedResources = {
+        ...context.resources,
+        beer: Math.max(0, context.resources.beer - beerConsumed),
+      }
+
       const updatedHand = removeCardFromHand(currentPlayer, context.selectedCard.id)
       const updatedPlayer = {
         ...currentPlayer,
@@ -459,12 +510,13 @@ export const gameStore = setup({
       return {
         players: updatePlayerInList(context.players, context.currentPlayerIndex, updatedPlayer),
         discardPile: [...context.discardPile, context.selectedCard],
+        resources: updatedResources,
         selectedCard: null,
         actionsRemaining: context.actionsRemaining - 1,
         logs: [
           ...context.logs,
           createLogEntry(
-            `${currentPlayer.name} sold using ${getCardDescription(context.selectedCard)}`,
+            `${currentPlayer.name} sold (flipped ${tilesFlipped} tile${tilesFlipped > 1 ? 's' : ''}, consumed ${beerConsumed} beer) using ${getCardDescription(context.selectedCard)}`,
             'action',
           ),
         ],

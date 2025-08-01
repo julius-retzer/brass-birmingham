@@ -5,9 +5,13 @@ import {
   type SnapshotFrom,
   createActor,
 } from 'xstate'
-import { type Card, type IndustryCard, type IndustryType } from '~/data/cards'
 import { type CityId } from '~/data/board'
-import { getInitialPlayerIndustryTiles, getLowestLevelTile, type IndustryTile } from '../data/industryTiles'
+import { type Card, type IndustryCard, type IndustryType, type LocationCard } from '~/data/cards'
+import {
+  type IndustryTile,
+  getInitialPlayerIndustryTiles,
+  getLowestLevelTile,
+} from '../data/industryTiles'
 import { type GameState, gameStore } from './gameStore'
 
 const DEBUG = true
@@ -49,6 +53,20 @@ const createTestPlayers = (): TestPlayer[] => [
 
 type GameActor = Actor<typeof gameStore>
 type GameSnapshot = SnapshotFrom<typeof gameStore>
+
+// Helper function to calculate market income for sold resources
+function calculateMarketIncome(cubesSold: number, resourceType: 'coal' | 'iron'): number {
+  const prices = resourceType === 'coal' 
+    ? [1, 2, 3, 4, 5, 6, 7, 8] // Coal prices from cheapest to most expensive
+    : [1, 1, 2, 3, 4, 5, 6, 7]  // Iron prices from cheapest to most expensive
+  
+  let income = 0
+  // Sell to most expensive spaces first (iterate from right to left)
+  for (let i = 0; i < cubesSold && i < prices.length; i++) {
+    income += prices[prices.length - 1 - i]!
+  }
+  return income
+}
 
 const setupTestGame = () => {
   const actor = createActor(gameStore, { inspect: logInspectEvent })
@@ -280,26 +298,27 @@ test('building action', () => {
 
   // Find a valid card-location combination for building
   // Look for either a Birmingham location card or a wild location card
-  const birminghamCard = initialHand.find(c => 
-    c.type === 'location' && c.location === 'birmingham'
+  const birminghamCard = initialHand.find(
+    (c) => c.type === 'location' && c.location === 'birmingham',
   )
-  const wildLocationCard = initialHand.find(c => c.type === 'wild_location')
-  const industryCard = initialHand.find(c => c.type === 'industry')
-  const wildIndustryCard = initialHand.find(c => c.type === 'wild_industry')
-  const cardToBuild = birminghamCard || wildLocationCard || industryCard || wildIndustryCard
-  
+  const wildLocationCard = initialHand.find((c) => c.type === 'wild_location')
+  const industryCard = initialHand.find((c) => c.type === 'industry')
+  const wildIndustryCard = initialHand.find((c) => c.type === 'wild_industry')
+  const cardToBuild =
+    birminghamCard || wildLocationCard || industryCard || wildIndustryCard
+
   assert(cardToBuild, 'Expected at least one card in hand')
-  
+
   // Determine the location to use based on the card type
   let locationToSelect: CityId = 'birmingham'
   if (cardToBuild.type === 'location') {
     locationToSelect = cardToBuild.location
   }
-  
+
   actor.send({ type: 'SELECT_CARD', cardId: cardToBuild.id })
   snapshot = actor.getSnapshot()
 
-  // Location cards go to selectingIndustryType, industry cards go to selectingLocation  
+  // Location cards go to selectingIndustryType, industry cards go to selectingLocation
   if (cardToBuild.type === 'location' || cardToBuild.type === 'wild_location') {
     expect(snapshot.value).toMatchObject({
       playing: {
@@ -313,25 +332,28 @@ test('building action', () => {
       },
     })
   }
-  
+
   // Handle different card types with new Brass Birmingham rules flow
   if (cardToBuild.type === 'location' || cardToBuild.type === 'wild_location') {
     // Location cards: select industry type, system auto-selects tile and location
     actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'coal' })
     snapshot = actor.getSnapshot()
-    
+
     // Should go directly to confirmingBuild with auto-selected tile and location
     expect(snapshot.value).toMatchObject({
-      playing: { action: { building: 'confirmingBuild' } }
+      playing: { action: { building: 'confirmingBuild' } },
     })
-  } else if (cardToBuild.type === 'industry' || cardToBuild.type === 'wild_industry') {
+  } else if (
+    cardToBuild.type === 'industry' ||
+    cardToBuild.type === 'wild_industry'
+  ) {
     // Industry cards: select location, system auto-selects tile
     actor.send({ type: 'SELECT_LOCATION', cityId: locationToSelect })
     snapshot = actor.getSnapshot()
-    
+
     // Should go to confirmingBuild with auto-selected tile
     expect(snapshot.value).toMatchObject({
-      playing: { action: { building: 'confirmingBuild' } }
+      playing: { action: { building: 'confirmingBuild' } },
     })
   } else {
     // Should not happen with proper card selection - TypeScript exhaustiveness check
@@ -1417,30 +1439,35 @@ test('build action - resource consumption for industry tiles', () => {
 
   // Use the iron level 2 tile which requires 1 coal (guaranteed to exist)
   const ironTiles = initialPlayer.industryTilesOnMat.iron || []
-  const level2IronTile = ironTiles.find(tile => tile.level === 2)
+  const level2IronTile = ironTiles.find((tile) => tile.level === 2)
   assert(level2IronTile, 'Expected level 2 iron tile')
-  
+
   // Verify this tile requires coal
   expect(level2IronTile.coalRequired).toBe(1)
   expect(level2IronTile.ironRequired).toBe(0) // Level 2 iron tile doesn't require iron to build
 
-
   // Find a card that can build iron industry, fallback to any industry card with a tile that requires coal
-  const wildIndustryCard = initialPlayer.hand.find(c => c.type === 'wild_industry')
-  const ironIndustryCard = initialPlayer.hand.find(c => 
-    c.type === 'industry' && (c as IndustryCard).industries.includes('iron')
+  const wildIndustryCard = initialPlayer.hand.find(
+    (c) => c.type === 'wild_industry',
   )
-  
+  const ironIndustryCard = initialPlayer.hand.find(
+    (c) =>
+      c.type === 'industry' && (c as IndustryCard).industries.includes('iron'),
+  )
+
   let cardToUse = wildIndustryCard || ironIndustryCard
   let tileToUse = level2IronTile
-  
+
   // Fallback: find any industry card that has a tile requiring coal
   if (!cardToUse) {
-    const industryCards = initialPlayer.hand.filter(c => c.type === 'industry') as IndustryCard[]
+    const industryCards = initialPlayer.hand.filter(
+      (c) => c.type === 'industry',
+    ) as IndustryCard[]
     for (const card of industryCards) {
       for (const industryType of card.industries) {
-        const tiles = initialPlayer.industryTilesOnMat[industryType as IndustryType]
-        const coalRequiringTile = tiles?.find(t => t.coalRequired > 0)
+        const tiles =
+          initialPlayer.industryTilesOnMat[industryType as IndustryType]
+        const coalRequiringTile = tiles?.find((t) => t.coalRequired > 0)
         if (coalRequiringTile) {
           cardToUse = card
           tileToUse = coalRequiringTile
@@ -1450,25 +1477,30 @@ test('build action - resource consumption for industry tiles', () => {
       if (cardToUse) break
     }
   }
-  
-  assert(cardToUse, 'Expected to find a card that can build an industry that requires coal')
-  assert(tileToUse.coalRequired > 0, 'Expected tile to require coal for testing resource consumption')
-  
+
+  assert(
+    cardToUse,
+    'Expected to find a card that can build an industry that requires coal',
+  )
+  assert(
+    tileToUse.coalRequired > 0,
+    'Expected tile to require coal for testing resource consumption',
+  )
+
   actor.send({ type: 'BUILD' })
   actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
   actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
-  
+
   // Check the tile that was auto-selected before confirming the build
-  let snapshotBeforeConfirm = actor.getSnapshot()
+  const snapshotBeforeConfirm = actor.getSnapshot()
   const actualTileUsed = snapshotBeforeConfirm.context.selectedIndustryTile
   assert(actualTileUsed, 'Expected system to auto-select a tile')
-  
-  
+
   actor.send({ type: 'CONFIRM' })
-  
+
   snapshot = actor.getSnapshot()
   const finalPlayer = snapshot.context.players[0]!
-  
+
   // Update required resources based on the actually selected tile
   const actualCoalRequired = actualTileUsed.coalRequired
   const actualIronRequired = actualTileUsed.ironRequired
@@ -1476,22 +1508,25 @@ test('build action - resource consumption for industry tiles', () => {
   // Verify resources were consumed from markets
   if (actualCoalRequired > 0) {
     // Coal should be consumed from coal market (cheapest first)
-    const coalConsumed = initialCoalMarket.filter(slot => slot !== null).length - 
-                        snapshot.context.coalMarket.filter(slot => slot !== null).length
+    const coalConsumed =
+      initialCoalMarket.filter((slot) => slot !== null).length -
+      snapshot.context.coalMarket.filter((slot) => slot !== null).length
     expect(coalConsumed).toBe(actualCoalRequired)
   }
 
   if (actualIronRequired > 0) {
-    // Iron should be consumed from iron market (cheapest first)  
-    const ironConsumed = initialIronMarket.filter(slot => slot !== null).length -
-                         snapshot.context.ironMarket.filter(slot => slot !== null).length
+    // Iron should be consumed from iron market (cheapest first)
+    const ironConsumed =
+      initialIronMarket.filter((slot) => slot !== null).length -
+      snapshot.context.ironMarket.filter((slot) => slot !== null).length
     expect(ironConsumed).toBe(actualIronRequired)
   }
 
   // Verify player paid for resources + tile cost
-  const expectedCost = actualTileUsed.cost + 
+  const expectedCost =
+    actualTileUsed.cost +
     (actualCoalRequired > 0 ? 1 : 0) + // Cheapest coal is £1
-    (actualIronRequired > 0 ? 1 : 0)   // Cheapest iron is £1
+    (actualIronRequired > 0 ? 1 : 0) // Cheapest iron is £1
   expect(finalPlayer.money).toBe(initialMoney - expectedCost)
 
   // Verify industry was built
@@ -1499,7 +1534,7 @@ test('build action - resource consumption for industry tiles', () => {
   expect(finalPlayer.industries[0]).toMatchObject({
     location: 'birmingham',
     type: actualTileUsed.type,
-    level: actualTileUsed.level
+    level: actualTileUsed.level,
   })
 })
 
@@ -1509,15 +1544,17 @@ test('build action - era validation for industry tiles', () => {
 
   // Store initial state
   const initialPlayer = snapshot.context.players[0]!
-  
-  // Find an industry card 
+
+  // Find an industry card
   const industryCard = initialPlayer.hand.find((c) => c.type === 'industry')
   assert(industryCard, 'Expected at least one industry card in hand')
 
   // Find a level 1 tile (these are typically removed in Rail Era)
-  const level1Tiles = initialPlayer.industryTilesOnMat[industryCard.industries[0] as IndustryType]
-    ?.filter(tile => tile.level === 1 && !tile.canBuildInRailEra) || []
-  
+  const level1Tiles =
+    initialPlayer.industryTilesOnMat[
+      industryCard.industries[0] as IndustryType
+    ]?.filter((tile) => tile.level === 1 && !tile.canBuildInRailEra) || []
+
   if (level1Tiles.length === 0) {
     // Skip test if no level 1 canal-only tiles available
     expect(true).toBe(true)
@@ -1528,23 +1565,23 @@ test('build action - era validation for industry tiles', () => {
 
   // Test building in Canal Era (should work)
   expect(snapshot.context.era).toBe('canal')
-  
+
   // Start build action following Brass Birmingham rules (industry card → location selection → auto-select lowest tile)
   actor.send({ type: 'BUILD' })
   actor.send({ type: 'SELECT_CARD', cardId: industryCard.id })
-  
+
   // Industry card should go to selectingLocation
   snapshot = actor.getSnapshot()
   expect(snapshot.value).toMatchObject({
-    playing: { action: { building: 'selectingLocation' } }
+    playing: { action: { building: 'selectingLocation' } },
   })
-  
+
   actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
-  
+
   // This should work in Canal Era - system auto-selects lowest tile
   actor.send({ type: 'CONFIRM' })
   snapshot = actor.getSnapshot()
-  
+
   const finalPlayer = snapshot.context.players[0]!
   expect(finalPlayer.industries).toHaveLength(1)
   expect(finalPlayer.industries[0]?.level).toBe(1) // Should auto-select level 1 (lowest)
@@ -1558,81 +1595,82 @@ test('build action - correct Brass Birmingham rules flow', () => {
   let snapshot = actor.getSnapshot()
 
   const initialPlayer = snapshot.context.players[0]!
-  
+
   // Test 1: Location cards should allow choosing industry type, auto-select lowest tile
-  const birminghamCard = initialPlayer.hand.find(c => 
-    c.type === 'location' && c.location === 'birmingham'
+  const birminghamCard = initialPlayer.hand.find(
+    (c) => c.type === 'location' && c.location === 'birmingham',
   )
-  
+
   if (birminghamCard) {
     // Should work: Birmingham card building any industry at Birmingham
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: birminghamCard.id })
     snapshot = actor.getSnapshot()
-    
+
     // Should be in selectingIndustryType state for location cards
     expect(snapshot.value).toMatchObject({
-      playing: { action: { building: 'selectingIndustryType' } }
+      playing: { action: { building: 'selectingIndustryType' } },
     })
-    
+
     // Select coal industry type - system should auto-select lowest level (level 1)
     actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'coal' })
     snapshot = actor.getSnapshot()
-    
+
     // Should proceed to confirm (location already determined by card)
     expect(snapshot.value).toMatchObject({
-      playing: { action: { building: 'confirmingBuild' } }
+      playing: { action: { building: 'confirmingBuild' } },
     })
-    
+
     // Context should have auto-selected coal level 1 tile and Birmingham location
     expect(snapshot.context.selectedIndustryTile?.type).toBe('coal')
     expect(snapshot.context.selectedIndustryTile?.level).toBe(1)
     expect(snapshot.context.selectedLocation).toBe('birmingham')
-    
+
     actor.send({ type: 'CONFIRM' })
     snapshot = actor.getSnapshot()
-    
+
     // Verify build succeeded
     const player = snapshot.context.players[0]!
     expect(player.money).toBe(12) // 17 - 5 = 12 (coal level 1 costs £5)
-    
+
     // Reset for next test
     actor.send({ type: 'PASS' })
     snapshot = actor.getSnapshot()
   }
 
   // Test 2: Industry cards should go to location selection, auto-select lowest tile
-  const ironCard = initialPlayer.hand.find(c => 
-    c.type === 'industry' && (c as IndustryCard).industries.includes('iron')
+  const ironCard = initialPlayer.hand.find(
+    (c) =>
+      c.type === 'industry' && (c as IndustryCard).industries.includes('iron'),
   )
-  
+
   if (ironCard) {
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: ironCard.id })
     snapshot = actor.getSnapshot()
-    
+
     // Should be in selectingLocation state for industry cards
     expect(snapshot.value).toMatchObject({
-      playing: { action: { building: 'selectingLocation' } }
+      playing: { action: { building: 'selectingLocation' } },
     })
-    
+
     // Select location - system should auto-select iron level 1 tile
     actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
     snapshot = actor.getSnapshot()
-    
+
     // Should proceed to confirm (industry type determined by card)
     expect(snapshot.value).toMatchObject({
-      playing: { action: { building: 'confirmingBuild' } }
+      playing: { action: { building: 'confirmingBuild' } },
     })
-    
+
     // Context should have auto-selected iron level 1 tile
     expect(snapshot.context.selectedIndustryTile?.type).toBe('iron')
     expect(snapshot.context.selectedIndustryTile?.level).toBe(1)
     expect(snapshot.context.selectedLocation).toBe('birmingham')
-    
+
     actor.send({ type: 'CONFIRM' })
     snapshot = actor.getSnapshot()
-    
+
     // Verify build succeeded - iron level 1 costs £5 + 1 coal (£8) = £13 total
     const player = snapshot.context.players[0]!
     expect(player.money).toBeLessThan(12) // Less than previous test
@@ -1642,41 +1680,41 @@ test('build action - correct Brass Birmingham rules flow', () => {
   // First, pass to next player to start fresh
   actor.send({ type: 'PASS' })
   snapshot = actor.getSnapshot()
-  
+
   // Now get player 2's hand for the test
   const player2 = snapshot.context.players[1]!
-  const coventryCard = player2.hand.find(c => 
-    c.type === 'location' && c.location === 'coventry'  
+  const coventryCard = player2.hand.find(
+    (c) => c.type === 'location' && c.location === 'coventry',
   )
-  
+
   if (coventryCard) {
     // Location cards use auto-location selection - manual location selection should be ignored
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: coventryCard.id })
-    
+
     let snapshot = actor.getSnapshot()
-    
+
     // Should be in selectingIndustryType state (location cards don't use manual location selection)
     expect(snapshot.value).toMatchObject({
-      playing: { action: { building: 'selectingIndustryType' } }
+      playing: { action: { building: 'selectingIndustryType' } },
     })
-    
+
     // SELECT_LOCATION should have no effect in this state (location is auto-determined by card)
     actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
     snapshot = actor.getSnapshot()
-    
+
     // Should still be in selectingIndustryType (location selection ignored)
     expect(snapshot.value).toMatchObject({
-      playing: { action: { building: 'selectingIndustryType' } }
+      playing: { action: { building: 'selectingIndustryType' } },
     })
-    
+
     // Complete the build - should use Coventry (from card), not Birmingham
     actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'coal' })
     actor.send({ type: 'CONFIRM' })
-    
+
     snapshot = actor.getSnapshot()
     const player = snapshot.context.players[1]! // Now we're testing player 2
-    
+
     // Should have built at Coventry (card's location), not Birmingham
     expect(player.industries).toHaveLength(1)
     expect(player.industries[0]?.location).toBe('coventry')
@@ -1685,48 +1723,48 @@ test('build action - correct Brass Birmingham rules flow', () => {
 
 test('build action - industry card matching validation', () => {
   const { actor } = setupTestGame()
-  let snapshot = actor.getSnapshot()
+  const snapshot = actor.getSnapshot()
 
   const initialPlayer = snapshot.context.players[0]!
-  
+
   // Find an iron industry card
-  const ironCard = initialPlayer.hand.find(c => 
-    c.type === 'industry' && c.industries.includes('iron')
+  const ironCard = initialPlayer.hand.find(
+    (c) => c.type === 'industry' && c.industries.includes('iron'),
   )
-  
-  // Find a coal tile  
+
+  // Find a coal tile
   const coalTiles = initialPlayer.industryTilesOnMat.coal || []
   const coalTile = coalTiles[0]
-  
+
   if (ironCard) {
-    // With new Brass Birmingham rules, industry cards go to selectingLocation  
+    // With new Brass Birmingham rules, industry cards go to selectingLocation
     // and auto-select the appropriate tile (no manual tile selection)
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: ironCard.id })
-    
-    let snapshot = actor.getSnapshot()
+
+    const snapshot = actor.getSnapshot()
     expect(snapshot.value).toMatchObject({
-      playing: { action: { building: 'selectingLocation' } }
+      playing: { action: { building: 'selectingLocation' } },
     })
-    
+
     // Industry card should not have pre-selected a tile yet (tile selection happens after location selection)
     expect(snapshot.context.selectedIndustryTile).toBeNull()
-    
+
     // Cancel to clean up for next test
     actor.send({ type: 'CANCEL' })
   }
-  
+
   // Test correct matching
   const ironTiles = initialPlayer.industryTilesOnMat.iron || []
   const ironTile = ironTiles[0]
-  
+
   if (ironCard) {
     // Should work: Iron card with new auto-selection flow
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: ironCard.id })
     actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
     actor.send({ type: 'CONFIRM' })
-    
+
     const snapshot = actor.getSnapshot()
     const player = snapshot.context.players[0]!
     expect(player.industries).toHaveLength(1)
@@ -1739,53 +1777,518 @@ test('build action - wild card flexibility', () => {
   let snapshot = actor.getSnapshot()
 
   const initialPlayer = snapshot.context.players[0]!
-  
+
   // Wild location card should work at any location
-  const wildLocationCard = initialPlayer.hand.find(c => c.type === 'wild_location')
-  
+  const wildLocationCard = initialPlayer.hand.find(
+    (c) => c.type === 'wild_location',
+  )
+
   if (wildLocationCard) {
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: wildLocationCard.id })
     actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
     actor.send({ type: 'CONFIRM' })
-    
+
     snapshot = actor.getSnapshot()
     const player = snapshot.context.players[0]!
     expect(player.money).toBeLessThan(17) // Build succeeded
   }
-  
+
   // Wild industry card should work like any industry card (following Brass Birmingham rules)
-  const wildIndustryCard = initialPlayer.hand.find(c => c.type === 'wild_industry')
-  
+  const wildIndustryCard = initialPlayer.hand.find(
+    (c) => c.type === 'wild_industry',
+  )
+
   if (wildIndustryCard) {
     actor.send({ type: 'PASS' }) // Next player
     snapshot = actor.getSnapshot()
-    
+
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: wildIndustryCard.id })
     snapshot = actor.getSnapshot()
-    
+
     // Wild industry card should go to selectingIndustryType (acts as any industry card)
     expect(snapshot.value).toMatchObject({
-      playing: { action: { building: 'selectingIndustryType' } }
+      playing: { action: { building: 'selectingIndustryType' } },
     })
-    
+
     // Select industry type - system auto-selects lowest tile
     actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'coal' })
     snapshot = actor.getSnapshot()
-    
+
     // Should proceed to selectingLocation since wild industry can build anywhere
     expect(snapshot.value).toMatchObject({
-      playing: { action: { building: 'selectingLocation' } }
+      playing: { action: { building: 'selectingLocation' } },
     })
-    
+
     actor.send({ type: 'SELECT_LOCATION', cityId: 'coventry' })
     actor.send({ type: 'CONFIRM' })
-    
+
     snapshot = actor.getSnapshot()
     const finalPlayer = snapshot.context.players[1]!
     expect(finalPlayer.industries).toHaveLength(1)
     expect(finalPlayer.industries[0]?.type).toBe('coal')
     expect(finalPlayer.industries[0]?.level).toBe(1) // Should auto-select lowest level
+  }
+})
+
+// TDD Tests for Enhanced Resource System
+
+test('coal consumption priority - connected coal mines first, then market', () => {
+  const { actor } = setupTestGame()
+  let snapshot = actor.getSnapshot()
+
+  // First, build a coal mine to create a source of coal
+  const player1 = snapshot.context.players[0]!
+  const coalCard = player1.hand.find(
+    (c) =>
+      c.type === 'industry' && (c as IndustryCard).industries.includes('coal'),
+  )
+  const wildIndustryCard = player1.hand.find((c) => c.type === 'wild_industry')
+  const cardToUse = coalCard || wildIndustryCard
+
+  if (cardToUse) {
+    // Build coal mine at Birmingham
+    actor.send({ type: 'BUILD' })
+    if (cardToUse.type === 'wild_industry') {
+      actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
+      actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'coal' })
+      actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    } else {
+      actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
+      actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    }
+    actor.send({ type: 'CONFIRM' })
+
+    snapshot = actor.getSnapshot()
+    const playerAfterCoalBuild = snapshot.context.players[0]!
+
+    // Verify coal mine was built with coal cubes on it
+    expect(playerAfterCoalBuild.industries).toHaveLength(1)
+    const coalMine = playerAfterCoalBuild.industries[0]!
+    expect(coalMine.type).toBe('coal')
+    expect(coalMine.tile.coalProduced).toBeGreaterThan(0) // Should have coal on it
+
+    // Move to next player and back to test player 1 again
+    actor.send({ type: 'PASS' })
+    snapshot = actor.getSnapshot()
+
+    // Now build an iron works that requires coal - should consume from connected coal mine first
+    const ironCard = player1.hand.find(
+      (c) =>
+        c.type === 'industry' && (c as IndustryCard).industries.includes('iron'),
+    )
+    const wildCard2 = snapshot.context.players[0]!.hand.find(
+      (c) => c.type === 'wild_industry',
+    )
+    const ironCardToUse = ironCard || wildCard2
+
+    if (ironCardToUse) {
+      const initialCoalMarket = [...snapshot.context.coalMarket]
+
+      actor.send({ type: 'BUILD' })
+      if (ironCardToUse.type === 'wild_industry') {
+        actor.send({ type: 'SELECT_CARD', cardId: ironCardToUse.id })
+        actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'iron' })
+        actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' }) // Connected to coal mine
+      } else {
+        actor.send({ type: 'SELECT_CARD', cardId: ironCardToUse.id })
+        actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' }) // Connected to coal mine
+      }
+      actor.send({ type: 'CONFIRM' })
+
+      snapshot = actor.getSnapshot()
+
+      // Coal should have been consumed from the connected coal mine, NOT from market
+      expect(snapshot.context.coalMarket).toEqual(initialCoalMarket) // Market unchanged
+
+      // TODO: Once resource tracking on tiles is implemented, verify coal was removed from coal mine tile
+      // const updatedCoalMine = snapshot.context.players[0]!.industries.find(i => i.type === 'coal')
+      // expect(updatedCoalMine?.coalCubesOnTile).toBe(initialCoalCubes - 1)
+    }
+  }
+})
+
+test('iron consumption priority - any iron works first, then market', () => {
+  const { actor } = setupTestGame()
+  let snapshot = actor.getSnapshot()
+
+  // First, build an iron works to create a source of iron
+  const player1 = snapshot.context.players[0]!
+  const ironCard = player1.hand.find(
+    (c) =>
+      c.type === 'industry' && (c as IndustryCard).industries.includes('iron'),
+  )
+  const wildIndustryCard = player1.hand.find((c) => c.type === 'wild_industry')
+  const cardToUse = ironCard || wildIndustryCard
+
+  if (cardToUse) {
+    // Build iron works at Birmingham
+    actor.send({ type: 'BUILD' })
+    if (cardToUse.type === 'wild_industry') {
+      actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
+      actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'iron' })
+      actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    } else {
+      actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
+      actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    }
+    actor.send({ type: 'CONFIRM' })
+
+    snapshot = actor.getSnapshot()
+    const playerAfterIronBuild = snapshot.context.players[0]!
+
+    // Verify iron works was built with iron cubes on it
+    expect(playerAfterIronBuild.industries).toHaveLength(1)
+    const ironWorks = playerAfterIronBuild.industries[0]!
+    expect(ironWorks.type).toBe('iron')
+    expect(ironWorks.tile.ironProduced).toBeGreaterThan(0) // Should have iron on it
+
+    // Move to next player and back to test player 1 again
+    actor.send({ type: 'PASS' })
+    snapshot = actor.getSnapshot()
+
+    // Now perform develop action that requires iron - should consume from iron works first
+    const initialIronMarket = [...snapshot.context.ironMarket]
+    const initialPlayer = snapshot.context.players[0]!
+
+    actor.send({ type: 'DEVELOP' })
+    actor.send({ type: 'SELECT_CARD', cardId: initialPlayer.hand[0]!.id })
+    actor.send({ type: 'CONFIRM' })
+
+    snapshot = actor.getSnapshot()
+
+    // Iron should have been consumed from the iron works, NOT from market
+    expect(snapshot.context.ironMarket).toEqual(initialIronMarket) // Market unchanged
+
+    // TODO: Once resource tracking on tiles is implemented, verify iron was removed from iron works tile
+    // const updatedIronWorks = snapshot.context.players[0]!.industries.find(i => i.type === 'iron')
+    // expect(updatedIronWorks?.ironCubesOnTile).toBe(initialIronCubes - 1)
+  }
+})
+
+test('beer consumption priority - own breweries, connected opponent breweries, merchant beer', () => {
+  const { actor } = setupTestGame()
+  let snapshot = actor.getSnapshot()
+
+  // First, build a brewery to create a source of beer
+  const player1 = snapshot.context.players[0]!
+  const breweryCard = player1.hand.find(
+    (c) =>
+      c.type === 'industry' &&
+      (c as IndustryCard).industries.includes('brewery'),
+  )
+  const wildIndustryCard = player1.hand.find((c) => c.type === 'wild_industry')
+  const cardToUse = breweryCard || wildIndustryCard
+
+  if (cardToUse) {
+    // Build brewery at Birmingham
+    actor.send({ type: 'BUILD' })
+    if (cardToUse.type === 'wild_industry') {
+      actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
+      actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'brewery' })
+      actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    } else {
+      actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
+      actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    }
+    actor.send({ type: 'CONFIRM' })
+
+    snapshot = actor.getSnapshot()
+    const playerAfterBreweryBuild = snapshot.context.players[0]!
+
+    // Verify brewery was built with beer barrels on it
+    expect(playerAfterBreweryBuild.industries).toHaveLength(1)
+    const brewery = playerAfterBreweryBuild.industries[0]!
+    expect(brewery.type).toBe('brewery')
+    expect(brewery.tile.beerProduced).toBeGreaterThan(0) // Should have beer on it
+
+    // Move to next player and back to test player 1 again
+    actor.send({ type: 'PASS' })
+    snapshot = actor.getSnapshot()
+
+    // Now build a cotton mill at the same location
+    const cottonCard = player1.hand.find(
+      (c) =>
+        c.type === 'industry' &&
+        (c as IndustryCard).industries.includes('cotton'),
+    )
+    const wildCard2 = snapshot.context.players[0]!.hand.find(
+      (c) => c.type === 'wild_industry',
+    )
+    const cottonCardToUse = cottonCard || wildCard2
+
+    if (cottonCardToUse) {
+      actor.send({ type: 'BUILD' })
+      if (cottonCardToUse.type === 'wild_industry') {
+        actor.send({ type: 'SELECT_CARD', cardId: cottonCardToUse.id })
+        actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'cotton' })
+        actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+      } else {
+        actor.send({ type: 'SELECT_CARD', cardId: cottonCardToUse.id })
+        actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+      }
+      actor.send({ type: 'CONFIRM' })
+
+      snapshot = actor.getSnapshot()
+
+      // Move to next player and back again
+      actor.send({ type: 'PASS' })
+      snapshot = actor.getSnapshot()
+
+      // Now perform sell action that requires beer - should consume from own brewery first
+      const initialBeerResources = snapshot.context.resources.beer
+      const currentPlayer = snapshot.context.players[0]!
+      const breweryBeforeSell = currentPlayer.industries.find(i => i.type === 'brewery')
+      const initialBeerBarrels = breweryBeforeSell?.beerBarrelsOnTile || 0
+
+      actor.send({ type: 'SELL' })
+      actor.send({ type: 'SELECT_CARD', cardId: currentPlayer.hand[0]!.id })
+      actor.send({ type: 'CONFIRM' })
+
+      snapshot = actor.getSnapshot()
+
+      // Beer should have been consumed from the player's own brewery, NOT from general supply
+      expect(snapshot.context.resources.beer).toBe(initialBeerResources) // General supply unchanged
+
+      // Verify beer was removed from brewery tile
+      const updatedBrewery = snapshot.context.players[0]!.industries.find(i => i.type === 'brewery')
+      expect(updatedBrewery?.beerBarrelsOnTile).toBe(initialBeerBarrels - 1)
+    }
+  }
+})
+
+test('coal mine - automatic market selling when connected to merchant', () => {
+  const { actor } = setupTestGame()
+  let snapshot = actor.getSnapshot()
+
+  // Ensure player has appropriate cards by directly setting them
+  const coalCard: IndustryCard = {
+    id: 'test_coal_card',
+    type: 'industry',
+    industries: ['coal']
+  }
+  
+  const stokeCard: LocationCard = {
+    id: 'test_stoke_card', 
+    type: 'location',
+    location: 'stoke',
+    color: 'other'
+  }
+
+  // Replace first two cards in hand with guaranteed coal and stoke cards
+  actor.send({
+    type: 'TEST_SET_PLAYER_HAND',
+    playerId: 0,
+    hand: [coalCard, stokeCard, ...snapshot.context.players[0]!.hand.slice(2)]
+  })
+
+  snapshot = actor.getSnapshot()
+  const initialPlayer = snapshot.context.players[0]!
+  const initialMoney = initialPlayer.money
+  const initialCoalMarket = [...snapshot.context.coalMarket]
+
+  // Build coal mine at Stoke (connected to merchant)
+  actor.send({ type: 'BUILD' })
+  actor.send({ type: 'SELECT_CARD', cardId: coalCard.id })
+  actor.send({ type: 'SELECT_LOCATION', cityId: 'stoke' }) // Stoke connects to merchants
+  actor.send({ type: 'CONFIRM' })
+
+  snapshot = actor.getSnapshot()
+  const playerAfterBuild = snapshot.context.players[0]!
+  const coalMine = playerAfterBuild.industries.find(i => i.type === 'coal')!
+
+  // CRITICAL RULE: Coal mine connected to merchant should automatically sell coal to market
+  // 1. Coal cubes should be moved to market (most expensive spaces first)
+  // 2. Player should receive money for each cube sold
+  // 3. If all cubes sold, tile should flip and income should advance
+  
+  const coalProduced = coalMine.tile.coalProduced
+  const originalEmptySpaces = initialCoalMarket.filter(space => space === null).length
+  const coalSoldToMarket = Math.min(coalProduced, originalEmptySpaces) // Number of coal cubes sold to market
+  const actualEmptySpaces = snapshot.context.coalMarket.filter(space => space === null).length
+  
+  // Verify coal was moved to market (fewer empty spaces after selling)
+  expect(actualEmptySpaces).toBe(originalEmptySpaces - coalSoldToMarket)
+  
+  // Verify that market selling occurred - coal mine at Stoke should sell to market
+  expect(actualEmptySpaces).toBeLessThan(originalEmptySpaces)
+  
+  // Calculate expected money: initial - build cost + market income
+  const buildCost = coalMine.tile.cost // Coal mines don't require other resources
+  const marketIncome = calculateMarketIncome(coalSoldToMarket, 'coal')
+  const expectedMoney = initialMoney - buildCost + marketIncome
+  
+  // Verify player received correct amount of money
+  expect(playerAfterBuild.money).toBe(expectedMoney)
+  
+  // If all coal was sold to market, verify tile flipped and income advanced
+  if (coalMine.coalCubesOnTile === 0) {
+    expect(coalMine.flipped).toBe(true)
+    expect(playerAfterBuild.income).toBeGreaterThan(initialPlayer.income)
+  } else {
+    // Some coal remains on tile (market was partially full)
+    expect(coalMine.coalCubesOnTile).toBe(coalProduced - coalSoldToMarket)
+  }
+})
+
+test('coal mine - no automatic market selling when NOT connected to merchant', () => {
+  const { actor } = setupTestGame()
+  let snapshot = actor.getSnapshot()
+
+  // Ensure player has appropriate cards by directly setting them
+  const coalCard: IndustryCard = {
+    id: 'test_coal_card_2',
+    type: 'industry',
+    industries: ['coal']
+  }
+  
+  const birminghamCard: LocationCard = {
+    id: 'test_birmingham_card', 
+    type: 'location',
+    location: 'birmingham',
+    color: 'other'
+  }
+
+  // Replace first two cards in hand with guaranteed coal and birmingham cards
+  actor.send({
+    type: 'TEST_SET_PLAYER_HAND',
+    playerId: 0,
+    hand: [coalCard, birminghamCard, ...snapshot.context.players[0]!.hand.slice(2)]
+  })
+
+  snapshot = actor.getSnapshot()
+  const initialPlayer = snapshot.context.players[0]!
+  const initialMoney = initialPlayer.money
+  const initialCoalMarket = [...snapshot.context.coalMarket]
+
+  // Build coal mine at Birmingham (NOT connected to merchant)
+  actor.send({ type: 'BUILD' })
+  actor.send({ type: 'SELECT_CARD', cardId: coalCard.id })
+  actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' }) // Birmingham not connected to merchant
+  actor.send({ type: 'CONFIRM' })
+
+  snapshot = actor.getSnapshot()
+  const playerAfterBuild = snapshot.context.players[0]!
+  const coalMine = playerAfterBuild.industries.find(i => i.type === 'coal')!
+
+  // RULE: Coal mine NOT connected to merchant should keep all coal on tile
+  expect(coalMine.coalCubesOnTile).toBe(coalMine.tile.coalProduced)
+  expect(coalMine.flipped).toBe(false)
+  
+  // No automatic market selling, so money and market unchanged
+  expect(playerAfterBuild.money).toBe(initialMoney - coalMine.tile.cost) // Only paid build cost
+  expect(snapshot.context.coalMarket).toEqual(initialCoalMarket)
+})
+
+test('iron works - ALWAYS automatic market selling regardless of connection', () => {
+  const { actor } = setupTestGame()
+  let snapshot = actor.getSnapshot()
+
+  // Ensure player has appropriate cards by directly setting them
+  const ironCard: IndustryCard = {
+    id: 'test_iron_card',
+    type: 'industry',
+    industries: ['iron']
+  }
+  
+  const birminghamCard: LocationCard = {
+    id: 'test_birmingham_card_2', 
+    type: 'location',
+    location: 'birmingham',
+    color: 'other'
+  }
+
+  // Replace first two cards in hand with guaranteed iron and birmingham cards
+  actor.send({
+    type: 'TEST_SET_PLAYER_HAND',
+    playerId: 0,
+    hand: [ironCard, birminghamCard, ...snapshot.context.players[0]!.hand.slice(2)]
+  })
+
+  snapshot = actor.getSnapshot()
+  const initialPlayer = snapshot.context.players[0]!
+  const initialMoney = initialPlayer.money
+  const initialIronMarket = [...snapshot.context.ironMarket]
+
+  // Check if iron market has space - in 2-player setup, iron market is [1, 1, 2, 3, 4] (all filled)
+  const originalEmptySpaces = initialIronMarket.filter(space => space === null).length
+
+  // Build iron works at Birmingham (iron works ALWAYS sell to market)
+  actor.send({ type: 'BUILD' })
+  actor.send({ type: 'SELECT_CARD', cardId: ironCard.id })
+  actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+  actor.send({ type: 'CONFIRM' })
+
+  snapshot = actor.getSnapshot()
+  const playerAfterBuild = snapshot.context.players[0]!
+  const ironWorks = playerAfterBuild.industries.find(i => i.type === 'iron')!
+
+  // CRITICAL RULE: Iron works ALWAYS tries to sell to market regardless of merchant connection
+  const ironProduced = ironWorks.tile.ironProduced
+  const ironSoldToMarket = Math.min(ironProduced, originalEmptySpaces) // Number of iron cubes actually sold
+  const actualEmptySpaces = snapshot.context.ironMarket.filter(space => space === null).length
+  
+  // Test the correct behavior based on market state
+  if (originalEmptySpaces > 0) {
+    // If market had space, verify iron was sold
+    expect(actualEmptySpaces).toBe(originalEmptySpaces - ironSoldToMarket)
+    // Player should have received money for sold iron
+    expect(playerAfterBuild.money).toBeGreaterThan(initialMoney - ironWorks.tile.cost - (ironWorks.tile.coalRequired * 8))
+  } else {
+    // If market was full, iron should remain on tile
+    expect(ironWorks.ironCubesOnTile).toBe(ironProduced)
+    expect(ironWorks.flipped).toBe(false)
+    // Market should be unchanged
+    expect(snapshot.context.ironMarket).toEqual(initialIronMarket)
+  }
+  
+  // If all iron was sold to market, verify tile flipped and income advanced
+  if (ironWorks.ironCubesOnTile === 0) {
+    expect(ironWorks.flipped).toBe(true)
+    expect(playerAfterBuild.income).toBeGreaterThan(initialPlayer.income)
+  } else {
+    // Some iron remains on tile (market was partially full)
+    expect(ironWorks.ironCubesOnTile).toBe(ironProduced - ironSoldToMarket)
+  }
+})
+
+test('brewery - only places beer barrels, no market selling', () => {
+  const { actor } = setupTestGame()
+  let snapshot = actor.getSnapshot()
+
+  const initialPlayer = snapshot.context.players[0]!
+  const initialMoney = initialPlayer.money
+
+  // Test brewery in Canal Era (1 beer barrel)
+  const breweryCard = initialPlayer.hand.find(
+    (c) =>
+      c.type === 'industry' && (c as IndustryCard).industries.includes('brewery'),
+  ) || initialPlayer.hand.find((c) => c.type === 'wild_industry')
+
+  if (breweryCard) {
+    actor.send({ type: 'BUILD' })
+    if (breweryCard.type === 'wild_industry') {
+      actor.send({ type: 'SELECT_CARD', cardId: breweryCard.id })
+      actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'brewery' })
+      actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    } else {
+      actor.send({ type: 'SELECT_CARD', cardId: breweryCard.id })
+      actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    }
+    actor.send({ type: 'CONFIRM' })
+
+    snapshot = actor.getSnapshot()
+    const playerAfterBuild = snapshot.context.players[0]!
+    const brewery = playerAfterBuild.industries.find(i => i.type === 'brewery')!
+
+    // RULE: Breweries only place beer barrels, no automatic market selling
+    expect(brewery.beerBarrelsOnTile).toBe(1) // Canal Era = 1 barrel
+    expect(brewery.coalCubesOnTile).toBe(0)
+    expect(brewery.ironCubesOnTile).toBe(0)
+    expect(brewery.flipped).toBe(false)
+    
+    // Only build cost deducted, no market income
+    expect(playerAfterBuild.money).toBe(initialMoney - brewery.tile.cost)
   }
 })

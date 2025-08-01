@@ -176,8 +176,8 @@ type GameEvent =
       cityId: CityId
     }
   | {
-      type: 'SELECT_INDUSTRY_TILE'
-      tile: IndustryTile
+      type: 'SELECT_INDUSTRY_TYPE'
+      industryType: IndustryType
     }
   | {
       type: 'CONFIRM'
@@ -922,11 +922,38 @@ export const gameStore = setup({
       selectedIndustryTile: null,
     }),
 
-    selectLocation: assign(({ event }) => {
+    selectLocation: assign(({ context, event }) => {
       if (event.type !== 'SELECT_LOCATION') return {}
-      return {
+      
+      const result: Partial<GameState> = {
         selectedLocation: event.cityId,
       }
+      
+      // If the selected card is an industry card, auto-select the lowest tile of that industry type
+      if (context.selectedCard?.type === 'industry') {
+        const industryCard = context.selectedCard as IndustryCard
+        const player = getCurrentPlayer(context)
+        
+        // Find the first industry type from the card that the player has tiles for
+        for (const industryType of industryCard.industries) {
+          const tilesOfType = player.industryTilesOnMat[industryType] || []
+          const availableTiles = tilesOfType.filter(tile => {
+            if (context.era === 'canal') return tile.canBuildInCanalEra
+            if (context.era === 'rail') return tile.canBuildInRailEra
+            return false
+          })
+          
+          if (availableTiles.length > 0) {
+            const lowestTile = getLowestLevelTile(availableTiles)
+            if (lowestTile) {
+              result.selectedIndustryTile = lowestTile
+              break
+            }
+          }
+        }
+      }
+      
+      return result
     }),
 
     clearCard: assign({
@@ -937,11 +964,29 @@ export const gameStore = setup({
       selectedLocation: null,
     }),
 
-    selectIndustryTile: assign(({ event }) => {
-      if (event.type !== 'SELECT_INDUSTRY_TILE') return {}
-      return {
-        selectedIndustryTile: event.tile,
+    selectIndustryType: assign(({ context, event }) => {
+      if (event.type !== 'SELECT_INDUSTRY_TYPE') return {}
+      
+      // Get current player and find the lowest level tile of the selected industry type
+      const player = getCurrentPlayer(context)
+      const tilesOfType = player.industryTilesOnMat[event.industryType] || []
+      const lowestTile = getLowestLevelTile(tilesOfType)
+      
+      if (!lowestTile) {
+        throw new Error(`No ${event.industryType} tiles available`)
       }
+      
+      const result: Partial<GameState> = {
+        selectedIndustryTile: lowestTile,
+      }
+      
+      // If the selected card is a location card, auto-select the location
+      if (context.selectedCard?.type === 'location' || context.selectedCard?.type === 'wild_location') {
+        const locationCard = context.selectedCard as LocationCard
+        result.selectedLocation = locationCard.location
+      }
+      
+      return result
     }),
 
     clearIndustryTile: assign({
@@ -957,8 +1002,12 @@ export const gameStore = setup({
       const card = findCardInHand(player, event.cardId)
       return card?.type === 'industry' || card?.type === 'wild_industry'
     },
-    hasSelectedIndustryTile: ({ context }) =>
-      context.selectedIndustryTile !== null,
+    isLocationCard: ({ context, event }) => {
+      if (event.type !== 'SELECT_CARD') return false
+      const player = getCurrentPlayer(context)
+      const card = findCardInHand(player, event.cardId)
+      return card?.type === 'location' || card?.type === 'wild_location'
+    },
     canCompleteBuild: ({ context }) => {
       // For location cards, just need card and location
       if (
@@ -986,16 +1035,6 @@ export const gameStore = setup({
       return context.selectedCardsForScout.length === 3 && !hasWildCard
     },
     hasSelectedLink: ({ context }) => context.selectedLink !== null,
-    canBuildTileInEra: ({ context, event }) => {
-      if (event.type !== 'SELECT_INDUSTRY_TILE') return false
-      const tile = event.tile
-      
-      if (context.era === 'canal') {
-        return tile.canBuildInCanalEra
-      } else {
-        return tile.canBuildInRailEra
-      }
-    },
     canBuildLink: ({ context, event }) => {
       if (event.type !== 'SELECT_LINK') return false
 
@@ -1055,27 +1094,23 @@ export const gameStore = setup({
       // Industry and wild industry cards can select any location (for now)
       return true
     },
-    canSelectIndustryTile: ({ context, event }) => {
-      if (event.type !== 'SELECT_INDUSTRY_TILE') return false
+    canSelectIndustryType: ({ context, event }) => {
+      if (event.type !== 'SELECT_INDUSTRY_TYPE') return false
       if (!context.selectedCard) return false
-
-      const tile = event.tile
-
-      // Check era compatibility first
-      if (context.era === 'canal' && !tile.canBuildInCanalEra) return false
-      if (context.era === 'rail' && !tile.canBuildInRailEra) return false
-
-      // Wild industry cards can select any tile (if era allows)
-      if (context.selectedCard.type === 'wild_industry') return true
-
-      // Industry cards must match their allowed industries
-      if (context.selectedCard.type === 'industry') {
-        const industryCard = context.selectedCard as IndustryCard
-        return industryCard.industries.includes(tile.type)
-      }
-
-      // Location and wild location cards don't select industry tiles
-      return false
+      
+      // Check if player has tiles of this industry type available
+      const player = getCurrentPlayer(context)
+      const tilesOfType = player.industryTilesOnMat[event.industryType] || []
+      const availableTiles = tilesOfType.filter(tile => {
+        if (context.era === 'canal') return tile.canBuildInCanalEra
+        if (context.era === 'rail') return tile.canBuildInRailEra
+        return false
+      })
+      
+      return availableTiles.length > 0
+    },
+    isLocationCardSelected: ({ context }) => {
+      return context.selectedCard?.type === 'location' || context.selectedCard?.type === 'wild_location'
     },
   },
 }).createMachine({
@@ -1143,12 +1178,17 @@ export const gameStore = setup({
                   on: {
                     SELECT_CARD: [
                       {
-                        target: 'selectingTile',
+                        target: 'selectingIndustryType',
+                        actions: 'selectCard',
+                        guard: 'isLocationCard',
+                      },
+                      {
+                        target: 'selectingLocation',
                         actions: 'selectCard',
                         guard: 'isIndustryCard',
                       },
                       {
-                        target: 'selectingLocation',
+                        target: 'selectingIndustryType',
                         actions: 'selectCard',
                       },
                     ],
@@ -1158,13 +1198,20 @@ export const gameStore = setup({
                     },
                   },
                 },
-                selectingTile: {
+                selectingIndustryType: {
                   on: {
-                    SELECT_INDUSTRY_TILE: {
-                      target: 'selectingLocation',
-                      actions: 'selectIndustryTile',
-                      guard: 'canSelectIndustryTile',
-                    },
+                    SELECT_INDUSTRY_TYPE: [
+                      {
+                        target: 'confirmingBuild',
+                        actions: 'selectIndustryType',
+                        guard: 'isLocationCardSelected',
+                      },
+                      {
+                        target: 'selectingLocation',
+                        actions: 'selectIndustryType',
+                        guard: 'canSelectIndustryType',
+                      },
+                    ],
                     CANCEL: {
                       target: 'selectingCard',
                       actions: 'clearCard',
@@ -1178,17 +1225,10 @@ export const gameStore = setup({
                       actions: 'selectLocation',
                       guard: 'canSelectLocation',
                     },
-                    CANCEL: [
-                      {
-                        target: 'selectingTile',
-                        guard: 'hasSelectedIndustryTile',
-                        actions: 'clearLocation',
-                      },
-                      {
-                        target: 'selectingCard',
-                        actions: 'clearCard',
-                      },
-                    ],
+                    CANCEL: {
+                      target: 'selectingCard',
+                      actions: 'clearCard',
+                    },
                   },
                 },
                 confirmingBuild: {

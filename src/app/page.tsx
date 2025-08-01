@@ -96,13 +96,6 @@ export default function Home() {
     }
     if (
       snapshot.matches({
-        playing: { action: { building: 'selectingTile' } },
-      })
-    ) {
-      return { action: 'building', subState: 'selectingTile' }
-    }
-    if (
-      snapshot.matches({
         playing: { action: { building: 'selectingLocation' } },
       })
     ) {
@@ -220,8 +213,6 @@ export default function Home() {
       case 'building':
         if (subState === 'selectingCard') {
           return 'Select a location or industry card to build'
-        } else if (subState === 'selectingTile') {
-          return 'Select an industry tile to build'
         } else if (subState === 'selectingLocation') {
           if (selectedCard?.type === 'location') {
             return `Building at ${(selectedCard as LocationCard).location} - click to confirm location`
@@ -411,12 +402,12 @@ export default function Home() {
             <IndustryTilesDisplay
               industryTiles={currentPlayer.industryTilesOnMat}
               selectedTile={selectedIndustryTile}
-              onTileSelect={(tile) => {
-                send({ type: 'SELECT_INDUSTRY_TILE', tile })
+              onTileSelect={() => {
+                // Manual tile selection no longer needed - tiles are auto-selected
               }}
               era={era}
               playerName={currentPlayer.name}
-              isSelecting={isInState('building', 'selectingTile')}
+              isSelecting={false}
             />
           )}
 

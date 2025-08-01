@@ -2,6 +2,8 @@
 
 Look at ai-docs for more guidelines and examples.
 
+MOST IMPORTANT IS TO HAVE ai-docs/brass-birmingham-rules.mdc ALWAYS IN YOUR MIND.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 Always apply TDD for the gameStore.ts First write test and then the implementation. The gameStore should have 100% unit test coverage.
@@ -111,3 +113,6 @@ For a composite block, call get_block(block_name).
 
 
 Implement Correctly: Integrate the retrieved code into the application, customizing it with the necessary props and logic to fulfill the user's request.
+
+## Important Notes
+- You have ai-docs/brass-birmingham-rules.mdc the rules, but you can search the web for clarifications, if needed

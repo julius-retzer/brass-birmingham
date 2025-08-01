@@ -7,7 +7,7 @@ import {
 } from 'xstate'
 import { type Card, type IndustryCard, type IndustryType } from '~/data/cards'
 import { type CityId } from '~/data/board'
-import { getInitialPlayerIndustryTiles, type IndustryTile } from '../data/industryTiles'
+import { getInitialPlayerIndustryTiles, getLowestLevelTile, type IndustryTile } from '../data/industryTiles'
 import { type GameState, gameStore } from './gameStore'
 
 const DEBUG = true
@@ -284,7 +284,9 @@ test('building action', () => {
     c.type === 'location' && c.location === 'birmingham'
   )
   const wildLocationCard = initialHand.find(c => c.type === 'wild_location')
-  const cardToBuild = birminghamCard || wildLocationCard || initialHand[0]
+  const industryCard = initialHand.find(c => c.type === 'industry')
+  const wildIndustryCard = initialHand.find(c => c.type === 'wild_industry')
+  const cardToBuild = birminghamCard || wildLocationCard || industryCard || wildIndustryCard
   
   assert(cardToBuild, 'Expected at least one card in hand')
   
@@ -297,56 +299,48 @@ test('building action', () => {
   actor.send({ type: 'SELECT_CARD', cardId: cardToBuild.id })
   snapshot = actor.getSnapshot()
 
-  // For industry cards, we need to select a tile first
-  if (cardToBuild.type === 'industry' || cardToBuild.type === 'wild_industry') {
+  // Location cards go to selectingIndustryType, industry cards go to selectingLocation  
+  if (cardToBuild.type === 'location' || cardToBuild.type === 'wild_location') {
     expect(snapshot.value).toMatchObject({
       playing: {
-        action: { building: 'selectingTile' },
+        action: { building: 'selectingIndustryType' },
       },
     })
-    
-    // Find a compatible tile
-    let tileToSelect
-    if (cardToBuild.type === 'wild_industry') {
-      // Wild industry can select any tile, use first available
-      tileToSelect = initialPlayer.industryTilesOnMat.coal?.[0] || 
-                   initialPlayer.industryTilesOnMat.iron?.[0] ||
-                   initialPlayer.industryTilesOnMat.brewery?.[0]
-    } else {
-      // Find tile matching the industry card
-      const industryCard = cardToBuild as IndustryCard
-      for (const industryType of industryCard.industries) {
-        const tiles = initialPlayer.industryTilesOnMat[industryType as IndustryType]
-        if (tiles && tiles.length > 0) {
-          tileToSelect = tiles[0]
-          break
-        }
-      }
-    }
-    
-    assert(tileToSelect, 'Expected to find a compatible industry tile')
-    actor.send({ type: 'SELECT_INDUSTRY_TILE', tile: tileToSelect })
+  } else {
+    expect(snapshot.value).toMatchObject({
+      playing: {
+        action: { building: 'selectingLocation' },
+      },
+    })
+  }
+  
+  // Handle different card types with new Brass Birmingham rules flow
+  if (cardToBuild.type === 'location' || cardToBuild.type === 'wild_location') {
+    // Location cards: select industry type, system auto-selects tile and location
+    actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'coal' })
     snapshot = actor.getSnapshot()
+    
+    // Should go directly to confirmingBuild with auto-selected tile and location
+    expect(snapshot.value).toMatchObject({
+      playing: { action: { building: 'confirmingBuild' } }
+    })
+  } else if (cardToBuild.type === 'industry' || cardToBuild.type === 'wild_industry') {
+    // Industry cards: select location, system auto-selects tile
+    actor.send({ type: 'SELECT_LOCATION', cityId: locationToSelect })
+    snapshot = actor.getSnapshot()
+    
+    // Should go to confirmingBuild with auto-selected tile
+    expect(snapshot.value).toMatchObject({
+      playing: { action: { building: 'confirmingBuild' } }
+    })
+  } else {
+    // Should not happen with proper card selection - TypeScript exhaustiveness check
+    const _exhaustiveCheck: never = cardToBuild
+    throw new Error(`Unexpected card type`)
   }
 
-  // Verify card selection transitions to location selection
-  expect(snapshot.value).toMatchObject({
-    playing: {
-      action: { building: 'selectingLocation' },
-    },
-  })
+  // At this point we should be in confirmingBuild state
   expect(snapshot.context.selectedCard?.id).toBe(cardToBuild.id)
-
-  // Select a location to build at
-  actor.send({ type: 'SELECT_LOCATION', cityId: locationToSelect })
-  snapshot = actor.getSnapshot()
-
-  // Verify location selection transitions to confirmation
-  expect(snapshot.value).toMatchObject({
-    playing: {
-      action: { building: 'confirmingBuild' },
-    },
-  })
   expect(snapshot.context.selectedLocation).toBe(locationToSelect)
 
   // Confirm build
@@ -1462,16 +1456,22 @@ test('build action - resource consumption for industry tiles', () => {
   
   actor.send({ type: 'BUILD' })
   actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
-  actor.send({ type: 'SELECT_INDUSTRY_TILE', tile: tileToUse })
   actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+  
+  // Check the tile that was auto-selected before confirming the build
+  let snapshotBeforeConfirm = actor.getSnapshot()
+  const actualTileUsed = snapshotBeforeConfirm.context.selectedIndustryTile
+  assert(actualTileUsed, 'Expected system to auto-select a tile')
+  
+  
   actor.send({ type: 'CONFIRM' })
   
   snapshot = actor.getSnapshot()
   const finalPlayer = snapshot.context.players[0]!
   
-  // Update required resources based on the actual tile used
-  const actualCoalRequired = tileToUse.coalRequired
-  const actualIronRequired = tileToUse.ironRequired
+  // Update required resources based on the actually selected tile
+  const actualCoalRequired = actualTileUsed.coalRequired
+  const actualIronRequired = actualTileUsed.ironRequired
 
   // Verify resources were consumed from markets
   if (actualCoalRequired > 0) {
@@ -1489,7 +1489,7 @@ test('build action - resource consumption for industry tiles', () => {
   }
 
   // Verify player paid for resources + tile cost
-  const expectedCost = tileToUse.cost + 
+  const expectedCost = actualTileUsed.cost + 
     (actualCoalRequired > 0 ? 1 : 0) + // Cheapest coal is £1
     (actualIronRequired > 0 ? 1 : 0)   // Cheapest iron is £1
   expect(finalPlayer.money).toBe(initialMoney - expectedCost)
@@ -1498,8 +1498,8 @@ test('build action - resource consumption for industry tiles', () => {
   expect(finalPlayer.industries).toHaveLength(1)
   expect(finalPlayer.industries[0]).toMatchObject({
     location: 'birmingham',
-    type: tileToUse.type,
-    level: tileToUse.level
+    type: actualTileUsed.type,
+    level: actualTileUsed.level
   })
 })
 
@@ -1529,84 +1529,157 @@ test('build action - era validation for industry tiles', () => {
   // Test building in Canal Era (should work)
   expect(snapshot.context.era).toBe('canal')
   
-  // Start build action with canal-only tile
+  // Start build action following Brass Birmingham rules (industry card → location selection → auto-select lowest tile)
   actor.send({ type: 'BUILD' })
   actor.send({ type: 'SELECT_CARD', cardId: industryCard.id })
-  actor.send({ type: 'SELECT_INDUSTRY_TILE', tile: canalOnlyTile })
+  
+  // Industry card should go to selectingLocation
+  snapshot = actor.getSnapshot()
+  expect(snapshot.value).toMatchObject({
+    playing: { action: { building: 'selectingLocation' } }
+  })
+  
   actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
   
-  // This should work in Canal Era
+  // This should work in Canal Era - system auto-selects lowest tile
   actor.send({ type: 'CONFIRM' })
   snapshot = actor.getSnapshot()
   
   const finalPlayer = snapshot.context.players[0]!
   expect(finalPlayer.industries).toHaveLength(1)
-  expect(finalPlayer.industries[0]?.level).toBe(1)
+  expect(finalPlayer.industries[0]?.level).toBe(1) // Should auto-select level 1 (lowest)
 
   // TODO: Test that same tile cannot be built in Rail Era
   // This would require implementing era transitions or manually setting era
 })
 
-test('build action - card-location matching validation', () => {
+test('build action - correct Brass Birmingham rules flow', () => {
   const { actor } = setupTestGame()
   let snapshot = actor.getSnapshot()
 
   const initialPlayer = snapshot.context.players[0]!
   
-  // Test 1: Location cards can only build at their specific location
+  // Test 1: Location cards should allow choosing industry type, auto-select lowest tile
   const birminghamCard = initialPlayer.hand.find(c => 
     c.type === 'location' && c.location === 'birmingham'
   )
   
   if (birminghamCard) {
-    // Should work: Birmingham card building at Birmingham
+    // Should work: Birmingham card building any industry at Birmingham
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: birminghamCard.id })
-    actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    snapshot = actor.getSnapshot()
+    
+    // Should be in selectingIndustryType state for location cards
+    expect(snapshot.value).toMatchObject({
+      playing: { action: { building: 'selectingIndustryType' } }
+    })
+    
+    // Select coal industry type - system should auto-select lowest level (level 1)
+    actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'coal' })
+    snapshot = actor.getSnapshot()
+    
+    // Should proceed to confirm (location already determined by card)
+    expect(snapshot.value).toMatchObject({
+      playing: { action: { building: 'confirmingBuild' } }
+    })
+    
+    // Context should have auto-selected coal level 1 tile and Birmingham location
+    expect(snapshot.context.selectedIndustryTile?.type).toBe('coal')
+    expect(snapshot.context.selectedIndustryTile?.level).toBe(1)
+    expect(snapshot.context.selectedLocation).toBe('birmingham')
+    
     actor.send({ type: 'CONFIRM' })
     snapshot = actor.getSnapshot()
     
     // Verify build succeeded
     const player = snapshot.context.players[0]!
-    expect(player.money).toBeLessThan(17) // Money was spent
+    expect(player.money).toBe(12) // 17 - 5 = 12 (coal level 1 costs £5)
     
     // Reset for next test
-    actor.send({ type: 'PASS' }) // Move to next player to continue testing
+    actor.send({ type: 'PASS' })
+    snapshot = actor.getSnapshot()
   }
 
-  // Test 2: Location cards should NOT work at wrong locations
-  const coventryCard = initialPlayer.hand.find(c => 
+  // Test 2: Industry cards should go to location selection, auto-select lowest tile
+  const ironCard = initialPlayer.hand.find(c => 
+    c.type === 'industry' && (c as IndustryCard).industries.includes('iron')
+  )
+  
+  if (ironCard) {
+    actor.send({ type: 'BUILD' })
+    actor.send({ type: 'SELECT_CARD', cardId: ironCard.id })
+    snapshot = actor.getSnapshot()
+    
+    // Should be in selectingLocation state for industry cards
+    expect(snapshot.value).toMatchObject({
+      playing: { action: { building: 'selectingLocation' } }
+    })
+    
+    // Select location - system should auto-select iron level 1 tile
+    actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    snapshot = actor.getSnapshot()
+    
+    // Should proceed to confirm (industry type determined by card)
+    expect(snapshot.value).toMatchObject({
+      playing: { action: { building: 'confirmingBuild' } }
+    })
+    
+    // Context should have auto-selected iron level 1 tile
+    expect(snapshot.context.selectedIndustryTile?.type).toBe('iron')
+    expect(snapshot.context.selectedIndustryTile?.level).toBe(1)
+    expect(snapshot.context.selectedLocation).toBe('birmingham')
+    
+    actor.send({ type: 'CONFIRM' })
+    snapshot = actor.getSnapshot()
+    
+    // Verify build succeeded - iron level 1 costs £5 + 1 coal (£8) = £13 total
+    const player = snapshot.context.players[0]!
+    expect(player.money).toBeLessThan(12) // Less than previous test
+  }
+
+  // Test 3: Location cards automatically use their specified location (not manual selection)
+  // First, pass to next player to start fresh
+  actor.send({ type: 'PASS' })
+  snapshot = actor.getSnapshot()
+  
+  // Now get player 2's hand for the test
+  const player2 = snapshot.context.players[1]!
+  const coventryCard = player2.hand.find(c => 
     c.type === 'location' && c.location === 'coventry'  
   )
   
   if (coventryCard) {
-    // Should fail: Coventry card trying to build at Birmingham  
+    // Location cards use auto-location selection - manual location selection should be ignored
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: coventryCard.id })
-    actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
     
-    // Check that the state machine is still in the selecting location state
-    // and hasn't progressed to confirming (which would mean validation passed)
     let snapshot = actor.getSnapshot()
     
-    // Try to confirm - this should fail due to validation
-    let errorThrown = false
-    try {
-      actor.send({ type: 'CONFIRM' })
-    } catch (error) {
-      errorThrown = true
-      expect((error as Error).message).toContain('Location card mismatch')
-    }
+    // Should be in selectingIndustryType state (location cards don't use manual location selection)
+    expect(snapshot.value).toMatchObject({
+      playing: { action: { building: 'selectingIndustryType' } }
+    })
     
-    // If no error was thrown directly, check that the state machine didn't complete the build
-    if (!errorThrown) {
-      snapshot = actor.getSnapshot()
-      // The player should still have the card (not discarded) because build failed
-      const player = snapshot.context.players[0]!
-      expect(player.hand.find(c => c.id === coventryCard.id)).toBeDefined()
-      // No industries should be built
-      expect(player.industries).toHaveLength(0)
-    }
+    // SELECT_LOCATION should have no effect in this state (location is auto-determined by card)
+    actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    snapshot = actor.getSnapshot()
+    
+    // Should still be in selectingIndustryType (location selection ignored)
+    expect(snapshot.value).toMatchObject({
+      playing: { action: { building: 'selectingIndustryType' } }
+    })
+    
+    // Complete the build - should use Coventry (from card), not Birmingham
+    actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'coal' })
+    actor.send({ type: 'CONFIRM' })
+    
+    snapshot = actor.getSnapshot()
+    const player = snapshot.context.players[1]! // Now we're testing player 2
+    
+    // Should have built at Coventry (card's location), not Birmingham
+    expect(player.industries).toHaveLength(1)
+    expect(player.industries[0]?.location).toBe('coventry')
   }
 })
 
@@ -1625,37 +1698,36 @@ test('build action - industry card matching validation', () => {
   const coalTiles = initialPlayer.industryTilesOnMat.coal || []
   const coalTile = coalTiles[0]
   
-  if (ironCard && coalTile) {
-    // Should fail: Iron card trying to build Coal industry
+  if (ironCard) {
+    // With new Brass Birmingham rules, industry cards go to selectingLocation  
+    // and auto-select the appropriate tile (no manual tile selection)
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: ironCard.id })
     
-    // Try to select mismatched tile - this should be prevented by guards
-    actor.send({ type: 'SELECT_INDUSTRY_TILE', tile: coalTile })
-    
-    // Check that state machine is still in selectingTile (didn't progress)
-    const snapshot = actor.getSnapshot()
+    let snapshot = actor.getSnapshot()
     expect(snapshot.value).toMatchObject({
-      playing: { action: { building: 'selectingTile' } }
+      playing: { action: { building: 'selectingLocation' } }
     })
     
-    // Should not have selected the tile
+    // Industry card should not have pre-selected a tile yet (tile selection happens after location selection)
     expect(snapshot.context.selectedIndustryTile).toBeNull()
+    
+    // Cancel to clean up for next test
+    actor.send({ type: 'CANCEL' })
   }
   
   // Test correct matching
   const ironTiles = initialPlayer.industryTilesOnMat.iron || []
   const ironTile = ironTiles[0]
   
-  if (ironCard && ironTile) {
-    // Should work: Iron card building Iron industry
+  if (ironCard) {
+    // Should work: Iron card with new auto-selection flow
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: ironCard.id })
-    actor.send({ type: 'SELECT_INDUSTRY_TILE', tile: ironTile })
     actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
     actor.send({ type: 'CONFIRM' })
     
-    snapshot = actor.getSnapshot()
+    const snapshot = actor.getSnapshot()
     const player = snapshot.context.players[0]!
     expect(player.industries).toHaveLength(1)
     expect(player.industries[0]?.type).toBe('iron')
@@ -1682,23 +1754,38 @@ test('build action - wild card flexibility', () => {
     expect(player.money).toBeLessThan(17) // Build succeeded
   }
   
-  // Wild industry card should work with any industry tile
+  // Wild industry card should work like any industry card (following Brass Birmingham rules)
   const wildIndustryCard = initialPlayer.hand.find(c => c.type === 'wild_industry')
-  const anyTile = initialPlayer.industryTilesOnMat.coal?.[0]
   
-  if (wildIndustryCard && anyTile) {
+  if (wildIndustryCard) {
     actor.send({ type: 'PASS' }) // Next player
     snapshot = actor.getSnapshot()
     
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: wildIndustryCard.id })
-    actor.send({ type: 'SELECT_INDUSTRY_TILE', tile: anyTile })
+    snapshot = actor.getSnapshot()
+    
+    // Wild industry card should go to selectingIndustryType (acts as any industry card)
+    expect(snapshot.value).toMatchObject({
+      playing: { action: { building: 'selectingIndustryType' } }
+    })
+    
+    // Select industry type - system auto-selects lowest tile
+    actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'coal' })
+    snapshot = actor.getSnapshot()
+    
+    // Should proceed to selectingLocation since wild industry can build anywhere
+    expect(snapshot.value).toMatchObject({
+      playing: { action: { building: 'selectingLocation' } }
+    })
+    
     actor.send({ type: 'SELECT_LOCATION', cityId: 'coventry' })
     actor.send({ type: 'CONFIRM' })
     
     snapshot = actor.getSnapshot()
-    const player = snapshot.context.players[1]!
-    expect(player.industries).toHaveLength(1)
-    expect(player.industries[0]?.type).toBe(anyTile.type)
+    const finalPlayer = snapshot.context.players[1]!
+    expect(finalPlayer.industries).toHaveLength(1)
+    expect(finalPlayer.industries[0]?.type).toBe('coal')
+    expect(finalPlayer.industries[0]?.level).toBe(1) // Should auto-select lowest level
   }
 })

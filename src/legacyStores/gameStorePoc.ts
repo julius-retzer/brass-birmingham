@@ -6,7 +6,7 @@ import {
   sendTo,
   setup,
 } from 'xstate'
-import { Player } from './gameStore'
+import { Player } from '../store/gameStore'
 
 // Simplified player interface
 export interface PlayerContext {

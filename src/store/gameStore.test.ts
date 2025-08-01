@@ -810,3 +810,49 @@ test('scout action', () => {
   expect(lastLog?.message).toContain('Player 1')
   expect(lastLog?.message).toContain('scouted')
 })
+
+test('pass action', () => {
+  const { actor } = setupTestGame()
+  let snapshot = actor.getSnapshot()
+
+  // Store initial state for comparison
+  const initialPlayer = snapshot.context.players[0]
+  assert(initialPlayer, 'Expected player 1 to exist')
+  const initialHand = [...initialPlayer.hand]
+  const initialDiscardPile = [...snapshot.context.discardPile]
+
+  // Verify initial state
+  expect(snapshot.value).toMatchObject({
+    playing: { action: 'selectingAction' },
+  })
+  verifyPlayerState(initialPlayer, {
+    money: 30,
+    income: 10,
+  })
+  expect(initialHand).toHaveLength(8)
+  expect(initialDiscardPile).toHaveLength(0)
+
+  // Start pass action
+  actor.send({ type: 'PASS' })
+  snapshot = actor.getSnapshot()
+
+  // Get final player state
+  const finalPlayer = snapshot.context.players[0]
+  assert(finalPlayer, 'Expected player 1 to exist')
+
+  // Verify card was discarded (pass still requires discarding a card)
+  expect(finalPlayer.hand).toHaveLength(8) // Hand should be refilled
+  expect(snapshot.context.discardPile).toHaveLength(1) // One card discarded
+
+  // Verify action was decremented
+  verifyGameState(snapshot, {
+    currentPlayerIndex: 1, // Turn should have passed to next player
+    actionsRemaining: 1,
+  })
+
+  // Verify log entry
+  const lastLog = snapshot.context.logs[snapshot.context.logs.length - 1]
+  expect(lastLog?.type).toBe('action')
+  expect(lastLog?.message).toContain('Player 1')
+  expect(lastLog?.message).toContain('passed')
+})

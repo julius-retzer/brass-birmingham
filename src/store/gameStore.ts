@@ -145,6 +145,9 @@ type GameEvent =
       type: 'NETWORK'
     }
   | {
+      type: 'PASS'
+    }
+  | {
       type: 'SELECT_LINK'
       from: CityId
       to: CityId
@@ -514,6 +517,37 @@ export const gameStore = setup({
       }
     }),
 
+    executePassAction: assign(({ context }) => {
+      const currentPlayer = getCurrentPlayer(context)
+      
+      // For pass action, we need to discard a card but don't need to select it
+      // Let's discard the first card in hand
+      const cardToDiscard = currentPlayer.hand[0]
+      if (!cardToDiscard) {
+        throw new Error('No cards in hand to discard for pass action')
+      }
+
+      const updatedHand = removeCardFromHand(currentPlayer, cardToDiscard.id)
+      const updatedPlayer = {
+        ...currentPlayer,
+        hand: updatedHand,
+      }
+
+      debugLog('executePassAction', context)
+      return {
+        players: updatePlayerInList(context.players, context.currentPlayerIndex, updatedPlayer),
+        discardPile: [...context.discardPile, cardToDiscard],
+        actionsRemaining: context.actionsRemaining - 1,
+        logs: [
+          ...context.logs,
+          createLogEntry(
+            `${currentPlayer.name} passed (discarded ${getCardDescription(cardToDiscard)})`,
+            'action',
+          ),
+        ],
+      }
+    }),
+
     refillPlayerHand: assign(({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
       const cardsNeeded = 8 - currentPlayer.hand.length
@@ -632,6 +666,7 @@ export const gameStore = setup({
                 SCOUT: 'scouting',
                 TAKE_LOAN: 'takingLoan',
                 NETWORK: 'networking',
+                PASS: 'passing',
               },
             },
             building: {
@@ -816,6 +851,12 @@ export const gameStore = setup({
                     },
                   },
                 },
+              },
+            },
+            passing: {
+              entry: 'executePassAction',
+              always: {
+                target: '#brassGame.playing.actionComplete',
               },
             },
           },

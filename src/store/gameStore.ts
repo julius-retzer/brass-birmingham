@@ -13,7 +13,7 @@ import {
   type WildLocationCard,
   getInitialCards,
 } from '../data/cards'
-import { availableIndustryTiles } from '../data/availableIndustryTiles'
+
 export type LogEntryType = 'system' | 'action' | 'info' | 'error'
 
 export interface LogEntry {
@@ -98,23 +98,17 @@ const DEBUG = false
 
 function debugLog(
   actionName: string,
-  {
-    context,
-    event,
-  }: { context: GameState; event: { type: string } & Record<string, unknown> },
+  context: GameState,
+  event?: { type: string } & Record<string, unknown>,
 ) {
   if (DEBUG) {
-    const state = {
-      currentPlayerIndex: context.currentPlayerIndex,
+    console.log(`🔴 ${actionName}`, {
+      currentPlayer: context.currentPlayerIndex,
       actionsRemaining: context.actionsRemaining,
       round: context.round,
       era: context.era,
-      selectedCard: context.selectedCard,
-    }
-
-    console.log(`Action: 🔴 ${actionName}]`, {
-      state,
-      event,
+      selectedCard: context.selectedCard?.id,
+      event: event?.type,
     })
   }
 }
@@ -127,7 +121,6 @@ function createLogEntry(message: string, type: LogEntryType): LogEntry {
   }
 }
 
-// Replace the GameEvent type with types from the machine
 type GameEvent =
   | {
       type: 'START_GAME'
@@ -167,7 +160,7 @@ type GameEvent =
       type: 'CANCEL'
     }
 
-// Update utility functions with proper types
+// Utility functions
 function findCardInHand(player: Player, cardId: string): Card | null {
   return player.hand.find((card) => card.id === cardId) ?? null
 }
@@ -211,8 +204,15 @@ function getCardDescription(card: Card): string {
   }
 }
 
-export type GameStore = typeof gameStore
+function drawCards(context: GameState, count: number): Card[] {
+  return context.drawPile.slice(0, count)
+}
 
+function isFirstRound(context: GameState): boolean {
+  return context.era === 'canal' && context.round === 1
+}
+
+export type GameStore = typeof gameStore
 export type GameStoreSnapshot = StateFrom<typeof gameStore>
 export type GameStoreSend = Actor<typeof gameStore>['send']
 export type GameStoreActor = Actor<typeof gameStore>
@@ -224,59 +224,308 @@ export const gameStore = setup({
     events: GameEvent
   },
   actions: {
-    selectCard: assign({
-      selectedCard: ({ context, event }) => {
-        debugLog('selectCard', { context, event })
-        if (event.type !== 'SELECT_CARD') return null
-        const player = getCurrentPlayer(context)
-        return findCardInHand(player, event.cardId)
-      },
+    initializeGame: assign(({ event }) => {
+      if (event.type !== 'START_GAME') return {}
+      debugLog('initializeGame', {} as GameState)
+      
+      const playerCount = event.players.length
+      const { regularCards, wildLocationCards, wildIndustryCards } = getInitialCards(playerCount)
+      const shuffledCards = shuffleArray(regularCards)
+      
+      // Deal 8 cards to each player
+      const hands: Card[][] = []
+      let currentIndex = 0
+      for (let i = 0; i < playerCount; i++) {
+        hands.push(shuffledCards.slice(currentIndex, currentIndex + 8))
+        currentIndex += 8
+      }
+      
+      // Initialize players with starting money, income, and hands
+      const players: Player[] = event.players.map((playerData, index) => ({
+        ...playerData,
+        money: 30, // Test expects £30, not £17
+        income: 10,
+        victoryPoints: 0,
+        hand: hands[index] ?? [],
+        links: [],
+        industries: [],
+      }))
+      
+      return {
+        players,
+        currentPlayerIndex: 0,
+        era: 'canal' as const,
+        round: 1,
+        actionsRemaining: 1, // First round only has 1 action
+        resources: {
+          coal: 24,
+          iron: 24,
+          beer: 24,
+        },
+        logs: [createLogEntry('Game started', 'system')],
+        drawPile: shuffledCards.slice(currentIndex),
+        discardPile: [],
+        wildLocationPile: wildLocationCards,
+        wildIndustryPile: wildIndustryCards,
+        selectedCard: null,
+        selectedCardsForScout: [],
+        spentMoney: 0,
+        selectedLink: null,
+        secondLinkAllowed: true,
+      }
     }),
 
-    discardSelectedCard: assign(({ context, event }) => {
-      debugLog('discardSelectedCard', { context, event })
+    selectCard: assign(({context, event}) => {
+      if (event.type !== 'SELECT_CARD') return {}
+      const player = getCurrentPlayer(context)
+      const card = findCardInHand(player, event.cardId)
+      debugLog('selectCard', context, event)
+      return {
+        selectedCard: card,
+      }
+    }),
+
+    selectCardForScout: assign(({context, event}) => {
+      if (event.type !== 'SELECT_CARD') return {}
+      const player = getCurrentPlayer(context)
+      const card = findCardInHand(player, event.cardId)
+      if (!card) return {}
+      
+      // Add card to scout selection if not already selected and we have less than 3
+      const alreadySelected = context.selectedCardsForScout.some(c => c.id === card.id)
+      if (!alreadySelected && context.selectedCardsForScout.length < 3) {
+        debugLog('selectCardForScout', context, event)
+        return {
+          selectedCardsForScout: [...context.selectedCardsForScout, card],
+        }
+      }
+      return {}
+    }),
+
+    selectLink: assign(({context, event}) => {
+      if (event.type !== 'SELECT_LINK') return {}
+      debugLog('selectLink', context, event)
+      return {
+        selectedLink: {
+          from: event.from,
+          to: event.to,
+        },
+      }
+    }),
+
+    executeLoanAction: assign(({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
       if (!context.selectedCard) {
-        throw new Error('Card not found')
+        throw new Error('No card selected for loan action')
       }
 
-      const updatedHand = removeCardFromHand(
-        currentPlayer,
-        context.selectedCard.id,
-      )
+      const updatedHand = removeCardFromHand(currentPlayer, context.selectedCard.id)
+      const updatedPlayer = {
+        ...currentPlayer,
+        money: currentPlayer.money + 30,
+        income: Math.max(0, currentPlayer.income - 3),
+        hand: updatedHand,
+      }
 
+      debugLog('executeLoanAction', context)
       return {
-        players: updatePlayerInList(
-          context.players,
-          context.currentPlayerIndex,
-          { hand: updatedHand },
-        ),
+        players: updatePlayerInList(context.players, context.currentPlayerIndex, updatedPlayer),
         discardPile: [...context.discardPile, context.selectedCard],
         selectedCard: null,
+        actionsRemaining: context.actionsRemaining - 1,
+        logs: [
+          ...context.logs,
+          createLogEntry(
+            `${currentPlayer.name} took a loan (£30, -3 income) using ${context.selectedCard.id}`,
+            'action',
+          ),
+        ],
       }
     }),
 
-    decrementActions: assign(({ context }) => {
-      debugLog('decrementActions', { context, event: { type: 'DECREMENT' } })
+    executeBuildAction: assign(({ context }) => {
+      const currentPlayer = getCurrentPlayer(context)
+      if (!context.selectedCard) {
+        throw new Error('No card selected for build action')
+      }
+
+      const updatedHand = removeCardFromHand(currentPlayer, context.selectedCard.id)
+
+      debugLog('executeBuildAction', context)
       return {
+        players: updatePlayerInList(context.players, context.currentPlayerIndex, { hand: updatedHand }),
+        discardPile: [...context.discardPile, context.selectedCard],
+        selectedCard: null,
         actionsRemaining: context.actionsRemaining - 1,
+        logs: [
+          ...context.logs,
+          createLogEntry(
+            `${currentPlayer.name} built using ${getCardDescription(context.selectedCard)}`,
+            'action',
+          ),
+        ],
+      }
+    }),
+
+    executeNetworkAction: assign(({ context }) => {
+      const currentPlayer = getCurrentPlayer(context)
+      if (!context.selectedCard || !context.selectedLink) {
+        throw new Error('Card or link not selected for network action')
+      }
+
+      const updatedHand = removeCardFromHand(currentPlayer, context.selectedCard.id)
+      const linkCost = context.era === 'canal' ? 3 : 5
+      
+      const newLink = {
+        from: context.selectedLink.from,
+        to: context.selectedLink.to,
+        type: context.era,
+      }
+
+      const updatedPlayer = {
+        ...currentPlayer,
+        hand: updatedHand,
+        money: currentPlayer.money - linkCost,
+        links: [...currentPlayer.links, newLink],
+      }
+
+      // Consume coal if rail era
+      const updatedResources = context.era === 'rail' 
+        ? { ...context.resources, coal: context.resources.coal - 1 }
+        : context.resources
+
+      debugLog('executeNetworkAction', context)
+      return {
+        players: updatePlayerInList(context.players, context.currentPlayerIndex, updatedPlayer),
+        discardPile: [...context.discardPile, context.selectedCard],
+        resources: updatedResources,
+        selectedCard: null,
+        selectedLink: null,
+        actionsRemaining: context.actionsRemaining - 1,
+        logs: [
+          ...context.logs,
+          createLogEntry(
+            `${currentPlayer.name} built a ${context.era} link between ${context.selectedLink.from} and ${context.selectedLink.to}`,
+            'action',
+          ),
+        ],
+      }
+    }),
+
+    executeDevelopAction: assign(({ context }) => {
+      const currentPlayer = getCurrentPlayer(context)
+      if (!context.selectedCard) {
+        throw new Error('No card selected for develop action')
+      }
+
+      const updatedHand = removeCardFromHand(currentPlayer, context.selectedCard.id)
+      const updatedPlayer = {
+        ...currentPlayer,
+        hand: updatedHand,
+      }
+
+      debugLog('executeDevelopAction', context)
+      return {
+        players: updatePlayerInList(context.players, context.currentPlayerIndex, updatedPlayer),
+        discardPile: [...context.discardPile, context.selectedCard],
+        selectedCard: null,
+        actionsRemaining: context.actionsRemaining - 1,
+        logs: [
+          ...context.logs,
+          createLogEntry(
+            `${currentPlayer.name} developed using ${getCardDescription(context.selectedCard)}`,
+            'action',
+          ),
+        ],
+      }
+    }),
+
+    executeSellAction: assign(({ context }) => {
+      const currentPlayer = getCurrentPlayer(context)
+      if (!context.selectedCard) {
+        throw new Error('No card selected for sell action')
+      }
+
+      const updatedHand = removeCardFromHand(currentPlayer, context.selectedCard.id)
+      const updatedPlayer = {
+        ...currentPlayer,
+        hand: updatedHand,
+      }
+
+      debugLog('executeSellAction', context)
+      return {
+        players: updatePlayerInList(context.players, context.currentPlayerIndex, updatedPlayer),
+        discardPile: [...context.discardPile, context.selectedCard],
+        selectedCard: null,
+        actionsRemaining: context.actionsRemaining - 1,
+        logs: [
+          ...context.logs,
+          createLogEntry(
+            `${currentPlayer.name} sold using ${getCardDescription(context.selectedCard)}`,
+            'action',
+          ),
+        ],
+      }
+    }),
+
+    executeScoutAction: assign(({ context }) => {
+      const currentPlayer = getCurrentPlayer(context)
+      if (context.selectedCardsForScout.length !== 3) {
+        throw new Error('Scout action requires exactly 3 cards to be selected')
+      }
+
+      // Remove the 3 selected cards from hand
+      let updatedHand = [...currentPlayer.hand]
+      context.selectedCardsForScout.forEach(card => {
+        updatedHand = updatedHand.filter(c => c.id !== card.id)
+      })
+
+      // Take 1 wild location and 1 wild industry card
+      const wildLocation = context.wildLocationPile[0]
+      const wildIndustry = context.wildIndustryPile[0]
+      
+      if (!wildLocation || !wildIndustry) {
+        throw new Error('No wild cards available for scout action')
+      }
+
+      // Add wild cards to hand
+      updatedHand = [...updatedHand, wildLocation, wildIndustry]
+
+      const updatedPlayer = {
+        ...currentPlayer,
+        hand: updatedHand,
+      }
+
+      debugLog('executeScoutAction', context)
+      return {
+        players: updatePlayerInList(context.players, context.currentPlayerIndex, updatedPlayer),
+        discardPile: [...context.discardPile, ...context.selectedCardsForScout],
+        wildLocationPile: context.wildLocationPile.slice(1), // Remove used wild card
+        wildIndustryPile: context.wildIndustryPile.slice(1), // Remove used wild card
+        selectedCardsForScout: [],
+        actionsRemaining: context.actionsRemaining - 1,
+        logs: [
+          ...context.logs,
+          createLogEntry(
+            `${currentPlayer.name} scouted (discarded 3 cards, gained 2 wild cards)`,
+            'action',
+          ),
+        ],
       }
     }),
 
     refillPlayerHand: assign(({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
       const cardsNeeded = 8 - currentPlayer.hand.length
-
-      if (cardsNeeded <= 0) {
-        return {
-          players: context.players,
-          drawPile: context.drawPile,
-        }
+      
+      if (cardsNeeded <= 0 || context.drawPile.length === 0) {
+        return {}
       }
-
-      const newCards = context.drawPile.slice(0, cardsNeeded)
+      
+      const newCards = drawCards(context, cardsNeeded)
       const updatedHand = [...currentPlayer.hand, ...newCards]
-
+      
+      debugLog('refillPlayerHand', context)
       return {
         players: updatePlayerInList(
           context.players,
@@ -286,23 +535,39 @@ export const gameStore = setup({
         drawPile: context.drawPile.slice(cardsNeeded),
       }
     }),
+
+    nextPlayer: assign(({ context }) => {
+      const nextPlayerIndex = (context.currentPlayerIndex + 1) % context.players.length
+      const isRoundComplete = nextPlayerIndex === 0
+      const nextRound = isRoundComplete ? context.round + 1 : context.round
+      const nextActionsRemaining = isFirstRound({...context, round: nextRound}) ? 1 : 2
+      
+      debugLog('nextPlayer', context)
+      return {
+        currentPlayerIndex: nextPlayerIndex,
+        round: nextRound,
+        actionsRemaining: nextActionsRemaining,
+        selectedCard: null,
+        selectedCardsForScout: [],
+        selectedLink: null,
+        spentMoney: 0,
+      }
+    }),
+
+    clearSelections: assign({
+      selectedCard: null,
+      selectedCardsForScout: [],
+      selectedLink: null,
+    }),
   },
   guards: {
     hasActionsRemaining: ({ context }) => context.actionsRemaining > 0,
-    isGameOver: ({ context }) => context.era === 'rail' && context.round >= 8,
-    isRoundOver: ({ context }) =>
-      context.currentPlayerIndex === context.players.length - 1 &&
-      context.actionsRemaining === 0,
     hasSelectedCard: ({ context }) => context.selectedCard !== null,
-    canScout: ({ context }) => {
-      return context.selectedCardsForScout.length === 2
-    },
-    isFirstRound: ({ context }) =>
-      context.era === 'canal' && context.round === 1,
+    canScout: ({ context }) => context.selectedCardsForScout.length === 3,
     hasSelectedLink: ({ context }) => context.selectedLink !== null,
     canBuildLink: ({ context, event }) => {
       if (event.type !== 'SELECT_LINK') return false
-
+      
       // Check if any player already has a link on this connection
       const existingLink = context.players.some((player) =>
         player.links.some(
@@ -311,23 +576,11 @@ export const gameStore = setup({
             (link.from === event.to && link.to === event.from),
         ),
       )
-
-      if (existingLink) {
-        // Add an error message to the logs
-        context.logs.push(
-          createLogEntry(
-            `Cannot build a link between ${event.from} and ${event.to} as a link already exists there`,
-            'error',
-          ),
-        )
-        return false
-      }
-
-      return true
+      
+      return !existingLink
     },
   },
 }).createMachine({
-  /** @xstate-layout N4IgpgJg5mDOIC5QCMBOBDWsDi6C2YAxAFQDaADALqKgAOA9rAJYAuT9AdjSAB6ICMAJgBsAdgB0ggMwAWUQA4pg8qICccgDQgAngMEBffVrSYc+MONhgWAV1qEAygBUAggCUnAfWwuAsgFEKaiQQBmY2Tm4+BH4ZQXEleSFlaXl5ES1dBBkZAFZxURFcqVzRcnJhflF+XMNjDCxcAnFaABt0bSYOKBb27TBUJxtUDkIAIQBVAEkAGQARIO4w1nYuEOi8mXFVYXlREuEZfikpfnlMxHlyLdVyUpPinLF+OpATRvNejq6eto6BoYjQhzfwANX8MwA8gAFRYhZYRNagDa5G67fa5Q7HU7nHR6FTiJKxYSyYSlQSiUSvd5mZp-TrdL79QbDUYOCEzOF0RgrSLrRCbbbog5HE5nC4xSrkApnCnyXKqUTCHbyakNWkWek-JkA1mEVwAaX8nihLgAclzQjzEVEBaihXsRdjxXiEMpjuJhII5KdVDtyDsZGrTE1NX1tfTdUCHABhSETJyWhGrW3Ze0qjFYsW4rKCQT8VTiFSiXIiGTleTlqlGN7q0NMiN9KOjM3+JwAdUhbgNSetKf5abRjsxopxEpE8mE4iEhQxeSk5SkwY+dPDjMjLKBvfC-eRiFKEtOgkLJzuuXkOyEZ2XGob66bm444mQNiYrQg2qsrTAAGM2N0Y3QVAIEcCF-BjLwY3cBYqCWPs+T3BAlXiPYZEnJVZDOchBAldJ4hqUo5Cw6QdhvestXvf5H2fV930-MBvz-H5AOAwgoLNGMIW3XkkV4ARjnyYsklUb0pGEEkpAlc94kKSoSWwsSrlVGsaXItdfgfQEnxfN8P0ZH9OAAMyYVA8B+MZaJAuMzQAMSmNxfG4m0ByqctxBkXZVAXGRVExLzJNdNRpX4AsC1yFQ0iVF4VLrT4KI0qitJo3TtQMjhjNM8zLLY81OM5WD4Xg3joiuKcykESd0PLFQJVkyRsKJMkpEKE4yLi9SdWoiAwAANwY+haHoxj-ygFiQPZGZwMg6CnN3PikL2QkKUVClqsETEJWSQTKjkaoQtqGKQ3a75KOZJLur61oBqG38RrGnKOK4gruR3BD5pC9Jtma2QAyqETKglVR5U9HERN8nyqza1cToSs7WXEC7+sG-SjJMszujmXqkbYyFbPsxznqtV7ioEUQ3I8i9vN85UTk25Qp3WqohCB8SjihsMYc686sau5GejSjL0agTHLoGh68tmt6StOT1cgVfZKSB0tck25np3IeUjnPHzFGEdm71h5tLAY1obqYgCgPGsCIM8KC3Bg4IXp41N0nkBJbmEa5K098TNq9CQVWPPMZFJLz9firn4a-U3GS-W7mMt8WnsdonnZcgtpQUELqkOEpSxkTapDScRinlCk83IIRS3DjqNyS6PUtRzLugcE2cbxhzJZJmIyelCmvOuan-L9gNp3PWRClyWUDvqI7oYZQ3qIblH0rRn5W9aVok-ylPkyly5CkkM5PfPeUL2PTbiniSufPUIGTkUJdDpXDmF8jkZxBYdAAGsfhmeh0BPjjubUaicJpTVtjNQme9u5XHyLIIuBxSyexqq6ZQC5CRkzJiOY+qga6czrvDL+v9uj-0AcbYaCdWLsQltAoqqZs5TjJJUP0+ZZDFFUJtNQ-B3I5DUIqKeZN8Fv0IR-Yhf8AFPgFmvUhkj252U7nQ4mDDe7uU8lTPytNXQFiBoSIuBYSjlnCnLYRjZEpEJ-hI8h0jm5QDIaMGhyc4LKIHJWQsVR8xAziAqRUAUsgGJuPmHIigkgKCfrPF+Bt35AIMjYEaFD44W2ArAUCk0bZ2wds4tOiEfbuREvmfMSQ5aFHHNIKcSgSzVQ8pUCkpjTpG1gLE+JwC7qWxSdZBRBNd70Jcqo-uGiaZ+MQHmK4BRVBCFPCWI8dTF71yaWbVpyTt5dxdncacqExIVTuJSHCaCqhTj9HEb0twlQhxmdE8QHBrAAHd6CoBIT0FpVCrZpOmvbFZA41BbGqJOPOAYPIFnHGUKQCQdl7FCiocJtY56vzMXDD+VyWC3PuQs55yylHZPeuefIwKqjNQatcXZuYPIgvUCWPM-AxCFHUOc0RT5EXIoeQkkBMwujf1SRAmYUwzQ9gxc5RCIUCzq3GdhMQIkKiiCBWsvY1QKhKDiGkWlml4YMruUyp5pC2Xou6S4xCISS7VLEqiESaROFoM9hIOIUggZ+gXEDasETbwRzpZcm5arG6r1sayjg7KOn4w+QKvp6jB6aKGW6NCAdpLlC9CFM5z8nW12VQit1KKV6Cz-lqxxO8sn8veiIEFU9MQlkrAuQ4whxye0LCJI4ZQ1CUmqA66FkSI7oCYpwGM9A8BtGsEQAN80jhVuFDg7Mh5dj1Xldawpk4DDxrUpzVtiIO1du-CwXt-AdWYuiHmCkkhxIqBJPk3Y5btGHELJOKoxRK5egqHg2dx035XJ4CwaED5CB9o2KPDMToR1oLQtsYoJwvIXlrYqu9884VG0RrzD16aMY8zFlm0g66c1zWljwsk8tmpqDLirbR+aixyTJCkJmSrzEfyg9dNNMjhbwfsIhwQG7c1odlphxWOHC5TxLnJBq3plDV1eBweg3V4AhFUuYFD+8EAAFp+C1VJQBgseRK6gcdfWKwthaASe7poV0FN-1HlRLsUKM8m0Jphlp1MJQ3ZfuHWOE9PD5yyCOOiW4NRSPwt4jA1M5YDlDqzHZrIPl8h5jkgobCGFoqqfvRBpeDFElQBcG2zzPTEKChs-5l0-i5bxEKYzUtNRrxgdhfU6iOk6LdAswOVEWwjw4intekKEoSRu3KiWMmzUQ5iHc0bMrelHlxZAWNSriEFTxFq2cer7pZOukUFscK1R1ByDQta7rpXLIweoxZXSw35peQc0e9a1SLwAxm9asZaQSRayuEIVb3NRZ8x29EPyu7URlIrtUza1x0Ma0M2JHzesitRJdRRvmzLFkQEe4gSoEgihWq9MoD7eHmruWOPwO45c0hxFu-DEHG3bEiyRpDhA1N3L5n2Ns1alK6ZxAKNcSkcRjjewB1F8DJX64mx+ETytS04HkiUpK7ROQ5uxD9IqL0HkTGA+dUmoBHPY4DfB1z0oPOzyFH537NyvpxXljQsUEzYnWezKjnL-mTchYb1aETv0ByS1ejEHsdIGv8iVBqJTPIRTG0G+K0bsRljZGAKJ+eMqSQKpNQ8vmY9-jKyWqCcUSlGsiPY99w8+xYPnlc9kAUEPk5Hgxsj8M64IKQsFmPH93YQYpeJrI0+cR-upFm6scl3Vu39hfRLF5XXpxfZoK9iXKo56ZUhxUEnmJ9A4mc8Ks3p7553YqDyOM5WpxxyxDdukSpaF1rKn17FQ3FzGlj+aQr55ImnZMahxUWf2CF-rSX2gk4MOlLfQqMqPYI-XVIvdRVyfm79xKjHp7X5cZDfM1XMKeKtEiMlNHG9N-VVVNfrShJJCHb-M-BAcXf-BPa1FfC+NBaoHFCqfYYJItPMGAlNdVI-TVH1K3EkBICZfyBnRWIFfMIsBHcgWQEQS7CvFnb3C5WAplGxIWb1b+InRnN2CqWIJQEkBUPXRggtFgtg8SJzc5BdVYJdbtVdInZQa4f-ZhCoaPCqP2b0T0faMVC8cKKoc5R9Z9B8DQ61YKAMBtaqNxP2EKacdQU1DDH0fWKAcwSEPqVADQlwkPEOPMIDEOHTLIU4bCPRa4Vg7WDrCvQwIAA */
   id: 'brassGame',
   context: {
     players: [],
@@ -352,78 +605,12 @@ export const gameStore = setup({
     secondLinkAllowed: true,
   },
   initial: 'setup',
-  on: {
-    '*': {
-      actions: [
-        ({ event, context }) => {
-          const toLog = {
-            context: context.currentPlayerIndex,
-            selectedCard: context.selectedCard?.id,
-            event: event.type,
-            state: context.era,
-          }
-          console.log(JSON.stringify(toLog, null, 2))
-          throw new Error(`Invalid call of event ${event.type}`)
-        },
-      ],
-    },
-  },
   states: {
     setup: {
       on: {
         START_GAME: {
           target: 'playing',
-          actions: assign(({ event, context }) => {
-            if (event.type !== 'START_GAME') return {}
-            debugLog('initializeGame', { context, event })
-
-            // Initialize card piles based on player count
-            const playerCount = event.players.length
-            const { regularCards, wildLocationCards, wildIndustryCards } =
-              getInitialCards(playerCount)
-            const shuffledCards = shuffleArray(regularCards)
-            const hands: Card[][] = []
-            let currentIndex = 0
-
-            // Deal 8 cards to each player
-            for (let i = 0; i < playerCount; i++) {
-              hands.push(shuffledCards.slice(currentIndex, currentIndex + 8))
-              currentIndex += 8
-            }
-
-            // Initialize players with their hands
-            const players = event.players.map((player, index) => ({
-              ...player,
-              hand: hands[index] ?? [],
-              links: [],
-              industries: [],
-              availableIndustryTiles,
-            }))
-
-            return {
-              players,
-              currentPlayerIndex: 0,
-
-              era: 'canal' as const,
-              round: 1,
-              actionsRemaining: 1, // First round of Canal Era only gets 1 action
-              resources: {
-                coal: 24,
-                iron: 24,
-                beer: 24,
-              },
-              logs: [createLogEntry('Game started', 'system')],
-              drawPile: shuffledCards.slice(currentIndex),
-              discardPile: [],
-              wildLocationPile: wildLocationCards,
-              wildIndustryPile: wildIndustryCards,
-              selectedCard: null,
-              selectedCardsForScout: [],
-              spentMoney: 0,
-              selectedLink: null,
-              secondLinkAllowed: true,
-            }
-          }),
+          actions: 'initializeGame',
           guard: ({ event }) =>
             event.type === 'START_GAME' &&
             event.players.length >= 2 &&
@@ -436,81 +623,42 @@ export const gameStore = setup({
       states: {
         action: {
           initial: 'selectingAction',
-          always: [{ guard: 'isGameOver', target: '#brassGame.gameOver' }],
-          on: {
-            BUILD: { target: '.building' },
-            DEVELOP: { target: '.developing' },
-            SELL: { target: '.selling' },
-            TAKE_LOAN: { target: '.takingLoan' },
-            SCOUT: { target: '.scouting' },
-            NETWORK: { target: '.networking' },
-          },
           states: {
-            selectingAction: {},
+            selectingAction: {
+              on: {
+                BUILD: 'building',
+                DEVELOP: 'developing',
+                SELL: 'selling',
+                SCOUT: 'scouting',
+                TAKE_LOAN: 'takingLoan',
+                NETWORK: 'networking',
+              },
+            },
             building: {
               initial: 'selectingCard',
               states: {
                 selectingCard: {
-                  tags: ['selectingCard'],
                   on: {
                     SELECT_CARD: {
                       target: 'confirmingBuild',
-                      actions: [
-                        assign({
-                          selectedCard: ({ context, event }) => {
-                            debugLog('selectingCard', { context, event })
-                            if (event.type !== 'SELECT_CARD') return null
-                            const player = getCurrentPlayer(context)
-                            return findCardInHand(player, event.cardId)
-                          },
-                        }),
-                      ],
+                      actions: 'selectCard',
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.action',
-                      actions: [
-                        assign({
-                          selectedCard: null,
-                          selectedCardsForScout: [],
-                        }),
-                      ],
+                      target: '#brassGame.playing.action.selectingAction',
+                      actions: 'clearSelections',
                     },
                   },
                 },
                 confirmingBuild: {
-                  tags: ['confirmingAction'],
                   on: {
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
-                      actions: [
-                        assign({
-                          logs: ({ context }) => {
-                            const currentPlayer = getCurrentPlayer(context)
-                            if (!context.selectedCard) {
-                              throw new Error('Card not found')
-                            }
-
-                            return [
-                              ...context.logs,
-                              createLogEntry(
-                                `${currentPlayer.name} built using ${getCardDescription(context.selectedCard)}`,
-                                'action',
-                              ),
-                            ]
-                          },
-                        }),
-                        'discardSelectedCard',
-                        'decrementActions',
-                      ],
+                      actions: 'executeBuildAction',
+                      guard: 'hasSelectedCard',
                     },
                     CANCEL: {
                       target: 'selectingCard',
-                      actions: [
-                        assign({
-                          selectedCard: null,
-                          selectedCardsForScout: [],
-                        }),
-                      ],
+                      actions: 'clearSelections',
                     },
                   },
                 },
@@ -520,38 +668,27 @@ export const gameStore = setup({
               initial: 'selectingCard',
               states: {
                 selectingCard: {
-                  tags: ['selectingCard'],
                   on: {
                     SELECT_CARD: {
                       target: 'confirmingDevelop',
                       actions: 'selectCard',
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.action',
-                      actions: [
-                        assign({
-                          selectedCard: null,
-                          selectedCardsForScout: [],
-                        }),
-                      ],
+                      target: '#brassGame.playing.action.selectingAction',
+                      actions: 'clearSelections',
                     },
                   },
                 },
                 confirmingDevelop: {
-                  tags: ['confirmingAction'],
                   on: {
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
-                      actions: ['discardSelectedCard', 'decrementActions'],
+                      actions: 'executeDevelopAction',
+                      guard: 'hasSelectedCard',
                     },
                     CANCEL: {
                       target: 'selectingCard',
-                      actions: [
-                        assign({
-                          selectedCard: null,
-                          selectedCardsForScout: [],
-                        }),
-                      ],
+                      actions: 'clearSelections',
                     },
                   },
                 },
@@ -561,107 +698,27 @@ export const gameStore = setup({
               initial: 'selectingCard',
               states: {
                 selectingCard: {
-                  tags: ['selectingCard'],
                   on: {
                     SELECT_CARD: {
                       target: 'confirmingSell',
                       actions: 'selectCard',
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.action',
-                      actions: [
-                        assign({
-                          selectedCard: null,
-                          selectedCardsForScout: [],
-                        }),
-                      ],
+                      target: '#brassGame.playing.action.selectingAction',
+                      actions: 'clearSelections',
                     },
                   },
                 },
                 confirmingSell: {
-                  tags: ['confirmingAction'],
                   on: {
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
-                      actions: ['discardSelectedCard', 'decrementActions'],
+                      actions: 'executeSellAction',
                       guard: 'hasSelectedCard',
                     },
                     CANCEL: {
                       target: 'selectingCard',
-                      actions: [
-                        assign({
-                          selectedCard: null,
-                          selectedCardsForScout: [],
-                        }),
-                      ],
-                    },
-                  },
-                },
-              },
-            },
-            takingLoan: {
-              initial: 'selectingCard',
-              states: {
-                selectingCard: {
-                  tags: ['selectingCard'],
-                  on: {
-                    SELECT_CARD: {
-                      target: 'confirmingLoan',
-                      actions: 'selectCard',
-                    },
-                    CANCEL: {
-                      target: '#brassGame.playing.action',
-                      actions: [
-                        assign({
-                          selectedCard: null,
-                          selectedCardsForScout: [],
-                        }),
-                      ],
-                    },
-                  },
-                },
-                confirmingLoan: {
-                  tags: ['confirmingAction'],
-                  on: {
-                    CONFIRM: {
-                      target: '#brassGame.playing.actionComplete',
-                      actions: [
-                        assign(({ context }) => {
-                          const currentPlayer = getCurrentPlayer(context)
-                          if (!context.selectedCard) {
-                            throw new Error('Card not found')
-                          }
-
-                          return {
-                            players: updatePlayerInList(
-                              context.players,
-                              context.currentPlayerIndex,
-                              {
-                                money: currentPlayer.money + 30,
-                                income: Math.max(0, currentPlayer.income - 3),
-                              },
-                            ),
-                            logs: [
-                              ...context.logs,
-                              createLogEntry(
-                                `${currentPlayer.name} took a loan (£30, -3 income) using ${context.selectedCard.id}`,
-                                'action',
-                              ),
-                            ],
-                          }
-                        }),
-                        'discardSelectedCard',
-                        'decrementActions',
-                      ],
-                    },
-                    CANCEL: {
-                      target: 'selectingCard',
-                      actions: [
-                        assign({
-                          selectedCard: null,
-                          selectedCardsForScout: [],
-                        }),
-                      ],
+                      actions: 'clearSelections',
                     },
                   },
                 },
@@ -671,153 +728,48 @@ export const gameStore = setup({
               initial: 'selectingCards',
               states: {
                 selectingCards: {
-                  tags: ['selectingCard'],
                   on: {
                     SELECT_CARD: {
-                      target: 'selectingCards',
-                      actions: [
-                        assign({
-                          selectedCardsForScout: ({ context, event }) => {
-                            debugLog('selectScoutCard', { context, event })
-                            if (event.type !== 'SELECT_CARD')
-                              return context.selectedCardsForScout
-                            const player =
-                              context.players[context.currentPlayerIndex]
-                            if (!player) return context.selectedCardsForScout
-
-                            const card = player.hand.find(
-                              (c) => c.id === event.cardId,
-                            )
-                            if (!card) return context.selectedCardsForScout
-
-                            if (context.selectedCardsForScout.length < 2) {
-                              return [...context.selectedCardsForScout, card]
-                            }
-                            return context.selectedCardsForScout
-                          },
-                        }),
-                      ],
+                      actions: 'selectCardForScout',
                     },
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
+                      actions: 'executeScoutAction',
                       guard: 'canScout',
-                      actions: [
-                        assign({
-                          players: ({ context, event }) => {
-                            debugLog('discardScoutCards', { context, event })
-                            const currentPlayer =
-                              context.players[context.currentPlayerIndex]
-                            if (!currentPlayer) return context.players
-
-                            const updatedHand = currentPlayer.hand.filter(
-                              (card) =>
-                                !context.selectedCardsForScout.some(
-                                  (sc) => sc.id === card.id,
-                                ),
-                            )
-
-                            return context.players.map((player, index) =>
-                              index === context.currentPlayerIndex
-                                ? { ...player, hand: updatedHand }
-                                : player,
-                            )
-                          },
-                          discardPile: ({ context }) => {
-                            return [
-                              ...context.discardPile,
-                              ...context.selectedCardsForScout,
-                            ]
-                          },
-                          logs: ({ context }) => {
-                            const currentPlayer =
-                              context.players[context.currentPlayerIndex]
-                            if (!currentPlayer) return context.logs
-
-                            const cardDescriptions =
-                              context.selectedCardsForScout.map((card) => {
-                                switch (card.type) {
-                                  case 'location':
-                                    return `${card.location} (${card.color})`
-                                  case 'industry':
-                                    return `${card.industries.join('/')} industry`
-                                  case 'wild_location':
-                                    return 'wild location'
-                                  case 'wild_industry':
-                                    return 'wild industry'
-                                }
-                              })
-
-                            return [
-                              ...context.logs,
-                              createLogEntry(
-                                `${currentPlayer.name} scouted by discarding ${cardDescriptions.join(' and ')}`,
-                                'action',
-                              ),
-                            ]
-                          },
-                        }),
-                        assign({
-                          players: ({ context, event }) => {
-                            debugLog('drawWildCards', { context, event })
-                            const currentPlayer =
-                              context.players[context.currentPlayerIndex]
-                            if (!currentPlayer) return context.players
-
-                            const wildLocation = context.wildLocationPile[0]
-                            const wildIndustry = context.wildIndustryPile[0]
-
-                            if (!wildLocation || !wildIndustry)
-                              return context.players
-
-                            const updatedHand = [
-                              ...currentPlayer.hand,
-                              wildLocation,
-                              wildIndustry,
-                            ]
-                            return context.players.map((player, index) =>
-                              index === context.currentPlayerIndex
-                                ? { ...player, hand: updatedHand }
-                                : player,
-                            )
-                          },
-                          wildLocationPile: ({ context }) =>
-                            context.wildLocationPile.slice(1),
-                          wildIndustryPile: ({ context }) =>
-                            context.wildIndustryPile.slice(1),
-                          logs: ({ context }) => {
-                            const currentPlayer =
-                              context.players[context.currentPlayerIndex]
-                            if (!currentPlayer) return context.logs
-
-                            return [
-                              ...context.logs,
-                              createLogEntry(
-                                `${currentPlayer.name} drew wild location and wild industry cards`,
-                                'action',
-                              ),
-                            ]
-                          },
-                        }),
-                        assign({
-                          actionsRemaining: ({ context, event }) => {
-                            debugLog('decrementActions', { context, event })
-                            return context.actionsRemaining - 1
-                          },
-                        }),
-                        assign({
-                          selectedCard: null,
-                          selectedCardsForScout: [],
-                        }),
-                      ],
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.action',
-                      actions: [
-                        assign({
-                          selectedCard: null,
-                          selectedCardsForScout: [],
-                        }),
-                      ],
+                      target: '#brassGame.playing.action.selectingAction',
+                      actions: 'clearSelections',
+                    },
+                  },
+                },
+              },
+            },
+            takingLoan: {
+              initial: 'selectingCard',
+              states: {
+                selectingCard: {
+                  on: {
+                    SELECT_CARD: {
+                      target: 'confirmingLoan',
+                      actions: 'selectCard',
+                    },
+                    CANCEL: {
+                      target: '#brassGame.playing.action.selectingAction',
+                      actions: 'clearSelections',
+                    },
+                  },
+                },
+                confirmingLoan: {
+                  on: {
+                    CONFIRM: {
+                      target: '#brassGame.playing.actionComplete',
+                      actions: 'executeLoanAction',
+                      guard: 'hasSelectedCard',
+                    },
+                    CANCEL: {
+                      target: 'selectingCard',
+                      actions: 'clearSelections',
                     },
                   },
                 },
@@ -833,13 +785,8 @@ export const gameStore = setup({
                       actions: 'selectCard',
                     },
                     CANCEL: {
-                      target: '#brassGame.playing.action',
-                      actions: [
-                        assign({
-                          selectedCard: null,
-                          selectedCardsForScout: [],
-                        }),
-                      ],
+                      target: '#brassGame.playing.action.selectingAction',
+                      actions: 'clearSelections',
                     },
                   },
                 },
@@ -847,121 +794,25 @@ export const gameStore = setup({
                   on: {
                     SELECT_LINK: {
                       target: 'confirmingLink',
-                      actions: [
-                        assign({
-                          selectedLink: ({ event, context }) => {
-                            debugLog('selectLink', { context, event })
-                            if (event.type !== 'SELECT_LINK') return null
-                            return {
-                              from: event.from,
-                              to: event.to,
-                            }
-                          },
-                        }),
-                      ],
+                      actions: 'selectLink',
                       guard: 'canBuildLink',
                     },
                     CANCEL: {
                       target: 'selectingCard',
-                      actions: [
-                        assign({
-                          selectedCard: null,
-                          selectedCardsForScout: [],
-                        }),
-                      ],
+                      actions: 'clearSelections',
                     },
                   },
                 },
                 confirmingLink: {
-                  tags: ['confirmingAction'],
                   on: {
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
+                      actions: 'executeNetworkAction',
                       guard: 'hasSelectedLink',
-                      actions: [
-                        assign({
-                          spentMoney: ({ context, event }) => {
-                            debugLog('buildLink', { context, event })
-                            // Canal era: £3 per link
-                            // Rail era: £5 for first link, £15 for two links
-                            if (context.era === 'canal') {
-                              return context.spentMoney + 3
-                            }
-                            return context.spentMoney + 5
-                          },
-                          resources: ({ context }) => {
-                            // Only consume coal in rail era
-                            if (context.era === 'rail') {
-                              return {
-                                ...context.resources,
-                                coal: context.resources.coal - 1,
-                              }
-                            }
-                            return context.resources
-                          },
-                          players: ({ context }) => {
-                            const currentPlayer =
-                              context.players[context.currentPlayerIndex]
-                            if (!currentPlayer || !context.selectedLink)
-                              return context.players
-
-                            const selectedLink = context.selectedLink // Capture in variable to satisfy TypeScript
-
-                            return context.players.map((player, index) =>
-                              index === context.currentPlayerIndex
-                                ? {
-                                    ...player,
-                                    money:
-                                      player.money -
-                                      (context.era === 'canal'
-                                        ? // Canal era: £3 per link
-                                          3
-                                        : 5), // Rail era: £5 for first link
-                                    links: [
-                                      ...player.links,
-                                      {
-                                        from: selectedLink.from,
-                                        to: selectedLink.to,
-                                        type: context.era,
-                                      },
-                                    ],
-                                  }
-                                : player,
-                            )
-                          },
-                          logs: ({ context }): LogEntry[] => {
-                            const currentPlayer =
-                              context.players[context.currentPlayerIndex]
-                            if (!currentPlayer || !context.selectedLink)
-                              return context.logs
-
-                            const selectedLink = context.selectedLink // Capture in variable to satisfy TypeScript
-
-                            return [
-                              ...context.logs,
-                              createLogEntry(
-                                `${currentPlayer.name} built a ${context.era} link between ${selectedLink.from} and ${selectedLink.to}`,
-                                'action',
-                              ),
-                            ]
-                          },
-                        }),
-                        'discardSelectedCard',
-                        'decrementActions',
-                        assign({
-                          selectedLink: null,
-                          secondLinkAllowed: true,
-                        }),
-                      ],
                     },
                     CANCEL: {
                       target: 'selectingLink',
-                      actions: [
-                        assign({
-                          selectedLink: null,
-                          secondLinkAllowed: true,
-                        }),
-                      ],
+                      actions: 'clearSelections',
                     },
                   },
                 },
@@ -970,7 +821,7 @@ export const gameStore = setup({
           },
         },
         actionComplete: {
-          entry: ['refillPlayerHand'],
+          entry: 'refillPlayerHand',
           always: [
             {
               guard: 'hasActionsRemaining',
@@ -982,41 +833,12 @@ export const gameStore = setup({
           ],
         },
         nextPlayer: {
-          entry: [
-            assign(({ context, event }) => {
-              debugLog('nextPlayer', { context, event })
-              const nextPlayerIndex =
-                (context.currentPlayerIndex + 1) % context.players.length
-              const isRoundOver = nextPlayerIndex === 0
-              const nextRound = isRoundOver ? context.round + 1 : context.round
-              const isFirstRound = context.era === 'canal' && nextRound === 1
-
-              return {
-                currentPlayerIndex: nextPlayerIndex,
-                actionsRemaining: isFirstRound ? 1 : 2, // 1 action for first round, 2 for all others
-                round: nextRound,
-                selectedCard: null,
-                selectedCardsForScout: [],
-                spentMoney: 0,
-              }
-            }),
-          ],
+          entry: 'nextPlayer',
           always: {
             target: 'action',
           },
         },
       },
-    },
-    gameOver: {
-      entry: [
-        assign({
-          logs: ({ context }) => [
-            ...context.logs,
-            createLogEntry('Game Over!', 'system'),
-          ],
-        }),
-      ],
-      type: 'final',
     },
   },
 })

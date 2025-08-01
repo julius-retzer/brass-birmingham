@@ -587,3 +587,226 @@ test('hand refilling after actions', () => {
   expect(snapshot.context.drawPile.length).toBe(initialDrawPileSize - 6)
   expect(snapshot.context.discardPile.length).toBe(6) // Total cards discarded
 })
+
+test('develop action', () => {
+  const { actor } = setupTestGame()
+  let snapshot = actor.getSnapshot()
+
+  // Store initial state for comparison
+  const initialPlayer = snapshot.context.players[0]
+  assert(initialPlayer, 'Expected player 1 to exist')
+  const initialHand = [...initialPlayer.hand]
+  const initialDiscardPile = [...snapshot.context.discardPile]
+
+  // Verify initial state
+  expect(snapshot.value).toMatchObject({
+    playing: { action: 'selectingAction' },
+  })
+  verifyPlayerState(initialPlayer, {
+    money: 30,
+    income: 10,
+  })
+  expect(initialHand).toHaveLength(8)
+  expect(initialDiscardPile).toHaveLength(0)
+
+  // Start develop action
+  actor.send({ type: 'DEVELOP' })
+  snapshot = actor.getSnapshot()
+  expect(snapshot.value).toMatchObject({
+    playing: {
+      action: { developing: 'selectingCard' },
+    },
+  })
+
+  // Select a card for develop action
+  const cardToDevelop = initialHand[0]
+  assert(cardToDevelop, 'Expected at least one card in hand')
+  actor.send({ type: 'SELECT_CARD', cardId: cardToDevelop.id })
+  snapshot = actor.getSnapshot()
+
+  // Verify card selection
+  expect(snapshot.value).toMatchObject({
+    playing: {
+      action: { developing: 'confirmingDevelop' },
+    },
+  })
+  expect(snapshot.context.selectedCard?.id).toBe(cardToDevelop.id)
+
+  // Confirm develop
+  actor.send({ type: 'CONFIRM' })
+  snapshot = actor.getSnapshot()
+
+  // Get final player state
+  const finalPlayer = snapshot.context.players[0]
+  assert(finalPlayer, 'Expected player 1 to exist')
+
+  // Verify card was discarded
+  expect(finalPlayer.hand).toHaveLength(8) // Hand should be refilled
+  expect(finalPlayer.hand.find((c) => c.id === cardToDevelop.id)).toBeUndefined()
+  expect(snapshot.context.discardPile).toHaveLength(1)
+  expect(snapshot.context.discardPile[0]?.id).toBe(cardToDevelop.id)
+
+  // Verify action was decremented
+  verifyGameState(snapshot, {
+    currentPlayerIndex: 1, // Turn should have passed to next player
+    actionsRemaining: 1,
+    selectedCard: null,
+  })
+
+  // Verify log entry
+  const lastLog = snapshot.context.logs[snapshot.context.logs.length - 1]
+  expect(lastLog?.type).toBe('action')
+  expect(lastLog?.message).toContain('Player 1')
+  expect(lastLog?.message).toContain('developed')
+})
+
+test('sell action', () => {
+  const { actor } = setupTestGame()
+  let snapshot = actor.getSnapshot()
+
+  // Store initial state for comparison
+  const initialPlayer = snapshot.context.players[0]
+  assert(initialPlayer, 'Expected player 1 to exist')
+  const initialHand = [...initialPlayer.hand]
+  const initialDiscardPile = [...snapshot.context.discardPile]
+
+  // Verify initial state
+  expect(snapshot.value).toMatchObject({
+    playing: { action: 'selectingAction' },
+  })
+  verifyPlayerState(initialPlayer, {
+    money: 30,
+    income: 10,
+  })
+  expect(initialHand).toHaveLength(8)
+  expect(initialDiscardPile).toHaveLength(0)
+
+  // Start sell action
+  actor.send({ type: 'SELL' })
+  snapshot = actor.getSnapshot()
+  expect(snapshot.value).toMatchObject({
+    playing: {
+      action: { selling: 'selectingCard' },
+    },
+  })
+
+  // Select a card for sell action
+  const cardToSell = initialHand[0]
+  assert(cardToSell, 'Expected at least one card in hand')
+  actor.send({ type: 'SELECT_CARD', cardId: cardToSell.id })
+  snapshot = actor.getSnapshot()
+
+  // Verify card selection
+  expect(snapshot.value).toMatchObject({
+    playing: {
+      action: { selling: 'confirmingSell' },
+    },
+  })
+  expect(snapshot.context.selectedCard?.id).toBe(cardToSell.id)
+
+  // Confirm sell
+  actor.send({ type: 'CONFIRM' })
+  snapshot = actor.getSnapshot()
+
+  // Get final player state
+  const finalPlayer = snapshot.context.players[0]
+  assert(finalPlayer, 'Expected player 1 to exist')
+
+  // Verify card was discarded
+  expect(finalPlayer.hand).toHaveLength(8) // Hand should be refilled
+  expect(finalPlayer.hand.find((c) => c.id === cardToSell.id)).toBeUndefined()
+  expect(snapshot.context.discardPile).toHaveLength(1)
+  expect(snapshot.context.discardPile[0]?.id).toBe(cardToSell.id)
+
+  // Verify action was decremented
+  verifyGameState(snapshot, {
+    currentPlayerIndex: 1, // Turn should have passed to next player
+    actionsRemaining: 1,
+    selectedCard: null,
+  })
+
+  // Verify log entry
+  const lastLog = snapshot.context.logs[snapshot.context.logs.length - 1]
+  expect(lastLog?.type).toBe('action')
+  expect(lastLog?.message).toContain('Player 1')
+  expect(lastLog?.message).toContain('sold')
+})
+
+test('scout action', () => {
+  const { actor } = setupTestGame()
+  let snapshot = actor.getSnapshot()
+
+  // Store initial state for comparison
+  const initialPlayer = snapshot.context.players[0]
+  assert(initialPlayer, 'Expected player 1 to exist')
+  const initialHand = [...initialPlayer.hand]
+  const initialDiscardPile = [...snapshot.context.discardPile]
+  const initialWildLocationPile = [...snapshot.context.wildLocationPile]
+  const initialWildIndustryPile = [...snapshot.context.wildIndustryPile]
+
+  // Verify initial state
+  expect(snapshot.value).toMatchObject({
+    playing: { action: 'selectingAction' },
+  })
+  verifyPlayerState(initialPlayer, {
+    money: 30,
+    income: 10,
+  })
+  expect(initialHand).toHaveLength(8)
+  expect(initialDiscardPile).toHaveLength(0)
+
+  // Start scout action
+  actor.send({ type: 'SCOUT' })
+  snapshot = actor.getSnapshot()
+  expect(snapshot.value).toMatchObject({
+    playing: {
+      action: { scouting: 'selectingCards' },
+    },
+  })
+
+  // Select 3 cards for scout action (1 for the action + 2 additional)
+  const cardsToScout = initialHand.slice(0, 3)
+  actor.send({ type: 'SELECT_CARD', cardId: cardsToScout[0]!.id })
+  actor.send({ type: 'SELECT_CARD', cardId: cardsToScout[1]!.id })
+  actor.send({ type: 'SELECT_CARD', cardId: cardsToScout[2]!.id })
+  snapshot = actor.getSnapshot()
+
+  // Verify we have 3 cards selected
+  expect(snapshot.context.selectedCardsForScout).toHaveLength(3)
+
+  // Confirm scout
+  actor.send({ type: 'CONFIRM' })
+  snapshot = actor.getSnapshot()
+
+  // Get final player state
+  const finalPlayer = snapshot.context.players[0]
+  assert(finalPlayer, 'Expected player 1 to exist')
+
+  // Verify 3 cards were discarded and 2 wild cards were added
+  expect(finalPlayer.hand).toHaveLength(8) // Hand should be refilled after action (8 - 3 + 2 + refill = 8)
+  expect(snapshot.context.discardPile).toHaveLength(3) // 3 cards discarded
+  
+  // Verify wild cards were taken
+  expect(snapshot.context.wildLocationPile).toHaveLength(initialWildLocationPile.length - 1)
+  expect(snapshot.context.wildIndustryPile).toHaveLength(initialWildIndustryPile.length - 1)
+
+  // Verify player has wild cards in hand
+  const hasWildLocation = finalPlayer.hand.some(card => card.type === 'wild_location')
+  const hasWildIndustry = finalPlayer.hand.some(card => card.type === 'wild_industry')
+  expect(hasWildLocation).toBe(true)
+  expect(hasWildIndustry).toBe(true)
+
+  // Verify action was decremented
+  verifyGameState(snapshot, {
+    currentPlayerIndex: 1, // Turn should have passed to next player
+    actionsRemaining: 1,
+    selectedCard: null,
+    selectedCardsForScout: [],
+  })
+
+  // Verify log entry
+  const lastLog = snapshot.context.logs[snapshot.context.logs.length - 1]
+  expect(lastLog?.type).toBe('action')
+  expect(lastLog?.message).toContain('Player 1')
+  expect(lastLog?.message).toContain('scouted')
+})

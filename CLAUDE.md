@@ -1,23 +1,88 @@
-# Brass Birmingham - CLAUDE.md
+# CLAUDE.md
 
-## Build/Test/Lint Commands
-- Build: `pnpm build`
-- Dev: `pnpm dev`
-- Test: `pnpm test`
-- Test single file: `pnpm test src/path/to/file.test.ts`
-- Test watch mode: `pnpm test:watch`
-- Lint: `pnpm lint`
-- Lint fix: `pnpm lint:fix`
-- Typecheck: `pnpm typecheck`
+Look at ai-docs for more guidelines and examples.
 
-## Code Style Guidelines
-- Functional components with TypeScript interfaces, avoid classes
-- Use xState for game state management
-- Naming: lowercase directories with dashes, descriptive variable names with auxiliary verbs
-- TypeScript: prefer interfaces over types, avoid enums
-- Style: single quotes, no semicolons, consistent 2-space indentation
-- Directory structure: exported component, subcomponents, helpers, types
-- UI: Shadcn UI, Radix UI, and Tailwind for styling
-- Minimize 'use client', favor React Server Components
-- Use descriptive file and component names that reflect their purpose
-- This project is a digital implementation of the Brass Birmingham board game
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+Digital implementation of the Brass Birmingham board game using Next.js 15, TypeScript, XState for game state management, and Tailwind CSS with Shadcn UI components.
+
+## Development Commands
+
+**Build & Development:**
+- `pnpm dev` - Start development server with Turbo
+- `pnpm build` - Production build
+- `pnpm start` - Start production server
+- `pnpm preview` - Build and start production server
+
+**Testing:**
+- `pnpm test` - Run tests for claudeMachine (Vitest)
+- `pnpm test:watch` - Run tests in watch mode
+
+**Code Quality:**
+- `pnpm lint` - Run Biome linting
+- `pnpm lint:fix` - Auto-fix linting issues with Biome
+- `pnpm lint:check` - Check with Biome without fixing
+- `pnpm typecheck` - TypeScript type checking
+- `pnpm check` - Run both lint and typecheck
+
+**Database (Drizzle ORM):**
+- `pnpm db:generate` - Generate database migrations
+- `pnpm db:migrate` - Run database migrations
+- `pnpm db:push` - Push schema changes to database
+- `pnpm db:studio` - Open Drizzle Studio
+
+**Formatting:**
+- `pnpm format:write` - Format files with Prettier
+- `pnpm format:check` - Check formatting with Prettier
+
+## Architecture
+
+**State Management:**
+- XState v5 state machines for complex game state (`src/store/claudeMachine.ts`)
+- Game state includes players, rounds, eras (Canal/Rail), actions, industry tiles, and board locations
+- State machine handles turn progression, action validation, and game phase transitions
+
+**Game Structure:**
+- Two-era board game: Canal Era → Rail Era
+- Player actions: Build, Network, Develop, Sell, Loan, Scout, Pass
+- Industry types: CottonMill, CoalMine, IronWorks, Manufacturer, Pottery, Brewery
+- Game data stored in `src/data/` (board layout, cards, industry tiles)
+
+**UI Components:**
+- Shadcn UI with "new-york" style variant
+- Radix UI primitives for accessibility
+- Tailwind CSS with stone base color
+- Path aliases: `~/components`, `~/lib`, `~/hooks`
+- Component structure: main component + subcomponents + helpers + types
+
+**Data Layer:**
+- Drizzle ORM with SQLite database
+- Database schema in `src/server/db/schema.ts` (mostly commented out template)
+- Environment configuration with `@t3-oss/env-nextjs`
+
+## Code Style
+
+**TypeScript:**
+- Functional components with interfaces (avoid classes and enums)
+- Prefer interfaces over types
+- Strict typing enforced by Biome
+
+**Formatting (Biome):**
+- Single quotes, semicolons as needed
+- 2-space indentation, 80 character line width
+- Trailing commas, arrow parentheses
+- JSX double quotes
+
+**File Organization:**
+- Lowercase directories with dashes
+- Descriptive variable names with auxiliary verbs
+- Export main component, then subcomponents, helpers, types
+- Favor React Server Components, minimize 'use client'
+
+**Game-Specific Patterns:**
+- Game state types defined in state machine file
+- Industry and location data as constant objects
+- Board connections as arrays of relationship objects
+- Immutable state updates using XState assign actions

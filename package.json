@@ -19,8 +19,8 @@
     "typecheck": "tsc --noEmit",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run src/store/claudeMachine.test.ts",
+    "test:watch": "vitest src/store/claudeMachine.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.1",

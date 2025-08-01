@@ -2,6 +2,7 @@ import { cn } from '~/lib/utils'
 import { type GameStoreSend, type GameStoreSnapshot } from '~/store/gameStore'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import { ActionConfirmModal } from './ActionConfirmModal'
 
 interface ActionButtonsProps {
   snapshot: GameStoreSnapshot
@@ -58,6 +59,18 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
     isConfirmingLink
 
   const actionsRemaining = snapshot.context.actionsRemaining
+  const currentPlayer =
+    snapshot.context.players[snapshot.context.currentPlayerIndex]
+
+  // Determine current action type for modal
+  const getCurrentActionType = () => {
+    if (isConfirmingBuild) return 'building'
+    if (isConfirmingDevelop) return 'developing'
+    if (isConfirmingSell) return 'selling'
+    if (isConfirmingLoan) return 'takingLoan'
+    if (isConfirmingLink) return 'networking'
+    return null
+  }
 
   const isActive =
     isSelectingAction ||
@@ -136,21 +149,8 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
             </Button>
           </div>
         )}
-        {(isConfirmingAction ||
-          isSelectingCard ||
-          isSelectingCardsForScout ||
-          isSelectingLink) && (
+        {(isSelectingCard || isSelectingCardsForScout || isSelectingLink) && (
           <div className="flex flex-col gap-2">
-            {isConfirmingAction && (
-              <Button
-                onClick={() => send({ type: 'CONFIRM' })}
-                disabled={!snapshot.can({ type: 'CONFIRM' })}
-                variant="default"
-                className="w-full"
-              >
-                Confirm
-              </Button>
-            )}
             {isSelectingCardsForScout &&
               snapshot.context.selectedCardsForScout.length === 2 && (
                 <Button
@@ -170,6 +170,19 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
             </Button>
           </div>
         )}
+
+        {/* Confirmation Modal */}
+        <ActionConfirmModal
+          isOpen={isConfirmingAction}
+          onConfirm={() => send({ type: 'CONFIRM' })}
+          onCancel={() => send({ type: 'CANCEL' })}
+          action={getCurrentActionType() as any}
+          selectedCard={snapshot.context.selectedCard}
+          selectedLocation={snapshot.context.selectedLocation}
+          selectedIndustryTile={snapshot.context.selectedIndustryTile}
+          playerMoney={currentPlayer?.money}
+          era={snapshot.context.era}
+        />
       </CardContent>
     </Card>
   )

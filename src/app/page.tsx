@@ -2,9 +2,10 @@
 
 import { createBrowserInspector } from '@statelyai/inspect'
 import { useMachine } from '@xstate/react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Board } from '../components/Board/Board'
 import { GameLog } from '../components/GameLog'
+import { IndustryTilesDisplay } from '../components/IndustryTilesDisplay'
 import { PlayerCard } from '../components/PlayerCard'
 import { PlayerHand } from '../components/PlayerHand'
 import { ActionButtons } from '../components/game/ActionButtons'
@@ -12,7 +13,11 @@ import { GameHeader } from '../components/game/GameHeader'
 import { GameStatus } from '../components/game/GameStatus'
 import { ResourcesDisplay } from '../components/game/ResourcesDisplay'
 import { type CityId } from '../data/board'
-import { type Card } from '../data/cards'
+import { type Card, type LocationCard } from '../data/cards'
+import {
+  type IndustryTile,
+  getInitialPlayerIndustryTiles,
+} from '../data/industryTiles'
 import { gameStore } from '../store/gameStore'
 
 const inspector = createBrowserInspector({
@@ -23,6 +28,9 @@ export default function Home() {
   const [snapshot, send] = useMachine(gameStore, {
     inspect: inspector.inspect,
   })
+
+  // Local state for city selection
+  const [selectedCity, setSelectedCity] = useState<CityId | null>(null)
 
   const {
     players,
@@ -36,6 +44,8 @@ export default function Home() {
     selectedCardsForScout,
     spentMoney,
     selectedLink,
+    selectedLocation,
+    selectedIndustryTile,
   } = snapshot.context
 
   console.log('snapshot.context', snapshot.context)
@@ -53,14 +63,7 @@ export default function Home() {
           income: 10,
           color: 'red' as const,
           character: 'Richard Arkwright' as const,
-          industryTilesOnMat: {
-            cotton: [],
-            coal: [],
-            iron: [],
-            manufacturer: [],
-            pottery: [],
-            brewery: [],
-          },
+          industryTilesOnMat: getInitialPlayerIndustryTiles(),
         },
         {
           id: '2',
@@ -70,14 +73,7 @@ export default function Home() {
           income: 10,
           color: 'green' as const,
           character: 'Eliza Tinsley' as const,
-          industryTilesOnMat: {
-            cotton: [],
-            coal: [],
-            iron: [],
-            manufacturer: [],
-            pottery: [],
-            brewery: [],
-          },
+          industryTilesOnMat: getInitialPlayerIndustryTiles(),
         },
       ]
       send({ type: 'START_GAME', players: initialPlayers })
@@ -97,6 +93,20 @@ export default function Home() {
       })
     ) {
       return { action: 'building', subState: 'selectingCard' }
+    }
+    if (
+      snapshot.matches({
+        playing: { action: { building: 'selectingTile' } },
+      })
+    ) {
+      return { action: 'building', subState: 'selectingTile' }
+    }
+    if (
+      snapshot.matches({
+        playing: { action: { building: 'selectingLocation' } },
+      })
+    ) {
+      return { action: 'building', subState: 'selectingLocation' }
     }
     if (
       snapshot.matches({
@@ -208,9 +218,27 @@ export default function Home() {
 
     switch (action) {
       case 'building':
-        return subState === 'selectingCard'
-          ? 'Select a location or industry card to build'
-          : 'Confirm building action'
+        if (subState === 'selectingCard') {
+          return 'Select a location or industry card to build'
+        } else if (subState === 'selectingTile') {
+          return 'Select an industry tile to build'
+        } else if (subState === 'selectingLocation') {
+          if (selectedCard?.type === 'location') {
+            return `Building at ${(selectedCard as LocationCard).location} - click to confirm location`
+          } else if (
+            selectedCard?.type === 'industry' &&
+            selectedIndustryTile
+          ) {
+            return `Select a city to build ${selectedIndustryTile.type} Level ${selectedIndustryTile.level}`
+          }
+          return 'Select a location to build'
+        } else if (subState === 'confirming') {
+          if (selectedIndustryTile) {
+            return `Confirm building ${selectedIndustryTile.type} Level ${selectedIndustryTile.level} at ${selectedLocation}`
+          }
+          return 'Confirm building action'
+        }
+        return 'Building...'
       case 'developing':
         return subState === 'selectingCard'
           ? 'Select an industry card to develop'
@@ -245,10 +273,17 @@ export default function Home() {
 
   const handleCardSelect = (card: Card) => {
     send({ type: 'SELECT_CARD', cardId: card.id })
+    // Clear city selection when selecting a new card
+    setSelectedCity(null)
   }
 
   const handleLinkSelect = (from: CityId, to: CityId) => {
     send({ type: 'SELECT_LINK', from, to })
+  }
+
+  const handleCitySelect = (cityId: CityId) => {
+    setSelectedCity(cityId)
+    send({ type: 'SELECT_LOCATION', cityId })
   }
 
   const isSelectingCards = () => {
@@ -270,6 +305,18 @@ export default function Home() {
         return false
     }
   }
+
+  // Clear local selections when game state changes
+  useEffect(() => {
+    if (isActionSelection || !getCurrentAction()) {
+      setSelectedCity(null)
+    }
+  }, [isActionSelection, getCurrentAction])
+
+  // Sync local selectedCity with game state's selectedLocation
+  useEffect(() => {
+    setSelectedCity(selectedLocation)
+  }, [selectedLocation])
 
   return (
     <main className="min-h-screen p-8 bg-background text-foreground">
@@ -312,9 +359,12 @@ export default function Home() {
         <div>
           <Board
             isNetworking={isInState('networking', 'selectingLink')}
+            isBuilding={Boolean(isInState('building', 'selectingLocation'))}
             era={era}
             onLinkSelect={handleLinkSelect}
+            onCitySelect={handleCitySelect}
             selectedLink={selectedLink}
+            selectedCity={selectedCity}
             players={players}
           />
         </div>
@@ -355,6 +405,20 @@ export default function Home() {
           )}
 
           <ResourcesDisplay resources={resources} />
+
+          {/* Industry Tiles */}
+          {currentPlayer && (
+            <IndustryTilesDisplay
+              industryTiles={currentPlayer.industryTilesOnMat}
+              selectedTile={selectedIndustryTile}
+              onTileSelect={(tile) => {
+                send({ type: 'SELECT_INDUSTRY_TILE', tile })
+              }}
+              era={era}
+              playerName={currentPlayer.name}
+              isSelecting={isInState('building', 'selectingTile')}
+            />
+          )}
 
           {/* Actions */}
           {snapshot.matches('playing') && (

@@ -89,6 +89,9 @@ export interface GameState {
     from: CityId
     to: CityId
   } | null
+  // Building-related state
+  selectedLocation: CityId | null
+  selectedIndustryTile: IndustryTile | null
 }
 
 // Fisher-Yates shuffle algorithm
@@ -167,6 +170,14 @@ type GameEvent =
   | {
       type: 'SELECT_CARD'
       cardId: string
+    }
+  | {
+      type: 'SELECT_LOCATION'
+      cityId: CityId
+    }
+  | {
+      type: 'SELECT_INDUSTRY_TILE'
+      tile: IndustryTile
     }
   | {
       type: 'CONFIRM'
@@ -294,6 +305,8 @@ export const gameStore = setup({
         selectedCardsForScout: [],
         spentMoney: 0,
         selectedLink: null,
+        selectedLocation: null,
+        selectedIndustryTile: null,
       }
     }),
 
@@ -376,11 +389,16 @@ export const gameStore = setup({
 
     executeBuildAction: assign(({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
+
+      // Validate required selections
       if (!context.selectedCard) {
         throw new Error('No card selected for build action')
       }
+      if (!context.selectedLocation) {
+        throw new Error('No location selected for build action')
+      }
 
-      // Validate card type - only Location, Industry, and Wild cards can be used for BUILD
+      // Validate card type
       const validCardTypes = [
         'location',
         'industry',
@@ -393,29 +411,178 @@ export const gameStore = setup({
         )
       }
 
+      // Validate card-location matching (except for wild cards)
+      if (context.selectedCard.type === 'location') {
+        const locationCard = context.selectedCard as LocationCard
+        if (locationCard.location !== context.selectedLocation) {
+          throw new Error(
+            `Location card mismatch: card specifies ${locationCard.location}, but selected location is ${context.selectedLocation}`,
+          )
+        }
+      }
+
+      // Validate card-industry matching (except for wild cards)
+      if (
+        context.selectedCard.type === 'industry' &&
+        context.selectedIndustryTile
+      ) {
+        const industryCard = context.selectedCard as IndustryCard
+        const tile = context.selectedIndustryTile
+        if (!industryCard.industries.includes(tile.type)) {
+          throw new Error(
+            `Industry card mismatch: card allows ${industryCard.industries.join(', ')}, but selected tile type is ${tile.type}`,
+          )
+        }
+      }
+
+      // For industry cards, validate industry tile selection
+      if (
+        context.selectedCard.type === 'industry' &&
+        !context.selectedIndustryTile
+      ) {
+        throw new Error('Industry card requires industry tile selection')
+      }
+
       const updatedHand = removeCardFromHand(
         currentPlayer,
         context.selectedCard.id,
       )
 
+      let updatedPlayer = { ...currentPlayer, hand: updatedHand }
+      let cost = 0
+      let logMessage = `${currentPlayer.name} built`
+      const updatedCoalMarket = [...context.coalMarket]
+      const updatedIronMarket = [...context.ironMarket]
+
+      // Handle industry building (when tile is selected)
+      if (context.selectedIndustryTile) {
+        const tile = context.selectedIndustryTile
+        
+        // Validate tile can be built in current era
+        if (context.era === 'canal' && !tile.canBuildInCanalEra) {
+          throw new Error(
+            `Cannot build ${tile.type} Level ${tile.level} in Canal Era`
+          )
+        }
+        if (context.era === 'rail' && !tile.canBuildInRailEra) {
+          throw new Error(
+            `Cannot build ${tile.type} Level ${tile.level} in Rail Era`
+          )
+        }
+        
+        cost = tile.cost
+
+        // Consume required resources from markets
+        let coalCost = 0
+        let ironCost = 0
+
+        // Consume coal if required
+        if (tile.coalRequired > 0) {
+          let coalConsumed = 0
+          for (let i = 0; i < updatedCoalMarket.length && coalConsumed < tile.coalRequired; i++) {
+            if (updatedCoalMarket[i] !== null) {
+              coalCost += updatedCoalMarket[i] as number
+              updatedCoalMarket[i] = null
+              coalConsumed++
+            }
+          }
+          
+          // If market doesn't have enough coal, buy from general supply at £8 each
+          while (coalConsumed < tile.coalRequired) {
+            coalCost += 8
+            coalConsumed++
+          }
+        }
+
+        // Consume iron if required
+        if (tile.ironRequired > 0) {
+          let ironConsumed = 0
+          for (let i = 0; i < updatedIronMarket.length && ironConsumed < tile.ironRequired; i++) {
+            if (updatedIronMarket[i] !== null) {
+              ironCost += updatedIronMarket[i] as number
+              updatedIronMarket[i] = null
+              ironConsumed++
+            }
+          }
+          
+          // If market doesn't have enough iron, buy from general supply at £6 each
+          while (ironConsumed < tile.ironRequired) {
+            ironCost += 6
+            ironConsumed++
+          }
+        }
+
+        const totalCost = cost + coalCost + ironCost
+
+        // Validate player can afford the total cost
+        if (currentPlayer.money < totalCost) {
+          throw new Error(
+            `Insufficient funds. Cost: £${totalCost} (tile: £${cost}, coal: £${coalCost}, iron: £${ironCost}), Available: £${currentPlayer.money}`,
+          )
+        }
+
+        // Add industry to player's board
+        const newIndustry = {
+          location: context.selectedLocation,
+          type: tile.type,
+          level: tile.level,
+          flipped: false,
+          tile: tile,
+        }
+
+        // Remove tile from player's mat
+        const updatedTilesOnMat = { ...currentPlayer.industryTilesOnMat }
+        const tileType = tile.type
+        if (updatedTilesOnMat[tileType]) {
+          updatedTilesOnMat[tileType] = updatedTilesOnMat[tileType].filter(
+            (t) => t.id !== tile.id,
+          )
+        }
+
+        updatedPlayer = {
+          ...updatedPlayer,
+          money: currentPlayer.money - totalCost,
+          industries: [...currentPlayer.industries, newIndustry],
+          industryTilesOnMat: updatedTilesOnMat,
+        }
+
+        const resourceText = []
+        if (coalCost > 0) resourceText.push(`${tile.coalRequired} coal for £${coalCost}`)
+        if (ironCost > 0) resourceText.push(`${tile.ironRequired} iron for £${ironCost}`)
+        const resourceString = resourceText.length > 0 ? ` (consumed ${resourceText.join(', ')})` : ''
+        
+        logMessage = `${currentPlayer.name} built ${tile.type} Level ${tile.level} at ${context.selectedLocation} for £${totalCost}${resourceString} using ${getCardDescription(context.selectedCard)}`
+      } else {
+        // Handle location card building (simplified - no specific industry placement)
+        logMessage = `${currentPlayer.name} built at ${context.selectedLocation} using ${getCardDescription(context.selectedCard)}`
+      }
+
       debugLog('executeBuildAction', context)
-      return {
+      const result: Partial<GameState> = {
         players: updatePlayerInList(
           context.players,
           context.currentPlayerIndex,
-          { hand: updatedHand },
+          updatedPlayer,
         ),
         discardPile: [...context.discardPile, context.selectedCard],
         selectedCard: null,
+        selectedLocation: null,
+        selectedIndustryTile: null,
         actionsRemaining: context.actionsRemaining - 1,
-        logs: [
-          ...context.logs,
-          createLogEntry(
-            `${currentPlayer.name} built using ${getCardDescription(context.selectedCard)}`,
-            'action',
-          ),
-        ],
+        logs: [...context.logs, createLogEntry(logMessage, 'action')],
       }
+
+      // Update resource markets if they were modified
+      if (context.selectedIndustryTile) {
+        if (context.selectedIndustryTile.coalRequired > 0) {
+          result.coalMarket = updatedCoalMarket
+        }
+        if (context.selectedIndustryTile.ironRequired > 0) {
+          result.ironMarket = updatedIronMarket
+        }
+      }
+
+      return result
     }),
 
     executeNetworkAction: assign(({ context }) => {
@@ -486,6 +653,8 @@ export const gameStore = setup({
         // Note: general coal supply remains unchanged when consuming from market
         selectedCard: null,
         selectedLink: null,
+        selectedLocation: null,
+        selectedIndustryTile: null,
         actionsRemaining: context.actionsRemaining - 1,
         logs: [...context.logs, createLogEntry(logMessage, 'action')],
       }
@@ -749,11 +918,64 @@ export const gameStore = setup({
       selectedCard: null,
       selectedCardsForScout: [],
       selectedLink: null,
+      selectedLocation: null,
+      selectedIndustryTile: null,
+    }),
+
+    selectLocation: assign(({ event }) => {
+      if (event.type !== 'SELECT_LOCATION') return {}
+      return {
+        selectedLocation: event.cityId,
+      }
+    }),
+
+    clearCard: assign({
+      selectedCard: null,
+    }),
+
+    clearLocation: assign({
+      selectedLocation: null,
+    }),
+
+    selectIndustryTile: assign(({ event }) => {
+      if (event.type !== 'SELECT_INDUSTRY_TILE') return {}
+      return {
+        selectedIndustryTile: event.tile,
+      }
+    }),
+
+    clearIndustryTile: assign({
+      selectedIndustryTile: null,
     }),
   },
   guards: {
     hasActionsRemaining: ({ context }) => context.actionsRemaining > 0,
     hasSelectedCard: ({ context }) => context.selectedCard !== null,
+    isIndustryCard: ({ context, event }) => {
+      if (event.type !== 'SELECT_CARD') return false
+      const player = getCurrentPlayer(context)
+      const card = findCardInHand(player, event.cardId)
+      return card?.type === 'industry' || card?.type === 'wild_industry'
+    },
+    hasSelectedIndustryTile: ({ context }) =>
+      context.selectedIndustryTile !== null,
+    canCompleteBuild: ({ context }) => {
+      // For location cards, just need card and location
+      if (
+        context.selectedCard?.type === 'location' ||
+        context.selectedCard?.type === 'wild_location'
+      ) {
+        return (
+          context.selectedCard !== null && context.selectedLocation !== null
+        )
+      }
+      // For industry cards, need card, tile, and location
+      return (
+        context.selectedCard !== null &&
+        context.selectedIndustryTile !== null &&
+        context.selectedLocation !== null
+      )
+    },
     canScout: ({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
       // Cannot scout if player already has wild cards in hand
@@ -764,6 +986,16 @@ export const gameStore = setup({
       return context.selectedCardsForScout.length === 3 && !hasWildCard
     },
     hasSelectedLink: ({ context }) => context.selectedLink !== null,
+    canBuildTileInEra: ({ context, event }) => {
+      if (event.type !== 'SELECT_INDUSTRY_TILE') return false
+      const tile = event.tile
+      
+      if (context.era === 'canal') {
+        return tile.canBuildInCanalEra
+      } else {
+        return tile.canBuildInRailEra
+      }
+    },
     canBuildLink: ({ context, event }) => {
       if (event.type !== 'SELECT_LINK') return false
 
@@ -807,6 +1039,44 @@ export const gameStore = setup({
       // Check if either end of the new link is part of player's network
       return playerLocations.has(event.from) || playerLocations.has(event.to)
     },
+    canSelectLocation: ({ context, event }) => {
+      if (event.type !== 'SELECT_LOCATION') return false
+      if (!context.selectedCard) return false
+
+      // Wild location cards can select any location
+      if (context.selectedCard.type === 'wild_location') return true
+
+      // Location cards must match their specified location
+      if (context.selectedCard.type === 'location') {
+        const locationCard = context.selectedCard as LocationCard
+        return locationCard.location === event.cityId
+      }
+
+      // Industry and wild industry cards can select any location (for now)
+      return true
+    },
+    canSelectIndustryTile: ({ context, event }) => {
+      if (event.type !== 'SELECT_INDUSTRY_TILE') return false
+      if (!context.selectedCard) return false
+
+      const tile = event.tile
+
+      // Check era compatibility first
+      if (context.era === 'canal' && !tile.canBuildInCanalEra) return false
+      if (context.era === 'rail' && !tile.canBuildInRailEra) return false
+
+      // Wild industry cards can select any tile (if era allows)
+      if (context.selectedCard.type === 'wild_industry') return true
+
+      // Industry cards must match their allowed industries
+      if (context.selectedCard.type === 'industry') {
+        const industryCard = context.selectedCard as IndustryCard
+        return industryCard.industries.includes(tile.type)
+      }
+
+      // Location and wild location cards don't select industry tiles
+      return false
+    },
   },
 }).createMachine({
   id: 'brassGame',
@@ -832,6 +1102,8 @@ export const gameStore = setup({
     selectedCardsForScout: [],
     spentMoney: 0,
     selectedLink: null,
+    selectedLocation: null,
+    selectedIndustryTile: null,
   },
   initial: 'setup',
   states: {
@@ -869,14 +1141,54 @@ export const gameStore = setup({
               states: {
                 selectingCard: {
                   on: {
-                    SELECT_CARD: {
-                      target: 'confirmingBuild',
-                      actions: 'selectCard',
-                    },
+                    SELECT_CARD: [
+                      {
+                        target: 'selectingTile',
+                        actions: 'selectCard',
+                        guard: 'isIndustryCard',
+                      },
+                      {
+                        target: 'selectingLocation',
+                        actions: 'selectCard',
+                      },
+                    ],
                     CANCEL: {
                       target: '#brassGame.playing.action.selectingAction',
                       actions: 'clearSelections',
                     },
+                  },
+                },
+                selectingTile: {
+                  on: {
+                    SELECT_INDUSTRY_TILE: {
+                      target: 'selectingLocation',
+                      actions: 'selectIndustryTile',
+                      guard: 'canSelectIndustryTile',
+                    },
+                    CANCEL: {
+                      target: 'selectingCard',
+                      actions: 'clearCard',
+                    },
+                  },
+                },
+                selectingLocation: {
+                  on: {
+                    SELECT_LOCATION: {
+                      target: 'confirmingBuild',
+                      actions: 'selectLocation',
+                      guard: 'canSelectLocation',
+                    },
+                    CANCEL: [
+                      {
+                        target: 'selectingTile',
+                        guard: 'hasSelectedIndustryTile',
+                        actions: 'clearLocation',
+                      },
+                      {
+                        target: 'selectingCard',
+                        actions: 'clearCard',
+                      },
+                    ],
                   },
                 },
                 confirmingBuild: {
@@ -884,11 +1196,11 @@ export const gameStore = setup({
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
                       actions: 'executeBuildAction',
-                      guard: 'hasSelectedCard',
+                      guard: 'canCompleteBuild',
                     },
                     CANCEL: {
-                      target: 'selectingCard',
-                      actions: 'clearSelections',
+                      target: 'selectingLocation',
+                      actions: 'clearLocation',
                     },
                   },
                 },

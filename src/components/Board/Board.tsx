@@ -17,7 +17,7 @@ import {
 } from '../../data/board'
 import { Card } from '../ui/card'
 import '@xyflow/react/dist/style.css'
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { cn } from '../../lib/utils'
 import { type Player } from '../../store/gameStore'
 import { FloatingEdge } from './FloatingEdge'
@@ -25,9 +25,12 @@ import { FloatingEdge } from './FloatingEdge'
 // Types
 interface BoardProps {
   isNetworking?: boolean
+  isBuilding?: boolean
   era?: 'canal' | 'rail'
   onLinkSelect?: (from: CityId, to: CityId) => void
+  onCitySelect?: (cityId: CityId) => void
   selectedLink?: { from: CityId; to: CityId } | null
+  selectedCity?: CityId | null
   players: Player[]
 }
 
@@ -36,6 +39,10 @@ interface CityNodeProps {
     label: string
     type: City['type']
     id: string
+    isSelected: boolean
+    isSelectable: boolean
+    onSelect?: () => void
+    players: Player[]
   }
 }
 
@@ -67,6 +74,26 @@ function CityNode({ data }: CityNodeProps) {
     data.type === 'merchant' ? CITY_SIZES.merchant : CITY_SIZES.regular
   const isMerchant = data.type === 'merchant'
 
+  // Find industries built in this city
+  const industriesInCity =
+    data.players?.flatMap((player) =>
+      player.industries
+        .filter((industry) => industry.location === data.id)
+        .map((industry) => ({ ...industry, playerColor: player.color })),
+    ) || []
+
+  const getIndustryColor = (type: string) => {
+    const colors = {
+      cotton: '#ec4899', // pink
+      coal: '#6b7280', // gray
+      iron: '#f97316', // orange
+      manufacturer: '#3b82f6', // blue
+      pottery: '#eab308', // yellow
+      brewery: '#22c55e', // green
+    }
+    return colors[type as keyof typeof colors] || '#6b7280'
+  }
+
   return (
     <>
       <Handle
@@ -83,16 +110,48 @@ function CityNode({ data }: CityNodeProps) {
       />
       <div
         className={cn(
-          'flex items-center justify-center rounded-md border-2 shadow-sm',
+          'relative flex flex-col items-center justify-center rounded-md border-2 shadow-sm transition-all cursor-pointer',
           isMerchant
             ? 'bg-secondary border-secondary/50'
             : 'bg-primary border-primary/50',
+          data.isSelected && 'ring-2 ring-yellow-400 ring-offset-2',
+          data.isSelectable && 'hover:scale-105 hover:shadow-md',
+          !data.isSelectable && !isMerchant && 'opacity-70 cursor-not-allowed',
         )}
         style={{ width: size.width, height: size.height }}
+        onClick={data.isSelectable ? data.onSelect : undefined}
       >
-        <span className="text-sm font-medium text-center text-background">
+        <span className="text-xs font-medium text-center text-background mb-1">
           {data.label}
         </span>
+
+        {/* Industry buildings */}
+        {industriesInCity.length > 0 && (
+          <div className="flex flex-wrap gap-1 justify-center">
+            {industriesInCity.slice(0, 4).map((industry, index) => (
+              <div
+                key={index}
+                className="w-3 h-3 rounded-sm border border-white/50 text-xs flex items-center justify-center"
+                style={{
+                  backgroundColor: getIndustryColor(industry.type),
+                  borderColor: industry.playerColor,
+                }}
+                title={`${industry.type} L${industry.level} ${industry.flipped ? '(Flipped)' : ''}`}
+              >
+                <span className="text-white font-bold text-[8px]">
+                  {industry.level}
+                </span>
+              </div>
+            ))}
+            {industriesInCity.length > 4 && (
+              <div className="w-3 h-3 rounded-sm bg-gray-400 border border-white/50 text-xs flex items-center justify-center">
+                <span className="text-white font-bold text-[6px]">
+                  +{industriesInCity.length - 4}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </>
   )
@@ -195,12 +254,31 @@ function getEdges({
 // Main component
 export function Board({
   isNetworking = false,
+  isBuilding = false,
   era,
   onLinkSelect,
+  onCitySelect,
   selectedLink,
+  selectedCity,
   players,
 }: BoardProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
+
+  // Update nodes when props change
+  useEffect(() => {
+    setNodes((prevNodes) =>
+      prevNodes.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          isSelected: selectedCity === node.id,
+          isSelectable: isBuilding && node.data.type === 'city',
+          onSelect: () => onCitySelect?.(node.id as CityId),
+          players,
+        },
+      })),
+    )
+  }, [selectedCity, isBuilding, players, onCitySelect, setNodes])
 
   const onNodeDrag = useCallback(() => {
     if (process.env.NODE_ENV === 'development') {
@@ -298,6 +376,10 @@ const initialNodes: Node[] = Object.entries(cities).map(([id, city]) => ({
     label: city.name,
     type: city.type,
     id,
+    isSelected: false,
+    isSelectable: false,
+    onSelect: undefined,
+    players: [],
   },
   draggable: true,
 }))

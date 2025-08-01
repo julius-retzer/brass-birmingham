@@ -32,6 +32,7 @@ interface BoardProps {
   selectedLink?: { from: CityId; to: CityId } | null
   selectedCity?: CityId | null
   players: Player[]
+  currentPlayerIndex?: number
 }
 
 interface CityNodeProps {
@@ -43,6 +44,9 @@ interface CityNodeProps {
     isSelectable: boolean
     onSelect?: () => void
     players: Player[]
+    isInCurrentPlayerNetwork?: boolean
+    isConnectedToCurrentPlayer?: boolean
+    currentPlayerIndex?: number
   }
 }
 
@@ -82,6 +86,12 @@ function CityNode({ data }: CityNodeProps) {
         .map((industry) => ({ ...industry, playerColor: player.color })),
     ) || []
 
+  // Get current player's industries in this city
+  const currentPlayerIndustries = data.currentPlayerIndex !== undefined
+    ? data.players[data.currentPlayerIndex]?.industries
+        .filter((industry) => industry.location === data.id) || []
+    : []
+
   const getIndustryColor = (type: string) => {
     const colors = {
       cotton: '#ec4899', // pink
@@ -117,6 +127,11 @@ function CityNode({ data }: CityNodeProps) {
           data.isSelected && 'ring-2 ring-yellow-400 ring-offset-2',
           data.isSelectable && 'hover:scale-105 hover:shadow-md',
           !data.isSelectable && !isMerchant && 'opacity-70 cursor-not-allowed',
+          // Network highlighting
+          data.isInCurrentPlayerNetwork && !isMerchant && 'ring-2 ring-blue-400/50 ring-offset-1',
+          data.isConnectedToCurrentPlayer && !isMerchant && 'border-blue-400 bg-blue-50',
+          // Current player industries highlighting
+          currentPlayerIndustries.length > 0 && 'ring-2 ring-green-400/50 ring-offset-1',
         )}
         style={{ width: size.width, height: size.height }}
         onClick={data.isSelectable ? data.onSelect : undefined}
@@ -251,6 +266,43 @@ function getEdges({
   })
 }
 
+// Helper function to determine if a city is in the current player's network
+function getCityNetworkInfo(cityId: CityId, currentPlayerIndex: number, players: Player[]) {
+  if (currentPlayerIndex < 0 || currentPlayerIndex >= players.length) {
+    return { isInNetwork: false, isConnected: false }
+  }
+  
+  const currentPlayer = players[currentPlayerIndex]
+  if (!currentPlayer) {
+    return { isInNetwork: false, isConnected: false }
+  }
+
+  // A location is part of your network if:
+  // 1. It contains one or more of your industry tiles
+  const hasPlayerIndustry = currentPlayer.industries.some(
+    industry => industry.location === cityId
+  )
+
+  // 2. It is adjacent to one or more of your link tiles
+  const playerLocations = new Set<CityId>()
+  
+  // Add locations with player's industries
+  currentPlayer.industries.forEach((industry) => {
+    playerLocations.add(industry.location)
+  })
+
+  // Add locations adjacent to player's links
+  currentPlayer.links.forEach((link) => {
+    playerLocations.add(link.from)
+    playerLocations.add(link.to)
+  })
+
+  const isInNetwork = playerLocations.has(cityId)
+  const isConnected = hasPlayerIndustry || isInNetwork
+
+  return { isInNetwork, isConnected }
+}
+
 // Main component
 export function Board({
   isNetworking = false,
@@ -261,24 +313,31 @@ export function Board({
   selectedLink,
   selectedCity,
   players,
+  currentPlayerIndex = 0,
 }: BoardProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
 
   // Update nodes when props change
   useEffect(() => {
     setNodes((prevNodes) =>
-      prevNodes.map((node) => ({
-        ...node,
-        data: {
-          ...node.data,
-          isSelected: selectedCity === node.id,
-          isSelectable: isBuilding && node.data.type === 'city',
-          onSelect: () => onCitySelect?.(node.id as CityId),
-          players,
-        },
-      })),
+      prevNodes.map((node) => {
+        const networkInfo = getCityNetworkInfo(node.id as CityId, currentPlayerIndex, players)
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            isSelected: selectedCity === node.id,
+            isSelectable: isBuilding && node.data.type === 'city',
+            isInCurrentPlayerNetwork: networkInfo.isInNetwork,
+            isConnectedToCurrentPlayer: networkInfo.isConnected,
+            currentPlayerIndex,
+            onSelect: () => onCitySelect?.(node.id as CityId),
+            players,
+          },
+        }
+      }),
     )
-  }, [selectedCity, isBuilding, players, onCitySelect, setNodes])
+  }, [selectedCity, isBuilding, players, currentPlayerIndex, onCitySelect, setNodes])
 
   const onNodeDrag = useCallback(() => {
     if (process.env.NODE_ENV === 'development') {

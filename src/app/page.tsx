@@ -12,12 +12,15 @@ import { ActionButtons } from '../components/game/ActionButtons'
 import { GameHeader } from '../components/game/GameHeader'
 import { GameStatus } from '../components/game/GameStatus'
 import { ResourcesDisplay } from '../components/game/ResourcesDisplay'
+import { ResourceMarkets } from '../components/game/ResourceMarkets'
+import { IndustryTypeSelector } from '../components/game/IndustryTypeSelector'
+import { SellInterface } from '../components/game/SellInterface'
+import { DevelopInterface } from '../components/game/DevelopInterface'
+import { TurnOrderTracker } from '../components/game/TurnOrderTracker'
+import { IncomePhase } from '../components/game/IncomePhase'
 import { type CityId } from '../data/board'
-import { type Card, type LocationCard } from '../data/cards'
-import {
-  type IndustryTile,
-  getInitialPlayerIndustryTiles,
-} from '../data/industryTiles'
+import { type Card, type LocationCard, type IndustryCard, type IndustryType } from '../data/cards'
+import { getInitialPlayerIndustryTiles } from '../data/industryTiles'
 import { gameStore } from '../store/gameStore'
 
 const inspector = createBrowserInspector({
@@ -39,6 +42,8 @@ export default function Home() {
     round,
     actionsRemaining,
     resources,
+    coalMarket,
+    ironMarket,
     logs,
     selectedCard,
     selectedCardsForScout,
@@ -93,6 +98,13 @@ export default function Home() {
       })
     ) {
       return { action: 'building', subState: 'selectingCard' }
+    }
+    if (
+      snapshot.matches({
+        playing: { action: { building: 'selectingIndustryType' } },
+      })
+    ) {
+      return { action: 'building', subState: 'selectingIndustryType' }
     }
     if (
       snapshot.matches({
@@ -213,6 +225,8 @@ export default function Home() {
       case 'building':
         if (subState === 'selectingCard') {
           return 'Select a location or industry card to build'
+        } else if (subState === 'selectingIndustryType') {
+          return 'Select which industry type to build'
         } else if (subState === 'selectingLocation') {
           if (selectedCard?.type === 'location') {
             return `Building at ${(selectedCard as LocationCard).location} - click to confirm location`
@@ -243,7 +257,7 @@ export default function Home() {
           ? 'Select a card to discard to take a loan (£30, -3 income)'
           : 'Confirm loan action'
       case 'scouting':
-        return `Select ${2 - selectedCardsForScout.length} cards to discard and get wild cards`
+        return `Select ${3 - selectedCardsForScout.length} more cards to discard (${selectedCardsForScout.length}/3 selected)`
       case 'networking':
         switch (subState) {
           case 'selectingCard':
@@ -277,6 +291,28 @@ export default function Home() {
     send({ type: 'SELECT_LOCATION', cityId })
   }
 
+  const handleIndustryTypeSelect = (industryType: IndustryType) => {
+    send({ type: 'SELECT_INDUSTRY_TYPE', industryType })
+  }
+
+  const handleSellSelection = (industryIds: string[], merchantId: CityId) => {
+    // For now, just confirm the sell action
+    // In a full implementation, this would store the selection and move to confirmation
+    send({ type: 'CONFIRM' })
+  }
+
+  const handleDevelopSelection = (industryTypes: IndustryType[]) => {
+    // For now, just confirm the develop action
+    // In a full implementation, this would store the selection and enhance the game store
+    send({ type: 'CONFIRM' })
+  }
+
+  const handleIncomePhaseComplete = () => {
+    // For now, just continue the game
+    // In a full implementation, this would process income and update turn order
+    // This would likely be handled automatically by the game store
+  }
+
   const isSelectingCards = () => {
     const current = getCurrentAction()
     if (!current) return false
@@ -291,7 +327,7 @@ export default function Home() {
       case 'networking':
         return subState === 'selectingCard'
       case 'scouting':
-        return subState === 'selectingCards' && selectedCardsForScout.length < 2
+        return subState === 'selectingCards' && selectedCardsForScout.length < 3
       default:
         return false
     }
@@ -347,7 +383,7 @@ export default function Home() {
 
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Game Board */}
-        <div>
+        <div className="space-y-6">
           <Board
             isNetworking={isInState('networking', 'selectingLink')}
             isBuilding={Boolean(isInState('building', 'selectingLocation'))}
@@ -357,6 +393,15 @@ export default function Home() {
             selectedLink={selectedLink}
             selectedCity={selectedCity}
             players={players}
+            currentPlayerIndex={currentPlayerIndex}
+          />
+          
+          <TurnOrderTracker
+            players={players}
+            currentPlayerIndex={currentPlayerIndex}
+            round={round}
+            era={era}
+            spentMoney={spentMoney}
           />
         </div>
 
@@ -395,7 +440,40 @@ export default function Home() {
             />
           )}
 
+          {/* Industry Type Selection */}
+          {isInState('building', 'selectingIndustryType') && 
+           currentPlayer && 
+           selectedCard?.type === 'industry' && (
+            <IndustryTypeSelector
+              industryCard={selectedCard as IndustryCard}
+              player={currentPlayer}
+              era={era}
+              onSelectIndustryType={handleIndustryTypeSelect}
+              onCancel={() => send({ type: 'CANCEL' })}
+            />
+          )}
+
+          {/* Sell Interface */}
+          {isInState('selling', 'confirming') && currentPlayer && (
+            <SellInterface
+              player={currentPlayer}
+              onSelectSale={handleSellSelection}
+              onCancel={() => send({ type: 'CANCEL' })}
+            />
+          )}
+
+          {/* Develop Interface */}
+          {isInState('developing', 'confirming') && currentPlayer && (
+            <DevelopInterface
+              player={currentPlayer}
+              onSelectDevelopment={handleDevelopSelection}
+              onCancel={() => send({ type: 'CANCEL' })}
+            />
+          )}
+
           <ResourcesDisplay resources={resources} />
+
+          <ResourceMarkets coalMarket={coalMarket} ironMarket={ironMarket} />
 
           {/* Industry Tiles */}
           {currentPlayer && (

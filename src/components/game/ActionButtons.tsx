@@ -152,7 +152,7 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
         {(isSelectingCard || isSelectingCardsForScout || isSelectingLink) && (
           <div className="flex flex-col gap-2">
             {isSelectingCardsForScout &&
-              snapshot.context.selectedCardsForScout.length === 2 && (
+              snapshot.context.selectedCardsForScout.length === 3 && (
                 <Button
                   onClick={() => send({ type: 'CONFIRM' })}
                   variant="default"

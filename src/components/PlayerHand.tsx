@@ -72,10 +72,10 @@ export function PlayerHand({
       case 'takingLoan':
         return 'Select this card to discard and take a £30 loan'
       case 'scouting':
-        if (selectedCards && selectedCards.length >= 2) {
-          return 'Already selected 2 cards for scouting'
+        if (selectedCards && selectedCards.length >= 3) {
+          return 'Already selected 3 cards for scouting'
         }
-        return 'Select this card as one of two cards to discard for wild cards'
+        return `Select this card to discard for wild cards (${selectedCards?.length || 0}/3 selected)`
       case 'networking':
         return 'Select this card to discard for building a link'
       default:

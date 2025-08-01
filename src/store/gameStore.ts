@@ -493,15 +493,15 @@ function sellResourcesToMarket(
 // Helper function to get market price for a given position
 function getMarketPrice(position: number, resourceType: 'coal' | 'iron'): number {
   // Market prices based on position (leftmost = cheapest, rightmost = most expensive)
-  // Coal: [null, 1, 2, 3, 4] - position 0=£1, 1=£1, 2=£2, 3=£3, 4=£4
-  // Iron: [1, 1, 2, 3, 4] - position 0=£1, 1=£1, 2=£2, 3=£3, 4=£4
-  const coalPrices = [1, 1, 2, 3, 4]
-  const ironPrices = [1, 1, 2, 3, 4]
+  // Coal: £1,£2,£3,£4,£5,£6,£7,£8 (8 spaces)
+  // Iron: £1,£1,£2,£3,£4,£5,£6,£7 (7 spaces) 
+  const coalPrices = [1, 2, 3, 4, 5, 6, 7, 8]
+  const ironPrices = [1, 1, 2, 3, 4, 5, 6, 7]
   
   if (resourceType === 'coal') {
-    return coalPrices[position] || 1
+    return coalPrices[position] || 8 // Fallback to most expensive
   } else {
-    return ironPrices[position] || 1
+    return ironPrices[position] || 7 // Fallback to most expensive
   }
 }
 
@@ -632,12 +632,14 @@ export const gameStore = setup({
         actionsRemaining: 1, // First round only has 1 action
         resources: {
           coal: 24,
-          iron: 24,
+          iron: 10, // Iron total: 17 cubes in game (5 in market + 10 in general supply, 2 market spaces empty)
           beer: 24,
         },
         // Initialize markets based on player count (2-player setup)
-        coalMarket: [null, 1, 2, 3, 4], // One £1 space empty initially
-        ironMarket: [1, 1, 2, 3, 4], // Both £1 spaces filled initially
+        // Market arrays represent cube occupancy: null = empty space, 1 = cube present
+        // Prices are determined by position via getMarketPrice function
+        coalMarket: [1, 1, 1, 1, 1, 1, 1, null], // Coal market (8 spaces): one £8 space empty, rest filled
+        ironMarket: [null, null, 1, 1, 1, 1, 1], // Iron market (7 spaces): both £1 spaces empty, rest filled
         logs: [createLogEntry('Game started', 'system')],
         drawPile: shuffledCards.slice(currentIndex),
         discardPile: [],
@@ -855,7 +857,7 @@ export const gameStore = setup({
         }
 
         // Add industry to player's board
-        let newIndustry = {
+        const newIndustry = {
           location: context.selectedLocation,
           type: tile.type,
           level: tile.level,
@@ -918,7 +920,7 @@ export const gameStore = setup({
         // But first get their updated state from resource consumption
         const currentPlayerFromResources = updatedPlayersFromResources[context.currentPlayerIndex]!
         // Update player money: subtract costs, add market income, advance income if tile flipped
-        let finalMoney = currentPlayerFromResources.money - totalCost + marketIncome
+        const finalMoney = currentPlayerFromResources.money - totalCost + marketIncome
         let finalIncome = currentPlayerFromResources.income
         
         if (newIndustry.flipped) {
@@ -1528,7 +1530,7 @@ export const gameStore = setup({
     actionsRemaining: 1,
     resources: {
       coal: 24,
-      iron: 24,
+      iron: 10,
       beer: 24,
     },
     coalMarket: [],

@@ -1,4 +1,5 @@
-import { type Actor, assign, setup, StateFrom } from 'xstate'
+import { type Actor, StateFrom, assign, setup } from 'xstate'
+import { availableIndustryTiles } from '../data/availableIndustryTiles'
 import { type CityId } from '../data/board'
 import {
   type BaseCard,
@@ -13,7 +14,6 @@ import {
   type WildLocationCard,
   getInitialCards,
 } from '../data/cards'
-import { availableIndustryTiles } from '../data/availableIndustryTiles'
 export type LogEntryType = 'system' | 'action' | 'info' | 'error'
 
 export interface LogEntry {

@@ -1,4 +1,4 @@
-import { setup, assign, sendTo, fromPromise } from 'xstate'
+import { assign, fromPromise, sendTo, setup } from 'xstate'
 
 // ==========================================================================
 // Types

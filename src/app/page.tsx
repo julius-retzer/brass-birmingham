@@ -357,10 +357,7 @@ export default function Home() {
 
           {/* Actions */}
           {snapshot.matches('playing') && (
-            <ActionButtons
-              snapshot={snapshot}
-              send={send}
-            />
+            <ActionButtons snapshot={snapshot} send={send} />
           )}
 
           {/* Game Log */}

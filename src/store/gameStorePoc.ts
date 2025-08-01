@@ -1,10 +1,10 @@
 import {
-  setup,
-  assign,
   type ActorRefFrom,
-  type AnyActorRef,
-  sendTo,
   ActorRefFromLogic,
+  type AnyActorRef,
+  assign,
+  sendTo,
+  setup,
 } from 'xstate'
 import { Player } from './gameStore'
 

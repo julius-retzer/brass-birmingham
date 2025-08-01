@@ -1,5 +1,5 @@
+import { describe, expect, it } from 'vitest'
 import { createActor } from 'xstate'
-import { describe, it, expect } from 'vitest'
 import { brassBirminghamMachine } from './claudeMachine2'
 
 describe.skip('Brass Birmingham Machine', () => {

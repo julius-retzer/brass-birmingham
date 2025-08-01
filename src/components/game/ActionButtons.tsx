@@ -1,27 +1,32 @@
-import { type GameStoreSnapshot, type GameStoreSend } from '~/store/gameStore'
+import { cn } from '~/lib/utils'
+import { type GameStoreSend, type GameStoreSnapshot } from '~/store/gameStore'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { cn } from '~/lib/utils'
 
 interface ActionButtonsProps {
   snapshot: GameStoreSnapshot
   send: GameStoreSend
 }
 
-export function ActionButtons({
-  snapshot,
-  send,
-}: ActionButtonsProps) {
-  const isSelectingAction = snapshot.matches({ playing: { action: 'selectingAction' } })
+export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
+  const isSelectingAction = snapshot.matches({
+    playing: { action: 'selectingAction' },
+  })
   const isConfirmingAction = snapshot.hasTag('confirmingAction')
   const isSelectingCard = snapshot.hasTag('selectingCard')
-  const isConfirmingLink = snapshot.matches({ playing: { action: { networking: 'confirmingLink' } } })
+  const isConfirmingLink = snapshot.matches({
+    playing: { action: { networking: 'confirmingLink' } },
+  })
   const actionsRemaining = snapshot.context.actionsRemaining
 
-  const isActive = isSelectingAction || isConfirmingAction || isSelectingCard || isConfirmingLink
+  const isActive =
+    isSelectingAction ||
+    isConfirmingAction ||
+    isSelectingCard ||
+    isConfirmingLink
 
   return (
-     <Card
+    <Card
       className={cn(
         'transition-colors duration-200',
         isActive ? 'border-primary' : 'border-muted',

@@ -443,26 +443,40 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
 }
 
 // Utility functions for industry tiles
-export function getInitialPlayerIndustryTiles(): Record<IndustryType, IndustryTile[]> {
+export function getInitialPlayerIndustryTiles(): Record<
+  IndustryType,
+  IndustryTile[]
+> {
   const tiles: Record<IndustryType, IndustryTile[]> = {
-    cotton: industryTileDefinitions.cotton ? [...industryTileDefinitions.cotton] : [],
+    cotton: industryTileDefinitions.cotton
+      ? [...industryTileDefinitions.cotton]
+      : [],
     coal: industryTileDefinitions.coal ? [...industryTileDefinitions.coal] : [],
     iron: industryTileDefinitions.iron ? [...industryTileDefinitions.iron] : [],
-    manufacturer: industryTileDefinitions.manufacturer ? [...industryTileDefinitions.manufacturer] : [],
-    pottery: industryTileDefinitions.pottery ? [...industryTileDefinitions.pottery] : [],
-    brewery: industryTileDefinitions.brewery ? [...industryTileDefinitions.brewery] : [],
+    manufacturer: industryTileDefinitions.manufacturer
+      ? [...industryTileDefinitions.manufacturer]
+      : [],
+    pottery: industryTileDefinitions.pottery
+      ? [...industryTileDefinitions.pottery]
+      : [],
+    brewery: industryTileDefinitions.brewery
+      ? [...industryTileDefinitions.brewery]
+      : [],
   }
   return tiles
 }
 
 export function getLowestLevelTile(tiles: IndustryTile[]): IndustryTile | null {
   if (tiles.length === 0) return null
-  return tiles.reduce((lowest, current) => 
-    current.level < lowest.level ? current : lowest
+  return tiles.reduce((lowest, current) =>
+    current.level < lowest.level ? current : lowest,
   )
 }
 
-export function canBuildTileInEra(tile: IndustryTile, era: 'canal' | 'rail'): boolean {
+export function canBuildTileInEra(
+  tile: IndustryTile,
+  era: 'canal' | 'rail',
+): boolean {
   return era === 'canal' ? tile.canBuildInCanalEra : tile.canBuildInRailEra
 }
 

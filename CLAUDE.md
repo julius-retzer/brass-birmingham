@@ -4,6 +4,8 @@ Look at ai-docs for more guidelines and examples.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+Always apply TDD for the gameStore.ts First write test and then the implementation. The gameStore should have 100% unit test coverage.
+
 ## Project Overview
 
 Digital implementation of the Brass Birmingham board game using Next.js 15, TypeScript, XState for game state management, and Tailwind CSS with Shadcn UI components.

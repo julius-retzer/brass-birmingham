@@ -1,4 +1,4 @@
-import { type Actor, assign, setup, StateFrom } from 'xstate'
+import { type Actor, StateFrom, assign, setup } from 'xstate'
 import { type CityId } from '../data/board'
 import {
   type BaseCard,
@@ -15,10 +15,10 @@ import {
 } from '../data/cards'
 import {
   type IndustryTile,
-  getInitialPlayerIndustryTiles,
-  getLowestLevelTile,
   canBuildTileInEra,
   canDevelopTile,
+  getInitialPlayerIndustryTiles,
+  getLowestLevelTile,
 } from '../data/industryTiles'
 
 export type LogEntryType = 'system' | 'action' | 'info' | 'error'
@@ -72,6 +72,9 @@ export interface GameState {
     iron: number
     beer: number
   }
+  // Resource markets
+  coalMarket: (number | null)[] // Prices for coal, null means empty slot
+  ironMarket: (number | null)[] // Prices for iron, null means empty slot
   logs: LogEntry[]
   // Card-related state
   drawPile: Card[]
@@ -86,7 +89,6 @@ export interface GameState {
     from: CityId
     to: CityId
   } | null
-  secondLinkAllowed: boolean
 }
 
 // Fisher-Yates shuffle algorithm
@@ -172,6 +174,9 @@ type GameEvent =
   | {
       type: 'CANCEL'
     }
+  | {
+      type: 'BUILD_SECOND_LINK'
+    }
 
 // Utility functions
 function findCardInHand(player: Player, cardId: string): Card | null {
@@ -240,11 +245,12 @@ export const gameStore = setup({
     initializeGame: assign(({ event }) => {
       if (event.type !== 'START_GAME') return {}
       debugLog('initializeGame', {} as GameState)
-      
+
       const playerCount = event.players.length
-      const { regularCards, wildLocationCards, wildIndustryCards } = getInitialCards(playerCount)
+      const { regularCards, wildLocationCards, wildIndustryCards } =
+        getInitialCards(playerCount)
       const shuffledCards = shuffleArray(regularCards)
-      
+
       // Deal 8 cards to each player
       const hands: Card[][] = []
       let currentIndex = 0
@@ -252,7 +258,7 @@ export const gameStore = setup({
         hands.push(shuffledCards.slice(currentIndex, currentIndex + 8))
         currentIndex += 8
       }
-      
+
       // Initialize players with starting money, income, hands, and industry tiles
       const players: Player[] = event.players.map((playerData, index) => ({
         ...playerData,
@@ -264,7 +270,7 @@ export const gameStore = setup({
         links: [],
         industries: [],
       }))
-      
+
       return {
         players,
         currentPlayerIndex: 0,
@@ -276,6 +282,9 @@ export const gameStore = setup({
           iron: 24,
           beer: 24,
         },
+        // Initialize markets based on player count (2-player setup)
+        coalMarket: [null, 1, 2, 3, 4], // One £1 space empty initially
+        ironMarket: [1, 1, 2, 3, 4], // Both £1 spaces filled initially
         logs: [createLogEntry('Game started', 'system')],
         drawPile: shuffledCards.slice(currentIndex),
         discardPile: [],
@@ -285,11 +294,10 @@ export const gameStore = setup({
         selectedCardsForScout: [],
         spentMoney: 0,
         selectedLink: null,
-        secondLinkAllowed: true,
       }
     }),
 
-    selectCard: assign(({context, event}) => {
+    selectCard: assign(({ context, event }) => {
       if (event.type !== 'SELECT_CARD') return {}
       const player = getCurrentPlayer(context)
       const card = findCardInHand(player, event.cardId)
@@ -299,14 +307,16 @@ export const gameStore = setup({
       }
     }),
 
-    selectCardForScout: assign(({context, event}) => {
+    selectCardForScout: assign(({ context, event }) => {
       if (event.type !== 'SELECT_CARD') return {}
       const player = getCurrentPlayer(context)
       const card = findCardInHand(player, event.cardId)
       if (!card) return {}
-      
+
       // Add card to scout selection if not already selected and we have less than 3
-      const alreadySelected = context.selectedCardsForScout.some(c => c.id === card.id)
+      const alreadySelected = context.selectedCardsForScout.some(
+        (c) => c.id === card.id,
+      )
       if (!alreadySelected && context.selectedCardsForScout.length < 3) {
         debugLog('selectCardForScout', context, event)
         return {
@@ -316,7 +326,7 @@ export const gameStore = setup({
       return {}
     }),
 
-    selectLink: assign(({context, event}) => {
+    selectLink: assign(({ context, event }) => {
       if (event.type !== 'SELECT_LINK') return {}
       debugLog('selectLink', context, event)
       return {
@@ -333,17 +343,24 @@ export const gameStore = setup({
         throw new Error('No card selected for loan action')
       }
 
-      const updatedHand = removeCardFromHand(currentPlayer, context.selectedCard.id)
+      const updatedHand = removeCardFromHand(
+        currentPlayer,
+        context.selectedCard.id,
+      )
       const updatedPlayer = {
         ...currentPlayer,
         money: currentPlayer.money + 30,
-        income: Math.max(0, currentPlayer.income - 3),
+        income: Math.max(-10, currentPlayer.income - 3), // Cannot go below -10 per rules
         hand: updatedHand,
       }
 
       debugLog('executeLoanAction', context)
       return {
-        players: updatePlayerInList(context.players, context.currentPlayerIndex, updatedPlayer),
+        players: updatePlayerInList(
+          context.players,
+          context.currentPlayerIndex,
+          updatedPlayer,
+        ),
         discardPile: [...context.discardPile, context.selectedCard],
         selectedCard: null,
         actionsRemaining: context.actionsRemaining - 1,
@@ -364,16 +381,30 @@ export const gameStore = setup({
       }
 
       // Validate card type - only Location, Industry, and Wild cards can be used for BUILD
-      const validCardTypes = ['location', 'industry', 'wild_location', 'wild_industry']
+      const validCardTypes = [
+        'location',
+        'industry',
+        'wild_location',
+        'wild_industry',
+      ]
       if (!validCardTypes.includes(context.selectedCard.type)) {
-        throw new Error(`Invalid card type for build action: ${context.selectedCard.type}. Only Location, Industry, or Wild cards can be used.`)
+        throw new Error(
+          `Invalid card type for build action: ${context.selectedCard.type}. Only Location, Industry, or Wild cards can be used.`,
+        )
       }
 
-      const updatedHand = removeCardFromHand(currentPlayer, context.selectedCard.id)
+      const updatedHand = removeCardFromHand(
+        currentPlayer,
+        context.selectedCard.id,
+      )
 
       debugLog('executeBuildAction', context)
       return {
-        players: updatePlayerInList(context.players, context.currentPlayerIndex, { hand: updatedHand }),
+        players: updatePlayerInList(
+          context.players,
+          context.currentPlayerIndex,
+          { hand: updatedHand },
+        ),
         discardPile: [...context.discardPile, context.selectedCard],
         selectedCard: null,
         actionsRemaining: context.actionsRemaining - 1,
@@ -393,42 +424,70 @@ export const gameStore = setup({
         throw new Error('Card or link not selected for network action')
       }
 
-      const updatedHand = removeCardFromHand(currentPlayer, context.selectedCard.id)
+      const updatedHand = removeCardFromHand(
+        currentPlayer,
+        context.selectedCard.id,
+      )
+      // Rail era can build 1 link for £5 or 2 links for £15 (with beer consumption)
+      // For now, implement single link logic - double link will be separate action/choice
       const linkCost = context.era === 'canal' ? 3 : 5
-      
+
       const newLink = {
         from: context.selectedLink.from,
         to: context.selectedLink.to,
         type: context.era,
       }
 
+      let coalCost = 0
+      const updatedCoalMarket = [...context.coalMarket]
+      let logMessage = `${currentPlayer.name} built a ${context.era} link between ${context.selectedLink.from} and ${context.selectedLink.to}`
+
+      // Consume coal if rail era
+      if (context.era === 'rail') {
+        // In a full implementation, we would first check for connected coal mines
+        // For now, consume from coal market (cheapest first)
+        let coalFromMarket = 0
+
+        // Find cheapest available coal slot and consume from it
+        for (let i = 0; i < updatedCoalMarket.length; i++) {
+          if (updatedCoalMarket[i] !== null && coalFromMarket < 1) {
+            coalCost += updatedCoalMarket[i] as number
+            updatedCoalMarket[i] = null // Mark slot as empty
+            coalFromMarket++
+            break // Only consume 1 coal for rail link
+          }
+        }
+
+        // If market is empty, can still purchase coal for £8 per piece per rules
+        if (coalFromMarket < 1) {
+          coalCost += 8 // £8 per coal when market is empty
+          coalFromMarket = 1
+        }
+
+        logMessage += ` (consumed 1 coal from market for £${coalCost})`
+      }
+
       const updatedPlayer = {
         ...currentPlayer,
         hand: updatedHand,
-        money: currentPlayer.money - linkCost,
+        money: currentPlayer.money - linkCost - coalCost,
         links: [...currentPlayer.links, newLink],
       }
 
-      // Consume coal if rail era
-      const updatedResources = context.era === 'rail' 
-        ? { ...context.resources, coal: context.resources.coal - 1 }
-        : context.resources
-
       debugLog('executeNetworkAction', context)
       return {
-        players: updatePlayerInList(context.players, context.currentPlayerIndex, updatedPlayer),
+        players: updatePlayerInList(
+          context.players,
+          context.currentPlayerIndex,
+          updatedPlayer,
+        ),
         discardPile: [...context.discardPile, context.selectedCard],
-        resources: updatedResources,
+        coalMarket: updatedCoalMarket,
+        // Note: general coal supply remains unchanged when consuming from market
         selectedCard: null,
         selectedLink: null,
         actionsRemaining: context.actionsRemaining - 1,
-        logs: [
-          ...context.logs,
-          createLogEntry(
-            `${currentPlayer.name} built a ${context.era} link between ${context.selectedLink.from} and ${context.selectedLink.to}`,
-            'action',
-          ),
-        ],
+        logs: [...context.logs, createLogEntry(logMessage, 'action')],
       }
     }),
 
@@ -444,33 +503,58 @@ export const gameStore = setup({
       // 2. Remove the lowest level tile from each selected industry from player mat
       // 3. Consume 1 iron per tile removed from iron works or iron market
       // 4. Check pottery tiles with lightbulb icon cannot be developed
-      
+
       const tilesRemoved = 1 // Simplified - would be dynamic based on player choice
       const ironConsumed = tilesRemoved
-      
-      // Consume iron from resources (simplified - should be from iron works first, then market)
-      const updatedResources = {
-        ...context.resources,
-        iron: Math.max(0, context.resources.iron - ironConsumed),
+
+      // Consume iron from iron market (cheapest first)
+      const updatedIronMarket = [...context.ironMarket]
+      let ironCost = 0
+      let ironFromMarket = 0
+
+      // Find cheapest available iron slot and consume from it
+      for (let i = 0; i < updatedIronMarket.length; i++) {
+        if (updatedIronMarket[i] !== null && ironFromMarket < ironConsumed) {
+          ironCost += updatedIronMarket[i] as number
+          updatedIronMarket[i] = null // Mark slot as empty
+          ironFromMarket++
+          break // Only consume 1 iron for now
+        }
       }
 
-      const updatedHand = removeCardFromHand(currentPlayer, context.selectedCard.id)
+      // If market is empty, can still purchase iron for £6 per piece per rules
+      if (ironFromMarket < ironConsumed) {
+        const ironNeeded = ironConsumed - ironFromMarket
+        ironCost += ironNeeded * 6 // £6 per iron when market is empty
+        ironFromMarket = ironConsumed
+      }
+
+      const updatedHand = removeCardFromHand(
+        currentPlayer,
+        context.selectedCard.id,
+      )
       const updatedPlayer = {
         ...currentPlayer,
         hand: updatedHand,
+        money: currentPlayer.money - ironCost, // Pay for iron from market
       }
 
       debugLog('executeDevelopAction', context)
       return {
-        players: updatePlayerInList(context.players, context.currentPlayerIndex, updatedPlayer),
+        players: updatePlayerInList(
+          context.players,
+          context.currentPlayerIndex,
+          updatedPlayer,
+        ),
         discardPile: [...context.discardPile, context.selectedCard],
-        resources: updatedResources,
+        ironMarket: updatedIronMarket,
+        // Note: general iron supply remains unchanged when consuming from market
         selectedCard: null,
         actionsRemaining: context.actionsRemaining - 1,
         logs: [
           ...context.logs,
           createLogEntry(
-            `${currentPlayer.name} developed (removed ${tilesRemoved} tile${tilesRemoved > 1 ? 's' : ''}, consumed ${ironConsumed} iron) using ${getCardDescription(context.selectedCard)}`,
+            `${currentPlayer.name} developed (removed ${tilesRemoved} tile${tilesRemoved > 1 ? 's' : ''}, consumed ${ironConsumed} iron from market for £${ironCost}) using ${getCardDescription(context.selectedCard)}`,
             'action',
           ),
         ],
@@ -490,17 +574,20 @@ export const gameStore = setup({
       // 3. Consume required beer (usually 1) from breweries or merchant beer
       // 4. Flip the industry tile and advance player income
       // 5. Potentially collect merchant beer bonus if using merchant beer
-      
+
       const tilesFlipped = 1 // Simplified - would be dynamic based on player choice
       const beerConsumed = tilesFlipped // Most tiles require 1 beer to sell
-      
+
       // Consume beer from resources (simplified - should be from breweries first, then merchant beer)
       const updatedResources = {
         ...context.resources,
         beer: Math.max(0, context.resources.beer - beerConsumed),
       }
 
-      const updatedHand = removeCardFromHand(currentPlayer, context.selectedCard.id)
+      const updatedHand = removeCardFromHand(
+        currentPlayer,
+        context.selectedCard.id,
+      )
       const updatedPlayer = {
         ...currentPlayer,
         hand: updatedHand,
@@ -508,7 +595,11 @@ export const gameStore = setup({
 
       debugLog('executeSellAction', context)
       return {
-        players: updatePlayerInList(context.players, context.currentPlayerIndex, updatedPlayer),
+        players: updatePlayerInList(
+          context.players,
+          context.currentPlayerIndex,
+          updatedPlayer,
+        ),
         discardPile: [...context.discardPile, context.selectedCard],
         resources: updatedResources,
         selectedCard: null,
@@ -531,14 +622,14 @@ export const gameStore = setup({
 
       // Remove the 3 selected cards from hand
       let updatedHand = [...currentPlayer.hand]
-      context.selectedCardsForScout.forEach(card => {
-        updatedHand = updatedHand.filter(c => c.id !== card.id)
+      context.selectedCardsForScout.forEach((card) => {
+        updatedHand = updatedHand.filter((c) => c.id !== card.id)
       })
 
       // Take 1 wild location and 1 wild industry card
       const wildLocation = context.wildLocationPile[0]
       const wildIndustry = context.wildIndustryPile[0]
-      
+
       if (!wildLocation || !wildIndustry) {
         throw new Error('No wild cards available for scout action')
       }
@@ -553,7 +644,11 @@ export const gameStore = setup({
 
       debugLog('executeScoutAction', context)
       return {
-        players: updatePlayerInList(context.players, context.currentPlayerIndex, updatedPlayer),
+        players: updatePlayerInList(
+          context.players,
+          context.currentPlayerIndex,
+          updatedPlayer,
+        ),
         discardPile: [...context.discardPile, ...context.selectedCardsForScout],
         wildLocationPile: context.wildLocationPile.slice(1), // Remove used wild card
         wildIndustryPile: context.wildIndustryPile.slice(1), // Remove used wild card
@@ -571,7 +666,7 @@ export const gameStore = setup({
 
     executePassAction: assign(({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
-      
+
       // For pass action, we need to discard a card but don't need to select it
       // Let's discard the first card in hand
       const cardToDiscard = currentPlayer.hand[0]
@@ -587,7 +682,11 @@ export const gameStore = setup({
 
       debugLog('executePassAction', context)
       return {
-        players: updatePlayerInList(context.players, context.currentPlayerIndex, updatedPlayer),
+        players: updatePlayerInList(
+          context.players,
+          context.currentPlayerIndex,
+          updatedPlayer,
+        ),
         discardPile: [...context.discardPile, cardToDiscard],
         actionsRemaining: context.actionsRemaining - 1,
         logs: [
@@ -603,14 +702,14 @@ export const gameStore = setup({
     refillPlayerHand: assign(({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
       const cardsNeeded = 8 - currentPlayer.hand.length
-      
+
       if (cardsNeeded <= 0 || context.drawPile.length === 0) {
         return {}
       }
-      
+
       const newCards = drawCards(context, cardsNeeded)
       const updatedHand = [...currentPlayer.hand, ...newCards]
-      
+
       debugLog('refillPlayerHand', context)
       return {
         players: updatePlayerInList(
@@ -623,11 +722,17 @@ export const gameStore = setup({
     }),
 
     nextPlayer: assign(({ context }) => {
-      const nextPlayerIndex = (context.currentPlayerIndex + 1) % context.players.length
+      const nextPlayerIndex =
+        (context.currentPlayerIndex + 1) % context.players.length
       const isRoundComplete = nextPlayerIndex === 0
       const nextRound = isRoundComplete ? context.round + 1 : context.round
-      const nextActionsRemaining = isFirstRound({...context, round: nextRound}) ? 1 : 2
-      
+      const nextActionsRemaining = isFirstRound({
+        ...context,
+        round: nextRound,
+      })
+        ? 1
+        : 2
+
       debugLog('nextPlayer', context)
       return {
         currentPlayerIndex: nextPlayerIndex,
@@ -649,11 +754,19 @@ export const gameStore = setup({
   guards: {
     hasActionsRemaining: ({ context }) => context.actionsRemaining > 0,
     hasSelectedCard: ({ context }) => context.selectedCard !== null,
-    canScout: ({ context }) => context.selectedCardsForScout.length === 3,
+    canScout: ({ context }) => {
+      const currentPlayer = getCurrentPlayer(context)
+      // Cannot scout if player already has wild cards in hand
+      const hasWildCard = currentPlayer.hand.some(
+        (card) =>
+          card.type === 'wild_location' || card.type === 'wild_industry',
+      )
+      return context.selectedCardsForScout.length === 3 && !hasWildCard
+    },
     hasSelectedLink: ({ context }) => context.selectedLink !== null,
     canBuildLink: ({ context, event }) => {
       if (event.type !== 'SELECT_LINK') return false
-      
+
       // Check if any player already has a link on this connection
       const existingLink = context.players.some((player) =>
         player.links.some(
@@ -662,8 +775,37 @@ export const gameStore = setup({
             (link.from === event.to && link.to === event.from),
         ),
       )
-      
-      return !existingLink
+
+      if (existingLink) return false
+
+      const currentPlayer = getCurrentPlayer(context)
+
+      // Exception: If player has no industries or links on board, can build anywhere
+      const hasNoTilesOnBoard =
+        currentPlayer.industries.length === 0 &&
+        currentPlayer.links.length === 0
+      if (hasNoTilesOnBoard) return true
+
+      // Check if link is adjacent to player's network
+      // A location is part of your network if:
+      // 1. It contains one or more of your industry tiles
+      // 2. It is adjacent to one or more of your link tiles
+
+      const playerLocations = new Set<CityId>()
+
+      // Add locations with player's industries
+      currentPlayer.industries.forEach((industry) => {
+        playerLocations.add(industry.location)
+      })
+
+      // Add locations adjacent to player's links
+      currentPlayer.links.forEach((link) => {
+        playerLocations.add(link.from)
+        playerLocations.add(link.to)
+      })
+
+      // Check if either end of the new link is part of player's network
+      return playerLocations.has(event.from) || playerLocations.has(event.to)
     },
   },
 }).createMachine({
@@ -679,6 +821,8 @@ export const gameStore = setup({
       iron: 24,
       beer: 24,
     },
+    coalMarket: [],
+    ironMarket: [],
     logs: [],
     drawPile: [],
     discardPile: [],
@@ -688,7 +832,6 @@ export const gameStore = setup({
     selectedCardsForScout: [],
     spentMoney: 0,
     selectedLink: null,
-    secondLinkAllowed: true,
   },
   initial: 'setup',
   states: {

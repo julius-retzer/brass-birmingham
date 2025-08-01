@@ -1,4 +1,4 @@
-import { fromCallback, or, setup, assign } from 'xstate'
+import { assign, fromCallback, or, setup } from 'xstate'
 
 // TYPES
 

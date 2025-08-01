@@ -9,7 +9,6 @@ import { PlayerCard } from '../components/PlayerCard'
 import { PlayerHand } from '../components/PlayerHand'
 import { ActionButtons } from '../components/game/ActionButtons'
 import { GameHeader } from '../components/game/GameHeader'
-import { GameOver } from '../components/game/GameOver'
 import { GameStatus } from '../components/game/GameStatus'
 import { ResourcesDisplay } from '../components/game/ResourcesDisplay'
 import { type CityId } from '../data/board'
@@ -54,8 +53,14 @@ export default function Home() {
           income: 10,
           color: 'red' as const,
           character: 'Richard Arkwright' as const,
-          links: [],
-          industries: [],
+          industryTilesOnMat: {
+            cotton: [],
+            coal: [],
+            iron: [],
+            manufacturer: [],
+            pottery: [],
+            brewery: [],
+          },
         },
         {
           id: '2',
@@ -65,8 +70,14 @@ export default function Home() {
           income: 10,
           color: 'green' as const,
           character: 'Eliza Tinsley' as const,
-          links: [],
-          industries: [],
+          industryTilesOnMat: {
+            cotton: [],
+            coal: [],
+            iron: [],
+            manufacturer: [],
+            pottery: [],
+            brewery: [],
+          },
         },
       ]
       send({ type: 'START_GAME', players: initialPlayers })
@@ -85,14 +96,14 @@ export default function Home() {
         playing: { action: { building: 'selectingCard' } },
       })
     ) {
-      return { action: 'build', subState: 'selectingCard' }
+      return { action: 'building', subState: 'selectingCard' }
     }
     if (
       snapshot.matches({
         playing: { action: { building: 'confirmingBuild' } },
       })
     ) {
-      return { action: 'build', subState: 'confirming' }
+      return { action: 'building', subState: 'confirming' }
     }
 
     // Develop
@@ -101,14 +112,14 @@ export default function Home() {
         playing: { action: { developing: 'selectingCard' } },
       })
     ) {
-      return { action: 'develop', subState: 'selectingCard' }
+      return { action: 'developing', subState: 'selectingCard' }
     }
     if (
       snapshot.matches({
         playing: { action: { developing: 'confirmingDevelop' } },
       })
     ) {
-      return { action: 'develop', subState: 'confirming' }
+      return { action: 'developing', subState: 'confirming' }
     }
 
     // Sell
@@ -117,14 +128,14 @@ export default function Home() {
         playing: { action: { selling: 'selectingCard' } },
       })
     ) {
-      return { action: 'sell', subState: 'selectingCard' }
+      return { action: 'selling', subState: 'selectingCard' }
     }
     if (
       snapshot.matches({
         playing: { action: { selling: 'confirmingSell' } },
       })
     ) {
-      return { action: 'sell', subState: 'confirming' }
+      return { action: 'selling', subState: 'confirming' }
     }
 
     // Loan
@@ -133,14 +144,14 @@ export default function Home() {
         playing: { action: { takingLoan: 'selectingCard' } },
       })
     ) {
-      return { action: 'loan', subState: 'selectingCard' }
+      return { action: 'takingLoan', subState: 'selectingCard' }
     }
     if (
       snapshot.matches({
         playing: { action: { takingLoan: 'confirmingLoan' } },
       })
     ) {
-      return { action: 'loan', subState: 'confirming' }
+      return { action: 'takingLoan', subState: 'confirming' }
     }
 
     // Scout
@@ -149,7 +160,7 @@ export default function Home() {
         playing: { action: { scouting: 'selectingCards' } },
       })
     ) {
-      return { action: 'scout', subState: 'selectingCards' }
+      return { action: 'scouting', subState: 'selectingCards' }
     }
 
     // Network
@@ -158,21 +169,21 @@ export default function Home() {
         playing: { action: { networking: 'selectingCard' } },
       })
     ) {
-      return { action: 'network', subState: 'selectingCard' }
+      return { action: 'networking', subState: 'selectingCard' }
     }
     if (
       snapshot.matches({
         playing: { action: { networking: 'selectingLink' } },
       })
     ) {
-      return { action: 'network', subState: 'selectingLink' }
+      return { action: 'networking', subState: 'selectingLink' }
     }
     if (
       snapshot.matches({
         playing: { action: { networking: 'confirmingLink' } },
       })
     ) {
-      return { action: 'network', subState: 'confirmingLink' }
+      return { action: 'networking', subState: 'confirmingLink' }
     }
 
     return null
@@ -196,25 +207,25 @@ export default function Home() {
     const { action, subState } = current
 
     switch (action) {
-      case 'build':
+      case 'building':
         return subState === 'selectingCard'
           ? 'Select a location or industry card to build'
           : 'Confirm building action'
-      case 'develop':
+      case 'developing':
         return subState === 'selectingCard'
           ? 'Select an industry card to develop'
           : 'Confirm development action'
-      case 'sell':
+      case 'selling':
         return subState === 'selectingCard'
           ? 'Select a card to sell'
           : 'Confirm selling action'
-      case 'loan':
+      case 'takingLoan':
         return subState === 'selectingCard'
           ? 'Select a card to discard to take a loan (£30, -3 income)'
           : 'Confirm loan action'
-      case 'scout':
+      case 'scouting':
         return `Select ${2 - selectedCardsForScout.length} cards to discard and get wild cards`
-      case 'network':
+      case 'networking':
         switch (subState) {
           case 'selectingCard':
             return 'Select a card to discard for networking'
@@ -236,43 +247,8 @@ export default function Home() {
     send({ type: 'SELECT_CARD', cardId: card.id })
   }
 
-  const handleAction = (
-    action: 'BUILD' | 'DEVELOP' | 'SELL' | 'TAKE_LOAN' | 'SCOUT' | 'NETWORK',
-  ) => {
-    send({ type: action })
-  }
-
-  const handleConfirmAction = () => {
-    send({ type: 'CONFIRM' })
-  }
-
-  const handleCancelAction = () => {
-    send({ type: 'CANCEL' })
-  }
-
   const handleLinkSelect = (from: CityId, to: CityId) => {
     send({ type: 'SELECT_LINK', from, to })
-  }
-
-  const canConfirmAction = () => {
-    const current = getCurrentAction()
-    if (!current) return false
-
-    const { action, subState } = current
-
-    switch (action) {
-      case 'build':
-      case 'develop':
-      case 'sell':
-      case 'loan':
-        return subState.startsWith('confirming') && selectedCard !== null
-      case 'scout':
-        return selectedCardsForScout.length === 2
-      case 'network':
-        return subState === 'confirmingLink' && selectedLink !== null
-      default:
-        return false
-    }
   }
 
   const isSelectingCards = () => {
@@ -282,13 +258,13 @@ export default function Home() {
     const { action, subState } = current
 
     switch (action) {
-      case 'build':
-      case 'develop':
-      case 'sell':
-      case 'loan':
-      case 'network':
+      case 'building':
+      case 'developing':
+      case 'selling':
+      case 'takingLoan':
+      case 'networking':
         return subState === 'selectingCard'
-      case 'scout':
+      case 'scouting':
         return subState === 'selectingCards' && selectedCardsForScout.length < 2
       default:
         return false
@@ -306,11 +282,36 @@ export default function Home() {
         onStartInspector={() => inspector.start()}
       />
 
+      {/* Current Player Turn Indicator */}
+      <div className="mb-6 p-4 bg-primary/10 border border-primary/20 rounded-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-4 h-4 rounded-full border-2`}
+              style={{
+                backgroundColor: currentPlayer?.color,
+                borderColor: currentPlayer?.color,
+              }}
+            />
+            <h2 className="text-lg font-semibold">
+              {currentPlayer?.name}'s Turn
+            </h2>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {actionsRemaining} action{actionsRemaining !== 1 ? 's' : ''}{' '}
+            remaining
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground mt-1">
+          {getActionDescription() || 'Select an action to continue your turn'}
+        </p>
+      </div>
+
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Game Board */}
         <div>
           <Board
-            isNetworking={isInState('network', 'selectingLink')}
+            isNetworking={isInState('networking', 'selectingLink')}
             era={era}
             onLinkSelect={handleLinkSelect}
             selectedLink={selectedLink}
@@ -343,7 +344,7 @@ export default function Home() {
               player={currentPlayer}
               selectedCard={selectedCard}
               selectedCards={
-                isInState('scout', 'selectingCards')
+                isInState('scouting', 'selectingCards')
                   ? selectedCardsForScout
                   : undefined
               }
@@ -366,9 +367,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-
-      {/* Game Over State */}
-      {snapshot.matches('gameOver') && <GameOver />}
     </main>
   )
 }

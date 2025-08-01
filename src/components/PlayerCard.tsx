@@ -17,12 +17,23 @@ interface PlayerCardProps {
 
 export function PlayerCard({ player, isCurrentPlayer }: PlayerCardProps) {
   return (
-    <Card className={isCurrentPlayer ? 'ring-2 ring-primary' : ''}>
+    <Card className={isCurrentPlayer ? 'ring-2 ring-primary bg-primary/5' : ''}>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>{player.name}</span>
+          <div className="flex items-center gap-2">
+            <div
+              className="w-3 h-3 rounded-full border"
+              style={{
+                backgroundColor: player.color,
+                borderColor: player.color,
+              }}
+            />
+            <span>{player.name}</span>
+          </div>
           {isCurrentPlayer && (
-            <span className="text-sm text-muted-foreground">(Current)</span>
+            <span className="text-sm font-medium text-primary bg-primary/20 px-2 py-1 rounded">
+              Current Turn
+            </span>
           )}
         </CardTitle>
       </CardHeader>

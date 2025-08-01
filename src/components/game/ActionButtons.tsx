@@ -12,18 +12,59 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
   const isSelectingAction = snapshot.matches({
     playing: { action: 'selectingAction' },
   })
-  const isConfirmingAction = snapshot.hasTag('confirmingAction')
-  const isSelectingCard = snapshot.hasTag('selectingCard')
+
+  // Check for confirming states
+  const isConfirmingBuild = snapshot.matches({
+    playing: { action: { building: 'confirmingBuild' } },
+  })
+  const isConfirmingDevelop = snapshot.matches({
+    playing: { action: { developing: 'confirmingDevelop' } },
+  })
+  const isConfirmingSell = snapshot.matches({
+    playing: { action: { selling: 'confirmingSell' } },
+  })
+  const isConfirmingLoan = snapshot.matches({
+    playing: { action: { takingLoan: 'confirmingLoan' } },
+  })
   const isConfirmingLink = snapshot.matches({
     playing: { action: { networking: 'confirmingLink' } },
   })
+
+  // Check for card selection states
+  const isSelectingCard =
+    snapshot.matches({ playing: { action: { building: 'selectingCard' } } }) ||
+    snapshot.matches({
+      playing: { action: { developing: 'selectingCard' } },
+    }) ||
+    snapshot.matches({ playing: { action: { selling: 'selectingCard' } } }) ||
+    snapshot.matches({
+      playing: { action: { takingLoan: 'selectingCard' } },
+    }) ||
+    snapshot.matches({ playing: { action: { networking: 'selectingCard' } } })
+
+  const isSelectingCardsForScout = snapshot.matches({
+    playing: { action: { scouting: 'selectingCards' } },
+  })
+
+  const isSelectingLink = snapshot.matches({
+    playing: { action: { networking: 'selectingLink' } },
+  })
+
+  const isConfirmingAction =
+    isConfirmingBuild ||
+    isConfirmingDevelop ||
+    isConfirmingSell ||
+    isConfirmingLoan ||
+    isConfirmingLink
+
   const actionsRemaining = snapshot.context.actionsRemaining
 
   const isActive =
     isSelectingAction ||
     isConfirmingAction ||
     isSelectingCard ||
-    isConfirmingLink
+    isSelectingCardsForScout ||
+    isSelectingLink
 
   return (
     <Card
@@ -86,9 +127,19 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
             >
               Network
             </Button>
+            <Button
+              onClick={() => send({ type: 'PASS' })}
+              variant="outline"
+              className="w-full mt-2"
+            >
+              Pass Turn
+            </Button>
           </div>
         )}
-        {(isConfirmingAction || isSelectingCard || isConfirmingLink) && (
+        {(isConfirmingAction ||
+          isSelectingCard ||
+          isSelectingCardsForScout ||
+          isSelectingLink) && (
           <div className="flex flex-col gap-2">
             {isConfirmingAction && (
               <Button
@@ -100,6 +151,16 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
                 Confirm
               </Button>
             )}
+            {isSelectingCardsForScout &&
+              snapshot.context.selectedCardsForScout.length === 2 && (
+                <Button
+                  onClick={() => send({ type: 'CONFIRM' })}
+                  variant="default"
+                  className="w-full"
+                >
+                  Confirm Scout
+                </Button>
+              )}
             <Button
               onClick={() => send({ type: 'CANCEL' })}
               variant="secondary"

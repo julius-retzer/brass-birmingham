@@ -6,20 +6,22 @@ import { useEffect, useState } from 'react'
 import { Board } from '../components/Board/Board'
 import { GameLog } from '../components/GameLog'
 import { IndustryTilesDisplay } from '../components/IndustryTilesDisplay'
-import { PlayerCard } from '../components/PlayerCard'
 import { PlayerHand } from '../components/PlayerHand'
 import { ActionButtons } from '../components/game/ActionButtons'
-import { GameHeader } from '../components/game/GameHeader'
-import { GameStatus } from '../components/game/GameStatus'
-import { ResourcesDisplay } from '../components/game/ResourcesDisplay'
-import { ResourceMarkets } from '../components/game/ResourceMarkets'
-import { IndustryTypeSelector } from '../components/game/IndustryTypeSelector'
-import { SellInterface } from '../components/game/SellInterface'
 import { DevelopInterface } from '../components/game/DevelopInterface'
+import { GameHeader } from '../components/game/GameHeader'
+import { IndustryTypeSelector } from '../components/game/IndustryTypeSelector'
+import { ResourceMarkets } from '../components/game/ResourceMarkets'
+import { ResourcesDisplay } from '../components/game/ResourcesDisplay'
+import { SellInterface } from '../components/game/SellInterface'
 import { TurnOrderTracker } from '../components/game/TurnOrderTracker'
-import { IncomePhase } from '../components/game/IncomePhase'
 import { type CityId } from '../data/board'
-import { type Card, type LocationCard, type IndustryCard, type IndustryType } from '../data/cards'
+import {
+  type Card,
+  type IndustryCard,
+  type IndustryType,
+  type LocationCard,
+} from '../data/cards'
 import { getInitialPlayerIndustryTiles } from '../data/industryTiles'
 import { gameStore } from '../store/gameStore'
 
@@ -295,22 +297,16 @@ export default function Home() {
     send({ type: 'SELECT_INDUSTRY_TYPE', industryType })
   }
 
-  const handleSellSelection = (industryIds: string[], merchantId: CityId) => {
+  const handleSellSelection = () => {
     // For now, just confirm the sell action
     // In a full implementation, this would store the selection and move to confirmation
     send({ type: 'CONFIRM' })
   }
 
-  const handleDevelopSelection = (industryTypes: IndustryType[]) => {
+  const handleDevelopSelection = () => {
     // For now, just confirm the develop action
     // In a full implementation, this would store the selection and enhance the game store
     send({ type: 'CONFIRM' })
-  }
-
-  const handleIncomePhaseComplete = () => {
-    // For now, just continue the game
-    // In a full implementation, this would process income and update turn order
-    // This would likely be handled automatically by the game store
   }
 
   const isSelectingCards = () => {
@@ -356,34 +352,17 @@ export default function Home() {
         onStartInspector={() => inspector.start()}
       />
 
-      {/* Current Player Turn Indicator */}
-      <div className="mb-6 p-4 bg-primary/10 border border-primary/20 rounded-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-4 h-4 rounded-full border-2`}
-              style={{
-                backgroundColor: currentPlayer?.color,
-                borderColor: currentPlayer?.color,
-              }}
-            />
-            <h2 className="text-lg font-semibold">
-              {currentPlayer?.name}'s Turn
-            </h2>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            {actionsRemaining} action{actionsRemaining !== 1 ? 's' : ''}{' '}
-            remaining
-          </div>
-        </div>
-        <p className="text-sm text-muted-foreground mt-1">
-          {getActionDescription() || 'Select an action to continue your turn'}
-        </p>
-      </div>
+      <TurnOrderTracker
+        players={players}
+        currentPlayerIndex={currentPlayerIndex}
+        round={round}
+        era={era}
+        spentMoney={spentMoney}
+      />
 
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Game Board */}
-        <div className="space-y-6">
+      <div className="grid xl:grid-cols-4 lg:grid-cols-3 gap-6">
+        {/* Column 1: Game Board & Network */}
+        <div className="xl:col-span-2 lg:col-span-2 space-y-6">
           <Board
             isNetworking={isInState('networking', 'selectingLink')}
             isBuilding={Boolean(isInState('building', 'selectingLocation'))}
@@ -394,35 +373,74 @@ export default function Home() {
             selectedCity={selectedCity}
             players={players}
             currentPlayerIndex={currentPlayerIndex}
-          />
-          
-          <TurnOrderTracker
-            players={players}
-            currentPlayerIndex={currentPlayerIndex}
-            round={round}
-            era={era}
-            spentMoney={spentMoney}
+            selectedIndustryType={selectedIndustryTile?.type || null}
           />
         </div>
 
-        {/* Player Info, Hand, and Actions */}
-        <div className="space-y-8">
-          {/* Players */}
-          <div className="grid grid-cols-2 gap-4">
-            {players.map((player, index) => (
-              <PlayerCard
-                key={player.id}
-                player={player}
-                isCurrentPlayer={index === currentPlayerIndex}
-              />
-            ))}
+        {/* Column 2: Player Actions & Hand */}
+        <div className="space-y-6">
+          {/* Current Player Turn Status */}
+          <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-4 h-4 rounded-full border-2`}
+                  style={{
+                    backgroundColor: currentPlayer?.color,
+                    borderColor: currentPlayer?.color,
+                  }}
+                />
+                <h2 className="text-lg font-semibold">
+                  {currentPlayer?.name}'s Turn
+                </h2>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {actionsRemaining} action{actionsRemaining !== 1 ? 's' : ''}{' '}
+                remaining
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {getActionDescription() ||
+                'Select an action to continue your turn'}
+            </p>
           </div>
 
-          <GameStatus
-            isActionSelection={isActionSelection}
-            currentAction={getCurrentAction()?.action}
-            description={getActionDescription() ?? 'Waiting for action...'}
-          />
+          {/* Action Interfaces */}
+          {isInState('building', 'selectingIndustryType') &&
+            currentPlayer &&
+            (selectedCard?.type === 'industry' || 
+             selectedCard?.type === 'location' || 
+             selectedCard?.type === 'wild_location') && (
+              <IndustryTypeSelector
+                industryCard={selectedCard?.type === 'industry' ? (selectedCard as IndustryCard) : undefined}
+                locationCard={selectedCard?.type === 'location' || selectedCard?.type === 'wild_location' ? selectedCard : undefined}
+                player={currentPlayer}
+                era={era}
+                onSelectIndustryType={handleIndustryTypeSelect}
+                onCancel={() => send({ type: 'CANCEL' })}
+              />
+            )}
+
+          {isInState('selling', 'confirming') && currentPlayer && (
+            <SellInterface
+              player={currentPlayer}
+              onSelectSale={handleSellSelection}
+              onCancel={() => send({ type: 'CANCEL' })}
+            />
+          )}
+
+          {isInState('developing', 'confirming') && currentPlayer && (
+            <DevelopInterface
+              player={currentPlayer}
+              onSelectDevelopment={handleDevelopSelection}
+              onCancel={() => send({ type: 'CANCEL' })}
+            />
+          )}
+
+          {/* Actions */}
+          {snapshot.matches('playing') && (
+            <ActionButtons snapshot={snapshot} send={send} />
+          )}
 
           {/* Current Player's Hand */}
           {currentPlayer && (
@@ -439,38 +457,10 @@ export default function Home() {
               currentSubState={getCurrentAction()?.subState}
             />
           )}
+        </div>
 
-          {/* Industry Type Selection */}
-          {isInState('building', 'selectingIndustryType') && 
-           currentPlayer && 
-           selectedCard?.type === 'industry' && (
-            <IndustryTypeSelector
-              industryCard={selectedCard as IndustryCard}
-              player={currentPlayer}
-              era={era}
-              onSelectIndustryType={handleIndustryTypeSelect}
-              onCancel={() => send({ type: 'CANCEL' })}
-            />
-          )}
-
-          {/* Sell Interface */}
-          {isInState('selling', 'confirming') && currentPlayer && (
-            <SellInterface
-              player={currentPlayer}
-              onSelectSale={handleSellSelection}
-              onCancel={() => send({ type: 'CANCEL' })}
-            />
-          )}
-
-          {/* Develop Interface */}
-          {isInState('developing', 'confirming') && currentPlayer && (
-            <DevelopInterface
-              player={currentPlayer}
-              onSelectDevelopment={handleDevelopSelection}
-              onCancel={() => send({ type: 'CANCEL' })}
-            />
-          )}
-
+        {/* Column 3: Game State & Resources */}
+        <div className="space-y-6">
           <ResourcesDisplay resources={resources} />
 
           <ResourceMarkets coalMarket={coalMarket} ironMarket={ironMarket} />
@@ -489,15 +479,8 @@ export default function Home() {
             />
           )}
 
-          {/* Actions */}
-          {snapshot.matches('playing') && (
-            <ActionButtons snapshot={snapshot} send={send} />
-          )}
-
           {/* Game Log */}
-          <div className="sticky top-8">
-            <GameLog logs={logs} />
-          </div>
+          <GameLog logs={logs} />
         </div>
       </div>
     </main>

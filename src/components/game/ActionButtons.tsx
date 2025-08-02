@@ -172,17 +172,19 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
         )}
 
         {/* Confirmation Modal */}
-        <ActionConfirmModal
-          isOpen={isConfirmingAction}
-          onConfirm={() => send({ type: 'CONFIRM' })}
-          onCancel={() => send({ type: 'CANCEL' })}
-          action={getCurrentActionType() as any}
-          selectedCard={snapshot.context.selectedCard}
-          selectedLocation={snapshot.context.selectedLocation}
-          selectedIndustryTile={snapshot.context.selectedIndustryTile}
-          playerMoney={currentPlayer?.money}
-          era={snapshot.context.era}
-        />
+        {getCurrentActionType() && (
+          <ActionConfirmModal
+            isOpen={isConfirmingAction}
+            onConfirm={() => send({ type: 'CONFIRM' })}
+            onCancel={() => send({ type: 'CANCEL' })}
+            action={getCurrentActionType()!}
+            selectedCard={snapshot.context.selectedCard}
+            selectedLocation={snapshot.context.selectedLocation}
+            selectedIndustryTile={snapshot.context.selectedIndustryTile}
+            playerMoney={currentPlayer?.money}
+            era={snapshot.context.era}
+          />
+        )}
       </CardContent>
     </Card>
   )

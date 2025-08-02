@@ -1,12 +1,12 @@
+import { AlertTriangle, CheckCircle, Coins, TrendingUp } from 'lucide-react'
 import React from 'react'
-import { Coins, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react'
-import { type Player } from '~/store/gameStore'
 import { cn } from '~/lib/utils'
-import { Button } from '../ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { Badge } from '../ui/badge'
+import { type Player } from '~/store/gameStore'
 import { Alert, AlertDescription } from '../ui/alert'
 import { Avatar, AvatarFallback } from '../ui/avatar'
+import { Badge } from '../ui/badge'
+import { Button } from '../ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 
 interface IncomePhaseProps {
   players: Player[]
@@ -23,13 +23,13 @@ interface PlayerIncomeInfo {
   industriesToSell: string[]
 }
 
-function PlayerIncomeCard({ 
-  playerInfo 
-}: { 
+function PlayerIncomeCard({
+  playerInfo,
+}: {
   playerInfo: PlayerIncomeInfo
 }) {
   const { player, incomeAmount, hasShortfall, shortfallAmount } = playerInfo
-  
+
   const getPlayerColorStyle = (color: string) => {
     return {
       backgroundColor: color,
@@ -40,13 +40,17 @@ function PlayerIncomeCard({
   const newBalance = player.money + incomeAmount
 
   return (
-    <div className={cn(
-      'flex items-center gap-3 p-4 rounded-lg border',
-      hasShortfall ? 'border-red-300 bg-red-50' : 'border-green-300 bg-green-50'
-    )}>
+    <div
+      className={cn(
+        'flex items-center gap-3 p-4 rounded-lg border',
+        hasShortfall
+          ? 'border-red-300 bg-red-50'
+          : 'border-green-300 bg-green-50',
+      )}
+    >
       {/* Player avatar */}
       <Avatar className="h-10 w-10">
-        <AvatarFallback 
+        <AvatarFallback
           className="text-white font-semibold text-sm"
           style={getPlayerColorStyle(player.color)}
         >
@@ -77,15 +81,15 @@ function PlayerIncomeCard({
       <div className="text-right space-y-1">
         <div className="flex items-center gap-2 text-sm">
           <span>£{player.money}</span>
-          <span className={cn(
-            hasShortfall ? 'text-red-600' : 'text-green-600'
-          )}>
+          <span
+            className={cn(hasShortfall ? 'text-red-600' : 'text-green-600')}
+          >
             {incomeAmount >= 0 ? '+' : ''}£{incomeAmount}
           </span>
           <span>=</span>
           <span className="font-semibold">£{newBalance}</span>
         </div>
-        
+
         {hasShortfall && (
           <div className="text-xs text-red-600">
             Must sell industries worth £{shortfallAmount}
@@ -105,14 +109,14 @@ function PlayerIncomeCard({
   )
 }
 
-export function IncomePhase({ 
-  players, 
-  round, 
-  era, 
-  onCompleteIncomePhase 
+export function IncomePhase({
+  players,
+  round,
+  era,
+  onCompleteIncomePhase,
 }: IncomePhaseProps) {
   // Calculate income for each player
-  const playerIncomeInfo: PlayerIncomeInfo[] = players.map(player => {
+  const playerIncomeInfo: PlayerIncomeInfo[] = players.map((player) => {
     const incomeAmount = player.income
     const newBalance = player.money + incomeAmount
     const hasShortfall = newBalance < 0
@@ -123,12 +127,15 @@ export function IncomePhase({
       incomeAmount,
       hasShortfall,
       shortfallAmount,
-      industriesToSell: [] // Would be calculated based on player's industries
+      industriesToSell: [], // Would be calculated based on player's industries
     }
   })
 
-  const hasAnyShortfalls = playerIncomeInfo.some(info => info.hasShortfall)
-  const totalIncomeChange = playerIncomeInfo.reduce((sum, info) => sum + info.incomeAmount, 0)
+  const hasAnyShortfalls = playerIncomeInfo.some((info) => info.hasShortfall)
+  const totalIncomeChange = playerIncomeInfo.reduce(
+    (sum, info) => sum + info.incomeAmount,
+    0,
+  )
 
   return (
     <Card className="border-primary">
@@ -150,7 +157,7 @@ export function IncomePhase({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="text-sm text-muted-foreground">
-          Each player collects income based on their current income level. 
+          Each player collects income based on their current income level.
           Players with negative income must pay money or sell industries.
         </div>
 
@@ -158,14 +165,15 @@ export function IncomePhase({
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Some players have negative income and must sell industries to cover shortfalls.
-              Each industry sells for half its cost (rounded down).
+              Some players have negative income and must sell industries to
+              cover shortfalls. Each industry sells for half its cost (rounded
+              down).
             </AlertDescription>
           </Alert>
         )}
 
         <div className="space-y-3">
-          {playerIncomeInfo.map(playerInfo => (
+          {playerIncomeInfo.map((playerInfo) => (
             <PlayerIncomeCard
               key={playerInfo.player.id}
               playerInfo={playerInfo}
@@ -178,14 +186,13 @@ export function IncomePhase({
             <div className="flex items-center gap-2">
               <Coins className="h-4 w-4" />
               <span>
-                Total income change: {totalIncomeChange >= 0 ? '+' : ''}£{totalIncomeChange}
+                Total income change: {totalIncomeChange >= 0 ? '+' : ''}£
+                {totalIncomeChange}
               </span>
             </div>
           </div>
-          
-          <Button onClick={onCompleteIncomePhase}>
-            Complete Income Phase
-          </Button>
+
+          <Button onClick={onCompleteIncomePhase}>Complete Income Phase</Button>
         </div>
 
         <div className="text-xs text-muted-foreground space-y-1">

@@ -1,10 +1,10 @@
+import { Coins, Crown, TrendingUp, Trophy, Users } from 'lucide-react'
 import React from 'react'
-import { Crown, Coins, TrendingUp, Trophy, Users } from 'lucide-react'
-import { type Player } from '~/store/gameStore'
 import { cn } from '~/lib/utils'
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { Badge } from '../ui/badge'
+import { type Player } from '~/store/gameStore'
 import { Avatar, AvatarFallback } from '../ui/avatar'
+import { Badge } from '../ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 
 interface TurnOrderTrackerProps {
   players: Player[]
@@ -22,15 +22,15 @@ interface PlayerOrderInfo {
   projectedPosition: number
 }
 
-function PlayerOrderCard({ 
-  playerInfo, 
-  position 
-}: { 
+function PlayerOrderCard({
+  playerInfo,
+  position,
+}: {
   playerInfo: PlayerOrderInfo
   position: number
 }) {
   const { player, isCurrentPlayer, spentThisRound } = playerInfo
-  
+
   const getPlayerColorStyle = (color: string) => {
     return {
       backgroundColor: color,
@@ -43,97 +43,96 @@ function PlayerOrderCard({
       1: 'default',
       2: 'secondary',
       3: 'outline',
-      4: 'outline'
+      4: 'outline',
     } as const
-    
+
     const labels = {
       1: '1st',
-      2: '2nd', 
+      2: '2nd',
       3: '3rd',
-      4: '4th'
+      4: '4th',
     }
-    
+
     return (
-      <Badge variant={variants[pos as keyof typeof variants] || 'outline'} className="text-xs">
+      <Badge
+        variant={variants[pos as keyof typeof variants] || 'outline'}
+        className="text-xs"
+      >
         {labels[pos as keyof typeof labels] || `${pos}th`}
       </Badge>
     )
   }
 
   return (
-    <div className={cn(
-      'flex items-center gap-3 p-3 rounded-lg border transition-all',
-      isCurrentPlayer ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'border-muted',
-      position === 1 && 'border-yellow-400 bg-yellow-50'
-    )}>
-      {/* Position indicator */}
-      <div className="flex items-center justify-center w-8 h-8">
-        {position === 1 ? (
-          <Crown className="h-5 w-5 text-yellow-600" />
-        ) : (
-          <span className="font-bold text-lg text-muted-foreground">
-            {position}
-          </span>
-        )}
+    <div
+      className={cn(
+        'flex flex-col items-center gap-2 p-3 rounded-lg border transition-all',
+        isCurrentPlayer
+          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950 ring-1 ring-blue-200 dark:ring-blue-800'
+          : 'border-muted bg-card',
+      )}
+    >
+      {/* Position indicator and avatar */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center w-6 h-6">
+          {position === 1 ? (
+            <Crown className="h-4 w-4 text-yellow-600" />
+          ) : (
+            <span className="font-bold text-sm text-muted-foreground">
+              {position}
+            </span>
+          )}
+        </div>
+        <Avatar className="h-8 w-8">
+          <AvatarFallback
+            className="text-white font-semibold text-xs"
+            style={getPlayerColorStyle(player.color)}
+          >
+            {player.name.charAt(0)}
+          </AvatarFallback>
+        </Avatar>
       </div>
 
-      {/* Player avatar */}
-      <Avatar className="h-10 w-10">
-        <AvatarFallback 
-          className="text-white font-semibold text-sm"
-          style={getPlayerColorStyle(player.color)}
-        >
-          {player.name.charAt(0)}
-        </AvatarFallback>
-      </Avatar>
-
       {/* Player info */}
-      <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <span className="font-medium">{player.name}</span>
-          {getPositionBadge(position)}
+      <div className="text-center">
+        <div className="flex items-center justify-center gap-1 mb-1">
+          <span className="font-medium text-sm">{player.name}</span>
           {isCurrentPlayer && (
             <Badge variant="default" className="text-xs">
               Current
             </Badge>
           )}
         </div>
-        <div className="text-sm text-muted-foreground">
-          {player.character}
+        <div className="text-xs text-muted-foreground mb-2">{player.character}</div>
+        
+        {/* Player stats - compact version */}
+        <div className="flex items-center justify-center gap-3 text-xs">
+          <div className="flex items-center gap-1">
+            <Coins className="h-3 w-3" />
+            <span>£{player.money}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Trophy className="h-3 w-3" />
+            <span>{player.victoryPoints}</span>
+          </div>
         </div>
-      </div>
-
-      {/* Player stats */}
-      <div className="flex items-center gap-4 text-sm">
-        <div className="flex items-center gap-1">
-          <Coins className="h-3 w-3" />
-          <span>£{player.money}</span>
+        
+        {/* Spent this round */}
+        <div className="text-center mt-2">
+          <div className="text-xs text-muted-foreground">Spent</div>
+          <div className="font-semibold text-sm">£{spentThisRound}</div>
         </div>
-        <div className="flex items-center gap-1">
-          <TrendingUp className="h-3 w-3" />
-          <span>£{player.income}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Trophy className="h-3 w-3" />
-          <span>{player.victoryPoints}</span>
-        </div>
-      </div>
-
-      {/* Spent this round */}
-      <div className="text-right">
-        <div className="text-xs text-muted-foreground">Spent</div>
-        <div className="font-semibold">£{spentThisRound}</div>
       </div>
     </div>
   )
 }
 
-export function TurnOrderTracker({ 
-  players, 
-  currentPlayerIndex, 
-  round, 
+export function TurnOrderTracker({
+  players,
+  currentPlayerIndex,
+  round,
   era,
-  spentMoney 
+  spentMoney,
 }: TurnOrderTrackerProps) {
   // Calculate player order info
   const playerOrderInfo: PlayerOrderInfo[] = players.map((player, index) => ({
@@ -141,7 +140,7 @@ export function TurnOrderTracker({
     index,
     spentThisRound: index === currentPlayerIndex ? spentMoney : 0, // Simplified - should track per player
     isCurrentPlayer: index === currentPlayerIndex,
-    projectedPosition: 0 // Will be calculated
+    projectedPosition: 0, // Will be calculated
   }))
 
   // Sort by money spent (least spent goes first)
@@ -159,29 +158,27 @@ export function TurnOrderTracker({
   })
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
+    <Card className="mb-6">
+      <CardContent className="pt-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
             <Users className="h-5 w-5" />
-            Turn Order
-          </span>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
-              {era.charAt(0).toUpperCase() + era.slice(1)} Era
-            </Badge>
-            <Badge variant="secondary" className="text-xs">
-              Round {round}
-            </Badge>
+            <span className="font-semibold">Turn Order</span>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                {era.charAt(0).toUpperCase() + era.slice(1)} Era
+              </Badge>
+              <Badge variant="secondary" className="text-xs">
+                Round {round}
+              </Badge>
+            </div>
           </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="text-sm text-muted-foreground">
-          Turn order for next round is determined by money spent this round (least → most).
+          <div className="text-xs text-muted-foreground">
+            Next round order by money spent (least → most)
+          </div>
         </div>
-        
-        <div className="space-y-2">
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {sortedPlayers.map((playerInfo, index) => (
             <PlayerOrderCard
               key={playerInfo.player.id}
@@ -189,13 +186,6 @@ export function TurnOrderTracker({
               position={index + 1}
             />
           ))}
-        </div>
-
-        <div className="pt-2 border-t text-xs text-muted-foreground">
-          <div className="flex items-center justify-between">
-            <span>Income collection happens at end of round</span>
-            <span>Turn order resets after money is returned to bank</span>
-          </div>
         </div>
       </CardContent>
     </Card>

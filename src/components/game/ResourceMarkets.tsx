@@ -1,7 +1,7 @@
 import { Coins } from 'lucide-react'
+import { cn } from '~/lib/utils'
 import { Badge } from '../ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { cn } from '~/lib/utils'
 
 interface ResourceMarketsProps {
   coalMarket: (number | null)[]
@@ -16,15 +16,16 @@ interface MarketSlotProps {
 
 function MarketSlot({ price, resource, isEmpty }: MarketSlotProps) {
   const resourceIcon = resource === 'coal' ? '⚫' : '🔩'
-  const resourceColor = resource === 'coal' ? 'text-gray-600' : 'text-orange-600'
-  
+  const resourceColor =
+    resource === 'coal' ? 'text-gray-600' : 'text-orange-600'
+
   return (
     <div
       className={cn(
         'flex flex-col items-center justify-center p-2 rounded-md border-2 transition-all',
         isEmpty
           ? 'border-dashed border-gray-300 bg-gray-50'
-          : 'border-solid border-primary/30 bg-primary/5'
+          : 'border-solid border-primary/30 bg-primary/5',
       )}
     >
       {!isEmpty ? (
@@ -44,20 +45,20 @@ function MarketSlot({ price, resource, isEmpty }: MarketSlotProps) {
   )
 }
 
-function ResourceMarket({ 
-  title, 
-  market, 
-  resource, 
-  icon 
-}: { 
+function ResourceMarket({
+  title,
+  market,
+  resource,
+  icon,
+}: {
   title: string
   market: (number | null)[]
   resource: 'coal' | 'iron'
   icon: string
 }) {
-  const availableSlots = market.filter(slot => slot !== null).length
+  const availableSlots = market.filter((slot) => slot !== null).length
   const totalSlots = market.length
-  
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -86,7 +87,10 @@ function ResourceMarket({
   )
 }
 
-export function ResourceMarkets({ coalMarket, ironMarket }: ResourceMarketsProps) {
+export function ResourceMarkets({
+  coalMarket,
+  ironMarket,
+}: ResourceMarketsProps) {
   return (
     <Card>
       <CardHeader>
@@ -107,8 +111,12 @@ export function ResourceMarkets({ coalMarket, ironMarket }: ResourceMarketsProps
         />
         <div className="pt-2 border-t text-xs text-muted-foreground">
           <p>Resources are consumed from the cheapest available slots first.</p>
-          <p>Coal requires connection to merchants (⬅️➡️) when buying from market.</p>
-          <p>Iron can be consumed from any iron works or purchased from market.</p>
+          <p>
+            Coal requires connection to merchants (⬅️➡️) when buying from market.
+          </p>
+          <p>
+            Iron can be consumed from any iron works or purchased from market.
+          </p>
         </div>
       </CardContent>
     </Card>

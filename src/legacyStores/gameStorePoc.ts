@@ -59,7 +59,7 @@ const playerMachine = setup({
     },
     acting: {
       entry: 'decrementActions',
-      action: ({ context }) => {
+      action: ({ context }: any) => {
         console.log('acting', context)
       },
       always: {

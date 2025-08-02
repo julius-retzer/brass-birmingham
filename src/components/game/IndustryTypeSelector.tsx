@@ -1,14 +1,16 @@
 import { Factory } from 'lucide-react'
-import { type IndustryType } from '~/data/cards'
+import { type IndustryType, type LocationCard, type WildLocationCard } from '~/data/cards'
 import { type IndustryCard } from '~/data/cards'
-import { type Player } from '~/store/gameStore'
+import { cityIndustrySlots, type CityId } from '~/data/board'
 import { cn } from '~/lib/utils'
+import { type Player } from '~/store/gameStore'
+import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { Badge } from '../ui/badge'
 
 interface IndustryTypeSelectorProps {
-  industryCard: IndustryCard
+  industryCard?: IndustryCard
+  locationCard?: LocationCard | WildLocationCard
   player: Player
   era: 'canal' | 'rail'
   onSelectIndustryType: (industryType: IndustryType) => void
@@ -22,11 +24,11 @@ interface IndustryTypeOptionProps {
   onClick: () => void
 }
 
-function IndustryTypeOption({ 
-  industryType, 
-  availableTiles, 
-  isAvailable, 
-  onClick 
+function IndustryTypeOption({
+  industryType,
+  availableTiles,
+  isAvailable,
+  onClick,
 }: IndustryTypeOptionProps) {
   const getIndustryColor = (type: IndustryType) => {
     const colors = {
@@ -58,7 +60,7 @@ function IndustryTypeOption({
       className={cn(
         'h-auto p-4 justify-start',
         getIndustryColor(industryType),
-        !isAvailable && 'opacity-50 cursor-not-allowed'
+        !isAvailable && 'opacity-50 cursor-not-allowed',
       )}
       onClick={isAvailable ? onClick : undefined}
       disabled={!isAvailable}
@@ -83,6 +85,7 @@ function IndustryTypeOption({
 
 export function IndustryTypeSelector({
   industryCard,
+  locationCard,
   player,
   era,
   onSelectIndustryType,
@@ -90,14 +93,38 @@ export function IndustryTypeSelector({
 }: IndustryTypeSelectorProps) {
   const getAvailableTiles = (industryType: IndustryType) => {
     const tilesOfType = player.industryTilesOnMat[industryType] || []
-    return tilesOfType.filter(tile => {
+    return tilesOfType.filter((tile) => {
       if (era === 'canal') return tile.canBuildInCanalEra
       if (era === 'rail') return tile.canBuildInRailEra
       return false
     })
   }
 
-  const industryOptions = industryCard.industries.map(industryType => {
+  // Get available industry types based on card type
+  const getAvailableIndustryTypes = (): IndustryType[] => {
+    if (industryCard) {
+      // Industry card - use the industries specified on the card
+      return industryCard.industries
+    } else if (locationCard) {
+      // Location card - get all possible industries for this location
+      if (locationCard.type === 'wild_location') {
+        // Wild location can build any industry type
+        return ['cotton', 'coal', 'iron', 'manufacturer', 'pottery', 'brewery']
+      } else {
+        // Specific location - get industries from city slots
+        const citySlots = cityIndustrySlots[locationCard.location as CityId] || []
+        // Flatten the slot arrays to get unique industry types
+        const uniqueTypes = new Set<string>()
+        citySlots.forEach(slot => slot.forEach(industry => uniqueTypes.add(industry)))
+        return Array.from(uniqueTypes) as IndustryType[]
+      }
+    }
+    return []
+  }
+
+  const availableIndustryTypes = getAvailableIndustryTypes()
+  
+  const industryOptions = availableIndustryTypes.map((industryType) => {
     const availableTiles = getAvailableTiles(industryType)
     return {
       industryType,
@@ -106,7 +133,20 @@ export function IndustryTypeSelector({
     }
   })
 
-  const hasAvailableOptions = industryOptions.some(option => option.isAvailable)
+  const hasAvailableOptions = industryOptions.some(
+    (option) => option.isAvailable,
+  )
+
+  const getCardDescription = () => {
+    if (industryCard) {
+      return `The selected industry card allows building any of these industries:`
+    } else if (locationCard?.type === 'wild_location') {
+      return `Wild location card allows building any industry at any city:`
+    } else if (locationCard) {
+      return `The selected location (${locationCard.location}) allows building these industries:`
+    }
+    return 'Select an industry type to build:'
+  }
 
   return (
     <Card className="border-primary">
@@ -118,24 +158,27 @@ export function IndustryTypeSelector({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="text-sm text-muted-foreground">
-          The selected industry card allows building any of these industries:
+          {getCardDescription()}
         </div>
-        
+
         <div className="space-y-2">
-          {industryOptions.map(({ industryType, availableTiles, isAvailable }) => (
-            <IndustryTypeOption
-              key={industryType}
-              industryType={industryType}
-              availableTiles={availableTiles}
-              isAvailable={isAvailable}
-              onClick={() => onSelectIndustryType(industryType)}
-            />
-          ))}
+          {industryOptions.map(
+            ({ industryType, availableTiles, isAvailable }) => (
+              <IndustryTypeOption
+                key={industryType}
+                industryType={industryType}
+                availableTiles={availableTiles}
+                isAvailable={isAvailable}
+                onClick={() => onSelectIndustryType(industryType)}
+              />
+            ),
+          )}
         </div>
 
         {!hasAvailableOptions && (
           <div className="text-center p-4 text-muted-foreground">
-            No available tiles for any industry type on this card in the {era} era.
+            No available tiles for any industry type on this card in the {era}{' '}
+            era.
           </div>
         )}
 

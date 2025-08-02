@@ -19,39 +19,39 @@ export function GameHeader({
   onStartInspector,
 }: GameHeaderProps) {
   return (
-    <Card className="mb-8">
-      <CardHeader>
-        <CardTitle className="text-3xl">Brass Birmingham</CardTitle>
+    <Card className="mb-6">
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-2xl font-bold">Brass Birmingham</CardTitle>
+          <Button variant="outline" size="sm" onClick={onStartInspector}>
+            State Inspector
+          </Button>
+        </div>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-5 gap-4">
-          <div>
-            <h2 className="text-sm text-muted-foreground">Era</h2>
-            <p className="text-xl font-semibold capitalize">{era}</p>
+      <CardContent className="pt-0">
+        <div className="flex items-center justify-start gap-8">
+          <div className="text-center">
+            <h2 className="text-xs text-muted-foreground uppercase tracking-wide">Era</h2>
+            <p className="text-lg font-semibold capitalize">{era}</p>
           </div>
-          <div>
-            <h2 className="text-sm text-muted-foreground">Round</h2>
-            <p className="text-xl font-semibold">{round}</p>
+          <div className="text-center">
+            <h2 className="text-xs text-muted-foreground uppercase tracking-wide">Round</h2>
+            <p className="text-lg font-semibold">{round}</p>
           </div>
-          <div>
-            <h2 className="text-sm text-muted-foreground">Actions Left</h2>
-            <p className="text-xl font-semibold">{actionsRemaining}</p>
+          <div className="text-center">
+            <h2 className="text-xs text-muted-foreground uppercase tracking-wide">Actions Left</h2>
+            <p className="text-lg font-semibold">{actionsRemaining}</p>
           </div>
-          <div>
-            <h2 className="text-sm text-muted-foreground">Current Player</h2>
-            <p className="text-xl font-semibold">
+          <div className="text-center">
+            <h2 className="text-xs text-muted-foreground uppercase tracking-wide">Current Player</h2>
+            <p className="text-lg font-semibold">
               {currentPlayerName ?? 'None'}
             </p>
           </div>
-          <div>
-            <h2 className="text-sm text-muted-foreground">Money Spent</h2>
-            <p className="text-xl font-semibold">£{spentMoney}</p>
+          <div className="text-center">
+            <h2 className="text-xs text-muted-foreground uppercase tracking-wide">Money Spent</h2>
+            <p className="text-lg font-semibold">£{spentMoney}</p>
           </div>
-        </div>
-        <div className="mt-4 flex justify-end">
-          <Button variant="outline" size="sm" onClick={onStartInspector}>
-            Start State Inspector
-          </Button>
         </div>
       </CardContent>
     </Card>

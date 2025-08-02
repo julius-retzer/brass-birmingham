@@ -1150,18 +1150,26 @@ test('coal market - initial setup and purchasing', () => {
   const snapshot = actor.getSnapshot()
 
   // Test initial coal market setup
-  // Based on rules: Coal market should have 8 spaces with prices £1,£2,£3,£4,£5,£6,£7,£8
-  // Market array shows cube occupancy: null = empty, 1 = cube present
-  // At start: one £8 space empty, rest filled
-  expect(snapshot.context.coalMarket).toEqual([1, 1, 1, 1, 1, 1, 1, null])
+  // Based on rules: Coal market has price levels with max 2 cubes each
+  // £1: 1/2 cubes (1 empty space), £2-£7: 2/2 cubes (full), £8: 0 cubes (infinite capacity)
+  expect(snapshot.context.coalMarket).toEqual([
+    { price: 1, cubes: 1, maxCubes: 2 },
+    { price: 2, cubes: 2, maxCubes: 2 },
+    { price: 3, cubes: 2, maxCubes: 2 },
+    { price: 4, cubes: 2, maxCubes: 2 },
+    { price: 5, cubes: 2, maxCubes: 2 },
+    { price: 6, cubes: 2, maxCubes: 2 },
+    { price: 7, cubes: 2, maxCubes: 2 },
+    { price: 8, cubes: 0, maxCubes: Infinity },
+  ])
 
   // Should have coal available at different price points
   expect(
-    snapshot.context.coalMarket.some((slot: number | null) => slot !== null),
+    snapshot.context.coalMarket.some((level) => level.cubes > 0),
   ).toBe(true)
   expect(
-    snapshot.context.coalMarket.some((slot: number | null) => slot === null),
-  ).toBe(true) // One empty slot initially
+    snapshot.context.coalMarket.some((level) => level.cubes < level.maxCubes),
+  ).toBe(true) // Some empty spaces initially
 })
 
 test('iron market - initial setup and purchasing', () => {
@@ -2088,7 +2096,7 @@ test('coal mine - automatic market selling when connected to merchant', () => {
   snapshot = actor.getSnapshot()
   const initialPlayer = snapshot.context.players[0]!
   const initialMoney = initialPlayer.money
-  const initialCoalMarket = [...snapshot.context.coalMarket]
+  const initialCoalMarket = snapshot.context.coalMarket.map(level => ({ ...level }))
 
   // Build coal mine at Stoke (connected to merchant)
   actor.send({ type: 'BUILD' })
@@ -2106,19 +2114,27 @@ test('coal mine - automatic market selling when connected to merchant', () => {
   // 3. If all cubes sold, tile should flip and income should advance
   
   const coalProduced = coalMine.tile.coalProduced
-  const originalEmptySpaces = initialCoalMarket.filter(space => space === null).length
-  const coalSoldToMarket = Math.min(coalProduced, originalEmptySpaces) // Number of coal cubes sold to market
-  const actualEmptySpaces = snapshot.context.coalMarket.filter(space => space === null).length
+  // Count only finite capacity levels (£1-£7), exclude infinite £8 level
+  const originalAvailableSpaces = initialCoalMarket.reduce((total, level) => 
+    level.maxCubes === Infinity ? total : total + (level.maxCubes - level.cubes), 0)
+  const coalSoldToFiniteMarket = Math.min(coalProduced, originalAvailableSpaces)
+  const currentAvailableSpaces = snapshot.context.coalMarket.reduce((total, level) => 
+    level.maxCubes === Infinity ? total : total + (level.maxCubes - level.cubes), 0)
   
-  // Verify coal was moved to market (fewer empty spaces after selling)
-  expect(actualEmptySpaces).toBe(originalEmptySpaces - coalSoldToMarket)
+  // Verify coal was moved to finite market (fewer available spaces after selling)
+  expect(currentAvailableSpaces).toBe(originalAvailableSpaces - coalSoldToFiniteMarket)
   
   // Verify that market selling occurred - coal mine at Stoke should sell to market
-  expect(actualEmptySpaces).toBeLessThan(originalEmptySpaces)
+  expect(currentAvailableSpaces).toBeLessThan(originalAvailableSpaces)
+  
+  // Only 1 cube can be sold to finite market, 1 cube remains on tile
+  expect(coalMine.coalCubesOnTile).toBe(1) // 2 produced - 1 sold = 1 remaining
   
   // Calculate expected money: initial - build cost + market income
   const buildCost = coalMine.tile.cost // Coal mines don't require other resources
-  const marketIncome = calculateMarketIncome(coalSoldToMarket, 'coal')
+  // Market income: only 1 cube sold to £1 level = £1 total
+  const expectedMarketIncome = 1 // Only 1 cube sold to £1
+  const marketIncome = expectedMarketIncome
   const expectedMoney = initialMoney - buildCost + marketIncome
   
   // Verify player received correct amount of money
@@ -2130,7 +2146,7 @@ test('coal mine - automatic market selling when connected to merchant', () => {
     expect(playerAfterBuild.income).toBeGreaterThan(initialPlayer.income)
   } else {
     // Some coal remains on tile (market was partially full)
-    expect(coalMine.coalCubesOnTile).toBe(coalProduced - coalSoldToMarket)
+    expect(coalMine.coalCubesOnTile).toBe(coalProduced - coalSoldToFiniteMarket)
   }
 })
 

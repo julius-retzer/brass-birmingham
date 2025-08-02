@@ -14,6 +14,7 @@ import {
   type ConnectionType,
   cities,
   connections,
+  cityIndustrySlots,
 } from '../../data/board'
 import { Card } from '../ui/card'
 import '@xyflow/react/dist/style.css'
@@ -33,6 +34,7 @@ interface BoardProps {
   selectedCity?: CityId | null
   players: Player[]
   currentPlayerIndex?: number
+  selectedIndustryType?: string | null
 }
 
 interface CityNodeProps {
@@ -63,12 +65,12 @@ interface LinkEdgeData extends Record<string, unknown> {
 // Constants
 const CITY_SIZES = {
   merchant: {
-    width: 100,
-    height: 70,
+    width: 120,
+    height: 80,
   },
   regular: {
-    width: 90,
-    height: 60,
+    width: 110,
+    height: 85, // Increased height to accommodate larger industry slots
   },
 } as const
 
@@ -87,10 +89,12 @@ function CityNode({ data }: CityNodeProps) {
     ) || []
 
   // Get current player's industries in this city
-  const currentPlayerIndustries = data.currentPlayerIndex !== undefined
-    ? data.players[data.currentPlayerIndex]?.industries
-        .filter((industry) => industry.location === data.id) || []
-    : []
+  const currentPlayerIndustries =
+    data.currentPlayerIndex !== undefined
+      ? data.players[data.currentPlayerIndex]?.industries.filter(
+          (industry) => industry.location === data.id,
+        ) || []
+      : []
 
   const getIndustryColor = (type: string) => {
     const colors = {
@@ -103,6 +107,12 @@ function CityNode({ data }: CityNodeProps) {
     }
     return colors[type as keyof typeof colors] || '#6b7280'
   }
+
+  // Get available industry slots for this city (now each slot can have multiple industry options)
+  const availableSlots = cityIndustrySlots[data.id as CityId] || []
+  
+  // Always show slots if they exist - we'll handle occupied vs available in the rendering
+  const showIndustrySlots = true
 
   return (
     <>
@@ -128,10 +138,15 @@ function CityNode({ data }: CityNodeProps) {
           data.isSelectable && 'hover:scale-105 hover:shadow-md',
           !data.isSelectable && !isMerchant && 'opacity-70 cursor-not-allowed',
           // Network highlighting
-          data.isInCurrentPlayerNetwork && !isMerchant && 'ring-2 ring-blue-400/50 ring-offset-1',
-          data.isConnectedToCurrentPlayer && !isMerchant && 'border-blue-400 bg-blue-50',
+          data.isInCurrentPlayerNetwork &&
+            !isMerchant &&
+            'ring-2 ring-blue-400/50 ring-offset-1',
+          data.isConnectedToCurrentPlayer &&
+            !isMerchant &&
+            'border-blue-400 bg-blue-50',
           // Current player industries highlighting
-          currentPlayerIndustries.length > 0 && 'ring-2 ring-green-400/50 ring-offset-1',
+          currentPlayerIndustries.length > 0 &&
+            'ring-2 ring-green-400/50 ring-offset-1',
         )}
         style={{ width: size.width, height: size.height }}
         onClick={data.isSelectable ? data.onSelect : undefined}
@@ -140,31 +155,113 @@ function CityNode({ data }: CityNodeProps) {
           {data.label}
         </span>
 
-        {/* Industry buildings */}
-        {industriesInCity.length > 0 && (
-          <div className="flex flex-wrap gap-1 justify-center">
-            {industriesInCity.slice(0, 4).map((industry, index) => (
-              <div
-                key={index}
-                className="w-3 h-3 rounded-sm border border-white/50 text-xs flex items-center justify-center"
-                style={{
-                  backgroundColor: getIndustryColor(industry.type),
-                  borderColor: industry.playerColor,
-                }}
-                title={`${industry.type} L${industry.level} ${industry.flipped ? '(Flipped)' : ''}`}
-              >
-                <span className="text-white font-bold text-[8px]">
-                  {industry.level}
-                </span>
-              </div>
-            ))}
-            {industriesInCity.length > 4 && (
-              <div className="w-3 h-3 rounded-sm bg-gray-400 border border-white/50 text-xs flex items-center justify-center">
-                <span className="text-white font-bold text-[6px]">
-                  +{industriesInCity.length - 4}
-                </span>
-              </div>
-            )}
+        {/* Industry slots - showing both occupied and available */}
+        {availableSlots.length > 0 && (
+          <div className="grid grid-cols-2 gap-1.5 justify-items-center mb-2 px-1 max-w-[100px]">
+            {availableSlots.map((slotOptions, slotIndex) => {
+              // Find if this slot is occupied by matching industry type
+              // We'll assign industries to slots in order of building, matching compatible types
+              const occupiedIndustry = (() => {
+                const compatibleIndustries = industriesInCity.filter(industry => 
+                  slotOptions.includes(industry.type as any)
+                )
+                
+                // If we have compatible industries, assign by order
+                // For now, simple approach: first compatible industry for first slot of that type
+                const slotsOfSameType = availableSlots.slice(0, slotIndex + 1).filter(slot =>
+                  slot.some(option => slotOptions.includes(option))
+                ).length
+                
+                return compatibleIndustries[slotsOfSameType - 1] || null
+              })()
+
+              return (
+                <div
+                  key={`slot-${slotIndex}`}
+                  className="relative"
+                >
+                  {occupiedIndustry ? (
+                    // Slot is occupied - show the built industry
+                    <div
+                      className="w-8 h-6 rounded-sm border-2 border-solid flex items-center justify-center shadow-lg"
+                      style={{
+                        borderColor: occupiedIndustry.playerColor,
+                        backgroundColor: getIndustryColor(occupiedIndustry.type),
+                      }}
+                      title={`${occupiedIndustry.type} Level ${occupiedIndustry.level} ${occupiedIndustry.flipped ? '(Flipped)' : ''}`}
+                    >
+                      <span className="text-[8px] font-bold text-white drop-shadow-sm">
+                        {occupiedIndustry.level}
+                      </span>
+                    </div>
+                  ) : (
+                    // Slot is empty - show available options (always visible)
+                    slotOptions.length === 1 && slotOptions[0] ? (
+                      // Single industry option
+                      <div
+                        className={cn(
+                          "w-8 h-6 rounded-sm border-2 border-dashed flex items-center justify-center shadow-sm",
+                          data.isSelectable ? "opacity-60" : "opacity-40"
+                        )}
+                        style={{
+                          borderColor: getIndustryColor(slotOptions[0]),
+                          backgroundColor: `${getIndustryColor(slotOptions[0])}${data.isSelectable ? '40' : '20'}`,
+                        }}
+                        title={`Available ${slotOptions[0]} slot`}
+                      >
+                        <span className="text-[7px] font-bold text-white drop-shadow-sm">
+                          {slotOptions[0] === 'manufacturer' ? 'MFG' : 
+                           slotOptions[0] === 'brewery' ? 'BRE' :
+                           slotOptions[0] === 'pottery' ? 'POT' :
+                           slotOptions[0] === 'cotton' ? 'COT' :
+                           slotOptions[0].toUpperCase().slice(0, 3)}
+                        </span>
+                      </div>
+                    ) : slotOptions.length > 1 ? (
+                      // Multiple industry options - split the slot visually
+                      <div
+                        className={cn(
+                          "w-8 h-6 rounded-sm border-2 border-dashed border-gray-400 flex shadow-sm overflow-hidden",
+                          data.isSelectable ? "opacity-60" : "opacity-40"
+                        )}
+                        title={`Available slot: ${slotOptions.join(' or ')}`}
+                      >
+                        {slotOptions.map((industryType, optionIndex) => (
+                          <div
+                            key={`${industryType}-${optionIndex}`}
+                            className="flex-1 flex items-center justify-center"
+                            style={{
+                              backgroundColor: `${getIndustryColor(industryType)}${data.isSelectable ? '40' : '20'}`,
+                            }}
+                          >
+                            <span className="text-[6px] font-bold text-white drop-shadow-sm">
+                              {industryType === 'manufacturer' ? 'M' : 
+                               industryType === 'brewery' ? 'B' :
+                               industryType === 'pottery' ? 'P' :
+                               industryType === 'cotton' ? 'C' :
+                               industryType === 'coal' ? 'CO' :
+                               industryType === 'iron' ? 'I' :
+                               industryType.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Overflow indicator for extra industries beyond available slots */}
+        {industriesInCity.length > availableSlots.length && (
+          <div className="flex justify-center mt-1">
+            <div className="w-6 h-4 rounded-sm bg-gray-400 border border-white text-xs flex items-center justify-center shadow-sm">
+              <span className="text-white font-bold text-[6px]">
+                +{industriesInCity.length - availableSlots.length}
+              </span>
+            </div>
           </div>
         )}
       </div>
@@ -266,12 +363,63 @@ function getEdges({
   })
 }
 
+// Helper function to check if a city can accommodate the selected industry type
+function canCityAccommodateIndustry(
+  cityId: CityId,
+  industryType: string,
+  players: Player[],
+): boolean {
+  const availableSlots = cityIndustrySlots[cityId] || []
+  
+  // Find industries built in this city
+  const industriesInCity = players.flatMap((player) =>
+    player.industries.filter((industry) => industry.location === cityId)
+  )
+
+  // Check each slot to see if it can accommodate the industry type and is available
+  for (let slotIndex = 0; slotIndex < availableSlots.length; slotIndex++) {
+    const slotOptions = availableSlots[slotIndex]
+    
+    // Skip if slot options is undefined
+    if (!slotOptions) {
+      continue
+    }
+    
+    // Check if this slot type can accommodate the industry
+    if (!slotOptions.includes(industryType)) {
+      continue
+    }
+    
+    // Check if this slot is already occupied
+    // We'll use a simple assignment: industries are assigned to compatible slots in order
+    const compatibleIndustries = industriesInCity.filter(industry => 
+      slotOptions.includes(industry.type as any)
+    )
+    
+    // Count how many slots of this type come before this slot
+    const slotsOfSameType = availableSlots.slice(0, slotIndex + 1).filter(slot =>
+      slot && slot.some(option => slotOptions.includes(option))
+    ).length
+    
+    // If there are fewer compatible industries than slots of this type, this slot is available
+    if (compatibleIndustries.length < slotsOfSameType) {
+      return true
+    }
+  }
+  
+  return false
+}
+
 // Helper function to determine if a city is in the current player's network
-function getCityNetworkInfo(cityId: CityId, currentPlayerIndex: number, players: Player[]) {
+function getCityNetworkInfo(
+  cityId: CityId,
+  currentPlayerIndex: number,
+  players: Player[],
+) {
   if (currentPlayerIndex < 0 || currentPlayerIndex >= players.length) {
     return { isInNetwork: false, isConnected: false }
   }
-  
+
   const currentPlayer = players[currentPlayerIndex]
   if (!currentPlayer) {
     return { isInNetwork: false, isConnected: false }
@@ -280,12 +428,12 @@ function getCityNetworkInfo(cityId: CityId, currentPlayerIndex: number, players:
   // A location is part of your network if:
   // 1. It contains one or more of your industry tiles
   const hasPlayerIndustry = currentPlayer.industries.some(
-    industry => industry.location === cityId
+    (industry) => industry.location === cityId,
   )
 
   // 2. It is adjacent to one or more of your link tiles
   const playerLocations = new Set<CityId>()
-  
+
   // Add locations with player's industries
   currentPlayer.industries.forEach((industry) => {
     playerLocations.add(industry.location)
@@ -314,6 +462,7 @@ export function Board({
   selectedCity,
   players,
   currentPlayerIndex = 0,
+  selectedIndustryType = null,
 }: BoardProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
 
@@ -321,13 +470,34 @@ export function Board({
   useEffect(() => {
     setNodes((prevNodes) =>
       prevNodes.map((node) => {
-        const networkInfo = getCityNetworkInfo(node.id as CityId, currentPlayerIndex, players)
+        const networkInfo = getCityNetworkInfo(
+          node.id as CityId,
+          currentPlayerIndex,
+          players,
+        )
+        
+        // Determine if city is selectable for building
+        let isSelectable = false
+        if (isBuilding && node.data.type === 'city') {
+          if (selectedIndustryType) {
+            // If we have a selected industry type, only allow cities that can accommodate it
+            isSelectable = canCityAccommodateIndustry(
+              node.id as CityId,
+              selectedIndustryType,
+              players,
+            )
+          } else {
+            // No specific industry type selected, allow all cities
+            isSelectable = true
+          }
+        }
+        
         return {
           ...node,
           data: {
             ...node.data,
             isSelected: selectedCity === node.id,
-            isSelectable: isBuilding && node.data.type === 'city',
+            isSelectable,
             isInCurrentPlayerNetwork: networkInfo.isInNetwork,
             isConnectedToCurrentPlayer: networkInfo.isConnected,
             currentPlayerIndex,
@@ -337,7 +507,15 @@ export function Board({
         }
       }),
     )
-  }, [selectedCity, isBuilding, players, currentPlayerIndex, onCitySelect, setNodes])
+  }, [
+    selectedCity,
+    isBuilding,
+    selectedIndustryType,
+    players,
+    currentPlayerIndex,
+    onCitySelect,
+    setNodes,
+  ])
 
   const onNodeDrag = useCallback(() => {
     if (process.env.NODE_ENV === 'development') {
@@ -387,40 +565,40 @@ export function Board({
   )
 }
 
-// Approximate positions based on the actual game board layout
+// Adjusted positions with more spacing to accommodate larger city tiles
 const cityPositions: Record<CityId, { x: number; y: number }> = {
-  // Central Cities
+  // Central Cities - more spread out
   birmingham: { x: 50, y: 50 },
-  coventry: { x: 70, y: 50 },
-  dudley: { x: 35, y: 50 },
-  wolverhampton: { x: 30, y: 35 },
-  walsall: { x: 40, y: 35 },
+  coventry: { x: 80, y: 55 },
+  dudley: { x: 30, y: 55 },
+  wolverhampton: { x: 25, y: 30 },
+  walsall: { x: 45, y: 32 },
 
-  // Northern Cities
-  stone: { x: 45, y: 15 },
-  stafford: { x: 40, y: 25 },
-  stoke: { x: 45, y: 5 },
-  leek: { x: 55, y: 5 },
-  uttoxeter: { x: 55, y: 20 },
-  burton: { x: 60, y: 30 },
-  derby: { x: 65, y: 20 },
-  belper: { x: 75, y: 15 },
+  // Northern Cities - increased vertical and horizontal spacing
+  stone: { x: 40, y: 10 },
+  stafford: { x: 35, y: 20 },
+  stoke: { x: 45, y: 0 },
+  leek: { x: 60, y: 0 },
+  uttoxeter: { x: 60, y: 18 },
+  burton: { x: 70, y: 28 },
+  derby: { x: 75, y: 15 },
+  belper: { x: 90, y: 10 },
 
-  // Southern Cities
-  redditch: { x: 45, y: 65 },
-  worcester: { x: 30, y: 75 },
-  kidderminster: { x: 25, y: 60 },
-  cannock: { x: 35, y: 30 },
-  tamworth: { x: 55, y: 40 },
-  nuneaton: { x: 65, y: 45 },
-  coalbrookdale: { x: 15, y: 45 },
+  // Southern Cities - more spread out
+  redditch: { x: 45, y: 75 },
+  worcester: { x: 25, y: 85 },
+  kidderminster: { x: 18, y: 65 },
+  cannock: { x: 35, y: 25 },
+  tamworth: { x: 65, y: 40 },
+  nuneaton: { x: 75, y: 48 },
+  coalbrookdale: { x: 10, y: 40 },
 
-  // Merchants (External)
-  warrington: { x: 45, y: -5 },
-  gloucester: { x: 25, y: 85 },
-  oxford: { x: 85, y: 60 },
-  nottingham: { x: 85, y: 10 },
-  shrewsbury: { x: 5, y: 45 },
+  // Merchants (External) - pushed further out
+  warrington: { x: 45, y: -10 },
+  gloucester: { x: 20, y: 95 },
+  oxford: { x: 95, y: 65 },
+  nottingham: { x: 95, y: 5 },
+  shrewsbury: { x: 0, y: 40 },
 }
 
 // Initial positions based on the actual game board layout

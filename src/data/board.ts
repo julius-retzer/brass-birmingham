@@ -101,3 +101,100 @@ export interface Connection {
   to: CityId
   types: ConnectionType[]
 }
+
+// Industry slots available in each city
+// Each city has specific slots, and each slot can accept multiple industry types
+// Based on the official Brass Birmingham board layout
+export const cityIndustrySlots: Record<CityId, string[][]> = {
+  // Central Industrial Cities
+  birmingham: [
+    ['cotton', 'iron'], // Slot 1: Cotton or Iron
+    ['manufacturer', 'pottery'], // Slot 2: Manufacturer or Pottery  
+    ['brewery'], // Slot 3: Brewery only
+    ['cotton', 'manufacturer'] // Slot 4: Cotton or Manufacturer
+  ],
+  coventry: [
+    ['cotton', 'manufacturer'], // Slot 1: Cotton or Manufacturer
+    ['pottery'] // Slot 2: Pottery only
+  ],
+  dudley: [
+    ['coal'], // Slot 1: Coal only
+    ['iron'], // Slot 2: Iron only
+    ['brewery'] // Slot 3: Brewery only
+  ],
+  wolverhampton: [
+    ['coal'], // Slot 1: Coal only
+    ['iron'], // Slot 2: Iron only
+    ['manufacturer'] // Slot 3: Manufacturer only
+  ],
+  walsall: [
+    ['coal'], // Slot 1: Coal only
+    ['iron'] // Slot 2: Iron only
+  ],
+  
+  // Northern Industrial Cities  
+  stone: [
+    ['coal'], // Slot 1: Coal only
+    ['pottery', 'brewery'] // Slot 2: Pottery or Brewery
+  ],
+  stafford: [
+    ['coal'], // Slot 1: Coal only
+    ['pottery'] // Slot 2: Pottery only
+  ],
+  stoke: [
+    ['coal'], // Slot 1: Coal only
+    ['pottery'], // Slot 2: Pottery only
+    ['brewery'] // Slot 3: Brewery only
+  ],
+  leek: [
+    ['cotton', 'manufacturer'] // Slot 1: Cotton or Manufacturer
+  ],
+  uttoxeter: [
+    ['brewery'] // Slot 1: Brewery only
+  ],
+  burton: [
+    ['brewery'], // Slot 1: Brewery only
+    ['brewery'] // Slot 2: Brewery only (Burton has 2 brewery slots)
+  ],
+  derby: [
+    ['cotton', 'manufacturer'], // Slot 1: Cotton or Manufacturer
+    ['iron'] // Slot 2: Iron only
+  ],
+  belper: [
+    ['cotton', 'manufacturer'] // Slot 1: Cotton or Manufacturer
+  ],
+  
+  // Southern Cities
+  redditch: [
+    ['cotton', 'manufacturer'] // Slot 1: Cotton or Manufacturer
+  ],
+  worcester: [
+    ['cotton'], // Slot 1: Cotton only
+    ['pottery'] // Slot 2: Pottery only
+  ],
+  kidderminster: [
+    ['cotton'], // Slot 1: Cotton only
+    ['pottery'] // Slot 2: Pottery only
+  ],
+  cannock: [
+    ['coal'] // Slot 1: Coal only
+  ],
+  tamworth: [
+    ['coal'], // Slot 1: Coal only
+    ['iron'] // Slot 2: Iron only
+  ],
+  nuneaton: [
+    ['cotton', 'manufacturer'] // Slot 1: Cotton or Manufacturer
+  ],
+  coalbrookdale: [
+    ['coal'], // Slot 1: Coal only
+    ['iron'] // Slot 2: Iron only
+  ],
+  
+  // Merchants (no industries can be built)
+  warrington: [],
+  gloucester: [],
+  oxford: [],
+  nottingham: [],
+  shrewsbury: [],
+} as const

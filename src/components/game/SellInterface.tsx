@@ -1,13 +1,13 @@
-import React from 'react'
 import { Coins, Factory, Gift, TrendingUp, Trophy } from 'lucide-react'
-import { type IndustryType } from '~/data/cards'
+import React from 'react'
 import { type CityId } from '~/data/board'
-import { merchants, type Merchant } from '~/data/merchants'
-import { type Player } from '~/store/gameStore'
+import { type IndustryType } from '~/data/cards'
+import { type Merchant, merchants } from '~/data/merchants'
 import { cn } from '~/lib/utils'
+import { type Player } from '~/store/gameStore'
+import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { Badge } from '../ui/badge'
 import { Separator } from '../ui/separator'
 
 interface SellInterfaceProps {
@@ -37,19 +37,27 @@ interface SellOption {
 function MerchantBonusDisplay({ bonus }: { bonus: Merchant['bonus'] }) {
   const getBonusIcon = () => {
     switch (bonus.type) {
-      case 'money': return <Coins className="h-4 w-4" />
-      case 'income': return <TrendingUp className="h-4 w-4" />
-      case 'victoryPoints': return <Trophy className="h-4 w-4" />
-      case 'develop': return <Factory className="h-4 w-4" />
+      case 'money':
+        return <Coins className="h-4 w-4" />
+      case 'income':
+        return <TrendingUp className="h-4 w-4" />
+      case 'victoryPoints':
+        return <Trophy className="h-4 w-4" />
+      case 'develop':
+        return <Factory className="h-4 w-4" />
     }
   }
 
   const getBonusColor = () => {
     switch (bonus.type) {
-      case 'money': return 'text-green-600'
-      case 'income': return 'text-blue-600'
-      case 'victoryPoints': return 'text-purple-600'
-      case 'develop': return 'text-orange-600'
+      case 'money':
+        return 'text-green-600'
+      case 'income':
+        return 'text-blue-600'
+      case 'victoryPoints':
+        return 'text-purple-600'
+      case 'develop':
+        return 'text-orange-600'
     }
   }
 
@@ -61,12 +69,12 @@ function MerchantBonusDisplay({ bonus }: { bonus: Merchant['bonus'] }) {
   )
 }
 
-function SellableIndustryCard({ 
-  industry, 
-  isSelected, 
+function SellableIndustryCard({
+  industry,
+  isSelected,
   onToggle,
-  disabled 
-}: { 
+  disabled,
+}: {
   industry: SellableIndustry
   isSelected: boolean
   onToggle: () => void
@@ -103,7 +111,7 @@ function SellableIndustryCard({
         'h-auto p-3 justify-start',
         getIndustryColor(industry.type),
         isSelected && 'ring-2 ring-primary',
-        disabled && 'opacity-50 cursor-not-allowed'
+        disabled && 'opacity-50 cursor-not-allowed',
       )}
       onClick={!disabled ? onToggle : undefined}
       disabled={disabled}
@@ -128,11 +136,11 @@ function SellableIndustryCard({
   )
 }
 
-function SellOptionCard({ 
-  sellOption, 
-  selectedIndustries, 
+function SellOptionCard({
+  sellOption,
+  selectedIndustries,
   onToggleIndustry,
-  onConfirmSale 
+  onConfirmSale,
 }: {
   sellOption: SellOption
   selectedIndustries: Set<string>
@@ -140,19 +148,23 @@ function SellOptionCard({
   onConfirmSale: () => void
 }) {
   const { merchant, industries, isConnected, hasBeer } = sellOption
-  const selectedCount = industries.filter(ind => selectedIndustries.has(ind.id)).length
+  const selectedCount = industries.filter((ind) =>
+    selectedIndustries.has(ind.id),
+  ).length
   const canSell = isConnected && selectedCount > 0
 
   const totalBeerRequired = industries
-    .filter(ind => selectedIndustries.has(ind.id))
+    .filter((ind) => selectedIndustries.has(ind.id))
     .reduce((sum, ind) => sum + ind.beerRequired, 0)
 
   return (
-    <Card className={cn(
-      'transition-all',
-      canSell ? 'border-primary' : 'border-muted',
-      !isConnected && 'opacity-60'
-    )}>
+    <Card
+      className={cn(
+        'transition-all',
+        canSell ? 'border-primary' : 'border-muted',
+        !isConnected && 'opacity-60',
+      )}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
@@ -177,12 +189,13 @@ function SellOptionCard({
       <CardContent className="space-y-3">
         {industries.length === 0 ? (
           <div className="text-center text-muted-foreground text-sm py-4">
-            No sellable {merchant.industries.join('/')} industries at connected locations
+            No sellable {merchant.industries.join('/')} industries at connected
+            locations
           </div>
         ) : (
           <>
             <div className="space-y-2">
-              {industries.map(industry => (
+              {industries.map((industry) => (
                 <SellableIndustryCard
                   key={industry.id}
                   industry={industry}
@@ -192,17 +205,21 @@ function SellOptionCard({
                 />
               ))}
             </div>
-            
+
             {selectedCount > 0 && (
               <>
                 <Separator />
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">
-                    Selling {selectedCount} industrie{selectedCount > 1 ? 's' : ''}
-                    {totalBeerRequired > 0 && ` • Requires ${totalBeerRequired} beer`}
-                    {hasBeer && totalBeerRequired > 0 && ' (merchant beer available)'}
+                    Selling {selectedCount} industrie
+                    {selectedCount > 1 ? 's' : ''}
+                    {totalBeerRequired > 0 &&
+                      ` • Requires ${totalBeerRequired} beer`}
+                    {hasBeer &&
+                      totalBeerRequired > 0 &&
+                      ' (merchant beer available)'}
                   </div>
-                  <Button 
+                  <Button
                     onClick={onConfirmSale}
                     disabled={!canSell}
                     className="w-full"
@@ -219,23 +236,24 @@ function SellOptionCard({
   )
 }
 
-export function SellInterface({ 
-  player, 
-  onSelectSale, 
-  onCancel 
+export function SellInterface({
+  player,
+  onSelectSale,
+  onCancel,
 }: SellInterfaceProps) {
   // TODO: This is simplified - in a real implementation we would:
   // 1. Check network connections to determine which merchants are reachable
   // 2. Check which industries are actually connected to each merchant
   // 3. Check beer availability at each merchant
-  
+
   // For now, simulate some sellable industries
   const sellableIndustries: SellableIndustry[] = player.industries
-    .filter(industry => 
-      ['cotton', 'manufacturer', 'pottery'].includes(industry.type) && 
-      !industry.flipped
+    .filter(
+      (industry) =>
+        ['cotton', 'manufacturer', 'pottery'].includes(industry.type) &&
+        !industry.flipped,
     )
-    .map(industry => ({
+    .map((industry) => ({
       id: `${industry.location}-${industry.type}-${industry.level}`,
       location: industry.location,
       type: industry.type,
@@ -243,20 +261,24 @@ export function SellInterface({
       beerRequired: industry.tile.beerRequired,
       incomeSpaces: industry.tile.incomeSpaces,
       victoryPoints: industry.tile.victoryPoints,
-      isFlipped: industry.flipped
+      isFlipped: industry.flipped,
     }))
 
   // Group industries by merchant (simplified - assuming all merchants are connected)
-  const sellOptions: SellOption[] = Object.values(merchants).map(merchant => ({
-    merchant,
-    industries: sellableIndustries.filter(ind => 
-      merchant.industries.includes(ind.type)
-    ),
-    isConnected: true, // Simplified - should check actual network connections
-    hasBeer: Math.random() > 0.5 // Simplified - should check actual merchant beer availability
-  }))
+  const sellOptions: SellOption[] = Object.values(merchants).map(
+    (merchant) => ({
+      merchant,
+      industries: sellableIndustries.filter((ind) =>
+        merchant.industries.includes(ind.type),
+      ),
+      isConnected: true, // Simplified - should check actual network connections
+      hasBeer: Math.random() > 0.5, // Simplified - should check actual merchant beer availability
+    }),
+  )
 
-  const [selectedIndustries, setSelectedIndustries] = React.useState<Set<string>>(new Set())
+  const [selectedIndustries, setSelectedIndustries] = React.useState<
+    Set<string>
+  >(new Set())
 
   const toggleIndustry = (industryId: string) => {
     const newSelected = new Set(selectedIndustries)
@@ -283,32 +305,35 @@ export function SellInterface({
             <Gift className="h-5 w-5" />
             Sell Industries
           </span>
-          <Badge variant="secondary">
-            {totalSellable} sellable
-          </Badge>
+          <Badge variant="secondary">{totalSellable} sellable</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {totalSellable === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Factory className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>No cotton mills, manufacturers, or potteries available to sell</p>
+            <p>
+              No cotton mills, manufacturers, or potteries available to sell
+            </p>
             <p className="text-sm">Build and flip industries to sell them</p>
           </div>
         ) : (
           <>
             <div className="text-sm text-muted-foreground">
-              Select industries to sell and choose a merchant. You can sell multiple industries in one action.
+              Select industries to sell and choose a merchant. You can sell
+              multiple industries in one action.
             </div>
-            
+
             <div className="space-y-4">
-              {sellOptions.map(sellOption => (
+              {sellOptions.map((sellOption) => (
                 <SellOptionCard
                   key={sellOption.merchant.id}
                   sellOption={sellOption}
                   selectedIndustries={selectedIndustries}
                   onToggleIndustry={toggleIndustry}
-                  onConfirmSale={() => handleConfirmSale(sellOption.merchant.id)}
+                  onConfirmSale={() =>
+                    handleConfirmSale(sellOption.merchant.id)
+                  }
                 />
               ))}
             </div>

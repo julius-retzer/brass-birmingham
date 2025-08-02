@@ -15,7 +15,7 @@ export interface Merchant {
   victoryPointsGranted?: number // For Nottingham and Shrewsbury
 }
 
-export const merchants: Record<CityId, Merchant> = {
+export const merchants: Record<string, Merchant> = {
   warrington: {
     id: 'warrington',
     name: 'Warrington',
@@ -23,8 +23,8 @@ export const merchants: Record<CityId, Merchant> = {
     bonus: {
       type: 'money',
       value: 5,
-      description: 'Receive £5 from the Bank'
-    }
+      description: 'Receive £5 from the Bank',
+    },
   },
   gloucester: {
     id: 'gloucester',
@@ -33,8 +33,8 @@ export const merchants: Record<CityId, Merchant> = {
     bonus: {
       type: 'develop',
       value: 1,
-      description: 'Remove 1 lowest level tile from Player Mat (no iron cost)'
-    }
+      description: 'Remove 1 lowest level tile from Player Mat (no iron cost)',
+    },
   },
   oxford: {
     id: 'oxford',
@@ -43,8 +43,8 @@ export const merchants: Record<CityId, Merchant> = {
     bonus: {
       type: 'income',
       value: 2,
-      description: 'Advance Income Marker 2 spaces'
-    }
+      description: 'Advance Income Marker 2 spaces',
+    },
   },
   nottingham: {
     id: 'nottingham',
@@ -53,9 +53,9 @@ export const merchants: Record<CityId, Merchant> = {
     bonus: {
       type: 'victoryPoints',
       value: 2, // This could vary by player count
-      description: 'Advance VP Marker by indicated spaces'
+      description: 'Advance VP Marker by indicated spaces',
     },
-    victoryPointsGranted: 2
+    victoryPointsGranted: 2,
   },
   shrewsbury: {
     id: 'shrewsbury',
@@ -64,10 +64,10 @@ export const merchants: Record<CityId, Merchant> = {
     bonus: {
       type: 'victoryPoints',
       value: 2, // This could vary by player count
-      description: 'Advance VP Marker by indicated spaces'
+      description: 'Advance VP Marker by indicated spaces',
     },
-    victoryPointsGranted: 2
-  }
+    victoryPointsGranted: 2,
+  },
 }
 
 export type MerchantId = keyof typeof merchants

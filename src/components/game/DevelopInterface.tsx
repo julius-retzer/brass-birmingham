@@ -1,12 +1,12 @@
-import React from 'react'
 import { Coins, Factory, Trash2, Zap } from 'lucide-react'
+import React from 'react'
 import { type IndustryType } from '~/data/cards'
 import { type IndustryTile } from '~/data/industryTiles'
-import { type Player } from '~/store/gameStore'
 import { cn } from '~/lib/utils'
+import { type Player } from '~/store/gameStore'
+import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { Badge } from '../ui/badge'
 import { Separator } from '../ui/separator'
 
 interface DevelopInterfaceProps {
@@ -19,14 +19,14 @@ interface DevelopableIndustry {
   type: IndustryType
   lowestTile: IndustryTile
   canDevelop: boolean
-  reason?: string
+  reason: string | undefined
 }
 
-function DevelopableIndustryCard({ 
-  industry, 
-  isSelected, 
-  onToggle 
-}: { 
+function DevelopableIndustryCard({
+  industry,
+  isSelected,
+  onToggle,
+}: {
   industry: DevelopableIndustry
   isSelected: boolean
   onToggle: () => void
@@ -62,7 +62,7 @@ function DevelopableIndustryCard({
         'h-auto p-4 justify-start',
         getIndustryColor(industry.type),
         isSelected && 'ring-2 ring-primary',
-        !industry.canDevelop && 'opacity-50 cursor-not-allowed'
+        !industry.canDevelop && 'opacity-50 cursor-not-allowed',
       )}
       onClick={industry.canDevelop ? onToggle : undefined}
       disabled={!industry.canDevelop}
@@ -81,15 +81,12 @@ function DevelopableIndustryCard({
           </div>
           <div className="text-xs text-muted-foreground flex items-center gap-4">
             <span className="flex items-center gap-1">
-              <Coins className="h-3 w-3" />
-              £{industry.lowestTile.cost}
+              <Coins className="h-3 w-3" />£{industry.lowestTile.cost}
             </span>
             <span>{industry.lowestTile.victoryPoints} VP</span>
           </div>
           {!industry.canDevelop && industry.reason && (
-            <div className="text-xs text-red-600 mt-1">
-              {industry.reason}
-            </div>
+            <div className="text-xs text-red-600 mt-1">{industry.reason}</div>
           )}
         </div>
         {isSelected && (
@@ -102,15 +99,19 @@ function DevelopableIndustryCard({
   )
 }
 
-export function DevelopInterface({ 
-  player, 
-  onSelectDevelopment, 
-  onCancel 
+export function DevelopInterface({
+  player,
+  onSelectDevelopment,
+  onCancel,
 }: DevelopInterfaceProps) {
-  const [selectedIndustries, setSelectedIndustries] = React.useState<Set<IndustryType>>(new Set())
+  const [selectedIndustries, setSelectedIndustries] = React.useState<
+    Set<IndustryType>
+  >(new Set())
 
   // Get developable industries
-  const developableIndustries: DevelopableIndustry[] = Object.entries(player.industryTilesOnMat)
+  const developableIndustries: DevelopableIndustry[] = Object.entries(
+    player.industryTilesOnMat,
+  )
     .map(([type, tiles]) => {
       const industryType = type as IndustryType
       if (!tiles || tiles.length === 0) {
@@ -119,11 +120,14 @@ export function DevelopInterface({
 
       // Find the lowest level tile (first tile is always the lowest)
       const lowestTile = tiles[0]
-      
+      if (!lowestTile) {
+        return null
+      }
+
       // Check if this industry can be developed
       let canDevelop = true
-      let reason = ''
-      
+      let reason: string | undefined = undefined
+
       // Pottery tiles with lightbulb icon cannot be developed
       if (industryType === 'pottery' && lowestTile.hasLightbulbIcon) {
         canDevelop = false
@@ -134,12 +138,14 @@ export function DevelopInterface({
         type: industryType,
         lowestTile,
         canDevelop,
-        reason
+        reason,
       }
     })
     .filter((industry): industry is DevelopableIndustry => industry !== null)
 
-  const availableIndustries = developableIndustries.filter(ind => ind.canDevelop)
+  const availableIndustries = developableIndustries.filter(
+    (ind) => ind.canDevelop,
+  )
   const selectedCount = selectedIndustries.size
   const maxSelectable = 2 // Can develop up to 2 industries per action
 
@@ -180,17 +186,20 @@ export function DevelopInterface({
           <div className="text-center py-8 text-muted-foreground">
             <Factory className="h-12 w-12 mx-auto mb-3 opacity-50" />
             <p>No industries available to develop</p>
-            <p className="text-sm">All pottery tiles with lightbulb icons must be built first</p>
+            <p className="text-sm">
+              All pottery tiles with lightbulb icons must be built first
+            </p>
           </div>
         ) : (
           <>
             <div className="text-sm text-muted-foreground">
-              Remove industry tiles from your player mat to access higher-level tiles. 
-              You can develop 1-2 industries per action. Each requires 1 iron.
+              Remove industry tiles from your player mat to access higher-level
+              tiles. You can develop 1-2 industries per action. Each requires 1
+              iron.
             </div>
-            
+
             <div className="space-y-2">
-              {developableIndustries.map(industry => (
+              {developableIndustries.map((industry) => (
                 <DevelopableIndustryCard
                   key={industry.type}
                   industry={industry}
@@ -207,18 +216,19 @@ export function DevelopInterface({
                   <div className="text-sm">
                     <div className="font-medium">Development Cost:</div>
                     <div className="text-muted-foreground">
-                      • {totalIronCost} iron (from iron works or market)
-                      • Up to £{totalIronMarketCost} if buying from empty market
+                      • {totalIronCost} iron (from iron works or market) • Up to
+                      £{totalIronMarketCost} if buying from empty market
                     </div>
                   </div>
-                  
+
                   <div className="flex gap-2">
-                    <Button 
+                    <Button
                       onClick={handleConfirm}
                       disabled={selectedCount === 0}
                       className="flex-1"
                     >
-                      Develop {selectedCount} Industr{selectedCount === 1 ? 'y' : 'ies'}
+                      Develop {selectedCount} Industr
+                      {selectedCount === 1 ? 'y' : 'ies'}
                     </Button>
                   </div>
                 </div>

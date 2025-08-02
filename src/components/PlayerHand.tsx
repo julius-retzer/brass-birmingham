@@ -1,4 +1,3 @@
-import { Coins, TrendingUp, Trophy } from 'lucide-react'
 import { type Card } from '../data/cards'
 import { cn } from '../lib/utils'
 import { type Player } from '../store/gameStore'
@@ -11,29 +10,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from './ui/tooltip'
-
-interface PlayerStatsProps {
-  player: Player
-}
-
-function PlayerStats({ player }: PlayerStatsProps) {
-  return (
-    <div className="flex items-center gap-4">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Coins className="h-4 w-4" />
-        <span>£{player.money}</span>
-      </div>
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <TrendingUp className="h-4 w-4" />
-        <span>£{player.income}</span>
-      </div>
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Trophy className="h-4 w-4" />
-        <span>{player.victoryPoints}</span>
-      </div>
-    </div>
-  )
-}
 
 interface PlayerHandProps {
   player: Player
@@ -91,14 +67,13 @@ export function PlayerHand({
       )}
     >
       <CardHeader>
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <CardTitle>{player.name}&apos;s Hand</CardTitle>
-            <Badge variant={onCardSelect ? 'default' : 'secondary'}>
-              {currentAction ? currentSubState : 'Waiting'}
+        <div className="flex items-center gap-2">
+          <CardTitle>Hand ({player.hand.length} cards)</CardTitle>
+          {onCardSelect && (
+            <Badge variant="default">
+              {currentAction ? currentSubState : 'Select card'}
             </Badge>
-          </div>
-          <PlayerStats player={player} />
+          )}
         </div>
       </CardHeader>
       <CardContent>

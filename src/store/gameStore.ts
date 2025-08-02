@@ -75,8 +75,8 @@ export interface GameState {
     iron: number
     beer: number
   }
-  // Resource markets
-  coalMarket: (number | null)[] // Prices for coal, null means empty slot
+  // Resource markets - explicit structure with max capacity per price
+  coalMarket: Array<{ price: number; cubes: number; maxCubes: number }>
   ironMarket: (number | null)[] // Prices for iron, null means empty slot
   logs: LogEntry[]
   // Card-related state
@@ -317,7 +317,7 @@ function consumeCoalFromSources(
   coalRequired: number,
 ): {
   updatedPlayers: Player[]
-  updatedCoalMarket: (number | null)[]
+  updatedCoalMarket: Array<{ price: number; cubes: number; maxCubes: number }>
   coalCost: number
   logDetails: string[]
 } {
@@ -325,16 +325,20 @@ function consumeCoalFromSources(
   let coalCost = 0
   const logDetails: string[] = []
   let updatedPlayers = [...context.players]
-  let updatedCoalMarket = [...context.coalMarket]
+  let updatedCoalMarket = context.coalMarket.map(level => ({ ...level }))
 
   const currentPlayer = getCurrentPlayer(context)
 
   // First, try to consume from connected coal mines (free)
-  const connectedCoalMines = findConnectedCoalMines(context, location, currentPlayer)
-  
+  const connectedCoalMines = findConnectedCoalMines(
+    context,
+    location,
+    currentPlayer,
+  )
+
   for (const coalMine of connectedCoalMines) {
     if (coalConsumed >= coalRequired) break
-    
+
     if (coalMine.coalCubesOnTile > 0) {
       // Find the player who owns this coal mine and update it
       updatedPlayers = updatedPlayers.map((player) => ({
@@ -345,34 +349,39 @@ function consumeCoalFromSources(
             : industry,
         ),
       }))
-      
+
       coalConsumed++
       logDetails.push(`1 coal from connected coal mine (free)`)
-      
+
       // TODO: Check if coal mine should flip when empty
     }
   }
 
-  // If still need coal, consume from coal market
+  // If still need coal, consume from coal market (cheapest first)
   while (coalConsumed < coalRequired) {
     let foundCoal = false
-    
-    for (let i = 0; i < updatedCoalMarket.length; i++) {
-      if (updatedCoalMarket[i] !== null) {
-        coalCost += updatedCoalMarket[i] as number
-        updatedCoalMarket[i] = null
+
+    // Find cheapest available coal (price levels in order)
+    for (const level of updatedCoalMarket) {
+      if (level.cubes > 0) {
+        level.cubes--
+        coalCost += level.price
         coalConsumed++
-        logDetails.push(`consumed 1 coal from market for £${updatedCoalMarket[i]}`)
+        logDetails.push(`consumed 1 coal from market for £${level.price}`)
         foundCoal = true
         break
       }
     }
-    
-    // If market is empty, can still buy for £8
+
+    // If market is empty, still buy at £8 (infinite capacity fallback)
     if (!foundCoal) {
-      coalCost += 8
-      coalConsumed++
-      logDetails.push(`consumed 1 coal from general supply for £8`)
+      const fallbackLevel = updatedCoalMarket.find(l => l.price === 8)
+      if (fallbackLevel) {
+        // Don't decrement cubes for infinite capacity level
+        coalCost += 8
+        coalConsumed++
+        logDetails.push(`consumed 1 coal from general supply for £8`)
+      }
     }
   }
 
@@ -396,10 +405,10 @@ function consumeIronFromSources(
 
   // First, try to consume from any available iron works (free)
   const availableIronWorks = findAvailableIronWorks(context)
-  
+
   for (const ironWorks of availableIronWorks) {
     if (ironConsumed >= ironRequired) break
-    
+
     if (ironWorks.ironCubesOnTile > 0) {
       // Find the player who owns this iron works and update it
       updatedPlayers = updatedPlayers.map((player) => ({
@@ -410,10 +419,10 @@ function consumeIronFromSources(
             : industry,
         ),
       }))
-      
+
       ironConsumed++
       logDetails.push(`1 iron from iron works (free)`)
-      
+
       // TODO: Check if iron works should flip when empty
     }
   }
@@ -421,18 +430,20 @@ function consumeIronFromSources(
   // If still need iron, consume from iron market
   while (ironConsumed < ironRequired) {
     let foundIron = false
-    
+
     for (let i = 0; i < updatedIronMarket.length; i++) {
       if (updatedIronMarket[i] !== null) {
         ironCost += updatedIronMarket[i] as number
         updatedIronMarket[i] = null
         ironConsumed++
-        logDetails.push(`consumed 1 iron from market for £${updatedIronMarket[i]}`)
+        logDetails.push(
+          `consumed 1 iron from market for £${updatedIronMarket[i]}`,
+        )
         foundIron = true
         break
       }
     }
-    
+
     // If market is empty, can still buy for £6
     if (!foundIron) {
       ironCost += 6
@@ -450,15 +461,60 @@ function isLocationConnectedToMerchant(location: CityId): boolean {
   // Stoke -> Warrington, Coalbrookdale -> Shrewsbury
   // TODO: This should use proper network connectivity check, but for now hardcode known connections
   const merchantConnections = new Set<CityId>(['stoke', 'coalbrookdale'])
-  
+
   return merchantConnections.has(location)
 }
 
-// Helper function to sell resources to market (most expensive spaces first)
+// Helper function to sell coal to market (most expensive spaces first)
+function sellCoalToMarket(
+  coalMarket: Array<{ price: number; cubes: number; maxCubes: number }>,
+  cubesAvailable: number,
+): {
+  updatedMarket: Array<{ price: number; cubes: number; maxCubes: number }>
+  cubesSold: number
+  income: number
+  logDetails: string[]
+} {
+  const updatedMarket = coalMarket.map(level => ({ ...level }))
+  const logDetails: string[] = []
+  let cubesSold = 0
+  let income = 0
+
+  // Sell to most expensive available spaces first (£7 down to £1)
+  // If market is full, remaining cubes stay on the industry tile
+  for (let i = updatedMarket.length - 2; i >= 0 && cubesSold < cubesAvailable; i--) {
+    const level = updatedMarket[i]
+    if (level && level.cubes < level.maxCubes) {
+      // Space available at this price level
+      const spacesAvailable = level.maxCubes - level.cubes
+      const cubesToSell = Math.min(spacesAvailable, cubesAvailable - cubesSold)
+      
+      level.cubes += cubesToSell
+      income += level.price * cubesToSell
+      cubesSold += cubesToSell
+      
+      for (let j = 0; j < cubesToSell; j++) {
+        logDetails.push(`sold 1 coal to market for £${level.price}`)
+      }
+    }
+  }
+  
+  // Note: £8 infinite capacity is only for PURCHASING when market is empty,
+  // NOT for selling when market is full. Unsold cubes remain on the tile.
+
+  return {
+    updatedMarket,
+    cubesSold,
+    income,
+    logDetails,
+  }
+}
+
+// Legacy function for iron (keep for now)
 function sellResourcesToMarket(
   market: (number | null)[],
   cubesAvailable: number,
-  resourceType: 'coal' | 'iron'
+  resourceType: 'coal' | 'iron',
 ): {
   updatedMarket: (number | null)[]
   cubesSold: number
@@ -469,9 +525,13 @@ function sellResourcesToMarket(
   const logDetails: string[] = []
   let cubesSold = 0
   let income = 0
-  
+
   // Sell to most expensive spaces first (iterate from right to left)
-  for (let i = updatedMarket.length - 1; i >= 0 && cubesSold < cubesAvailable; i--) {
+  for (
+    let i = updatedMarket.length - 1;
+    i >= 0 && cubesSold < cubesAvailable;
+    i--
+  ) {
     if (updatedMarket[i] === null) {
       // Space is empty, can sell here
       const price = getMarketPrice(i, resourceType)
@@ -481,23 +541,26 @@ function sellResourcesToMarket(
       logDetails.push(`sold 1 ${resourceType} to market for £${price}`)
     }
   }
-  
+
   return {
     updatedMarket,
     cubesSold,
     income,
-    logDetails
+    logDetails,
   }
 }
 
 // Helper function to get market price for a given position
-function getMarketPrice(position: number, resourceType: 'coal' | 'iron'): number {
+function getMarketPrice(
+  position: number,
+  resourceType: 'coal' | 'iron',
+): number {
   // Market prices based on position (leftmost = cheapest, rightmost = most expensive)
   // Coal: £1,£2,£3,£4,£5,£6,£7,£8 (8 spaces)
-  // Iron: £1,£1,£2,£3,£4,£5,£6,£7 (7 spaces) 
+  // Iron: £1,£1,£2,£3,£4,£5,£6,£7 (7 spaces)
   const coalPrices = [1, 2, 3, 4, 5, 6, 7, 8]
   const ironPrices = [1, 1, 2, 3, 4, 5, 6, 7]
-  
+
   if (resourceType === 'coal') {
     return coalPrices[position] || 8 // Fallback to most expensive
   } else {
@@ -529,7 +592,7 @@ function consumeBeerFromSources(
   // First, consume from own breweries (free, no connection required)
   for (const brewery of ownBreweries) {
     if (beerConsumed >= beerRequired) break
-    
+
     if (brewery.beerBarrelsOnTile > 0) {
       updatedPlayers = updatedPlayers.map((player) => ({
         ...player,
@@ -539,10 +602,10 @@ function consumeBeerFromSources(
             : industry,
         ),
       }))
-      
+
       beerConsumed++
       logDetails.push(`1 beer from own brewery (free)`)
-      
+
       // TODO: Check if brewery should flip when empty
     }
   }
@@ -550,7 +613,7 @@ function consumeBeerFromSources(
   // If still need beer, consume from connected opponent breweries
   for (const brewery of connectedBreweries) {
     if (beerConsumed >= beerRequired) break
-    
+
     if (brewery.beerBarrelsOnTile > 0) {
       updatedPlayers = updatedPlayers.map((player) => ({
         ...player,
@@ -560,10 +623,10 @@ function consumeBeerFromSources(
             : industry,
         ),
       }))
-      
+
       beerConsumed++
       logDetails.push(`1 beer from connected opponent brewery (free)`)
-      
+
       // TODO: Check if brewery should flip when empty
     }
   }
@@ -635,10 +698,17 @@ export const gameStore = setup({
           iron: 10, // Iron total: 17 cubes in game (5 in market + 10 in general supply, 2 market spaces empty)
           beer: 24,
         },
-        // Initialize markets based on player count (2-player setup)
-        // Market arrays represent cube occupancy: null = empty space, 1 = cube present
-        // Prices are determined by position via getMarketPrice function
-        coalMarket: [1, 1, 1, 1, 1, 1, 1, null], // Coal market (8 spaces): one £8 space empty, rest filled
+        // Initialize coal market: £1 has 1/2 cubes, £2-£7 have 2/2 cubes, £8 has infinite capacity
+        coalMarket: [
+          { price: 1, cubes: 1, maxCubes: 2 },
+          { price: 2, cubes: 2, maxCubes: 2 },
+          { price: 3, cubes: 2, maxCubes: 2 },
+          { price: 4, cubes: 2, maxCubes: 2 },
+          { price: 5, cubes: 2, maxCubes: 2 },
+          { price: 6, cubes: 2, maxCubes: 2 },
+          { price: 7, cubes: 2, maxCubes: 2 },
+          { price: 8, cubes: 0, maxCubes: Infinity }, // Infinite capacity fallback
+        ],
         ironMarket: [null, null, 1, 1, 1, 1, 1], // Iron market (7 spaces): both £1 spaces empty, rest filled
         logs: [createLogEntry('Game started', 'system')],
         drawPile: shuffledCards.slice(currentIndex),
@@ -831,7 +901,11 @@ export const gameStore = setup({
           )
           coalCost = coalResult.coalCost
           updatedPlayersFromResources = coalResult.updatedPlayers
-          updatedCoalMarket.splice(0, updatedCoalMarket.length, ...coalResult.updatedCoalMarket)
+          updatedCoalMarket.splice(
+            0,
+            updatedCoalMarket.length,
+            ...coalResult.updatedCoalMarket,
+          )
           resourceLogDetails.push(...coalResult.logDetails)
         }
 
@@ -843,7 +917,11 @@ export const gameStore = setup({
           )
           ironCost = ironResult.ironCost
           updatedPlayersFromResources = ironResult.updatedPlayers
-          updatedIronMarket.splice(0, updatedIronMarket.length, ...ironResult.updatedIronMarket)
+          updatedIronMarket.splice(
+            0,
+            updatedIronMarket.length,
+            ...ironResult.updatedIronMarket,
+          )
           resourceLogDetails.push(...ironResult.logDetails)
         }
 
@@ -865,25 +943,33 @@ export const gameStore = setup({
           tile: tile,
           coalCubesOnTile: tile.coalProduced, // Place coal cubes if this is a coal mine
           ironCubesOnTile: tile.ironProduced, // Place iron cubes if this is an iron works
-          beerBarrelsOnTile: tile.type === 'brewery' 
-            ? (context.era === 'canal' ? tile.beerProduced : tile.beerProduced * 2)
-            : 0, // Place beer barrels if this is a brewery (2x in Rail Era)
+          beerBarrelsOnTile:
+            tile.type === 'brewery'
+              ? context.era === 'canal'
+                ? tile.beerProduced
+                : tile.beerProduced * 2
+              : 0, // Place beer barrels if this is a brewery (2x in Rail Era)
         }
 
         // Automatic market selling per Brass Birmingham rules
         let marketIncome = 0
         let marketLogDetails: string[] = []
-        
+
         if (tile.type === 'coal') {
           // Coal mines: sell to market only if connected to merchant
-          const isConnectedToMerchant = isLocationConnectedToMerchant(context.selectedLocation!)
+          const isConnectedToMerchant = isLocationConnectedToMerchant(
+            context.selectedLocation!,
+          )
           if (isConnectedToMerchant && newIndustry.coalCubesOnTile > 0) {
-            const sellResult = sellResourcesToMarket(updatedCoalMarket, newIndustry.coalCubesOnTile, 'coal')
+            const sellResult = sellCoalToMarket(
+              updatedCoalMarket,
+              newIndustry.coalCubesOnTile,
+            )
             updatedCoalMarket = sellResult.updatedMarket
             marketIncome += sellResult.income
             marketLogDetails.push(...sellResult.logDetails)
             newIndustry.coalCubesOnTile -= sellResult.cubesSold
-            
+
             // If all cubes sold, flip tile and advance income
             if (newIndustry.coalCubesOnTile === 0) {
               newIndustry.flipped = true
@@ -893,12 +979,16 @@ export const gameStore = setup({
         } else if (tile.type === 'iron') {
           // Iron works: ALWAYS sell to market regardless of connection
           if (newIndustry.ironCubesOnTile > 0) {
-            const sellResult = sellResourcesToMarket(updatedIronMarket, newIndustry.ironCubesOnTile, 'iron')
+            const sellResult = sellResourcesToMarket(
+              updatedIronMarket,
+              newIndustry.ironCubesOnTile,
+              'iron',
+            )
             updatedIronMarket = sellResult.updatedMarket
             marketIncome += sellResult.income
             marketLogDetails.push(...sellResult.logDetails)
             newIndustry.ironCubesOnTile -= sellResult.cubesSold
-            
+
             // If all cubes sold, flip tile and advance income
             if (newIndustry.ironCubesOnTile === 0) {
               newIndustry.flipped = true
@@ -918,15 +1008,17 @@ export const gameStore = setup({
 
         // Update the current player with building costs and new industry
         // But first get their updated state from resource consumption
-        const currentPlayerFromResources = updatedPlayersFromResources[context.currentPlayerIndex]!
+        const currentPlayerFromResources =
+          updatedPlayersFromResources[context.currentPlayerIndex]!
         // Update player money: subtract costs, add market income, advance income if tile flipped
-        const finalMoney = currentPlayerFromResources.money - totalCost + marketIncome
+        const finalMoney =
+          currentPlayerFromResources.money - totalCost + marketIncome
         let finalIncome = currentPlayerFromResources.income
-        
+
         if (newIndustry.flipped) {
           finalIncome += newIndustry.tile.incomeSpaces
         }
-        
+
         updatedPlayer = {
           ...currentPlayerFromResources,
           hand: updatedHand,
@@ -937,14 +1029,14 @@ export const gameStore = setup({
         }
 
         // Update resource consumption and market selling logging
-        const resourceString = resourceLogDetails.length > 0
-          ? ` (consumed ${resourceLogDetails.join(', ')})`
-          : ''
-        
-        const marketString = marketLogDetails.length > 0
-          ? ` (${marketLogDetails.join(', ')})`
-          : ''
-        
+        const resourceString =
+          resourceLogDetails.length > 0
+            ? ` (consumed ${resourceLogDetails.join(', ')})`
+            : ''
+
+        const marketString =
+          marketLogDetails.length > 0 ? ` (${marketLogDetails.join(', ')})` : ''
+
         const incomeString = newIndustry.flipped
           ? ` (tile flipped, +${newIndustry.tile.incomeSpaces} income)`
           : ''
@@ -972,10 +1064,16 @@ export const gameStore = setup({
 
       // Update resource markets if they were modified (consumption OR selling)
       if (context.selectedIndustryTile) {
-        if (context.selectedIndustryTile.coalRequired > 0 || context.selectedIndustryTile.type === 'coal') {
+        if (
+          context.selectedIndustryTile.coalRequired > 0 ||
+          context.selectedIndustryTile.type === 'coal'
+        ) {
           result.coalMarket = updatedCoalMarket
         }
-        if (context.selectedIndustryTile.ironRequired > 0 || context.selectedIndustryTile.type === 'iron') {
+        if (
+          context.selectedIndustryTile.ironRequired > 0 ||
+          context.selectedIndustryTile.type === 'iron'
+        ) {
           result.ironMarket = updatedIronMarket
         }
       }
@@ -1004,7 +1102,7 @@ export const gameStore = setup({
       }
 
       let coalCost = 0
-      const updatedCoalMarket = [...context.coalMarket]
+      const updatedCoalMarket = context.coalMarket.map(level => ({ ...level }))
       let logMessage = `${currentPlayer.name} built a ${context.era} link between ${context.selectedLink.from} and ${context.selectedLink.to}`
 
       // Consume coal if rail era
@@ -1013,11 +1111,11 @@ export const gameStore = setup({
         // For now, consume from coal market (cheapest first)
         let coalFromMarket = 0
 
-        // Find cheapest available coal slot and consume from it
-        for (let i = 0; i < updatedCoalMarket.length; i++) {
-          if (updatedCoalMarket[i] !== null && coalFromMarket < 1) {
-            coalCost += updatedCoalMarket[i] as number
-            updatedCoalMarket[i] = null // Mark slot as empty
+        // Find cheapest available coal and consume 1
+        for (const level of updatedCoalMarket) {
+          if (level.cubes > 0 && coalFromMarket < 1) {
+            level.cubes-- // Remove 1 cube from this price level
+            coalCost += level.price
             coalFromMarket++
             break // Only consume 1 coal for rail link
           }
@@ -1084,9 +1182,10 @@ export const gameStore = setup({
         currentPlayer,
         context.selectedCard.id,
       )
-      
+
       // Get the current player's updated state after iron consumption
-      const currentPlayerAfterIron = updatedPlayersFromIron[context.currentPlayerIndex]!
+      const currentPlayerAfterIron =
+        updatedPlayersFromIron[context.currentPlayerIndex]!
       const updatedPlayer = {
         ...currentPlayerAfterIron,
         hand: updatedHand,
@@ -1134,7 +1233,11 @@ export const gameStore = setup({
       // Use enhanced beer consumption logic
       // For now, assume we're selling at a location where the player has other industries
       const sellLocation = currentPlayer.industries[0]?.location || 'birmingham' // Fallback location
-      const beerResult = consumeBeerFromSources(context, sellLocation, beerRequired)
+      const beerResult = consumeBeerFromSources(
+        context,
+        sellLocation,
+        beerRequired,
+      )
       const updatedPlayersFromBeer = beerResult.updatedPlayers
       const updatedResources = beerResult.updatedResources
 
@@ -1142,9 +1245,10 @@ export const gameStore = setup({
         currentPlayer,
         context.selectedCard.id,
       )
-      
+
       // Get the current player's updated state after beer consumption
-      const currentPlayerAfterBeer = updatedPlayersFromBeer[context.currentPlayerIndex]!
+      const currentPlayerAfterBeer =
+        updatedPlayersFromBeer[context.currentPlayerIndex]!
       const updatedPlayer = {
         ...currentPlayerAfterBeer,
         hand: updatedHand,
@@ -1385,13 +1489,13 @@ export const gameStore = setup({
     }),
     setPlayerHand: assign(({ context, event }) => {
       if (event.type !== 'TEST_SET_PLAYER_HAND') return {}
-      
+
       const updatedPlayers = [...context.players]
       updatedPlayers[event.playerId] = {
         ...updatedPlayers[event.playerId]!,
         hand: event.hand,
       }
-      
+
       return {
         players: updatedPlayers,
       }

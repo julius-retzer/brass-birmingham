@@ -106,6 +106,9 @@ export interface GameState {
   selectedCard: Card | null
   selectedCardsForScout: Card[]
   spentMoney: number
+  // Round management state
+  playerSpending: Record<string, number> // Track spending per player per round
+  isFinalRound: boolean
   // Network-related state
   selectedLink: {
     from: CityId
@@ -173,6 +176,22 @@ type GameEvent =
       type: 'TEST_SET_PLAYER_HAND'
       playerId: number
       hand: Card[]
+    }
+  | {
+      type: 'TEST_SET_PLAYER_STATE'
+      playerId: number
+      money?: number
+      income?: number
+      industries?: Player['industries']
+    }
+  | {
+      type: 'TEST_SET_FINAL_ROUND'
+      isFinalRound: boolean
+    }
+  | {
+      type: 'TEST_SET_ERA_END_CONDITIONS'
+      drawPile: Card[]
+      allPlayersHandsEmpty: boolean
     }
 
 
@@ -262,6 +281,8 @@ export const gameStore = setup({
         selectedCard: null,
         selectedCardsForScout: [],
         spentMoney: 0,
+        playerSpending: {},
+        isFinalRound: false,
         selectedLink: null,
         selectedLocation: null,
         selectedIndustryTile: null,
@@ -496,12 +517,16 @@ export const gameStore = setup({
         logMessage += ` (consumed 1 coal from market for £${coalCost})`
       }
 
+      const totalCost = linkCost + coalCost
       const updatedPlayer = {
         ...currentPlayer,
         hand: updatedHand,
-        money: currentPlayer.money - linkCost - coalCost,
+        money: currentPlayer.money - totalCost,
         links: [...currentPlayer.links, newLink],
       }
+
+      // Track money spent
+      const currentSpending = context.playerSpending[currentPlayer.id] || 0
 
       debugLog('executeNetworkAction', context)
       return {
@@ -518,6 +543,11 @@ export const gameStore = setup({
         selectedLocation: null,
         selectedIndustryTile: null,
         actionsRemaining: context.actionsRemaining - 1,
+        spentMoney: context.spentMoney + totalCost,
+        playerSpending: {
+          ...context.playerSpending,
+          [currentPlayer.id]: currentSpending + totalCost,
+        },
         logs: [...context.logs, createLogEntry(logMessage, 'action')],
       }
     }),
@@ -873,6 +903,51 @@ export const gameStore = setup({
         players: updatedPlayers,
       }
     }),
+
+    setPlayerState: assign(({ context, event }) => {
+      if (event.type !== 'TEST_SET_PLAYER_STATE') return {}
+
+      const updatedPlayers = [...context.players]
+      const currentPlayer = updatedPlayers[event.playerId]!
+      updatedPlayers[event.playerId] = {
+        ...currentPlayer,
+        ...(event.money !== undefined && { money: event.money }),
+        ...(event.income !== undefined && { income: event.income }),
+        ...(event.industries !== undefined && { industries: event.industries }),
+      }
+
+      return {
+        players: updatedPlayers,
+      }
+    }),
+
+    setFinalRound: assign(({ context, event }) => {
+      if (event.type !== 'TEST_SET_FINAL_ROUND') return {}
+      return {
+        isFinalRound: event.isFinalRound,
+      }
+    }),
+
+    setEraEndConditions: assign(({ context, event }) => {
+      if (event.type !== 'TEST_SET_ERA_END_CONDITIONS') return {}
+      return {
+        drawPile: event.drawPile,
+        // Note: allPlayersHandsEmpty would need additional logic to check
+      }
+    }),
+
+    trackMoneySpent: assign(({ context }, amount: number) => {
+      const currentPlayer = getCurrentPlayer(context)
+      const currentSpending = context.playerSpending[currentPlayer.id] || 0
+      
+      return {
+        spentMoney: context.spentMoney + amount,
+        playerSpending: {
+          ...context.playerSpending,
+          [currentPlayer.id]: currentSpending + amount,
+        },
+      }
+    }),
   },
   guards: {
     hasActionsRemaining: ({ context }) => context.actionsRemaining > 0,
@@ -1020,6 +1095,8 @@ export const gameStore = setup({
     selectedCard: null,
     selectedCardsForScout: [],
     spentMoney: 0,
+    playerSpending: {},
+    isFinalRound: false,
     selectedLink: null,
     selectedLocation: null,
     selectedIndustryTile: null,

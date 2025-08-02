@@ -21,6 +21,24 @@ import {
   getLowestLevelTile,
 } from '../data/industryTiles'
 
+// Game constants
+const GAME_CONSTANTS = {
+  STARTING_MONEY: 17,
+  STARTING_INCOME: 10,
+  STARTING_HAND_SIZE: 8,
+  LOAN_AMOUNT: 30,
+  LOAN_INCOME_PENALTY: 3,
+  MIN_INCOME: -10,
+  CANAL_LINK_COST: 3,
+  RAIL_LINK_COST: 5,
+  COAL_FALLBACK_PRICE: 8,
+  IRON_FALLBACK_PRICE: 6,
+  SCOUT_CARDS_REQUIRED: 3,
+  MAX_SCOUT_SELECTION: 3,
+  FIRST_ROUND_ACTIONS: 1,
+  NORMAL_ROUND_ACTIONS: 2,
+} as const
+
 export type LogEntryType = 'system' | 'action' | 'info' | 'error'
 
 export interface LogEntry {
@@ -325,7 +343,7 @@ function consumeCoalFromSources(
   let coalCost = 0
   const logDetails: string[] = []
   let updatedPlayers = [...context.players]
-  let updatedCoalMarket = context.coalMarket.map(level => ({ ...level }))
+  const updatedCoalMarket = context.coalMarket.map(level => ({ ...level }))
 
   const currentPlayer = getCurrentPlayer(context)
 
@@ -373,14 +391,14 @@ function consumeCoalFromSources(
       }
     }
 
-    // If market is empty, still buy at £8 (infinite capacity fallback)
+    // If market is empty, still buy at fallback price (infinite capacity fallback)
     if (!foundCoal) {
-      const fallbackLevel = updatedCoalMarket.find(l => l.price === 8)
+      const fallbackLevel = updatedCoalMarket.find(l => l.price === GAME_CONSTANTS.COAL_FALLBACK_PRICE)
       if (fallbackLevel) {
         // Don't decrement cubes for infinite capacity level
-        coalCost += 8
+        coalCost += GAME_CONSTANTS.COAL_FALLBACK_PRICE
         coalConsumed++
-        logDetails.push(`consumed 1 coal from general supply for £8`)
+        logDetails.push(`consumed 1 coal from general supply for £${GAME_CONSTANTS.COAL_FALLBACK_PRICE}`)
       }
     }
   }
@@ -401,7 +419,7 @@ function consumeIronFromSources(
   let ironCost = 0
   const logDetails: string[] = []
   let updatedPlayers = [...context.players]
-  let updatedIronMarket = context.ironMarket.map(level => ({ ...level }))
+  const updatedIronMarket = context.ironMarket.map(level => ({ ...level }))
 
   // First, try to consume from any available iron works (free)
   const availableIronWorks = findAvailableIronWorks(context)
@@ -443,14 +461,14 @@ function consumeIronFromSources(
       }
     }
 
-    // If market is empty, still buy at £6 (infinite capacity fallback)
+    // If market is empty, still buy at fallback price (infinite capacity fallback)
     if (!foundIron) {
-      const fallbackLevel = updatedIronMarket.find(l => l.price === 6)
+      const fallbackLevel = updatedIronMarket.find(l => l.price === GAME_CONSTANTS.IRON_FALLBACK_PRICE)
       if (fallbackLevel) {
         // Don't decrement cubes for infinite capacity level
-        ironCost += 6
+        ironCost += GAME_CONSTANTS.IRON_FALLBACK_PRICE
         ironConsumed++
-        logDetails.push(`consumed 1 iron from general supply for £6`)
+        logDetails.push(`consumed 1 iron from general supply for £${GAME_CONSTANTS.IRON_FALLBACK_PRICE}`)
       }
     }
   }
@@ -558,63 +576,6 @@ function sellIronToMarket(
   }
 }
 
-// Legacy function for iron (keep for now)
-function sellResourcesToMarket(
-  market: (number | null)[],
-  cubesAvailable: number,
-  resourceType: 'coal' | 'iron',
-): {
-  updatedMarket: (number | null)[]
-  cubesSold: number
-  income: number
-  logDetails: string[]
-} {
-  const updatedMarket = [...market]
-  const logDetails: string[] = []
-  let cubesSold = 0
-  let income = 0
-
-  // Sell to most expensive spaces first (iterate from right to left)
-  for (
-    let i = updatedMarket.length - 1;
-    i >= 0 && cubesSold < cubesAvailable;
-    i--
-  ) {
-    if (updatedMarket[i] === null) {
-      // Space is empty, can sell here
-      const price = getMarketPrice(i, resourceType)
-      updatedMarket[i] = 1 // Place a cube marker (could be any non-null value)
-      income += price
-      cubesSold++
-      logDetails.push(`sold 1 ${resourceType} to market for £${price}`)
-    }
-  }
-
-  return {
-    updatedMarket,
-    cubesSold,
-    income,
-    logDetails,
-  }
-}
-
-// Helper function to get market price for a given position
-function getMarketPrice(
-  position: number,
-  resourceType: 'coal' | 'iron',
-): number {
-  // Market prices based on position (leftmost = cheapest, rightmost = most expensive)
-  // Coal: £1,£2,£3,£4,£5,£6,£7,£8 (8 spaces)
-  // Iron: £1,£1,£2,£3,£4,£5,£6,£7 (7 spaces)
-  const coalPrices = [1, 2, 3, 4, 5, 6, 7, 8]
-  const ironPrices = [1, 1, 2, 3, 4, 5, 6, 7]
-
-  if (resourceType === 'coal') {
-    return coalPrices[position] || 8 // Fallback to most expensive
-  } else {
-    return ironPrices[position] || 7 // Fallback to most expensive
-  }
-}
 
 function consumeBeerFromSources(
   context: GameState,
@@ -628,7 +589,7 @@ function consumeBeerFromSources(
   let beerConsumed = 0
   const logDetails: string[] = []
   let updatedPlayers = [...context.players]
-  let updatedResources = { ...context.resources }
+  const updatedResources = { ...context.resources }
 
   const currentPlayer = getCurrentPlayer(context)
   const { ownBreweries, connectedBreweries } = findAvailableBreweries(
@@ -694,6 +655,207 @@ function consumeBeerFromSources(
   return { updatedPlayers, updatedResources, logDetails }
 }
 
+// Build action validation helpers
+function validateBuildActionSelections(context: GameState): void {
+  if (!context.selectedCard) {
+    throw new Error('No card selected for build action')
+  }
+  if (!context.selectedLocation) {
+    throw new Error('No location selected for build action')
+  }
+}
+
+function validateCardType(card: Card): void {
+  const validCardTypes = ['location', 'industry', 'wild_location', 'wild_industry']
+  if (!validCardTypes.includes(card.type)) {
+    throw new Error(
+      `Invalid card type for build action: ${card.type}. Only Location, Industry, or Wild cards can be used.`,
+    )
+  }
+}
+
+function validateCardLocationMatching(card: Card, selectedLocation: CityId): void {
+  if (card.type === 'location') {
+    const locationCard = card as LocationCard
+    if (locationCard.location !== selectedLocation) {
+      throw new Error(
+        `Location card mismatch: card specifies ${locationCard.location}, but selected location is ${selectedLocation}`,
+      )
+    }
+  }
+}
+
+function validateCardIndustryMatching(card: Card, selectedIndustryTile: IndustryTile | null): void {
+  if (card.type === 'industry' && selectedIndustryTile) {
+    const industryCard = card as IndustryCard
+    const tile = selectedIndustryTile
+    if (!industryCard.industries.includes(tile.type)) {
+      throw new Error(
+        `Industry card mismatch: card allows ${industryCard.industries.join(', ')}, but selected tile type is ${tile.type}`,
+      )
+    }
+  }
+
+  if (card.type === 'industry' && !selectedIndustryTile) {
+    throw new Error('Industry card requires industry tile selection')
+  }
+}
+
+function validateTileEraCompatibility(context: GameState, tile: IndustryTile): void {
+  if (context.era === 'canal' && !tile.canBuildInCanalEra) {
+    throw new Error(`Cannot build ${tile.type} Level ${tile.level} in Canal Era`)
+  }
+  if (context.era === 'rail' && !tile.canBuildInRailEra) {
+    throw new Error(`Cannot build ${tile.type} Level ${tile.level} in Rail Era`)
+  }
+}
+
+// Industry building helper function
+interface IndustryBuildResult {
+  updatedPlayer: Player
+  updatedPlayers: Player[]
+  updatedCoalMarket: GameState['coalMarket']
+  updatedIronMarket: GameState['ironMarket']
+  logMessage: string
+}
+
+function buildIndustryTile(
+  context: GameState,
+  currentPlayer: Player,
+  tile: IndustryTile,
+  updatedHand: Card[],
+): IndustryBuildResult {
+  let updatedPlayersFromResources = context.players
+  let updatedCoalMarket = [...context.coalMarket]
+  let updatedIronMarket = [...context.ironMarket]
+  
+  const cost = tile.cost
+  let coalCost = 0
+  let ironCost = 0
+  const resourceLogDetails: string[] = []
+
+  // Consume coal if required
+  if (tile.coalRequired > 0) {
+    const coalResult = consumeCoalFromSources(
+      { ...context, players: updatedPlayersFromResources },
+      context.selectedLocation!,
+      tile.coalRequired,
+    )
+    coalCost = coalResult.coalCost
+    updatedPlayersFromResources = coalResult.updatedPlayers
+    updatedCoalMarket = coalResult.updatedCoalMarket
+    resourceLogDetails.push(...coalResult.logDetails)
+  }
+
+  // Consume iron if required
+  if (tile.ironRequired > 0) {
+    const ironResult = consumeIronFromSources(
+      { ...context, players: updatedPlayersFromResources },
+      tile.ironRequired,
+    )
+    ironCost = ironResult.ironCost
+    updatedPlayersFromResources = ironResult.updatedPlayers
+    updatedIronMarket = ironResult.updatedIronMarket
+    resourceLogDetails.push(...ironResult.logDetails)
+  }
+
+  const totalCost = cost + coalCost + ironCost
+
+  // Validate player can afford the total cost
+  if (currentPlayer.money < totalCost) {
+    throw new Error(
+      `Insufficient funds. Cost: £${totalCost} (tile: £${cost}, coal: £${coalCost}, iron: £${ironCost}), Available: £${currentPlayer.money}`,
+    )
+  }
+
+  // Add industry to player's board
+  const newIndustry = {
+    location: context.selectedLocation!,
+    type: tile.type,
+    level: tile.level,
+    flipped: false,
+    tile: tile,
+    coalCubesOnTile: tile.coalProduced,
+    ironCubesOnTile: tile.ironProduced,
+    beerBarrelsOnTile:
+      tile.type === 'brewery'
+        ? context.era === 'canal'
+          ? tile.beerProduced
+          : tile.beerProduced * 2
+        : 0,
+  }
+
+  // Handle automatic market selling
+  let marketIncome = 0
+  const marketLogDetails: string[] = []
+
+  if (tile.type === 'coal') {
+    const isConnectedToMerchant = isLocationConnectedToMerchant(context.selectedLocation!)
+    if (isConnectedToMerchant && newIndustry.coalCubesOnTile > 0) {
+      const sellResult = sellCoalToMarket(updatedCoalMarket, newIndustry.coalCubesOnTile)
+      updatedCoalMarket = sellResult.updatedMarket
+      marketIncome += sellResult.income
+      marketLogDetails.push(...sellResult.logDetails)
+      newIndustry.coalCubesOnTile -= sellResult.cubesSold
+
+      if (newIndustry.coalCubesOnTile === 0) {
+        newIndustry.flipped = true
+      }
+    }
+  } else if (tile.type === 'iron') {
+    if (newIndustry.ironCubesOnTile > 0) {
+      const sellResult = sellIronToMarket(updatedIronMarket, newIndustry.ironCubesOnTile)
+      updatedIronMarket = sellResult.updatedMarket
+      marketIncome += sellResult.income
+      marketLogDetails.push(...sellResult.logDetails)
+      newIndustry.ironCubesOnTile -= sellResult.cubesSold
+
+      if (newIndustry.ironCubesOnTile === 0) {
+        newIndustry.flipped = true
+      }
+    }
+  }
+
+  // Remove tile from player's mat
+  const updatedTilesOnMat = { ...currentPlayer.industryTilesOnMat }
+  const tileType = tile.type
+  if (updatedTilesOnMat[tileType]) {
+    updatedTilesOnMat[tileType] = updatedTilesOnMat[tileType].filter((t) => t.id !== tile.id)
+  }
+
+  // Get updated player state from resource consumption
+  const currentPlayerFromResources = updatedPlayersFromResources[context.currentPlayerIndex]!
+  const finalMoney = currentPlayerFromResources.money - totalCost + marketIncome
+  let finalIncome = currentPlayerFromResources.income
+
+  if (newIndustry.flipped) {
+    finalIncome += newIndustry.tile.incomeSpaces
+  }
+
+  const updatedPlayer = {
+    ...currentPlayerFromResources,
+    hand: updatedHand,
+    money: finalMoney,
+    income: finalIncome,
+    industries: [...currentPlayerFromResources.industries, newIndustry],
+    industryTilesOnMat: updatedTilesOnMat,
+  }
+
+  // Build log message
+  const resourceString = resourceLogDetails.length > 0 ? ` (consumed ${resourceLogDetails.join(', ')})` : ''
+  const marketString = marketLogDetails.length > 0 ? ` (${marketLogDetails.join(', ')})` : ''
+  const incomeString = newIndustry.flipped ? ` (tile flipped, +${newIndustry.tile.incomeSpaces} income)` : ''
+  const logMessage = `${currentPlayer.name} built ${tile.type} Level ${tile.level} at ${context.selectedLocation} for £${totalCost}${resourceString}${marketString}${incomeString} using ${getCardDescription(context.selectedCard!)}`
+
+  return {
+    updatedPlayer,
+    updatedPlayers: updatedPlayersFromResources,
+    updatedCoalMarket,
+    updatedIronMarket,
+    logMessage,
+  }
+}
+
 export type GameStore = typeof gameStore
 export type GameStoreSnapshot = StateFrom<typeof gameStore>
 export type GameStoreSend = Actor<typeof gameStore>['send']
@@ -715,19 +877,19 @@ export const gameStore = setup({
         getInitialCards(playerCount)
       const shuffledCards = shuffleArray(regularCards)
 
-      // Deal 8 cards to each player
+      // Deal starting hand to each player
       const hands: Card[][] = []
       let currentIndex = 0
       for (let i = 0; i < playerCount; i++) {
-        hands.push(shuffledCards.slice(currentIndex, currentIndex + 8))
-        currentIndex += 8
+        hands.push(shuffledCards.slice(currentIndex, currentIndex + GAME_CONSTANTS.STARTING_HAND_SIZE))
+        currentIndex += GAME_CONSTANTS.STARTING_HAND_SIZE
       }
 
       // Initialize players with starting money, income, hands, and industry tiles
       const players: Player[] = event.players.map((playerData, index) => ({
         ...playerData,
-        money: 17, // Starting money per rules
-        income: 10,
+        money: GAME_CONSTANTS.STARTING_MONEY,
+        income: GAME_CONSTANTS.STARTING_INCOME,
         victoryPoints: 0,
         hand: hands[index] ?? [],
         industryTilesOnMat: getInitialPlayerIndustryTiles(),
@@ -740,7 +902,7 @@ export const gameStore = setup({
         currentPlayerIndex: 0,
         era: 'canal' as const,
         round: 1,
-        actionsRemaining: 1, // First round only has 1 action
+        actionsRemaining: GAME_CONSTANTS.FIRST_ROUND_ACTIONS,
         resources: {
           coal: 24,
           iron: 10, // Iron total: 17 cubes in game (5 in market + 10 in general supply, 2 market spaces empty)
@@ -800,7 +962,7 @@ export const gameStore = setup({
       const alreadySelected = context.selectedCardsForScout.some(
         (c) => c.id === card.id,
       )
-      if (!alreadySelected && context.selectedCardsForScout.length < 3) {
+      if (!alreadySelected && context.selectedCardsForScout.length < GAME_CONSTANTS.MAX_SCOUT_SELECTION) {
         debugLog('selectCardForScout', context, event)
         return {
           selectedCardsForScout: [...context.selectedCardsForScout, card],
@@ -832,8 +994,8 @@ export const gameStore = setup({
       )
       const updatedPlayer = {
         ...currentPlayer,
-        money: currentPlayer.money + 30,
-        income: Math.max(-10, currentPlayer.income - 3), // Cannot go below -10 per rules
+        money: currentPlayer.money + GAME_CONSTANTS.LOAN_AMOUNT,
+        income: Math.max(GAME_CONSTANTS.MIN_INCOME, currentPlayer.income - GAME_CONSTANTS.LOAN_INCOME_PENALTY),
         hand: updatedHand,
       }
 
@@ -850,7 +1012,7 @@ export const gameStore = setup({
         logs: [
           ...context.logs,
           createLogEntry(
-            `${currentPlayer.name} took a loan (£30, -3 income) using ${context.selectedCard.id}`,
+            `${currentPlayer.name} took a loan (£${GAME_CONSTANTS.LOAN_AMOUNT}, -${GAME_CONSTANTS.LOAN_INCOME_PENALTY} income) using ${context.selectedCard.id}`,
             'action',
           ),
         ],
@@ -860,265 +1022,49 @@ export const gameStore = setup({
     executeBuildAction: assign(({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
 
-      // Validate required selections
-      if (!context.selectedCard) {
-        throw new Error('No card selected for build action')
-      }
-      if (!context.selectedLocation) {
-        throw new Error('No location selected for build action')
-      }
-
-      // Validate card type
-      const validCardTypes = [
-        'location',
-        'industry',
-        'wild_location',
-        'wild_industry',
-      ]
-      if (!validCardTypes.includes(context.selectedCard.type)) {
-        throw new Error(
-          `Invalid card type for build action: ${context.selectedCard.type}. Only Location, Industry, or Wild cards can be used.`,
-        )
-      }
-
-      // Validate card-location matching (except for wild cards)
-      if (context.selectedCard.type === 'location') {
-        const locationCard = context.selectedCard as LocationCard
-        if (locationCard.location !== context.selectedLocation) {
-          throw new Error(
-            `Location card mismatch: card specifies ${locationCard.location}, but selected location is ${context.selectedLocation}`,
-          )
-        }
-      }
-
-      // Validate card-industry matching (except for wild cards)
-      if (
-        context.selectedCard.type === 'industry' &&
-        context.selectedIndustryTile
-      ) {
-        const industryCard = context.selectedCard as IndustryCard
-        const tile = context.selectedIndustryTile
-        if (!industryCard.industries.includes(tile.type)) {
-          throw new Error(
-            `Industry card mismatch: card allows ${industryCard.industries.join(', ')}, but selected tile type is ${tile.type}`,
-          )
-        }
-      }
-
-      // For industry cards, validate industry tile selection
-      if (
-        context.selectedCard.type === 'industry' &&
-        !context.selectedIndustryTile
-      ) {
-        throw new Error('Industry card requires industry tile selection')
-      }
+      // Run all validations
+      validateBuildActionSelections(context)
+      validateCardType(context.selectedCard!)
+      validateCardLocationMatching(context.selectedCard!, context.selectedLocation!)
+      validateCardIndustryMatching(context.selectedCard!, context.selectedIndustryTile)
 
       const updatedHand = removeCardFromHand(
         currentPlayer,
-        context.selectedCard.id,
+        context.selectedCard!.id,
       )
 
       let updatedPlayer = { ...currentPlayer, hand: updatedHand }
-      let cost = 0
       let logMessage = `${currentPlayer.name} built`
       let updatedCoalMarket = [...context.coalMarket]
       let updatedIronMarket = [...context.ironMarket]
-      let updatedPlayersFromResources = context.players // Initialize outside the block
 
       // Handle industry building (when tile is selected)
       if (context.selectedIndustryTile) {
         const tile = context.selectedIndustryTile
-
-        // Validate tile can be built in current era
-        if (context.era === 'canal' && !tile.canBuildInCanalEra) {
-          throw new Error(
-            `Cannot build ${tile.type} Level ${tile.level} in Canal Era`,
-          )
-        }
-        if (context.era === 'rail' && !tile.canBuildInRailEra) {
-          throw new Error(
-            `Cannot build ${tile.type} Level ${tile.level} in Rail Era`,
-          )
-        }
-
-        cost = tile.cost
-
-        // Consume required resources using enhanced resource consumption logic
-        let coalCost = 0
-        let ironCost = 0
-        const resourceLogDetails: string[] = []
-
-        // Consume coal if required
-        if (tile.coalRequired > 0) {
-          const coalResult = consumeCoalFromSources(
-            { ...context, players: updatedPlayersFromResources },
-            context.selectedLocation,
-            tile.coalRequired,
-          )
-          coalCost = coalResult.coalCost
-          updatedPlayersFromResources = coalResult.updatedPlayers
-          updatedCoalMarket.splice(
-            0,
-            updatedCoalMarket.length,
-            ...coalResult.updatedCoalMarket,
-          )
-          resourceLogDetails.push(...coalResult.logDetails)
+        validateTileEraCompatibility(context, tile)
+        
+        const buildResult = buildIndustryTile(context, currentPlayer, tile, updatedHand)
+        updatedPlayer = buildResult.updatedPlayer
+        updatedCoalMarket = buildResult.updatedCoalMarket
+        updatedIronMarket = buildResult.updatedIronMarket
+        logMessage = buildResult.logMessage
+        
+        // Use the updated players list from the build result
+        const result: Partial<GameState> = {
+          players: updatePlayerInList(
+            buildResult.updatedPlayers,
+            context.currentPlayerIndex,
+            updatedPlayer,
+          ),
+          discardPile: [...context.discardPile, context.selectedCard!],
+          selectedCard: null,
+          selectedLocation: null,
+          selectedIndustryTile: null,
+          actionsRemaining: context.actionsRemaining - 1,
+          logs: [...context.logs, createLogEntry(logMessage, 'action')],
         }
 
-        // Consume iron if required
-        if (tile.ironRequired > 0) {
-          const ironResult = consumeIronFromSources(
-            { ...context, players: updatedPlayersFromResources },
-            tile.ironRequired,
-          )
-          ironCost = ironResult.ironCost
-          updatedPlayersFromResources = ironResult.updatedPlayers
-          updatedIronMarket.splice(
-            0,
-            updatedIronMarket.length,
-            ...ironResult.updatedIronMarket,
-          )
-          resourceLogDetails.push(...ironResult.logDetails)
-        }
-
-        const totalCost = cost + coalCost + ironCost
-
-        // Validate player can afford the total cost
-        if (currentPlayer.money < totalCost) {
-          throw new Error(
-            `Insufficient funds. Cost: £${totalCost} (tile: £${cost}, coal: £${coalCost}, iron: £${ironCost}), Available: £${currentPlayer.money}`,
-          )
-        }
-
-        // Add industry to player's board
-        const newIndustry = {
-          location: context.selectedLocation,
-          type: tile.type,
-          level: tile.level,
-          flipped: false,
-          tile: tile,
-          coalCubesOnTile: tile.coalProduced, // Place coal cubes if this is a coal mine
-          ironCubesOnTile: tile.ironProduced, // Place iron cubes if this is an iron works
-          beerBarrelsOnTile:
-            tile.type === 'brewery'
-              ? context.era === 'canal'
-                ? tile.beerProduced
-                : tile.beerProduced * 2
-              : 0, // Place beer barrels if this is a brewery (2x in Rail Era)
-        }
-
-        // Automatic market selling per Brass Birmingham rules
-        let marketIncome = 0
-        let marketLogDetails: string[] = []
-
-        if (tile.type === 'coal') {
-          // Coal mines: sell to market only if connected to merchant
-          const isConnectedToMerchant = isLocationConnectedToMerchant(
-            context.selectedLocation!,
-          )
-          if (isConnectedToMerchant && newIndustry.coalCubesOnTile > 0) {
-            const sellResult = sellCoalToMarket(
-              updatedCoalMarket,
-              newIndustry.coalCubesOnTile,
-            )
-            updatedCoalMarket = sellResult.updatedMarket
-            marketIncome += sellResult.income
-            marketLogDetails.push(...sellResult.logDetails)
-            newIndustry.coalCubesOnTile -= sellResult.cubesSold
-
-            // If all cubes sold, flip tile and advance income
-            if (newIndustry.coalCubesOnTile === 0) {
-              newIndustry.flipped = true
-              // Income will be advanced after player update
-            }
-          }
-        } else if (tile.type === 'iron') {
-          // Iron works: ALWAYS sell to market regardless of connection
-          if (newIndustry.ironCubesOnTile > 0) {
-            const sellResult = sellIronToMarket(
-              updatedIronMarket,
-              newIndustry.ironCubesOnTile,
-            )
-            updatedIronMarket = sellResult.updatedMarket
-            marketIncome += sellResult.income
-            marketLogDetails.push(...sellResult.logDetails)
-            newIndustry.ironCubesOnTile -= sellResult.cubesSold
-
-            // If all cubes sold, flip tile and advance income
-            if (newIndustry.ironCubesOnTile === 0) {
-              newIndustry.flipped = true
-              // Income will be advanced after player update
-            }
-          }
-        }
-
-        // Remove tile from player's mat
-        const updatedTilesOnMat = { ...currentPlayer.industryTilesOnMat }
-        const tileType = tile.type
-        if (updatedTilesOnMat[tileType]) {
-          updatedTilesOnMat[tileType] = updatedTilesOnMat[tileType].filter(
-            (t) => t.id !== tile.id,
-          )
-        }
-
-        // Update the current player with building costs and new industry
-        // But first get their updated state from resource consumption
-        const currentPlayerFromResources =
-          updatedPlayersFromResources[context.currentPlayerIndex]!
-        // Update player money: subtract costs, add market income, advance income if tile flipped
-        const finalMoney =
-          currentPlayerFromResources.money - totalCost + marketIncome
-        let finalIncome = currentPlayerFromResources.income
-
-        if (newIndustry.flipped) {
-          finalIncome += newIndustry.tile.incomeSpaces
-        }
-
-        updatedPlayer = {
-          ...currentPlayerFromResources,
-          hand: updatedHand,
-          money: finalMoney,
-          income: finalIncome,
-          industries: [...currentPlayerFromResources.industries, newIndustry],
-          industryTilesOnMat: updatedTilesOnMat,
-        }
-
-        // Update resource consumption and market selling logging
-        const resourceString =
-          resourceLogDetails.length > 0
-            ? ` (consumed ${resourceLogDetails.join(', ')})`
-            : ''
-
-        const marketString =
-          marketLogDetails.length > 0 ? ` (${marketLogDetails.join(', ')})` : ''
-
-        const incomeString = newIndustry.flipped
-          ? ` (tile flipped, +${newIndustry.tile.incomeSpaces} income)`
-          : ''
-
-        logMessage = `${currentPlayer.name} built ${tile.type} Level ${tile.level} at ${context.selectedLocation} for £${totalCost}${resourceString}${marketString}${incomeString} using ${getCardDescription(context.selectedCard)}`
-      } else {
-        // Handle location card building (simplified - no specific industry placement)
-        logMessage = `${currentPlayer.name} built at ${context.selectedLocation} using ${getCardDescription(context.selectedCard)}`
-      }
-
-      debugLog('executeBuildAction', context)
-      const result: Partial<GameState> = {
-        players: updatePlayerInList(
-          updatedPlayersFromResources,
-          context.currentPlayerIndex,
-          updatedPlayer,
-        ),
-        discardPile: [...context.discardPile, context.selectedCard],
-        selectedCard: null,
-        selectedLocation: null,
-        selectedIndustryTile: null,
-        actionsRemaining: context.actionsRemaining - 1,
-        logs: [...context.logs, createLogEntry(logMessage, 'action')],
-      }
-
-      // Update resource markets if they were modified (consumption OR selling)
-      if (context.selectedIndustryTile) {
+        // Update resource markets if they were modified
         if (
           context.selectedIndustryTile.coalRequired > 0 ||
           context.selectedIndustryTile.type === 'coal'
@@ -1131,9 +1077,25 @@ export const gameStore = setup({
         ) {
           result.ironMarket = updatedIronMarket
         }
+
+        return result
       }
 
-      return result
+      // Handle location card building (fallback case)
+      debugLog('executeBuildAction', context)
+      return {
+        players: updatePlayerInList(
+          context.players,
+          context.currentPlayerIndex,
+          updatedPlayer,
+        ),
+        discardPile: [...context.discardPile, context.selectedCard!],
+        selectedCard: null,
+        selectedLocation: null,
+        selectedIndustryTile: null,
+        actionsRemaining: context.actionsRemaining - 1,
+        logs: [...context.logs, createLogEntry(logMessage, 'action')],
+      }
     }),
 
     executeNetworkAction: assign(({ context }) => {
@@ -1146,9 +1108,9 @@ export const gameStore = setup({
         currentPlayer,
         context.selectedCard.id,
       )
-      // Rail era can build 1 link for £5 or 2 links for £15 (with beer consumption)
+      // Rail era can build 1 link or 2 links (with beer consumption)
       // For now, implement single link logic - double link will be separate action/choice
-      const linkCost = context.era === 'canal' ? 3 : 5
+      const linkCost = context.era === 'canal' ? GAME_CONSTANTS.CANAL_LINK_COST : GAME_CONSTANTS.RAIL_LINK_COST
 
       const newLink = {
         from: context.selectedLink.from,
@@ -1176,9 +1138,9 @@ export const gameStore = setup({
           }
         }
 
-        // If market is empty, can still purchase coal for £8 per piece per rules
+        // If market is empty, can still purchase coal at fallback price per rules
         if (coalFromMarket < 1) {
-          coalCost += 8 // £8 per coal when market is empty
+          coalCost += GAME_CONSTANTS.COAL_FALLBACK_PRICE
           coalFromMarket = 1
         }
 
@@ -1332,8 +1294,8 @@ export const gameStore = setup({
 
     executeScoutAction: assign(({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
-      if (context.selectedCardsForScout.length !== 3) {
-        throw new Error('Scout action requires exactly 3 cards to be selected')
+      if (context.selectedCardsForScout.length !== GAME_CONSTANTS.SCOUT_CARDS_REQUIRED) {
+        throw new Error(`Scout action requires exactly ${GAME_CONSTANTS.SCOUT_CARDS_REQUIRED} cards to be selected`)
       }
 
       // Remove the 3 selected cards from hand
@@ -1417,7 +1379,7 @@ export const gameStore = setup({
 
     refillPlayerHand: assign(({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
-      const cardsNeeded = 8 - currentPlayer.hand.length
+      const cardsNeeded = GAME_CONSTANTS.STARTING_HAND_SIZE - currentPlayer.hand.length
 
       if (cardsNeeded <= 0 || context.drawPile.length === 0) {
         return {}
@@ -1446,8 +1408,8 @@ export const gameStore = setup({
         ...context,
         round: nextRound,
       })
-        ? 1
-        : 2
+        ? GAME_CONSTANTS.FIRST_ROUND_ACTIONS
+        : GAME_CONSTANTS.NORMAL_ROUND_ACTIONS
 
       debugLog('nextPlayer', context)
       return {

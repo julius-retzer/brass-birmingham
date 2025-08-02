@@ -1018,9 +1018,16 @@ test('develop action - iron consumption from market', () => {
 
   // Store initial state
   const initialIron = snapshot.context.resources.iron
-  const initialIronMarket = [...snapshot.context.ironMarket]
+  const initialIronMarket = snapshot.context.ironMarket.map(level => ({ ...level }))
   expect(initialIron).toBe(10) // Should start with 10 iron in general supply
-  expect(initialIronMarket).toEqual([null, null, 1, 1, 1, 1, 1])
+  expect(initialIronMarket).toEqual([
+    { price: 1, cubes: 0, maxCubes: 2 },
+    { price: 2, cubes: 2, maxCubes: 2 },
+    { price: 3, cubes: 2, maxCubes: 2 },
+    { price: 4, cubes: 2, maxCubes: 2 },
+    { price: 5, cubes: 2, maxCubes: 2 },
+    { price: 6, cubes: 0, maxCubes: Infinity },
+  ])
 
   // Perform develop action
   actor.send({ type: 'DEVELOP' })
@@ -1036,15 +1043,22 @@ test('develop action - iron consumption from market', () => {
 
   // TODO: This should fail initially - iron should be consumed from iron market, not general supply
   // Verify iron was consumed from market (cheapest first - should take from £1 slot)
-  expect(snapshot.context.ironMarket).toEqual([null, null, null, 1, 1, 1, 1]) // One more £1 slot should be empty
+  expect(snapshot.context.ironMarket).toEqual([
+    { price: 1, cubes: 0, maxCubes: 2 }, // Still empty
+    { price: 2, cubes: 1, maxCubes: 2 }, // One cube consumed
+    { price: 3, cubes: 2, maxCubes: 2 },
+    { price: 4, cubes: 2, maxCubes: 2 },
+    { price: 5, cubes: 2, maxCubes: 2 },
+    { price: 6, cubes: 0, maxCubes: Infinity },
+  ])
 
   // The general iron supply should NOT change when consuming from market
   expect(snapshot.context.resources.iron).toBe(initialIron) // Should still be 10
 
-  // Verify current player paid for the iron (£1)
+  // Verify current player paid for the iron (£2 - cheapest available in market)
   const currentPlayer = snapshot.context.players[0]
   assert(currentPlayer, 'Expected player 1 to exist')
-  expect(currentPlayer.money).toBe(16) // Started with 17, paid 1 for iron
+  expect(currentPlayer.money).toBe(15) // Started with 17, paid 2 for iron from £2 level
 
   // Verify log mentions iron consumption from market
   const lastLog = snapshot.context.logs[snapshot.context.logs.length - 1]
@@ -1177,14 +1191,20 @@ test('iron market - initial setup and purchasing', () => {
   const snapshot = actor.getSnapshot()
 
   // Test initial iron market setup
-  // Based on rules: Iron market should have 7 spaces with prices £1,£1,£2,£3,£4,£5,£6,£7
-  // Market array shows cube occupancy: null = empty, 1 = cube present  
-  // At start: both £1 spaces empty, rest filled
-  expect(snapshot.context.ironMarket).toEqual([null, null, 1, 1, 1, 1, 1])
+  // Based on rules: Iron market structure with multiple cubes per price level
+  // £1: 0/2 cubes (both spaces empty), £2-£5: 2/2 cubes each, £6: infinite capacity
+  expect(snapshot.context.ironMarket).toEqual([
+    { price: 1, cubes: 0, maxCubes: 2 },
+    { price: 2, cubes: 2, maxCubes: 2 },
+    { price: 3, cubes: 2, maxCubes: 2 },
+    { price: 4, cubes: 2, maxCubes: 2 },
+    { price: 5, cubes: 2, maxCubes: 2 },
+    { price: 6, cubes: 0, maxCubes: Infinity },
+  ])
 
-  // Should have some iron available but not all spaces filled
+  // Should have some iron available in market
   expect(
-    snapshot.context.ironMarket.some((slot: number | null) => slot !== null),
+    snapshot.context.ironMarket.some((level) => level.cubes > 0),
   ).toBe(true)
 })
 
@@ -1445,7 +1465,7 @@ test.skip('build action - resource consumption for industry tiles', () => {
   const initialPlayer = snapshot.context.players[0]!
   const initialMoney = initialPlayer.money
   const initialCoalMarket = [...snapshot.context.coalMarket]
-  const initialIronMarket = [...snapshot.context.ironMarket]
+  const initialIronMarket = snapshot.context.ironMarket.map(level => ({ ...level }))
 
   // Use the iron level 2 tile which requires 1 coal (guaranteed to exist)
   const ironTiles = initialPlayer.industryTilesOnMat.iron || []
@@ -1528,7 +1548,7 @@ test.skip('build action - resource consumption for industry tiles', () => {
     // Iron should be consumed from iron market (cheapest first)
     const ironConsumed =
       initialIronMarket.filter((slot) => slot !== null).length -
-      snapshot.context.ironMarket.filter((slot) => slot !== null).length
+      snapshot.context.ironMarket.reduce((total, level) => total + level.cubes, 0)
     expect(ironConsumed).toBe(actualIronRequired)
   }
 
@@ -1959,7 +1979,7 @@ test('iron consumption priority - any iron works first, then market', () => {
     snapshot = actor.getSnapshot()
 
     // Now perform develop action that requires iron - should consume from iron works first
-    const initialIronMarket = [...snapshot.context.ironMarket]
+    const initialIronMarket = snapshot.context.ironMarket.map(level => ({ ...level }))
     const initialPlayer = snapshot.context.players[0]!
 
     actor.send({ type: 'DEVELOP' })
@@ -2227,10 +2247,12 @@ test('iron works - ALWAYS automatic market selling regardless of connection', ()
   snapshot = actor.getSnapshot()
   const initialPlayer = snapshot.context.players[0]!
   const initialMoney = initialPlayer.money
-  const initialIronMarket = [...snapshot.context.ironMarket]
+  const initialIronMarket = snapshot.context.ironMarket.map(level => ({ ...level }))
 
-  // Check if iron market has space - in 2-player setup, iron market is [1, 1, 2, 3, 4] (all filled)
-  const originalEmptySpaces = initialIronMarket.filter(space => space === null).length
+  // Check iron market available space - start with some spaces available at £1 level
+  // Count only finite capacity levels (exclude infinite capacity fallback)
+  const originalAvailableSpaces = initialIronMarket.reduce((total, level) => 
+    level.maxCubes === Infinity ? total : total + (level.maxCubes - level.cubes), 0)
 
   // Build iron works at Birmingham (iron works ALWAYS sell to market)
   actor.send({ type: 'BUILD' })
@@ -2244,31 +2266,25 @@ test('iron works - ALWAYS automatic market selling regardless of connection', ()
 
   // CRITICAL RULE: Iron works ALWAYS tries to sell to market regardless of merchant connection
   const ironProduced = ironWorks.tile.ironProduced
-  const ironSoldToMarket = Math.min(ironProduced, originalEmptySpaces) // Number of iron cubes actually sold
-  const actualEmptySpaces = snapshot.context.ironMarket.filter(space => space === null).length
+  const actualAvailableSpaces = snapshot.context.ironMarket.reduce((total, level) => 
+    total + (level.maxCubes === Infinity ? Infinity : level.maxCubes - level.cubes), 0)
+  const ironSoldToMarket = Math.min(ironProduced, originalAvailableSpaces) // Number of iron cubes actually sold
   
-  // Test the correct behavior based on market state
-  if (originalEmptySpaces > 0) {
-    // If market had space, verify iron was sold
-    expect(actualEmptySpaces).toBe(originalEmptySpaces - ironSoldToMarket)
-    // Player should have received money for sold iron
-    expect(playerAfterBuild.money).toBeGreaterThan(initialMoney - ironWorks.tile.cost - (ironWorks.tile.coalRequired * 8))
-  } else {
-    // If market was full, iron should remain on tile
-    expect(ironWorks.ironCubesOnTile).toBe(ironProduced)
-    expect(ironWorks.flipped).toBe(false)
-    // Market should be unchanged
-    expect(snapshot.context.ironMarket).toEqual(initialIronMarket)
-  }
+  // With iron market structure: £1 has 0/2 cubes (2 spaces available), others full
+  // Iron works level 1 produces 4 iron, but only 2 can be sold
+  expect(originalAvailableSpaces).toBe(2) // £1 level has 2 available spaces
+  expect(ironSoldToMarket).toBe(2) // Only 2 can be sold
+  expect(ironWorks.ironCubesOnTile).toBe(2) // 2 cubes remain on tile
+  expect(ironWorks.flipped).toBe(false) // Tile doesn't flip since cubes remain
   
-  // If all iron was sold to market, verify tile flipped and income advanced
-  if (ironWorks.ironCubesOnTile === 0) {
-    expect(ironWorks.flipped).toBe(true)
-    expect(playerAfterBuild.income).toBeGreaterThan(initialPlayer.income)
-  } else {
-    // Some iron remains on tile (market was partially full)
-    expect(ironWorks.ironCubesOnTile).toBe(ironProduced - ironSoldToMarket)
-  }
+  // Verify iron was sold to most expensive available spaces (£1)
+  expect(snapshot.context.ironMarket[0]!.cubes).toBe(2) // £1 level now full
+  
+  // Player should have received money for sold iron (2 × £1 = £2)
+  const ironMarketIncome = 2 * 1 // 2 cubes × £1 each = £2
+  const coalCost = ironWorks.tile.coalRequired * 1 // Coal consumed from £1 level (cheapest available)
+  const expectedMoney = initialMoney - ironWorks.tile.cost - coalCost + ironMarketIncome
+  expect(playerAfterBuild.money).toBe(expectedMoney)
 })
 
 test('brewery - only places beer barrels, no market selling', () => {

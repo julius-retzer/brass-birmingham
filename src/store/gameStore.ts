@@ -77,7 +77,7 @@ export interface GameState {
   }
   // Resource markets - explicit structure with max capacity per price
   coalMarket: Array<{ price: number; cubes: number; maxCubes: number }>
-  ironMarket: (number | null)[] // Prices for iron, null means empty slot
+  ironMarket: Array<{ price: number; cubes: number; maxCubes: number }>
   logs: LogEntry[]
   // Card-related state
   drawPile: Card[]
@@ -393,7 +393,7 @@ function consumeIronFromSources(
   ironRequired: number,
 ): {
   updatedPlayers: Player[]
-  updatedIronMarket: (number | null)[]
+  updatedIronMarket: Array<{ price: number; cubes: number; maxCubes: number }>
   ironCost: number
   logDetails: string[]
 } {
@@ -401,7 +401,7 @@ function consumeIronFromSources(
   let ironCost = 0
   const logDetails: string[] = []
   let updatedPlayers = [...context.players]
-  let updatedIronMarket = [...context.ironMarket]
+  let updatedIronMarket = context.ironMarket.map(level => ({ ...level }))
 
   // First, try to consume from any available iron works (free)
   const availableIronWorks = findAvailableIronWorks(context)
@@ -427,28 +427,31 @@ function consumeIronFromSources(
     }
   }
 
-  // If still need iron, consume from iron market
+  // If still need iron, consume from iron market (cheapest first)
   while (ironConsumed < ironRequired) {
     let foundIron = false
 
-    for (let i = 0; i < updatedIronMarket.length; i++) {
-      if (updatedIronMarket[i] !== null) {
-        ironCost += updatedIronMarket[i] as number
-        updatedIronMarket[i] = null
+    // Find cheapest available iron (price levels in order)
+    for (const level of updatedIronMarket) {
+      if (level.cubes > 0) {
+        level.cubes--
+        ironCost += level.price
         ironConsumed++
-        logDetails.push(
-          `consumed 1 iron from market for £${updatedIronMarket[i]}`,
-        )
+        logDetails.push(`consumed 1 iron from market for £${level.price}`)
         foundIron = true
         break
       }
     }
 
-    // If market is empty, can still buy for £6
+    // If market is empty, still buy at £6 (infinite capacity fallback)
     if (!foundIron) {
-      ironCost += 6
-      ironConsumed++
-      logDetails.push(`consumed 1 iron from general supply for £6`)
+      const fallbackLevel = updatedIronMarket.find(l => l.price === 6)
+      if (fallbackLevel) {
+        // Don't decrement cubes for infinite capacity level
+        ironCost += 6
+        ironConsumed++
+        logDetails.push(`consumed 1 iron from general supply for £6`)
+      }
     }
   }
 
@@ -500,6 +503,51 @@ function sellCoalToMarket(
   }
   
   // Note: £8 infinite capacity is only for PURCHASING when market is empty,
+  // NOT for selling when market is full. Unsold cubes remain on the tile.
+
+  return {
+    updatedMarket,
+    cubesSold,
+    income,
+    logDetails,
+  }
+}
+
+// Helper function to sell iron to market (most expensive spaces first)
+function sellIronToMarket(
+  ironMarket: Array<{ price: number; cubes: number; maxCubes: number }>,
+  cubesAvailable: number,
+): {
+  updatedMarket: Array<{ price: number; cubes: number; maxCubes: number }>
+  cubesSold: number
+  income: number
+  logDetails: string[]
+} {
+  const updatedMarket = ironMarket.map(level => ({ ...level }))
+  const logDetails: string[] = []
+  let cubesSold = 0
+  let income = 0
+
+  // Sell to most expensive available spaces first (£5 down to £1)
+  // If market is full, remaining cubes stay on the industry tile
+  for (let i = updatedMarket.length - 2; i >= 0 && cubesSold < cubesAvailable; i--) {
+    const level = updatedMarket[i]
+    if (level && level.cubes < level.maxCubes) {
+      // Space available at this price level
+      const spacesAvailable = level.maxCubes - level.cubes
+      const cubesToSell = Math.min(spacesAvailable, cubesAvailable - cubesSold)
+      
+      level.cubes += cubesToSell
+      income += level.price * cubesToSell
+      cubesSold += cubesToSell
+      
+      if (cubesToSell > 0) {
+        logDetails.push(`sold ${cubesToSell} iron to market for £${level.price * cubesToSell}`)
+      }
+    }
+  }
+  
+  // Note: £6 infinite capacity is only for PURCHASING when market is empty,
   // NOT for selling when market is full. Unsold cubes remain on the tile.
 
   return {
@@ -709,7 +757,15 @@ export const gameStore = setup({
           { price: 7, cubes: 2, maxCubes: 2 },
           { price: 8, cubes: 0, maxCubes: Infinity }, // Infinite capacity fallback
         ],
-        ironMarket: [null, null, 1, 1, 1, 1, 1], // Iron market (7 spaces): both £1 spaces empty, rest filled
+        // Initialize iron market: £1 has 0/2 cubes, £2-£5 have 2/2 cubes, £6 has infinite capacity
+        ironMarket: [
+          { price: 1, cubes: 0, maxCubes: 2 },
+          { price: 2, cubes: 2, maxCubes: 2 },
+          { price: 3, cubes: 2, maxCubes: 2 },
+          { price: 4, cubes: 2, maxCubes: 2 },
+          { price: 5, cubes: 2, maxCubes: 2 },
+          { price: 6, cubes: 0, maxCubes: Infinity }, // Infinite capacity fallback
+        ],
         logs: [createLogEntry('Game started', 'system')],
         drawPile: shuffledCards.slice(currentIndex),
         discardPile: [],
@@ -979,10 +1035,9 @@ export const gameStore = setup({
         } else if (tile.type === 'iron') {
           // Iron works: ALWAYS sell to market regardless of connection
           if (newIndustry.ironCubesOnTile > 0) {
-            const sellResult = sellResourcesToMarket(
+            const sellResult = sellIronToMarket(
               updatedIronMarket,
               newIndustry.ironCubesOnTile,
-              'iron',
             )
             updatedIronMarket = sellResult.updatedMarket
             marketIncome += sellResult.income

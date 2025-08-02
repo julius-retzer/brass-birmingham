@@ -4,43 +4,73 @@ import { Badge } from '../ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 
 interface ResourceMarketsProps {
-  coalMarket: (number | null)[]
-  ironMarket: (number | null)[]
+  coalMarket: Array<{ price: number; cubes: number; maxCubes: number }>
+  ironMarket: Array<{ price: number; cubes: number; maxCubes: number }>
 }
 
 interface MarketSlotProps {
-  price: number | null
+  price: number
+  cubes: number
+  maxCubes: number
   resource: 'coal' | 'iron'
-  isEmpty: boolean
+  isInfinite?: boolean
 }
 
-function MarketSlot({ price, resource, isEmpty }: MarketSlotProps) {
-  const resourceIcon = resource === 'coal' ? '⚫' : '🔩'
-  const resourceColor =
-    resource === 'coal' ? 'text-gray-600' : 'text-orange-600'
+function MarketSlot({ price, cubes, maxCubes, resource, isInfinite = false }: MarketSlotProps) {
+  const resourceConfig = resource === 'coal' 
+    ? { 
+        icon: '🪨', 
+        color: 'text-slate-800',
+        bgColor: 'bg-slate-100',
+        borderColor: 'border-slate-300',
+        activeBg: 'bg-slate-200',
+        activeBorder: 'border-slate-400'
+      }
+    : { 
+        icon: '⚙️', 
+        color: 'text-amber-700',
+        bgColor: 'bg-amber-50',
+        borderColor: 'border-amber-200',
+        activeBg: 'bg-amber-100',
+        activeBorder: 'border-amber-300'
+      }
+
+  const hasResources = cubes > 0
+  const isFull = cubes >= maxCubes && !isInfinite
 
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center p-2 rounded-md border-2 transition-all',
-        isEmpty
-          ? 'border-dashed border-gray-300 bg-gray-50'
-          : 'border-solid border-primary/30 bg-primary/5',
+        'flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all min-h-[85px]',
+        hasResources
+          ? `${resourceConfig.activeBg} ${resourceConfig.activeBorder}`
+          : `${resourceConfig.bgColor} ${resourceConfig.borderColor} border-dashed`,
+        isFull && 'bg-red-50 border-red-300'
       )}
     >
-      {!isEmpty ? (
-        <>
-          <div className={cn('text-2xl mb-1', resourceColor)}>
-            {resourceIcon}
-          </div>
-          <div className="flex items-center gap-1 text-sm">
-            <Coins className="h-3 w-3" />
-            <span className="font-semibold">£{price}</span>
-          </div>
-        </>
-      ) : (
-        <div className="text-gray-400 text-sm">Empty</div>
-      )}
+      <div className="flex items-center gap-1 text-sm mb-2 font-semibold text-green-700">
+        <Coins className="h-3 w-3" />
+        <span>£{price}</span>
+      </div>
+      
+      <div className={cn('text-2xl mb-1', resourceConfig.color)}>
+        {hasResources ? resourceConfig.icon : '⭕'}
+      </div>
+      
+      <div className="text-xs text-center">
+        {isInfinite ? (
+          <span className="text-purple-600 font-bold">∞</span>
+        ) : (
+          <span className={cn(
+            'font-semibold px-1.5 py-0.5 rounded text-xs',
+            cubes === 0 
+              ? 'text-red-600 bg-red-100' 
+              : 'text-emerald-700 bg-emerald-100'
+          )}>
+            {cubes}/{maxCubes}
+          </span>
+        )}
+      </div>
     </div>
   )
 }
@@ -52,12 +82,14 @@ function ResourceMarket({
   icon,
 }: {
   title: string
-  market: (number | null)[]
+  market: Array<{ price: number; cubes: number; maxCubes: number }>
   resource: 'coal' | 'iron'
   icon: string
 }) {
-  const availableSlots = market.filter((slot) => slot !== null).length
-  const totalSlots = market.length
+  const totalCubes = market.reduce((sum, level) => sum + level.cubes, 0)
+  const totalCapacity = market
+    .filter(level => level.maxCubes !== Infinity)
+    .reduce((sum, level) => sum + level.maxCubes, 0)
 
   return (
     <div className="space-y-3">
@@ -67,21 +99,25 @@ function ResourceMarket({
           {title}
         </h4>
         <Badge variant="secondary" className="text-xs">
-          {availableSlots}/{totalSlots} available
+          {totalCubes}/{totalCapacity} cubes
         </Badge>
       </div>
-      <div className="grid grid-cols-5 gap-2">
-        {market.map((price, index) => (
+      <div className="grid grid-cols-4 gap-2">
+        {market.map((level, index) => (
           <MarketSlot
             key={index}
-            price={price}
+            price={level.price}
+            cubes={level.cubes}
+            maxCubes={level.maxCubes}
             resource={resource}
-            isEmpty={price === null}
+            isInfinite={level.maxCubes === Infinity}
           />
         ))}
       </div>
-      <div className="text-xs text-muted-foreground">
-        When market is empty: £{resource === 'coal' ? '8' : '6'} each
+      <div className="text-xs text-muted-foreground space-y-1">
+        <p>• Resources are consumed from cheapest available slots first</p>
+        <p>• Resources are sold to most expensive available slots first</p>
+        <p>• Infinite capacity slots are fallbacks for purchasing only</p>
       </div>
     </div>
   )
@@ -101,23 +137,14 @@ export function ResourceMarkets({
           title="Coal Market"
           market={coalMarket}
           resource="coal"
-          icon="⚫"
+          icon="🪨"
         />
         <ResourceMarket
           title="Iron Market"
           market={ironMarket}
           resource="iron"
-          icon="🔩"
+          icon="⚙️"
         />
-        <div className="pt-2 border-t text-xs text-muted-foreground">
-          <p>Resources are consumed from the cheapest available slots first.</p>
-          <p>
-            Coal requires connection to merchants (⬅️➡️) when buying from market.
-          </p>
-          <p>
-            Iron can be consumed from any iron works or purchased from market.
-          </p>
-        </div>
       </CardContent>
     </Card>
   )

@@ -414,6 +414,10 @@ export const gameStore = setup({
         updatedIronMarket = buildResult.updatedIronMarket
         logMessage = buildResult.logMessage
 
+        // Track money spent (totalCost = tile cost + coal cost + iron cost - market income)
+        const totalCost = buildResult.totalCost
+        const currentSpending = context.playerSpending[currentPlayer.id] || 0
+
         // Use the updated players list from the build result
         const result: Partial<GameState> = {
           players: updatePlayerInList(
@@ -426,6 +430,11 @@ export const gameStore = setup({
           selectedLocation: null,
           selectedIndustryTile: null,
           actionsRemaining: context.actionsRemaining - 1,
+          spentMoney: context.spentMoney + totalCost,
+          playerSpending: {
+            ...context.playerSpending,
+            [currentPlayer.id]: currentSpending + totalCost,
+          },
           logs: [...context.logs, createLogEntry(logMessage, 'action')],
         }
 
@@ -797,15 +806,117 @@ export const gameStore = setup({
         ? GAME_CONSTANTS.FIRST_ROUND_ACTIONS
         : GAME_CONSTANTS.NORMAL_ROUND_ACTIONS
 
+      let updatedPlayers = [...context.players]
+      let updatedPlayerSpending = { ...context.playerSpending }
+      const logs = [...context.logs]
+
+      // If round is complete, handle end of round logic
+      if (isRoundComplete) {
+        // 1. Determine turn order for next round based on spending
+        const playerSpendingArray = updatedPlayers.map((player, index) => ({
+          player,
+          index,
+          spent: context.playerSpending[player.id] || 0,
+        }))
+        
+        // Sort by spending (least first), then by current index for ties
+        playerSpendingArray.sort((a, b) => {
+          if (a.spent !== b.spent) return a.spent - b.spent
+          return a.index - b.index
+        })
+
+        // 2. Collect income (if not final round)
+        if (!context.isFinalRound) {
+          updatedPlayers = updatedPlayers.map((player) => {
+            let updatedPlayer = { ...player }
+            
+            if (player.income >= 0) {
+              // Positive income: collect money
+              updatedPlayer.money += player.income
+              logs.push(createLogEntry(
+                `${player.name} collected £${player.income} income`,
+                'info'
+              ))
+            } else {
+              // Negative income: pay bank or sell tiles
+              const amountOwed = Math.abs(player.income)
+              
+              if (player.money >= amountOwed) {
+                // Can afford to pay
+                updatedPlayer.money -= amountOwed
+                logs.push(createLogEntry(
+                  `${player.name} paid £${amountOwed} negative income`,
+                  'info'
+                ))
+              } else {
+                // Need to sell industry tiles or lose VP
+                const shortfall = amountOwed - player.money
+                updatedPlayer.money = 0 // Pay what they can
+                
+                let remainingShortfall = shortfall
+                const industriesToRemove: number[] = []
+                
+                // Try to sell industry tiles (worth half cost, rounded down)
+                for (let i = 0; i < player.industries.length && remainingShortfall > 0; i++) {
+                  const industry = player.industries[i]!
+                  const saleValue = Math.floor(industry.tile.cost / 2)
+                  
+                  if (saleValue > 0) {
+                    industriesToRemove.push(i)
+                    updatedPlayer.money += saleValue
+                    remainingShortfall -= saleValue
+                    
+                    logs.push(createLogEntry(
+                      `${player.name} sold ${industry.type} industry for £${saleValue}`,
+                      'info'
+                    ))
+                  }
+                }
+                
+                // Remove sold industries (in reverse order to maintain indices)
+                industriesToRemove.reverse().forEach(index => {
+                  updatedPlayer.industries.splice(index, 1)
+                })
+                
+                // If still short, lose VP
+                if (remainingShortfall > 0) {
+                  updatedPlayer.victoryPoints = Math.max(0, updatedPlayer.victoryPoints - remainingShortfall)
+                  logs.push(createLogEntry(
+                    `${player.name} lost ${remainingShortfall} VP due to income shortfall`,
+                    'info'
+                  ))
+                }
+                
+                logs.push(createLogEntry(
+                  `${player.name} paid £${amountOwed} negative income (shortfall: £${shortfall})`,
+                  'info'
+                ))
+              }
+            }
+            
+            return updatedPlayer
+          })
+        }
+
+        // 3. Reset spending for next round
+        updatedPlayerSpending = {}
+        
+        logs.push(createLogEntry(`Round ${context.round} completed`, 'system'))
+      }
+
       debugLog('nextPlayer', context)
       return {
         currentPlayerIndex: nextPlayerIndex,
         round: nextRound,
         actionsRemaining: nextActionsRemaining,
+        players: updatedPlayers,
+        playerSpending: updatedPlayerSpending,
         selectedCard: null,
         selectedCardsForScout: [],
         selectedLink: null,
-        spentMoney: 0,
+        // Only reset spentMoney when round is complete
+        spentMoney: isRoundComplete ? 0 : context.spentMoney,
+        logs,
       }
     }),
 
@@ -1120,6 +1231,15 @@ export const gameStore = setup({
       on: {
         TEST_SET_PLAYER_HAND: {
           actions: 'setPlayerHand',
+        },
+        TEST_SET_PLAYER_STATE: {
+          actions: 'setPlayerState',
+        },
+        TEST_SET_FINAL_ROUND: {
+          actions: 'setFinalRound',
+        },
+        TEST_SET_ERA_END_CONDITIONS: {
+          actions: 'setEraEndConditions',
         },
       },
       states: {

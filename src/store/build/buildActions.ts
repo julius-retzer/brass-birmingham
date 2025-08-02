@@ -73,6 +73,7 @@ export interface IndustryBuildResult {
   updatedCoalMarket: GameState['coalMarket']
   updatedIronMarket: GameState['ironMarket']
   logMessage: string
+  totalCost: number
 }
 
 export function buildIndustryTile(
@@ -209,5 +210,6 @@ export function buildIndustryTile(
     updatedCoalMarket,
     updatedIronMarket,
     logMessage,
+    totalCost,
   }
 }

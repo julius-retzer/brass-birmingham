@@ -201,6 +201,9 @@ type GameEvent =
   | {
       type: 'TRIGGER_RAIL_ERA_END'
     }
+  | {
+      type: 'CHECK_INDUSTRY_FLIPPING'
+    }
 
 export type GameStore = typeof gameStore
 export type GameStoreSnapshot = StateFrom<typeof gameStore>
@@ -1098,6 +1101,102 @@ export const gameStore = setup({
       }
     }),
 
+    checkAndFlipIndustryTiles: assign(({ context }) => {
+      const updatedPlayers = [...context.players]
+      const logMessages: string[] = []
+
+      for (let playerIndex = 0; playerIndex < updatedPlayers.length; playerIndex++) {
+        const player = updatedPlayers[playerIndex]!
+        const updatedIndustries = [...player.industries]
+        let playerIncomeIncreased = false
+        let totalIncomeIncrease = 0
+
+        for (let industryIndex = 0; industryIndex < updatedIndustries.length; industryIndex++) {
+          const industry = updatedIndustries[industryIndex]!
+          
+          // Skip if already flipped
+          if (industry.flipped) continue
+
+          let shouldFlip = false
+
+          // Check flipping conditions based on industry type
+          switch (industry.type) {
+            case 'coal':
+              // Coal mine flips when last coal cube is removed
+              if (industry.coalCubesOnTile === 0 && industry.tile.coalProduced > 0) {
+                shouldFlip = true
+              }
+              break
+            case 'iron':
+              // Iron works flips when last iron cube is removed
+              if (industry.ironCubesOnTile === 0 && industry.tile.ironProduced > 0) {
+                shouldFlip = true
+              }
+              break
+            case 'brewery':
+              // Brewery flips when last beer barrel is removed
+              if (industry.beerBarrelsOnTile === 0 && industry.tile.beerProduced > 0) {
+                shouldFlip = true
+              }
+              break
+            // Note: Cotton Mills, Manufacturers, and Potteries flip via Sell action (handled elsewhere)
+          }
+
+          if (shouldFlip) {
+            // Flip the industry tile
+            updatedIndustries[industryIndex] = {
+              ...industry,
+              flipped: true,
+            }
+
+            // Advance income based on tile's income spaces
+            const incomeIncrease = industry.tile.incomeSpaces
+            totalIncomeIncrease += incomeIncrease
+            playerIncomeIncreased = true
+
+            logMessages.push(
+              `${player.name}'s ${industry.type} industry flipped (+${incomeIncrease} income spaces)`
+            )
+          }
+        }
+
+        // Update player with flipped industries and increased income
+        if (playerIncomeIncreased) {
+          const newIncome = Math.min(30, player.income + totalIncomeIncrease) // Max income is 30
+          updatedPlayers[playerIndex] = {
+            ...player,
+            industries: updatedIndustries,
+            income: newIncome,
+          }
+
+          if (totalIncomeIncrease > 0) {
+            logMessages.push(
+              `${player.name} advanced ${totalIncomeIncrease} income spaces (new income: ${newIncome})`
+            )
+          }
+        } else if (updatedIndustries.length !== player.industries.length || 
+                   updatedIndustries.some((ind, i) => ind.flipped !== player.industries[i]?.flipped)) {
+          // Update player even if no income change (in case flipping state changed)
+          updatedPlayers[playerIndex] = {
+            ...player,
+            industries: updatedIndustries,
+          }
+        }
+      }
+
+      if (logMessages.length > 0) {
+        return {
+          players: updatedPlayers,
+          logs: [
+            ...context.logs,
+            ...logMessages.map((msg) => createLogEntry(msg, 'info')),
+          ],
+        }
+      }
+
+      return { players: updatedPlayers }
+    }),
+
     triggerEraScoring: assign(({ context }) => {
       const updatedPlayers = [...context.players]
       const logMessages: string[] = []
@@ -1447,6 +1546,9 @@ export const gameStore = setup({
         TRIGGER_RAIL_ERA_END: {
           actions: 'triggerRailEraEnd',
         },
+        CHECK_INDUSTRY_FLIPPING: {
+          actions: 'checkAndFlipIndustryTiles',
+        },
       },
       states: {
         action: {
@@ -1701,7 +1803,7 @@ export const gameStore = setup({
           },
         },
         actionComplete: {
-          entry: 'refillPlayerHand',
+          entry: ['refillPlayerHand', 'checkAndFlipIndustryTiles'],
           always: [
             {
               guard: 'hasActionsRemaining',

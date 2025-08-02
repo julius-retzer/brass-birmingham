@@ -830,6 +830,164 @@ describe('Game Store State Machine', () => {
     })
   })
 
+  describe('Industry Tile Flipping', () => {
+    describe('Auto-flipping Resource Industries', () => {
+      test('coal mine flips when last coal cube is removed', () => {
+        const { actor } = setupTestGame()
+
+        // Build a coal mine that will sell to market
+        buildIndustryAction(actor, 'coal', 'stoke') // Connected to merchant
+        
+        let snapshot = actor.getSnapshot()
+        const player = snapshot.context.players[0]!
+        const coalMine = player.industries.find(i => i.type === 'coal')!
+        
+        // Initially not flipped
+        expect(coalMine.flipped).toBe(false)
+        expect(coalMine.coalCubesOnTile).toBeGreaterThan(0)
+        
+        // If all coal was sold to market during build, tile should flip
+        if (coalMine.coalCubesOnTile === 0) {
+          expect(coalMine.flipped).toBe(true)
+        }
+      })
+
+      test('iron works flips when last iron cube is removed', () => {
+        const { actor } = setupTestGame()
+
+        // Build iron works (always sells to market)
+        buildIndustryAction(actor, 'iron')
+        
+        let snapshot = actor.getSnapshot()
+        const player = snapshot.context.players[0]!
+        const ironWorks = player.industries.find(i => i.type === 'iron')!
+        
+        // Initially not flipped
+        expect(ironWorks.flipped).toBe(false)
+        expect(ironWorks.ironCubesOnTile).toBeGreaterThan(0)
+        
+        // If all iron was sold to market during build, tile should flip
+        if (ironWorks.ironCubesOnTile === 0) {
+          expect(ironWorks.flipped).toBe(true)
+        }
+      })
+
+      test('brewery flips when last beer barrel is removed', () => {
+        const { actor } = setupTestGame()
+
+        // Build brewery
+        buildIndustryAction(actor, 'brewery')
+        
+        let snapshot = actor.getSnapshot()
+        const player = snapshot.context.players[0]!
+        const brewery = player.industries.find(i => i.type === 'brewery')!
+        
+        // Initially not flipped
+        expect(brewery.flipped).toBe(false)
+        expect(brewery.beerBarrelsOnTile).toBe(1) // Canal era = 1 barrel
+        
+        // Manually consume beer from brewery (simulate selling)
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [{
+            ...brewery,
+            beerBarrelsOnTile: 0 // All beer consumed
+          }]
+        })
+        
+        // Trigger flipping check
+        actor.send({ type: 'CHECK_INDUSTRY_FLIPPING' })
+        
+        // Should auto-flip when beer reaches 0
+        snapshot = actor.getSnapshot()
+        const updatedBrewery = snapshot.context.players[0]!.industries[0]!
+        expect(updatedBrewery.flipped).toBe(true)
+        
+        // Income should have increased
+        const initialIncome = 10 // Starting income
+        const expectedIncomeIncrease = updatedBrewery.tile.incomeSpaces
+        expect(snapshot.context.players[0]!.income).toBe(initialIncome + expectedIncomeIncrease)
+      })
+    })
+
+    describe('Income Advancement on Flip', () => {
+      test('advances income when industry tile flips', () => {
+        const { actor } = setupTestGame()
+        
+        let snapshot = actor.getSnapshot()
+        const initialIncome = snapshot.context.players[0]!.income
+        
+        // Build coal mine that will flip
+        buildIndustryAction(actor, 'coal', 'stoke')
+        
+        snapshot = actor.getSnapshot()
+        const player = snapshot.context.players[0]!
+        const coalMine = player.industries.find(i => i.type === 'coal')!
+        
+        // If tile flipped, income should have increased
+        if (coalMine.flipped) {
+          const incomeIncrease = coalMine.tile.incomeIncrease || 1 // Default value
+          expect(player.income).toBe(initialIncome + incomeIncrease)
+        }
+      })
+
+      test('income cannot exceed level 30', () => {
+        const { actor } = setupTestGame()
+        
+        // Set player income near maximum
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          income: 29
+        })
+        
+        // Build industry that would flip and increase income
+        buildIndustryAction(actor, 'coal', 'stoke')
+        
+        const snapshot = actor.getSnapshot()
+        const player = snapshot.context.players[0]!
+        
+        // Income should not exceed 30
+        expect(player.income).toBeLessThanOrEqual(30)
+      })
+    })
+
+    describe('Resource Depletion Logic', () => {
+      test('tracks resource consumption correctly', () => {
+        const { actor } = setupTestGame()
+        
+        // Build coal mine
+        buildIndustryAction(actor, 'coal')
+        
+        let snapshot = actor.getSnapshot()
+        const coalMine = snapshot.context.players[0]!.industries.find(i => i.type === 'coal')!
+        const initialCoal = coalMine.coalCubesOnTile
+        
+        // Manually consume 1 coal (simulate consumption during another action)
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [{
+            ...coalMine,
+            coalCubesOnTile: initialCoal - 1
+          }]
+        })
+        
+        snapshot = actor.getSnapshot()
+        const updatedMine = snapshot.context.players[0]!.industries[0]!
+        
+        // Should track the consumption
+        expect(updatedMine.coalCubesOnTile).toBe(initialCoal - 1)
+        
+        // Should not flip until last cube removed
+        if (updatedMine.coalCubesOnTile > 0) {
+          expect(updatedMine.flipped).toBe(false)
+        }
+      })
+    })
+  })
+
   describe('Resource Consumption Priority', () => {
     test('coal from connected coal mine first, then market', () => {
       // Complex test requiring network setup

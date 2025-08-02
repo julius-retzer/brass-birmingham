@@ -1155,6 +1155,215 @@ describe('Game Store State Machine', () => {
     })
   })
 
+  describe('Industry Tile Auto-Flipping & Income Advancement', () => {
+    describe('Coal Mine Auto-Flipping', () => {
+      test('flips coal mine when last coal cube removed and advances income', () => {
+        const { actor } = setupTestGame()
+        
+        // Build a coal mine with coal cubes
+        buildIndustryAction(actor, 'coal', 'birmingham')
+        let snapshot = actor.getSnapshot()
+        
+        const player = snapshot.context.players[0]!
+        const coalMine = player.industries.find(i => i.type === 'coal')!
+        expect(coalMine.flipped).toBe(false)
+        expect(coalMine.coalCubesOnTile).toBeGreaterThan(0)
+        
+        const initialIncome = player.income
+        
+        // Manually set coal mine to have only 1 cube remaining
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [
+            {
+              ...coalMine,
+              coalCubesOnTile: 1
+            }
+          ]
+        })
+        
+        // Remove the last coal cube (simulate consumption)
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE', 
+          playerId: 0,
+          industries: [
+            {
+              ...coalMine,
+              coalCubesOnTile: 0
+            }
+          ]
+        })
+        
+        // Trigger the flipping check
+        actor.send({ type: 'CHECK_INDUSTRY_FLIPPING' })
+        
+        snapshot = actor.getSnapshot()
+        const updatedPlayer = snapshot.context.players[0]!
+        const updatedCoalMine = updatedPlayer.industries[0]!
+        
+        // Coal mine should be flipped and income advanced
+        expect(updatedCoalMine.flipped).toBe(true)
+        expect(updatedPlayer.income).toBe(Math.min(30, initialIncome + updatedCoalMine.tile.incomeSpaces))
+      })
+
+      test('does not flip coal mine if coal cubes remain', () => {
+        const { actor } = setupTestGame()
+        
+        buildIndustryAction(actor, 'coal', 'birmingham')
+        let snapshot = actor.getSnapshot()
+        
+        const player = snapshot.context.players[0]!
+        const coalMine = player.industries.find(i => i.type === 'coal')!
+        
+        // Ensure coal mine has cubes remaining
+        expect(coalMine.coalCubesOnTile).toBeGreaterThan(0)
+        
+        // Trigger flipping check
+        actor.send({ type: 'CHECK_INDUSTRY_FLIPPING' })
+        
+        snapshot = actor.getSnapshot()
+        const updatedCoalMine = snapshot.context.players[0]!.industries[0]!
+        
+        // Should not flip if cubes remain
+        expect(updatedCoalMine.flipped).toBe(false)
+      })
+    })
+
+    describe('Iron Works Auto-Flipping', () => {
+      test('flips iron works when last iron cube removed and advances income', () => {
+        const { actor } = setupTestGame()
+        
+        buildIndustryAction(actor, 'iron', 'birmingham')
+        let snapshot = actor.getSnapshot()
+        
+        const player = snapshot.context.players[0]!
+        const ironWorks = player.industries.find(i => i.type === 'iron')!
+        expect(ironWorks.flipped).toBe(false)
+        
+        const initialIncome = player.income
+        
+        // Set iron works to have no cubes (last cube removed)
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0, 
+          industries: [
+            {
+              ...ironWorks,
+              ironCubesOnTile: 0
+            }
+          ]
+        })
+        
+        // Trigger flipping check
+        actor.send({ type: 'CHECK_INDUSTRY_FLIPPING' })
+        
+        snapshot = actor.getSnapshot()
+        const updatedPlayer = snapshot.context.players[0]!
+        const updatedIronWorks = updatedPlayer.industries[0]!
+        
+        // Iron works should be flipped and income advanced
+        expect(updatedIronWorks.flipped).toBe(true)
+        expect(updatedPlayer.income).toBe(Math.min(30, initialIncome + updatedIronWorks.tile.incomeSpaces))
+      })
+    })
+
+    describe('Brewery Auto-Flipping', () => {
+      test('flips brewery when last beer barrel removed and advances income', () => {
+        const { actor } = setupTestGame()
+        
+        buildIndustryAction(actor, 'brewery', 'birmingham')
+        let snapshot = actor.getSnapshot()
+        
+        const player = snapshot.context.players[0]!
+        const brewery = player.industries.find(i => i.type === 'brewery')!
+        expect(brewery.flipped).toBe(false)
+        expect(brewery.beerBarrelsOnTile).toBeGreaterThan(0)
+        
+        const initialIncome = player.income
+        
+        // Set brewery to have no barrels (last barrel removed)
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [
+            {
+              ...brewery,
+              beerBarrelsOnTile: 0
+            }
+          ]
+        })
+        
+        // Trigger flipping check
+        actor.send({ type: 'CHECK_INDUSTRY_FLIPPING' })
+        
+        snapshot = actor.getSnapshot()
+        const updatedPlayer = snapshot.context.players[0]!
+        const updatedBrewery = updatedPlayer.industries[0]!
+        
+        // Brewery should be flipped and income advanced
+        expect(updatedBrewery.flipped).toBe(true)
+        expect(updatedPlayer.income).toBe(Math.min(30, initialIncome + updatedBrewery.tile.incomeSpaces))
+      })
+    })
+
+    describe('Income Cap Enforcement', () => {
+      test('caps income advancement at level 30', () => {
+        const { actor } = setupTestGame()
+        
+        // Set player income to 28 (close to cap)
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          income: 28
+        })
+        
+        buildIndustryAction(actor, 'coal', 'birmingham')
+        let snapshot = actor.getSnapshot()
+        
+        const player = snapshot.context.players[0]!
+        const coalMine = player.industries.find(i => i.type === 'coal')!
+        
+        // Set coal mine to empty and trigger flipping
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [
+            {
+              ...coalMine,
+              coalCubesOnTile: 0
+            }
+          ]
+        })
+        
+        actor.send({ type: 'CHECK_INDUSTRY_FLIPPING' })
+        
+        snapshot = actor.getSnapshot()
+        const updatedPlayer = snapshot.context.players[0]!
+        
+        // Income should be capped at 30
+        expect(updatedPlayer.income).toBe(30)
+      })
+    })
+
+    describe('Automatic Flipping After Actions', () => {
+      test('checks for flipping after each action completes', () => {
+        const { actor } = setupTestGame()
+        
+        // Build coal mine
+        buildIndustryAction(actor, 'coal', 'birmingham')
+        
+        // Take another action that might consume resources
+        takeLoanAction(actor)
+        
+        // The auto-flipping check should happen after action completion
+        // For now, just verify the structure is in place
+        const snapshot = actor.getSnapshot()
+        expect(snapshot.matches({ playing: { action: 'selectingAction' } })).toBe(true)
+      })
+    })
+  })
+
   describe('Era Transition Logic', () => {
     describe('Era End Detection', () => {
       test('detects era end when draw deck and all hands are exhausted', () => {

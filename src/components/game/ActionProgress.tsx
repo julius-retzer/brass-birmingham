@@ -42,6 +42,75 @@ export function ActionProgress({
 }: ActionProgressProps) {
   if (!actionType || !subState) return null
 
+  // Get theme colors for different action types
+  const getActionColors = (action: string) => {
+    const colors = {
+      building: {
+        cardBg: 'bg-orange-50',
+        cardBorder: 'border-orange-200',
+        iconColor: 'text-orange-600',
+        alertBg: 'bg-orange-50',
+        alertBorder: 'border-orange-200',
+        stepCurrentBg: 'bg-orange-500',
+        stepCurrentBorder: 'border-orange-500',
+        stepCurrentText: 'text-orange-700'
+      },
+      developing: {
+        cardBg: 'bg-purple-50',
+        cardBorder: 'border-purple-200',
+        iconColor: 'text-purple-600',
+        alertBg: 'bg-purple-50',
+        alertBorder: 'border-purple-200',
+        stepCurrentBg: 'bg-purple-500',
+        stepCurrentBorder: 'border-purple-500',
+        stepCurrentText: 'text-purple-700'
+      },
+      selling: {
+        cardBg: 'bg-green-50',
+        cardBorder: 'border-green-200',
+        iconColor: 'text-green-600',
+        alertBg: 'bg-green-50',
+        alertBorder: 'border-green-200',
+        stepCurrentBg: 'bg-green-500',
+        stepCurrentBorder: 'border-green-500',
+        stepCurrentText: 'text-green-700'
+      },
+      networking: {
+        cardBg: 'bg-blue-50',
+        cardBorder: 'border-blue-200',
+        iconColor: 'text-blue-600',
+        alertBg: 'bg-blue-50',
+        alertBorder: 'border-blue-200',
+        stepCurrentBg: 'bg-blue-500',
+        stepCurrentBorder: 'border-blue-500',
+        stepCurrentText: 'text-blue-700'
+      },
+      scouting: {
+        cardBg: 'bg-yellow-50',
+        cardBorder: 'border-yellow-200',
+        iconColor: 'text-yellow-600',
+        alertBg: 'bg-yellow-50',
+        alertBorder: 'border-yellow-200',
+        stepCurrentBg: 'bg-yellow-500',
+        stepCurrentBorder: 'border-yellow-500',
+        stepCurrentText: 'text-yellow-700'
+      },
+      takingLoan: {
+        cardBg: 'bg-red-50',
+        cardBorder: 'border-red-200',
+        iconColor: 'text-red-600',
+        alertBg: 'bg-red-50',
+        alertBorder: 'border-red-200',
+        stepCurrentBg: 'bg-red-500',
+        stepCurrentBorder: 'border-red-500',
+        stepCurrentText: 'text-red-700'
+      }
+    }
+    return colors[action as keyof typeof colors] || colors.building
+  }
+
+  const actionColors = getActionColors(actionType)
+
   const getActionSteps = (): ActionStep[] => {
     switch (actionType) {
       case 'building':
@@ -234,10 +303,10 @@ export function ActionProgress({
   if (steps.length === 0) return null
 
   return (
-    <UICard className="border-blue-200 bg-blue-50">
+    <UICard className={`${actionColors.cardBorder} ${actionColors.cardBg}`}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Circle className="h-5 w-5 text-blue-600" />
+          <Circle className={`h-5 w-5 ${actionColors.iconColor}`} />
           {actionType.charAt(0).toUpperCase() + actionType.slice(1)} Action
           <Badge variant="outline" className="ml-auto">
             Step {currentStepIndex + 1} of {steps.length}
@@ -255,7 +324,7 @@ export function ActionProgress({
                   step.completed
                     ? 'bg-green-500 border-green-500 text-white'
                     : step.current
-                      ? 'bg-blue-500 border-blue-500 text-white'
+                      ? `${actionColors.stepCurrentBg} ${actionColors.stepCurrentBorder} text-white`
                       : step.required
                         ? 'bg-white border-gray-300 text-gray-400'
                         : 'bg-gray-100 border-gray-200 text-gray-300'
@@ -275,7 +344,7 @@ export function ActionProgress({
                     step.completed
                       ? 'text-green-700'
                       : step.current
-                        ? 'text-blue-700'
+                        ? actionColors.stepCurrentText
                         : step.required
                           ? 'text-gray-700'
                           : 'text-gray-400'
@@ -295,7 +364,7 @@ export function ActionProgress({
 
         {/* Current Step Help */}
         {currentStep && (
-          <Alert className="border-blue-200 bg-blue-50">
+          <Alert className={`${actionColors.alertBorder} ${actionColors.alertBg}`}>
             <HelpCircle className="h-4 w-4" />
             <AlertDescription>
               <div className="space-y-1">

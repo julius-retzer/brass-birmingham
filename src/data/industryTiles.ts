@@ -29,6 +29,7 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       cost: 12,
       victoryPoints: 3,
       incomeSpaces: 2,
+      linkScoringIcons: 1, // Cotton provides 1 link scoring icon
       coalRequired: 0,
       ironRequired: 0,
       beerRequired: 1,

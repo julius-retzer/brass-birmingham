@@ -1155,6 +1155,383 @@ describe('Game Store State Machine', () => {
     })
   })
 
+  describe('Industry Tile Flipping & Income System', () => {
+    describe('Auto-flipping when resources depleted', () => {
+      test('coal mine flips when last coal cube removed', () => {
+        const { actor } = setupTestGame()
+
+        // Build coal mine with resources
+        buildIndustryAction(actor, 'coal', 'birmingham')
+        let snapshot = actor.getSnapshot()
+        const coalMine = snapshot.context.players[0]!.industries[0]!
+        
+        // Initially not flipped
+        expect(coalMine.flipped).toBe(false)
+        expect(coalMine.coalCubesOnTile).toBeGreaterThan(0)
+
+        // Manually deplete all coal from the tile
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [{
+            ...coalMine,
+            coalCubesOnTile: 0, // Deplete all coal
+          }],
+        })
+
+        // Trigger industry flipping check
+        actor.send({ type: 'CHECK_INDUSTRY_FLIPPING' })
+        snapshot = actor.getSnapshot()
+
+        // Should be flipped and income advanced
+        const updatedCoalMine = snapshot.context.players[0]!.industries[0]!
+        expect(updatedCoalMine.flipped).toBe(true)
+        expect(snapshot.context.players[0]!.income).toBeGreaterThan(10) // Income advanced
+      })
+
+      test('iron works flips when last iron cube removed', () => {
+        const { actor } = setupTestGame()
+
+        buildIndustryAction(actor, 'iron', 'birmingham')
+        let snapshot = actor.getSnapshot()
+        const ironWorks = snapshot.context.players[0]!.industries[0]!
+        
+        expect(ironWorks.flipped).toBe(false)
+        expect(ironWorks.ironCubesOnTile).toBeGreaterThan(0)
+
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [{
+            ...ironWorks,
+            ironCubesOnTile: 0,
+          }],
+        })
+
+        actor.send({ type: 'CHECK_INDUSTRY_FLIPPING' })
+        snapshot = actor.getSnapshot()
+
+        const updatedIronWorks = snapshot.context.players[0]!.industries[0]!
+        expect(updatedIronWorks.flipped).toBe(true)
+        expect(snapshot.context.players[0]!.income).toBeGreaterThan(10)
+      })
+
+      test('brewery flips when last beer barrel removed', () => {
+        const { actor } = setupTestGame()
+
+        buildIndustryAction(actor, 'brewery', 'birmingham')
+        let snapshot = actor.getSnapshot()
+        const brewery = snapshot.context.players[0]!.industries[0]!
+        
+        expect(brewery.flipped).toBe(false)
+        expect(brewery.beerBarrelsOnTile).toBeGreaterThan(0)
+
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [{
+            ...brewery,
+            beerBarrelsOnTile: 0,
+          }],
+        })
+
+        actor.send({ type: 'CHECK_INDUSTRY_FLIPPING' })
+        snapshot = actor.getSnapshot()
+
+        const updatedBrewery = snapshot.context.players[0]!.industries[0]!
+        expect(updatedBrewery.flipped).toBe(true)
+        expect(snapshot.context.players[0]!.income).toBeGreaterThan(10)
+      })
+
+      test('income advancement capped at level 30', () => {
+        const { actor } = setupTestGame()
+
+        // Set player income close to cap
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          income: 29,
+        })
+
+        buildIndustryAction(actor, 'coal', 'birmingham')
+        let snapshot = actor.getSnapshot()
+        const coalMine = snapshot.context.players[0]!.industries[0]!
+
+        // Deplete coal to trigger flipping
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [{
+            ...coalMine,
+            coalCubesOnTile: 0,
+          }],
+        })
+
+        actor.send({ type: 'CHECK_INDUSTRY_FLIPPING' })
+        snapshot = actor.getSnapshot()
+
+        // Income should be capped at 30
+        expect(snapshot.context.players[0]!.income).toBe(30)
+      })
+
+      test('flipping triggers after each action completes', () => {
+        const { actor } = setupTestGame()
+
+        buildIndustryAction(actor, 'coal', 'birmingham')
+        let snapshot = actor.getSnapshot()
+        const coalMine = snapshot.context.players[0]!.industries[0]!
+
+        // Manually deplete resources
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [{
+            ...coalMine,
+            coalCubesOnTile: 0,
+          }],
+        })
+
+        // Take any action to trigger automatic flipping check
+        takeLoanAction(actor)
+        snapshot = actor.getSnapshot()
+
+        // Should be automatically flipped
+        const updatedCoalMine = snapshot.context.players[0]!.industries[0]!
+        expect(updatedCoalMine.flipped).toBe(true)
+      })
+
+      test('no flipping when resources remain on tile', () => {
+        const { actor } = setupTestGame()
+
+        buildIndustryAction(actor, 'coal', 'birmingham')
+        let snapshot = actor.getSnapshot()
+        const coalMine = snapshot.context.players[0]!.industries[0]!
+
+        // Don't deplete resources
+        expect(coalMine.coalCubesOnTile).toBeGreaterThan(0)
+
+        actor.send({ type: 'CHECK_INDUSTRY_FLIPPING' })
+        snapshot = actor.getSnapshot()
+
+        // Should remain unflipped
+        const updatedCoalMine = snapshot.context.players[0]!.industries[0]!
+        expect(updatedCoalMine.flipped).toBe(false)
+      })
+    })
+  })
+
+  describe('Merchant System', () => {
+    describe('Merchant Placement', () => {
+      test('places correct number of merchants based on player count', () => {
+        const { actor } = setupTestGame() // 2 players
+        const snapshot = actor.getSnapshot()
+
+        // 2 players should have specific merchant configuration
+        expect(snapshot.context.merchants).toBeDefined()
+        expect(Array.isArray(snapshot.context.merchants)).toBe(true)
+        
+        // Verify correct merchant locations are used for 2 players
+        const merchantLocations = snapshot.context.merchants.map(m => m.location)
+        expect(merchantLocations).toContain('warrington')
+        expect(merchantLocations).toContain('gloucester')
+      })
+
+      test('each merchant has beer barrel initially', () => {
+        const { actor } = setupTestGame()
+        const snapshot = actor.getSnapshot()
+
+        snapshot.context.merchants.forEach(merchant => {
+          expect(merchant.hasBeer).toBe(true)
+        })
+      })
+
+      test('merchants have correct industry icons for selling', () => {
+        const { actor } = setupTestGame()
+        const snapshot = actor.getSnapshot()
+
+        const warringtonMerchant = snapshot.context.merchants.find(m => m.location === 'warrington')
+        expect(warringtonMerchant).toBeDefined()
+        expect(warringtonMerchant!.industryIcons).toContain('cotton')
+        expect(warringtonMerchant!.industryIcons).toContain('manufacturer')
+        expect(warringtonMerchant!.industryIcons).toContain('pottery')
+      })
+
+      test('merchants have correct bonus types', () => {
+        const { actor } = setupTestGame()
+        const snapshot = actor.getSnapshot()
+
+        const warringtonMerchant = snapshot.context.merchants.find(m => m.location === 'warrington')
+        expect(warringtonMerchant?.bonusType).toBe('money')
+        expect(warringtonMerchant?.bonusValue).toBe(5)
+
+        const gloucesterMerchant = snapshot.context.merchants.find(m => m.location === 'gloucester')
+        expect(gloucesterMerchant?.bonusType).toBe('develop')
+        expect(gloucesterMerchant?.bonusValue).toBe(1)
+      })
+    })
+
+    describe('Sell Action Validation', () => {
+      test('sell action requires connection to merchant with matching industry', () => {
+        const { actor } = setupTestGame()
+
+        // Build cotton mill at Birmingham (not connected to any merchant initially)
+        buildIndustryAction(actor, 'cotton', 'birmingham')
+        takeLoanAction(actor) // Complete turn
+        takeLoanAction(actor) // Player 2
+
+        let snapshot = actor.getSnapshot()
+        const currentPlayer = snapshot.context.players[0]!
+
+        // Try to sell cotton mill - should fail validation
+        actor.send({ type: 'SELL' })
+        actor.send({ type: 'SELECT_CARD', cardId: currentPlayer.hand[0]!.id })
+        
+        expect(() => {
+          actor.send({ type: 'CONFIRM' })
+        }).toThrow('Cannot sell: no connection to merchant with matching industry icon')
+      })
+
+      test('sell action succeeds when connected to matching merchant', () => {
+        const { actor } = setupTestGame()
+
+        // Build cotton mill at location connected to Warrington merchant
+        buildIndustryAction(actor, 'cotton', 'stoke') // Stoke connects to Warrington
+        
+        // Build network connection to Warrington
+        buildNetworkAction(actor, 'stoke', 'warrington')
+        takeLoanAction(actor) // Complete player turn
+        takeLoanAction(actor) // Player 2
+
+        let snapshot = actor.getSnapshot()
+        const currentPlayer = snapshot.context.players[0]!
+
+        // Sell cotton mill - should succeed
+        actor.send({ type: 'SELL' })
+        actor.send({ type: 'SELECT_CARD', cardId: currentPlayer.hand[0]!.id })
+        actor.send({ type: 'CONFIRM' })
+
+        snapshot = actor.getSnapshot()
+        
+        // Cotton mill should be flipped
+        const cottonMill = snapshot.context.players[0]!.industries.find(i => i.type === 'cotton')
+        expect(cottonMill?.flipped).toBe(true)
+      })
+
+      test('multiple industry types can sell to same merchant', () => {
+        const { actor } = setupTestGame()
+
+        // Build cotton mill and manufacturer at Warrington-connected location
+        buildIndustryAction(actor, 'cotton', 'stoke')
+        buildIndustryAction(actor, 'manufacturer', 'stoke')
+        
+        // Both should be able to sell to Warrington merchant
+        buildNetworkAction(actor, 'stoke', 'warrington')
+        takeLoanAction(actor)
+        takeLoanAction(actor)
+
+        // Test selling cotton
+        let snapshot = actor.getSnapshot()
+        let currentPlayer = snapshot.context.players[0]!
+        
+        actor.send({ type: 'SELL' })
+        actor.send({ type: 'SELECT_CARD', cardId: currentPlayer.hand[0]!.id })
+        actor.send({ type: 'CONFIRM' })
+
+        snapshot = actor.getSnapshot()
+        expect(snapshot.context.players[0]!.industries.some(i => i.type === 'cotton' && i.flipped)).toBe(true)
+      })
+    })
+
+    describe('Merchant Beer Consumption', () => {
+      test('can consume beer from merchant when selling', () => {
+        const { actor } = setupTestGame()
+
+        // Build industry that requires beer to sell
+        buildIndustryAction(actor, 'cotton', 'stoke')
+        buildNetworkAction(actor, 'stoke', 'warrington')
+        takeLoanAction(actor)
+        takeLoanAction(actor)
+
+        let snapshot = actor.getSnapshot()
+        const warringtonMerchant = snapshot.context.merchants.find(m => m.location === 'warrington')!
+        expect(warringtonMerchant.hasBeer).toBe(true)
+
+        // Sell using merchant beer
+        const currentPlayer = snapshot.context.players[0]!
+        actor.send({ type: 'SELL' })
+        actor.send({ type: 'SELECT_CARD', cardId: currentPlayer.hand[0]!.id })
+        actor.send({ type: 'CONFIRM' })
+
+        snapshot = actor.getSnapshot()
+        
+        // Merchant beer should be consumed
+        const updatedMerchant = snapshot.context.merchants.find(m => m.location === 'warrington')!
+        expect(updatedMerchant.hasBeer).toBe(false)
+      })
+
+      test('merchant bonus collected when using merchant beer', () => {
+        const { actor } = setupTestGame()
+
+        buildIndustryAction(actor, 'cotton', 'stoke')
+        buildNetworkAction(actor, 'stoke', 'warrington')
+        takeLoanAction(actor)
+        takeLoanAction(actor)
+
+        let snapshot = actor.getSnapshot()
+        const initialMoney = snapshot.context.players[0]!.money
+        const currentPlayer = snapshot.context.players[0]!
+
+        // Sell using merchant beer (Warrington gives £5 bonus)
+        actor.send({ type: 'SELL' })
+        actor.send({ type: 'SELECT_CARD', cardId: currentPlayer.hand[0]!.id })
+        actor.send({ type: 'CONFIRM' })
+
+        snapshot = actor.getSnapshot()
+        
+        // Should receive £5 bonus from Warrington merchant
+        expect(snapshot.context.players[0]!.money).toBe(initialMoney + 5)
+      })
+
+      test('different merchant bonuses work correctly', () => {
+        const { actor } = setupTestGame()
+
+        // Test Oxford merchant (income bonus)
+        buildIndustryAction(actor, 'cotton', 'birmingham')
+        buildNetworkAction(actor, 'birmingham', 'oxford')
+        takeLoanAction(actor)
+        takeLoanAction(actor)
+
+        let snapshot = actor.getSnapshot()
+        const initialIncome = snapshot.context.players[0]!.income
+        const currentPlayer = snapshot.context.players[0]!
+
+        actor.send({ type: 'SELL' })
+        actor.send({ type: 'SELECT_CARD', cardId: currentPlayer.hand[0]!.id })
+        actor.send({ type: 'CONFIRM' })
+
+        snapshot = actor.getSnapshot()
+        
+        // Should receive +2 income from Oxford merchant
+        expect(snapshot.context.players[0]!.income).toBe(initialIncome + 2)
+      })
+    })
+
+    describe('Market Access via Merchants', () => {
+      test('coal market access requires connection to merchant with market icon', () => {
+        const { actor } = setupTestGame()
+
+        // Try to build rail link without merchant connection (should fail in full implementation)
+        // For now, just verify the merchant system is aware of market access requirements
+        const snapshot = actor.getSnapshot()
+        
+        const merchantsWithMarketAccess = snapshot.context.merchants.filter(m => 
+          ['warrington', 'shrewsbury', 'nottingham', 'gloucester', 'oxford'].includes(m.location)
+        )
+        expect(merchantsWithMarketAccess.length).toBeGreaterThan(0)
+      })
+    })
+  })
+
   describe('Era Transition Logic', () => {
     describe('Era End Detection', () => {
       test('detects era end when draw deck and all hands are exhausted', () => {

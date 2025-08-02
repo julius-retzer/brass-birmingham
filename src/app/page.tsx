@@ -8,9 +8,11 @@ import { GameLog } from '../components/GameLog'
 import { IndustryTilesDisplay } from '../components/IndustryTilesDisplay'
 import { PlayerHand } from '../components/PlayerHand'
 import { ActionButtons } from '../components/game/ActionButtons'
+import { ActionProgress } from '../components/game/ActionProgress'
 import { DevelopInterface } from '../components/game/DevelopInterface'
 import { GameHeader } from '../components/game/GameHeader'
 import { IndustryTypeSelector } from '../components/game/IndustryTypeSelector'
+import { QuickStatusBar } from '../components/game/QuickStatusBar'
 import { ResourceMarkets } from '../components/game/ResourceMarkets'
 import { ResourcesDisplay } from '../components/game/ResourcesDisplay'
 import { SellInterface } from '../components/game/SellInterface'
@@ -342,145 +344,191 @@ export default function Home() {
   }, [selectedLocation])
 
   return (
-    <main className="min-h-screen p-8 bg-background text-foreground">
-      <GameHeader
-        era={era}
-        round={round}
-        actionsRemaining={actionsRemaining}
-        currentPlayerName={currentPlayer?.name ?? ''}
-        spentMoney={spentMoney}
-        onStartInspector={() => inspector.start()}
-      />
+    <main className="min-h-screen p-4 bg-background text-foreground">
+      {/* Quick Status Bar - Always Visible */}
+      {currentPlayer && (
+        <QuickStatusBar
+          currentPlayer={currentPlayer}
+          actionsRemaining={actionsRemaining}
+          era={era}
+          round={round}
+          spentMoney={spentMoney}
+        />
+      )}
 
-      <TurnOrderTracker
-        players={players}
-        currentPlayerIndex={currentPlayerIndex}
-        round={round}
-        era={era}
-        spentMoney={spentMoney}
-      />
-
-      <div className="grid xl:grid-cols-4 lg:grid-cols-3 gap-6">
-        {/* Column 1: Game Board & Network */}
-        <div className="xl:col-span-2 lg:col-span-2 space-y-6">
-          <Board
-            isNetworking={isInState('networking', 'selectingLink')}
-            isBuilding={Boolean(isInState('building', 'selectingLocation'))}
+      <div className="mt-4 space-y-4">
+        {/* Detailed Game Header - Collapsible on smaller screens */}
+        <div className="hidden lg:block">
+          <GameHeader
             era={era}
-            onLinkSelect={handleLinkSelect}
-            onCitySelect={handleCitySelect}
-            selectedLink={selectedLink}
-            selectedCity={selectedCity}
-            players={players}
-            currentPlayerIndex={currentPlayerIndex}
-            selectedIndustryType={selectedIndustryTile?.type || null}
+            round={round}
+            actionsRemaining={actionsRemaining}
+            currentPlayerName={currentPlayer?.name ?? ''}
+            spentMoney={spentMoney}
+            onStartInspector={() => inspector.start()}
           />
         </div>
 
-        {/* Column 2: Player Actions & Hand */}
-        <div className="space-y-6">
-          {/* Current Player Turn Status */}
-          <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`w-4 h-4 rounded-full border-2`}
-                  style={{
-                    backgroundColor: currentPlayer?.color,
-                    borderColor: currentPlayer?.color,
-                  }}
-                />
-                <h2 className="text-lg font-semibold">
-                  {currentPlayer?.name}'s Turn
-                </h2>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {actionsRemaining} action{actionsRemaining !== 1 ? 's' : ''}{' '}
-                remaining
-              </div>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {getActionDescription() ||
-                'Select an action to continue your turn'}
-            </p>
+        {/* Turn Order Tracker - Collapsible */}
+        <div className="hidden xl:block">
+          <TurnOrderTracker
+            players={players}
+            currentPlayerIndex={currentPlayerIndex}
+            round={round}
+            era={era}
+            spentMoney={spentMoney}
+            playerSpending={snapshot.context.playerSpending}
+          />
+        </div>
+
+        <div className="grid xl:grid-cols-4 lg:grid-cols-3 gap-6">
+          {/* Column 1: Game Board & Network */}
+          <div className="xl:col-span-2 lg:col-span-2 space-y-6">
+            <Board
+              isNetworking={isInState('networking', 'selectingLink')}
+              isBuilding={Boolean(isInState('building', 'selectingLocation'))}
+              era={era}
+              onLinkSelect={handleLinkSelect}
+              onCitySelect={handleCitySelect}
+              selectedLink={selectedLink}
+              selectedCity={selectedCity}
+              players={players}
+              currentPlayerIndex={currentPlayerIndex}
+              selectedIndustryType={selectedIndustryTile?.type || null}
+              showSelectionFeedback={Boolean(
+                isInState('building', 'selectingLocation') ||
+                  isInState('networking', 'selectingLink'),
+              )}
+            />
           </div>
 
-          {/* Action Interfaces */}
-          {isInState('building', 'selectingIndustryType') &&
-            currentPlayer &&
-            (selectedCard?.type === 'industry' || 
-             selectedCard?.type === 'location' || 
-             selectedCard?.type === 'wild_location') && (
-              <IndustryTypeSelector
-                industryCard={selectedCard?.type === 'industry' ? (selectedCard as IndustryCard) : undefined}
-                locationCard={selectedCard?.type === 'location' || selectedCard?.type === 'wild_location' ? selectedCard : undefined}
+          {/* Column 2: Player Actions & Hand */}
+          <div className="space-y-6">
+            {/* Action Progress Indicator */}
+            <ActionProgress
+              actionType={getCurrentAction()?.action || null}
+              subState={getCurrentAction()?.subState || null}
+              selectedCard={selectedCard}
+              selectedLocation={selectedLocation}
+              selectedIndustryTile={selectedIndustryTile}
+              era={era}
+              playerMoney={currentPlayer?.money || 0}
+              canAfford={true} // TODO: Calculate based on action
+            />
+
+            {/* Current Player Turn Status - Simplified when action is active */}
+            {!getCurrentAction() && (
+              <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-4 h-4 rounded-full border-2`}
+                      style={{
+                        backgroundColor: currentPlayer?.color,
+                        borderColor: currentPlayer?.color,
+                      }}
+                    />
+                    <h2 className="text-lg font-semibold">
+                      {currentPlayer?.name}'s Turn
+                    </h2>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {actionsRemaining} action{actionsRemaining !== 1 ? 's' : ''}{' '}
+                    remaining
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Select an action to continue your turn
+                </p>
+              </div>
+            )}
+
+            {/* Action Interfaces */}
+            {isInState('building', 'selectingIndustryType') &&
+              currentPlayer &&
+              (selectedCard?.type === 'industry' ||
+                selectedCard?.type === 'location' ||
+                selectedCard?.type === 'wild_location') && (
+                <IndustryTypeSelector
+                  industryCard={
+                    selectedCard?.type === 'industry'
+                      ? (selectedCard as IndustryCard)
+                      : undefined
+                  }
+                  locationCard={
+                    selectedCard?.type === 'location' ||
+                    selectedCard?.type === 'wild_location'
+                      ? selectedCard
+                      : undefined
+                  }
+                  player={currentPlayer}
+                  era={era}
+                  onSelectIndustryType={handleIndustryTypeSelect}
+                  onCancel={() => send({ type: 'CANCEL' })}
+                />
+              )}
+
+            {isInState('selling', 'confirming') && currentPlayer && (
+              <SellInterface
                 player={currentPlayer}
-                era={era}
-                onSelectIndustryType={handleIndustryTypeSelect}
+                onSelectSale={handleSellSelection}
                 onCancel={() => send({ type: 'CANCEL' })}
               />
             )}
 
-          {isInState('selling', 'confirming') && currentPlayer && (
-            <SellInterface
-              player={currentPlayer}
-              onSelectSale={handleSellSelection}
-              onCancel={() => send({ type: 'CANCEL' })}
-            />
-          )}
+            {isInState('developing', 'confirming') && currentPlayer && (
+              <DevelopInterface
+                player={currentPlayer}
+                onSelectDevelopment={handleDevelopSelection}
+                onCancel={() => send({ type: 'CANCEL' })}
+              />
+            )}
 
-          {isInState('developing', 'confirming') && currentPlayer && (
-            <DevelopInterface
-              player={currentPlayer}
-              onSelectDevelopment={handleDevelopSelection}
-              onCancel={() => send({ type: 'CANCEL' })}
-            />
-          )}
+            {/* Actions */}
+            {snapshot.matches('playing') && (
+              <ActionButtons snapshot={snapshot} send={send} />
+            )}
 
-          {/* Actions */}
-          {snapshot.matches('playing') && (
-            <ActionButtons snapshot={snapshot} send={send} />
-          )}
+            {/* Current Player's Hand */}
+            {currentPlayer && (
+              <PlayerHand
+                player={currentPlayer}
+                selectedCard={selectedCard}
+                selectedCards={
+                  isInState('scouting', 'selectingCards')
+                    ? selectedCardsForScout
+                    : undefined
+                }
+                onCardSelect={isSelectingCards() ? handleCardSelect : undefined}
+                currentAction={getCurrentAction()?.action}
+                currentSubState={getCurrentAction()?.subState}
+              />
+            )}
+          </div>
 
-          {/* Current Player's Hand */}
-          {currentPlayer && (
-            <PlayerHand
-              player={currentPlayer}
-              selectedCard={selectedCard}
-              selectedCards={
-                isInState('scouting', 'selectingCards')
-                  ? selectedCardsForScout
-                  : undefined
-              }
-              onCardSelect={isSelectingCards() ? handleCardSelect : undefined}
-              currentAction={getCurrentAction()?.action}
-              currentSubState={getCurrentAction()?.subState}
-            />
-          )}
-        </div>
+          {/* Column 3: Game State & Resources */}
+          <div className="space-y-6">
+            <ResourcesDisplay resources={resources} />
 
-        {/* Column 3: Game State & Resources */}
-        <div className="space-y-6">
-          <ResourcesDisplay resources={resources} />
+            <ResourceMarkets coalMarket={coalMarket} ironMarket={ironMarket} />
 
-          <ResourceMarkets coalMarket={coalMarket} ironMarket={ironMarket} />
+            {/* Industry Tiles */}
+            {currentPlayer && (
+              <IndustryTilesDisplay
+                industryTiles={currentPlayer.industryTilesOnMat}
+                selectedTile={selectedIndustryTile}
+                onTileSelect={() => {
+                  // Manual tile selection no longer needed - tiles are auto-selected
+                }}
+                era={era}
+                playerName={currentPlayer.name}
+                isSelecting={false}
+              />
+            )}
 
-          {/* Industry Tiles */}
-          {currentPlayer && (
-            <IndustryTilesDisplay
-              industryTiles={currentPlayer.industryTilesOnMat}
-              selectedTile={selectedIndustryTile}
-              onTileSelect={() => {
-                // Manual tile selection no longer needed - tiles are auto-selected
-              }}
-              era={era}
-              playerName={currentPlayer.name}
-              isSelecting={false}
-            />
-          )}
-
-          {/* Game Log */}
-          <GameLog logs={logs} />
+            {/* Game Log */}
+            <GameLog logs={logs} />
+          </div>
         </div>
       </div>
     </main>

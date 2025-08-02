@@ -7,6 +7,7 @@ export interface IndustryTile {
   cost: number
   victoryPoints: number
   incomeSpaces: number // Income spaces gained when flipped
+  linkScoringIcons: number // Number of link scoring icons (•—•) when flipped (0, 1, or 2)
   coalRequired: number // Coal required to build (0 if none)
   ironRequired: number // Iron required to build (0 if none)
   beerRequired: number // Beer required to sell (0 if none, only for Cotton Mills, Manufacturers, Pottery)

@@ -12,6 +12,7 @@ interface TurnOrderTrackerProps {
   round: number
   era: 'canal' | 'rail'
   spentMoney: number
+  playerSpending: Record<string, number>
 }
 
 interface PlayerOrderInfo {
@@ -103,8 +104,10 @@ function PlayerOrderCard({
             </Badge>
           )}
         </div>
-        <div className="text-xs text-muted-foreground mb-2">{player.character}</div>
-        
+        <div className="text-xs text-muted-foreground mb-2">
+          {player.character}
+        </div>
+
         {/* Player stats - compact version */}
         <div className="flex items-center justify-center gap-3 text-xs">
           <div className="flex items-center gap-1">
@@ -116,7 +119,7 @@ function PlayerOrderCard({
             <span>{player.victoryPoints}</span>
           </div>
         </div>
-        
+
         {/* Spent this round */}
         <div className="text-center mt-2">
           <div className="text-xs text-muted-foreground">Spent</div>
@@ -133,12 +136,13 @@ export function TurnOrderTracker({
   round,
   era,
   spentMoney,
+  playerSpending,
 }: TurnOrderTrackerProps) {
   // Calculate player order info
   const playerOrderInfo: PlayerOrderInfo[] = players.map((player, index) => ({
     player,
     index,
-    spentThisRound: index === currentPlayerIndex ? spentMoney : 0, // Simplified - should track per player
+    spentThisRound: playerSpending[player.id] || 0,
     isCurrentPlayer: index === currentPlayerIndex,
     projectedPosition: 0, // Will be calculated
   }))

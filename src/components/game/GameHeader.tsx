@@ -31,25 +31,35 @@ export function GameHeader({
       <CardContent className="pt-0">
         <div className="flex items-center justify-start gap-8">
           <div className="text-center">
-            <h2 className="text-xs text-muted-foreground uppercase tracking-wide">Era</h2>
+            <h2 className="text-xs text-muted-foreground uppercase tracking-wide">
+              Era
+            </h2>
             <p className="text-lg font-semibold capitalize">{era}</p>
           </div>
           <div className="text-center">
-            <h2 className="text-xs text-muted-foreground uppercase tracking-wide">Round</h2>
+            <h2 className="text-xs text-muted-foreground uppercase tracking-wide">
+              Round
+            </h2>
             <p className="text-lg font-semibold">{round}</p>
           </div>
           <div className="text-center">
-            <h2 className="text-xs text-muted-foreground uppercase tracking-wide">Actions Left</h2>
+            <h2 className="text-xs text-muted-foreground uppercase tracking-wide">
+              Actions Left
+            </h2>
             <p className="text-lg font-semibold">{actionsRemaining}</p>
           </div>
           <div className="text-center">
-            <h2 className="text-xs text-muted-foreground uppercase tracking-wide">Current Player</h2>
+            <h2 className="text-xs text-muted-foreground uppercase tracking-wide">
+              Current Player
+            </h2>
             <p className="text-lg font-semibold">
               {currentPlayerName ?? 'None'}
             </p>
           </div>
           <div className="text-center">
-            <h2 className="text-xs text-muted-foreground uppercase tracking-wide">Money Spent</h2>
+            <h2 className="text-xs text-muted-foreground uppercase tracking-wide">
+              Money Spent
+            </h2>
             <p className="text-lg font-semibold">£{spentMoney}</p>
           </div>
         </div>

@@ -1,7 +1,11 @@
 import { Factory } from 'lucide-react'
-import { type IndustryType, type LocationCard, type WildLocationCard } from '~/data/cards'
+import { type CityId, cityIndustrySlots } from '~/data/board'
+import {
+  type IndustryType,
+  type LocationCard,
+  type WildLocationCard,
+} from '~/data/cards'
 import { type IndustryCard } from '~/data/cards'
-import { cityIndustrySlots, type CityId } from '~/data/board'
 import { cn } from '~/lib/utils'
 import { type Player } from '~/store/gameStore'
 import { Badge } from '../ui/badge'
@@ -112,10 +116,13 @@ export function IndustryTypeSelector({
         return ['cotton', 'coal', 'iron', 'manufacturer', 'pottery', 'brewery']
       } else {
         // Specific location - get industries from city slots
-        const citySlots = cityIndustrySlots[locationCard.location as CityId] || []
+        const citySlots =
+          cityIndustrySlots[locationCard.location as CityId] || []
         // Flatten the slot arrays to get unique industry types
         const uniqueTypes = new Set<string>()
-        citySlots.forEach(slot => slot.forEach(industry => uniqueTypes.add(industry)))
+        citySlots.forEach((slot) =>
+          slot.forEach((industry) => uniqueTypes.add(industry)),
+        )
         return Array.from(uniqueTypes) as IndustryType[]
       }
     }
@@ -123,7 +130,7 @@ export function IndustryTypeSelector({
   }
 
   const availableIndustryTypes = getAvailableIndustryTypes()
-  
+
   const industryOptions = availableIndustryTypes.map((industryType) => {
     const availableTiles = getAvailableTiles(industryType)
     return {

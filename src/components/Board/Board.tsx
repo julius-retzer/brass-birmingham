@@ -13,14 +13,15 @@ import {
   type CityId,
   type ConnectionType,
   cities,
-  connections,
   cityIndustrySlots,
+  connections,
 } from '../../data/board'
 import { Card } from '../ui/card'
 import '@xyflow/react/dist/style.css'
 import { useCallback, useEffect } from 'react'
 import { cn } from '../../lib/utils'
 import { type Player } from '../../store/gameStore'
+import { SelectionFeedback } from '../game/SelectionFeedback'
 import { FloatingEdge } from './FloatingEdge'
 
 // Types
@@ -35,6 +36,7 @@ interface BoardProps {
   players: Player[]
   currentPlayerIndex?: number
   selectedIndustryType?: string | null
+  showSelectionFeedback?: boolean
 }
 
 interface CityNodeProps {
@@ -110,7 +112,7 @@ function CityNode({ data }: CityNodeProps) {
 
   // Get available industry slots for this city (now each slot can have multiple industry options)
   const availableSlots = cityIndustrySlots[data.id as CityId] || []
-  
+
   // Always show slots if they exist - we'll handle occupied vs available in the rendering
   const showIndustrySlots = true
 
@@ -135,7 +137,8 @@ function CityNode({ data }: CityNodeProps) {
             ? 'bg-secondary border-secondary/50'
             : 'bg-primary border-primary/50',
           data.isSelected && 'ring-2 ring-yellow-400 ring-offset-2',
-          data.isSelectable && 'hover:scale-105 hover:shadow-md',
+          data.isSelectable &&
+            'hover:scale-105 hover:shadow-md hover:ring-2 hover:ring-blue-300 hover:ring-offset-1',
           !data.isSelectable && !isMerchant && 'opacity-70 cursor-not-allowed',
           // Network highlighting
           data.isInCurrentPlayerNetwork &&
@@ -147,9 +150,20 @@ function CityNode({ data }: CityNodeProps) {
           // Current player industries highlighting
           currentPlayerIndustries.length > 0 &&
             'ring-2 ring-green-400/50 ring-offset-1',
+          // Enhanced feedback for invalid selections
+          !data.isSelectable &&
+            data.isSelected &&
+            'ring-2 ring-red-400 ring-offset-2',
         )}
         style={{ width: size.width, height: size.height }}
         onClick={data.isSelectable ? data.onSelect : undefined}
+        title={
+          data.isSelectable
+            ? `Click to select ${data.label}`
+            : !isMerchant
+              ? `${data.label} - Not available for current action`
+              : data.label
+        }
       >
         <span className="text-xs font-medium text-center text-background mb-1">
           {data.label}
@@ -162,31 +176,32 @@ function CityNode({ data }: CityNodeProps) {
               // Find if this slot is occupied by matching industry type
               // We'll assign industries to slots in order of building, matching compatible types
               const occupiedIndustry = (() => {
-                const compatibleIndustries = industriesInCity.filter(industry => 
-                  slotOptions.includes(industry.type as any)
+                const compatibleIndustries = industriesInCity.filter(
+                  (industry) => slotOptions.includes(industry.type as any),
                 )
-                
+
                 // If we have compatible industries, assign by order
                 // For now, simple approach: first compatible industry for first slot of that type
-                const slotsOfSameType = availableSlots.slice(0, slotIndex + 1).filter(slot =>
-                  slot.some(option => slotOptions.includes(option))
-                ).length
-                
+                const slotsOfSameType = availableSlots
+                  .slice(0, slotIndex + 1)
+                  .filter((slot) =>
+                    slot.some((option) => slotOptions.includes(option)),
+                  ).length
+
                 return compatibleIndustries[slotsOfSameType - 1] || null
               })()
 
               return (
-                <div
-                  key={`slot-${slotIndex}`}
-                  className="relative"
-                >
+                <div key={`slot-${slotIndex}`} className="relative">
                   {occupiedIndustry ? (
                     // Slot is occupied - show the built industry
                     <div
                       className="w-8 h-6 rounded-sm border-2 border-solid flex items-center justify-center shadow-lg"
                       style={{
                         borderColor: occupiedIndustry.playerColor,
-                        backgroundColor: getIndustryColor(occupiedIndustry.type),
+                        backgroundColor: getIndustryColor(
+                          occupiedIndustry.type,
+                        ),
                       }}
                       title={`${occupiedIndustry.type} Level ${occupiedIndustry.level} ${occupiedIndustry.flipped ? '(Flipped)' : ''}`}
                     >
@@ -194,60 +209,68 @@ function CityNode({ data }: CityNodeProps) {
                         {occupiedIndustry.level}
                       </span>
                     </div>
-                  ) : (
-                    // Slot is empty - show available options (always visible)
-                    slotOptions.length === 1 && slotOptions[0] ? (
-                      // Single industry option
-                      <div
-                        className={cn(
-                          "w-8 h-6 rounded-sm border-2 border-dashed flex items-center justify-center shadow-sm",
-                          data.isSelectable ? "opacity-60" : "opacity-40"
-                        )}
-                        style={{
-                          borderColor: getIndustryColor(slotOptions[0]),
-                          backgroundColor: `${getIndustryColor(slotOptions[0])}${data.isSelectable ? '40' : '20'}`,
-                        }}
-                        title={`Available ${slotOptions[0]} slot`}
-                      >
-                        <span className="text-[7px] font-bold text-white drop-shadow-sm">
-                          {slotOptions[0] === 'manufacturer' ? 'MFG' : 
-                           slotOptions[0] === 'brewery' ? 'BRE' :
-                           slotOptions[0] === 'pottery' ? 'POT' :
-                           slotOptions[0] === 'cotton' ? 'COT' :
-                           slotOptions[0].toUpperCase().slice(0, 3)}
-                        </span>
-                      </div>
-                    ) : slotOptions.length > 1 ? (
-                      // Multiple industry options - split the slot visually
-                      <div
-                        className={cn(
-                          "w-8 h-6 rounded-sm border-2 border-dashed border-gray-400 flex shadow-sm overflow-hidden",
-                          data.isSelectable ? "opacity-60" : "opacity-40"
-                        )}
-                        title={`Available slot: ${slotOptions.join(' or ')}`}
-                      >
-                        {slotOptions.map((industryType, optionIndex) => (
-                          <div
-                            key={`${industryType}-${optionIndex}`}
-                            className="flex-1 flex items-center justify-center"
-                            style={{
-                              backgroundColor: `${getIndustryColor(industryType)}${data.isSelectable ? '40' : '20'}`,
-                            }}
-                          >
-                            <span className="text-[6px] font-bold text-white drop-shadow-sm">
-                              {industryType === 'manufacturer' ? 'M' : 
-                               industryType === 'brewery' ? 'B' :
-                               industryType === 'pottery' ? 'P' :
-                               industryType === 'cotton' ? 'C' :
-                               industryType === 'coal' ? 'CO' :
-                               industryType === 'iron' ? 'I' :
-                               industryType.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null
-                  )}
+                  ) : // Slot is empty - show available options (always visible)
+                  slotOptions.length === 1 && slotOptions[0] ? (
+                    // Single industry option
+                    <div
+                      className={cn(
+                        'w-8 h-6 rounded-sm border-2 border-dashed flex items-center justify-center shadow-sm',
+                        data.isSelectable ? 'opacity-60' : 'opacity-40',
+                      )}
+                      style={{
+                        borderColor: getIndustryColor(slotOptions[0]),
+                        backgroundColor: `${getIndustryColor(slotOptions[0])}${data.isSelectable ? '40' : '20'}`,
+                      }}
+                      title={`Available ${slotOptions[0]} slot`}
+                    >
+                      <span className="text-[7px] font-bold text-white drop-shadow-sm">
+                        {slotOptions[0] === 'manufacturer'
+                          ? 'MFG'
+                          : slotOptions[0] === 'brewery'
+                            ? 'BRE'
+                            : slotOptions[0] === 'pottery'
+                              ? 'POT'
+                              : slotOptions[0] === 'cotton'
+                                ? 'COT'
+                                : slotOptions[0].toUpperCase().slice(0, 3)}
+                      </span>
+                    </div>
+                  ) : slotOptions.length > 1 ? (
+                    // Multiple industry options - split the slot visually
+                    <div
+                      className={cn(
+                        'w-8 h-6 rounded-sm border-2 border-dashed border-gray-400 flex shadow-sm overflow-hidden',
+                        data.isSelectable ? 'opacity-60' : 'opacity-40',
+                      )}
+                      title={`Available slot: ${slotOptions.join(' or ')}`}
+                    >
+                      {slotOptions.map((industryType, optionIndex) => (
+                        <div
+                          key={`${industryType}-${optionIndex}`}
+                          className="flex-1 flex items-center justify-center"
+                          style={{
+                            backgroundColor: `${getIndustryColor(industryType)}${data.isSelectable ? '40' : '20'}`,
+                          }}
+                        >
+                          <span className="text-[6px] font-bold text-white drop-shadow-sm">
+                            {industryType === 'manufacturer'
+                              ? 'M'
+                              : industryType === 'brewery'
+                                ? 'B'
+                                : industryType === 'pottery'
+                                  ? 'P'
+                                  : industryType === 'cotton'
+                                    ? 'C'
+                                    : industryType === 'coal'
+                                      ? 'CO'
+                                      : industryType === 'iron'
+                                        ? 'I'
+                                        : industryType.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               )
             })}
@@ -303,6 +326,10 @@ function getEdges({
     cursor: isNetworking ? 'pointer' : 'default',
   }
 
+  const hoverStyle = isNetworking
+    ? ' hover:opacity-80 hover:[&>path]:stroke-[6px] transition-all'
+    : ''
+
   return connections.flatMap((connection) => {
     const hasCanal = hasConnectionType(connection.types, 'canal')
     const hasRail = hasConnectionType(connection.types, 'rail')
@@ -335,6 +362,7 @@ function getEdges({
           className: cn(
             '[&>path]:stroke-blue-600',
             isSelected && '[&>path]:stroke-[4px]',
+            hoverStyle,
           ),
           style: { ...baseStyle, transform: 'translate(-3px, -3px)' },
         },
@@ -344,6 +372,7 @@ function getEdges({
           className: cn(
             '[&>path]:stroke-orange-600',
             isSelected && '[&>path]:stroke-[4px]',
+            hoverStyle,
           ),
           style: { ...baseStyle, transform: 'translate(3px, 3px)' },
         },
@@ -357,6 +386,7 @@ function getEdges({
         className: cn(
           hasCanal ? '[&>path]:stroke-blue-600' : '[&>path]:stroke-orange-600',
           isSelected && '[&>path]:stroke-[4px]',
+          hoverStyle,
         ),
       },
     ]
@@ -370,43 +400,45 @@ function canCityAccommodateIndustry(
   players: Player[],
 ): boolean {
   const availableSlots = cityIndustrySlots[cityId] || []
-  
+
   // Find industries built in this city
   const industriesInCity = players.flatMap((player) =>
-    player.industries.filter((industry) => industry.location === cityId)
+    player.industries.filter((industry) => industry.location === cityId),
   )
 
   // Check each slot to see if it can accommodate the industry type and is available
   for (let slotIndex = 0; slotIndex < availableSlots.length; slotIndex++) {
     const slotOptions = availableSlots[slotIndex]
-    
+
     // Skip if slot options is undefined
     if (!slotOptions) {
       continue
     }
-    
+
     // Check if this slot type can accommodate the industry
     if (!slotOptions.includes(industryType)) {
       continue
     }
-    
+
     // Check if this slot is already occupied
     // We'll use a simple assignment: industries are assigned to compatible slots in order
-    const compatibleIndustries = industriesInCity.filter(industry => 
-      slotOptions.includes(industry.type as any)
+    const compatibleIndustries = industriesInCity.filter((industry) =>
+      slotOptions.includes(industry.type as any),
     )
-    
+
     // Count how many slots of this type come before this slot
-    const slotsOfSameType = availableSlots.slice(0, slotIndex + 1).filter(slot =>
-      slot && slot.some(option => slotOptions.includes(option))
-    ).length
-    
+    const slotsOfSameType = availableSlots
+      .slice(0, slotIndex + 1)
+      .filter(
+        (slot) => slot && slot.some((option) => slotOptions.includes(option)),
+      ).length
+
     // If there are fewer compatible industries than slots of this type, this slot is available
     if (compatibleIndustries.length < slotsOfSameType) {
       return true
     }
   }
-  
+
   return false
 }
 
@@ -463,6 +495,7 @@ export function Board({
   players,
   currentPlayerIndex = 0,
   selectedIndustryType = null,
+  showSelectionFeedback = false,
 }: BoardProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
 
@@ -475,7 +508,7 @@ export function Board({
           currentPlayerIndex,
           players,
         )
-        
+
         // Determine if city is selectable for building
         let isSelectable = false
         if (isBuilding && node.data.type === 'city') {
@@ -491,7 +524,7 @@ export function Board({
             isSelectable = true
           }
         }
-        
+
         return {
           ...node,
           data: {
@@ -542,26 +575,114 @@ export function Board({
     [isNetworking, onLinkSelect],
   )
 
+  // Get selection feedback information
+  const getSelectionFeedback = () => {
+    if (!showSelectionFeedback) return null
+
+    if (isBuilding && selectedIndustryType) {
+      const validCities = Object.keys(cities).filter((cityId) =>
+        canCityAccommodateIndustry(
+          cityId as CityId,
+          selectedIndustryType,
+          players,
+        ),
+      )
+
+      if (selectedCity) {
+        const isValid = canCityAccommodateIndustry(
+          selectedCity,
+          selectedIndustryType,
+          players,
+        )
+        return {
+          selectionType: 'city' as const,
+          isValid,
+          message: isValid
+            ? `Building ${selectedIndustryType} at ${cities[selectedCity]?.name}`
+            : `Cannot build ${selectedIndustryType} here`,
+          hint: isValid
+            ? 'Click to confirm location'
+            : 'This location has no available slots for this industry type',
+        }
+      } else {
+        return {
+          selectionType: 'city' as const,
+          isValid: true,
+          message: `Select location for ${selectedIndustryType}`,
+          selectedCount: 0,
+          requiredCount: 1,
+          hint: `${validCities.length} cities available for ${selectedIndustryType}`,
+        }
+      }
+    }
+
+    if (isNetworking && era) {
+      const availableConnections = connections.filter(
+        (conn) =>
+          (era === 'canal' && hasConnectionType(conn.types, 'canal')) ||
+          (era === 'rail' && hasConnectionType(conn.types, 'rail')),
+      )
+
+      if (selectedLink) {
+        const connectionExists = availableConnections.some(
+          (conn) =>
+            (conn.from === selectedLink.from && conn.to === selectedLink.to) ||
+            (conn.from === selectedLink.to && conn.to === selectedLink.from),
+        )
+
+        return {
+          selectionType: 'link' as const,
+          isValid: connectionExists,
+          message: connectionExists
+            ? `Building ${era} link: ${cities[selectedLink.from]?.name} ↔ ${cities[selectedLink.to]?.name}`
+            : 'Invalid connection',
+          hint: connectionExists
+            ? `Cost: £${era === 'canal' ? '3' : '5'}${era === 'rail' ? ' + coal' : ''}`
+            : 'This connection is not available in the current era',
+        }
+      } else {
+        return {
+          selectionType: 'link' as const,
+          isValid: true,
+          message: `Select ${era} connection to build`,
+          selectedCount: 0,
+          requiredCount: 1,
+          hint: `${availableConnections.length} connections available`,
+        }
+      }
+    }
+
+    return null
+  }
+
+  const selectionFeedback = getSelectionFeedback()
+
   return (
-    <Card className="relative w-full aspect-square">
-      <div className="absolute inset-0">
-        <ReactFlow
-          nodes={nodes}
-          edges={getEdges({ isNetworking, era, selectedLink, players })}
-          nodeTypes={{ cityNode: CityNode }}
-          edgeTypes={{ floating: FloatingEdge }}
-          onNodesChange={onNodesChange}
-          onNodeDrag={onNodeDrag}
-          onEdgeClick={onEdgeClick}
-          fitView
-          panOnScroll
-          panOnDrag
-          className="bg-background"
-        >
-          <Background />
-        </ReactFlow>
-      </div>
-    </Card>
+    <div className="space-y-4">
+      {/* Selection Feedback */}
+      {selectionFeedback && <SelectionFeedback {...selectionFeedback} />}
+
+      {/* Game Board */}
+      <Card className="relative w-full aspect-square">
+        <div className="absolute inset-0">
+          <ReactFlow
+            nodes={nodes}
+            edges={getEdges({ isNetworking, era, selectedLink, players })}
+            nodeTypes={{ cityNode: CityNode }}
+            edgeTypes={{ floating: FloatingEdge }}
+            onNodesChange={onNodesChange}
+            onNodeDrag={onNodeDrag}
+            onEdgeClick={onEdgeClick}
+            fitView
+            panOnScroll
+            panOnDrag
+            className="bg-background"
+          >
+            <Background />
+          </ReactFlow>
+        </div>
+      </Card>
+    </div>
   )
 }
 

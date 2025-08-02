@@ -119,7 +119,6 @@ export interface GameState {
   selectedIndustryTile: IndustryTile | null
 }
 
-
 type GameEvent =
   | {
       type: 'START_GAME'
@@ -193,8 +192,15 @@ type GameEvent =
       drawPile: Card[]
       allPlayersHandsEmpty: boolean
     }
-
-
+  | {
+      type: 'TRIGGER_ERA_SCORING'
+    }
+  | {
+      type: 'TRIGGER_CANAL_ERA_END'
+    }
+  | {
+      type: 'TRIGGER_RAIL_ERA_END'
+    }
 
 export type GameStore = typeof gameStore
 export type GameStoreSnapshot = StateFrom<typeof gameStore>
@@ -818,7 +824,7 @@ export const gameStore = setup({
           index,
           spent: context.playerSpending[player.id] || 0,
         }))
-        
+
         // Sort by spending (least first), then by current index for ties
         playerSpendingArray.sort((a, b) => {
           if (a.spent !== b.spent) return a.spent - b.spent
@@ -828,80 +834,112 @@ export const gameStore = setup({
         // 2. Collect income (if not final round)
         if (!context.isFinalRound) {
           updatedPlayers = updatedPlayers.map((player) => {
-            let updatedPlayer = { ...player }
-            
+            const updatedPlayer = { ...player }
+
             if (player.income >= 0) {
               // Positive income: collect money
               updatedPlayer.money += player.income
-              logs.push(createLogEntry(
-                `${player.name} collected £${player.income} income`,
-                'info'
-              ))
+              logs.push(
+                createLogEntry(
+                  `${player.name} collected £${player.income} income`,
+                  'info',
+                ),
+              )
             } else {
               // Negative income: pay bank or sell tiles
               const amountOwed = Math.abs(player.income)
-              
+
               if (player.money >= amountOwed) {
                 // Can afford to pay
                 updatedPlayer.money -= amountOwed
-                logs.push(createLogEntry(
-                  `${player.name} paid £${amountOwed} negative income`,
-                  'info'
-                ))
+                logs.push(
+                  createLogEntry(
+                    `${player.name} paid £${amountOwed} negative income`,
+                    'info',
+                  ),
+                )
               } else {
                 // Need to sell industry tiles or lose VP
                 const shortfall = amountOwed - player.money
                 updatedPlayer.money = 0 // Pay what they can
-                
+
                 let remainingShortfall = shortfall
                 const industriesToRemove: number[] = []
-                
+
                 // Try to sell industry tiles (worth half cost, rounded down)
-                for (let i = 0; i < player.industries.length && remainingShortfall > 0; i++) {
+                for (
+                  let i = 0;
+                  i < player.industries.length && remainingShortfall > 0;
+                  i++
+                ) {
                   const industry = player.industries[i]!
                   const saleValue = Math.floor(industry.tile.cost / 2)
-                  
+
                   if (saleValue > 0) {
                     industriesToRemove.push(i)
                     updatedPlayer.money += saleValue
                     remainingShortfall -= saleValue
-                    
-                    logs.push(createLogEntry(
-                      `${player.name} sold ${industry.type} industry for £${saleValue}`,
-                      'info'
-                    ))
+
+                    logs.push(
+                      createLogEntry(
+                        `${player.name} sold ${industry.type} industry for £${saleValue}`,
+                        'info',
+                      ),
+                    )
                   }
                 }
-                
+
                 // Remove sold industries (in reverse order to maintain indices)
-                industriesToRemove.reverse().forEach(index => {
+                industriesToRemove.reverse().forEach((index) => {
                   updatedPlayer.industries.splice(index, 1)
                 })
-                
+
                 // If still short, lose VP
                 if (remainingShortfall > 0) {
-                  updatedPlayer.victoryPoints = Math.max(0, updatedPlayer.victoryPoints - remainingShortfall)
-                  logs.push(createLogEntry(
-                    `${player.name} lost ${remainingShortfall} VP due to income shortfall`,
-                    'info'
-                  ))
+                  updatedPlayer.victoryPoints = Math.max(
+                    0,
+                    updatedPlayer.victoryPoints - remainingShortfall,
+                  )
+                  logs.push(
+                    createLogEntry(
+                      `${player.name} lost ${remainingShortfall} VP due to income shortfall`,
+                      'info',
+                    ),
+                  )
                 }
-                
-                logs.push(createLogEntry(
-                  `${player.name} paid £${amountOwed} negative income (shortfall: £${shortfall})`,
-                  'info'
-                ))
+
+                logs.push(
+                  createLogEntry(
+                    `${player.name} paid £${amountOwed} negative income (shortfall: £${shortfall})`,
+                    'info',
+                  ),
+                )
               }
             }
-            
+
             return updatedPlayer
           })
         }
 
         // 3. Reset spending for next round
         updatedPlayerSpending = {}
-        
+
         logs.push(createLogEntry(`Round ${context.round} completed`, 'system'))
+
+        // Check for era end after round completion
+        const drawDeckEmpty = context.drawPile.length === 0
+        const allHandsEmpty = updatedPlayers.every(
+          (player) => player.hand.length === 0,
+        )
+
+        if (drawDeckEmpty && allHandsEmpty) {
+          logs.push(
+            createLogEntry(
+              `Era end detected: draw deck and all hands exhausted`,
+              'system',
+            ),
+          )
+        }
       }
 
       debugLog('nextPlayer', context)
@@ -1050,13 +1088,154 @@ export const gameStore = setup({
     trackMoneySpent: assign(({ context }, amount: number) => {
       const currentPlayer = getCurrentPlayer(context)
       const currentSpending = context.playerSpending[currentPlayer.id] || 0
-      
+
       return {
         spentMoney: context.spentMoney + amount,
         playerSpending: {
           ...context.playerSpending,
           [currentPlayer.id]: currentSpending + amount,
         },
+      }
+    }),
+
+    triggerEraScoring: assign(({ context }) => {
+      const updatedPlayers = [...context.players]
+      const logMessages: string[] = []
+
+      // Score Link tiles - each link scores 1 VP for each "•—•" in adjacent locations
+      for (let i = 0; i < updatedPlayers.length; i++) {
+        const player = updatedPlayers[i]!
+        let linkVPs = 0
+
+        for (const link of player.links) {
+          // Each link tile scores 1 VP (simplified - in full game would count "•—•" symbols)
+          linkVPs += 1
+        }
+
+        if (linkVPs > 0) {
+          logMessages.push(
+            `${player.name} scored ${linkVPs} VPs from link tiles`,
+          )
+          updatedPlayers[i] = {
+            ...player,
+            victoryPoints: player.victoryPoints + linkVPs,
+            links: [], // Remove link tiles after scoring
+          }
+        }
+      }
+
+      // Score Flipped Industry tiles - score VPs shown in bottom left corner
+      for (let i = 0; i < updatedPlayers.length; i++) {
+        const player = updatedPlayers[i]!
+        let industryVPs = 0
+
+        for (const industry of player.industries) {
+          if (industry.flipped) {
+            industryVPs += industry.tile.victoryPoints
+          }
+        }
+
+        if (industryVPs > 0) {
+          logMessages.push(
+            `${player.name} scored ${industryVPs} VPs from flipped industry tiles`,
+          )
+          updatedPlayers[i] = {
+            ...player,
+            victoryPoints: player.victoryPoints + industryVPs,
+          }
+        }
+      }
+
+      return {
+        players: updatedPlayers,
+        logs: [
+          ...context.logs,
+          createLogEntry(`End of ${context.era} era scoring`, 'system'),
+          ...logMessages.map((msg) => createLogEntry(msg, 'info')),
+        ],
+      }
+    }),
+
+    triggerCanalEraEnd: assign(({ context }) => {
+      const updatedPlayers = [...context.players]
+      const logMessages: string[] = []
+
+      // Remove all level 1 Industry tiles from the board
+      for (let i = 0; i < updatedPlayers.length; i++) {
+        const player = updatedPlayers[i]!
+        const remainingIndustries = player.industries.filter(
+          (industry) => industry.level > 1,
+        )
+        const removedCount =
+          player.industries.length - remainingIndustries.length
+
+        if (removedCount > 0) {
+          logMessages.push(
+            `${player.name} had ${removedCount} level 1 industry tiles removed`,
+          )
+          updatedPlayers[i] = {
+            ...player,
+            industries: remainingIndustries,
+          }
+        }
+      }
+
+      // Reset merchant beer (simplified - would place 1 beer on each empty space beside merchants)
+      logMessages.push('Merchant beer reset for Rail Era')
+
+      // Shuffle all discard piles together to create new draw deck
+      const allDiscardCards: Card[] = []
+      for (const player of context.players) {
+        // In a real game, we'd collect from each player's discard pile
+        // For testing, we'll use the current discard pile
+      }
+
+      // Combine current discard pile and any remaining draw pile cards
+      const newDrawPile = shuffleArray([
+        ...context.discardPile,
+        ...context.drawPile,
+      ])
+
+      // Deal new hands - each player draws 8 cards
+      const newHands: Card[][] = []
+      let currentIndex = 0
+      for (let i = 0; i < updatedPlayers.length; i++) {
+        const newHand = newDrawPile.slice(currentIndex, currentIndex + 8)
+        newHands.push(newHand)
+        currentIndex += 8
+
+        updatedPlayers[i] = {
+          ...updatedPlayers[i]!,
+          hand: newHand,
+        }
+      }
+
+      return {
+        players: updatedPlayers,
+        era: 'rail' as const,
+        round: 1,
+        actionsRemaining: 2, // Rail Era starts with 2 actions per turn
+        drawPile: newDrawPile.slice(currentIndex),
+        discardPile: [],
+        isFinalRound: false,
+        playerSpending: {}, // Reset spending tracking
+        logs: [
+          ...context.logs,
+          createLogEntry('Canal Era ended', 'system'),
+          ...logMessages.map((msg) => createLogEntry(msg, 'info')),
+          createLogEntry('Rail Era started', 'system'),
+          createLogEntry('All players drew new 8-card hands', 'info'),
+        ],
+      }
+    }),
+
+    triggerRailEraEnd: assign(({ context }) => {
+      return {
+        logs: [
+          ...context.logs,
+          createLogEntry('Rail Era ended', 'system'),
+          createLogEntry('Game Over! Final scores calculated.', 'system'),
+        ],
       }
     }),
   },
@@ -1182,6 +1361,24 @@ export const gameStore = setup({
         context.selectedCard?.type === 'wild_location'
       )
     },
+
+    isEraEnd: ({ context }) => {
+      // Era ends when draw deck is exhausted AND all players' hands are empty
+      const drawDeckEmpty = context.drawPile.length === 0
+      const allHandsEmpty = context.players.every(
+        (player) => player.hand.length === 0,
+      )
+      return drawDeckEmpty && allHandsEmpty
+    },
+
+    isGameEnd: ({ context }) => {
+      // Game ends after Rail Era scoring
+      return (
+        context.era === 'rail' &&
+        context.drawPile.length === 0 &&
+        context.players.every((player) => player.hand.length === 0)
+      )
+    },
   },
 }).createMachine({
   id: 'brassGame',
@@ -1240,6 +1437,15 @@ export const gameStore = setup({
         },
         TEST_SET_ERA_END_CONDITIONS: {
           actions: 'setEraEndConditions',
+        },
+        TRIGGER_ERA_SCORING: {
+          actions: 'triggerEraScoring',
+        },
+        TRIGGER_CANAL_ERA_END: {
+          actions: 'triggerCanalEraEnd',
+        },
+        TRIGGER_RAIL_ERA_END: {
+          actions: 'triggerRailEraEnd',
         },
       },
       states: {

@@ -16,24 +16,31 @@ interface MarketSlotProps {
   isInfinite?: boolean
 }
 
-function MarketSlot({ price, cubes, maxCubes, resource, isInfinite = false }: MarketSlotProps) {
-  const resourceConfig = resource === 'coal' 
-    ? { 
-        icon: '🪨', 
-        color: 'text-slate-800',
-        bgColor: 'bg-slate-100',
-        borderColor: 'border-slate-300',
-        activeBg: 'bg-slate-200',
-        activeBorder: 'border-slate-400'
-      }
-    : { 
-        icon: '⚙️', 
-        color: 'text-amber-700',
-        bgColor: 'bg-amber-50',
-        borderColor: 'border-amber-200',
-        activeBg: 'bg-amber-100',
-        activeBorder: 'border-amber-300'
-      }
+function MarketSlot({
+  price,
+  cubes,
+  maxCubes,
+  resource,
+  isInfinite = false,
+}: MarketSlotProps) {
+  const resourceConfig =
+    resource === 'coal'
+      ? {
+          icon: '🪨',
+          color: 'text-slate-800',
+          bgColor: 'bg-slate-100',
+          borderColor: 'border-slate-300',
+          activeBg: 'bg-slate-200',
+          activeBorder: 'border-slate-400',
+        }
+      : {
+          icon: '⚙️',
+          color: 'text-amber-700',
+          bgColor: 'bg-amber-50',
+          borderColor: 'border-amber-200',
+          activeBg: 'bg-amber-100',
+          activeBorder: 'border-amber-300',
+        }
 
   const hasResources = cubes > 0
   const isFull = cubes >= maxCubes && !isInfinite
@@ -45,28 +52,30 @@ function MarketSlot({ price, cubes, maxCubes, resource, isInfinite = false }: Ma
         hasResources
           ? `${resourceConfig.activeBg} ${resourceConfig.activeBorder}`
           : `${resourceConfig.bgColor} ${resourceConfig.borderColor} border-dashed`,
-        isFull && 'bg-red-50 border-red-300'
+        isFull && 'bg-red-50 border-red-300',
       )}
     >
       <div className="flex items-center gap-1 text-sm mb-2 font-semibold text-green-700">
         <Coins className="h-3 w-3" />
         <span>£{price}</span>
       </div>
-      
+
       <div className={cn('text-2xl mb-1', resourceConfig.color)}>
         {hasResources ? resourceConfig.icon : '⭕'}
       </div>
-      
+
       <div className="text-xs text-center">
         {isInfinite ? (
           <span className="text-purple-600 font-bold">∞</span>
         ) : (
-          <span className={cn(
-            'font-semibold px-1.5 py-0.5 rounded text-xs',
-            cubes === 0 
-              ? 'text-red-600 bg-red-100' 
-              : 'text-emerald-700 bg-emerald-100'
-          )}>
+          <span
+            className={cn(
+              'font-semibold px-1.5 py-0.5 rounded text-xs',
+              cubes === 0
+                ? 'text-red-600 bg-red-100'
+                : 'text-emerald-700 bg-emerald-100',
+            )}
+          >
             {cubes}/{maxCubes}
           </span>
         )}
@@ -88,7 +97,7 @@ function ResourceMarket({
 }) {
   const totalCubes = market.reduce((sum, level) => sum + level.cubes, 0)
   const totalCapacity = market
-    .filter(level => level.maxCubes !== Infinity)
+    .filter((level) => level.maxCubes !== Infinity)
     .reduce((sum, level) => sum + level.maxCubes, 0)
 
   return (

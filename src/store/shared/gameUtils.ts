@@ -1,6 +1,6 @@
-import type { GameState, Player, LogEntry, LogEntryType } from '../gameStore'
-import type { Card } from '../../data/cards'
 import type { CityId } from '../../data/board'
+import type { Card } from '../../data/cards'
+import type { GameState, LogEntry, LogEntryType, Player } from '../gameStore'
 
 export function getCurrentPlayer(context: GameState): Player {
   const player = context.players[context.currentPlayerIndex]
@@ -50,7 +50,9 @@ export function findConnectedCoalMines(
     )
 }
 
-export function findAvailableIronWorks(context: GameState): Player['industries'] {
+export function findAvailableIronWorks(
+  context: GameState,
+): Player['industries'] {
   // Iron works can be used from anywhere (no connection required)
   return context.players
     .flatMap((player) => player.industries)

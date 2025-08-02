@@ -1,11 +1,11 @@
-import type { GameState, Player } from '../gameStore'
 import type { CityId } from '../../data/board'
 import { GAME_CONSTANTS } from '../constants'
+import type { GameState, Player } from '../gameStore'
 import {
-  getCurrentPlayer,
-  findConnectedCoalMines,
-  findAvailableIronWorks,
   findAvailableBreweries,
+  findAvailableIronWorks,
+  findConnectedCoalMines,
+  getCurrentPlayer,
 } from '../shared/gameUtils'
 
 export function consumeCoalFromSources(

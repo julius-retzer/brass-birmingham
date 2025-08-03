@@ -147,6 +147,7 @@ export function buildIndustryTile(
   const marketLogDetails: string[] = []
 
   if (tile.type === 'coal') {
+    // RULE: Coal mines only sell automatically if connected to merchant spaces with [left-right arrows] icon
     const isConnectedToMerchant = isLocationConnectedToMerchant(context.selectedLocation!)
     if (isConnectedToMerchant && newIndustry.coalCubesOnTile > 0) {
       const sellResult = sellCoalToMarket(updatedCoalMarket, newIndustry.coalCubesOnTile)
@@ -155,11 +156,13 @@ export function buildIndustryTile(
       marketLogDetails.push(...sellResult.logDetails)
       newIndustry.coalCubesOnTile -= sellResult.cubesSold
 
+      // RULE: Flip when last resource is removed
       if (newIndustry.coalCubesOnTile === 0) {
         newIndustry.flipped = true
       }
     }
   } else if (tile.type === 'iron') {
+    // RULE: Iron works ALWAYS sell automatically regardless of merchant connection
     if (newIndustry.ironCubesOnTile > 0) {
       const sellResult = sellIronToMarket(updatedIronMarket, newIndustry.ironCubesOnTile)
       updatedIronMarket = sellResult.updatedMarket
@@ -167,6 +170,7 @@ export function buildIndustryTile(
       marketLogDetails.push(...sellResult.logDetails)
       newIndustry.ironCubesOnTile -= sellResult.cubesSold
 
+      // RULE: Flip when last resource is removed
       if (newIndustry.ironCubesOnTile === 0) {
         newIndustry.flipped = true
       }

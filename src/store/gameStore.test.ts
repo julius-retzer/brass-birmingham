@@ -695,9 +695,20 @@ describe('Game Store State Machine', () => {
       // First build a cotton mill (sellable industry) so we have something to sell
       buildIndustryAction(actor, 'cotton', 'birmingham')
       
+      // The current player should be the one who built the cotton mill (player 0)
+      // After build action, it switches to next player, so we need to get back to player 0
       let snapshot = actor.getSnapshot()
+      const playerWithCottonMill = 0 // Player who built the cotton mill
       const currentPlayerIndex = snapshot.context.currentPlayerIndex
-      const currentPlayer = snapshot.context.players[currentPlayerIndex]!
+      
+      // If we're not on the player who built the cotton mill, we need to get to their turn
+      if (currentPlayerIndex !== playerWithCottonMill) {
+        // Complete current player's action to get back to player 0
+        takeLoanAction(actor)
+        snapshot = actor.getSnapshot()
+      }
+      
+      const currentPlayer = snapshot.context.players[playerWithCottonMill]!
       const initialHandSize = currentPlayer.hand.length
 
       actor.send({ type: 'SELL' })
@@ -705,7 +716,7 @@ describe('Game Store State Machine', () => {
       actor.send({ type: 'CONFIRM' })
 
       snapshot = actor.getSnapshot()
-      const playerAfterSell = snapshot.context.players[currentPlayerIndex]!
+      const playerAfterSell = snapshot.context.players[playerWithCottonMill]!
       // After action, hand is refilled to original size
       expect(playerAfterSell.hand.length).toBe(initialHandSize)
     })

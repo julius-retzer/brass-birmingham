@@ -37,17 +37,29 @@ export function findConnectedCoalMines(
   location: CityId,
   currentPlayer: Player,
 ): Player['industries'] {
-  // TODO: Implement proper network connectivity checking
-  // For now, return coal mines at the same location (simplified)
-  return context.players
+  // RULE: Find closest (fewest Link tiles distant) connected unflipped Coal Mines
+  const allCoalMines = context.players
     .flatMap((player) => player.industries)
     .filter(
       (industry) =>
         industry.type === 'coal' &&
         !industry.flipped &&
-        industry.coalCubesOnTile > 0 &&
-        industry.location === location,
+        industry.coalCubesOnTile > 0,
     )
+
+  // TODO: Implement proper distance calculation through network connectivity
+  // For now, prioritize coal mines at the same location, then any available coal mine
+  // This is a simplified implementation that needs proper network path finding
+  
+  // First priority: coal mines at the same location (distance 0)
+  const sameLocationMines = allCoalMines.filter(mine => mine.location === location)
+  if (sameLocationMines.length > 0) {
+    return sameLocationMines
+  }
+
+  // Second priority: any available coal mine (simplified - needs proper distance calculation)
+  // In a proper implementation, this would calculate network distance through link tiles
+  return allCoalMines
 }
 
 export function findAvailableIronWorks(

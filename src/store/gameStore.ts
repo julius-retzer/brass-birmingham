@@ -1726,12 +1726,8 @@ export const gameStore = setup({
         (brewery) => brewery.beerBarrelsOnTile > 0,
       )
 
-      // Can also use merchant beer for Network actions
-      const hasMerchantBeer = context.merchants.some(
-        (merchant) => merchant.hasBeer,
-      )
-
-      return hasBreweryBeer || hasMerchantBeer
+      // RULE: Network actions cannot use merchant beer (only brewery beer)
+      return hasBreweryBeer
     },
 
     hasSelectedSecondLink: ({ context }) => context.selectedSecondLink !== null,

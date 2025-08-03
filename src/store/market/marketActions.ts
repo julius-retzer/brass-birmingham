@@ -278,15 +278,32 @@ export function consumeBeerFromSources(
   context: GameState,
   location: CityId,
   beerRequired: number,
+  includeMerchantBeer = false,
 ): {
   updatedPlayers: Player[]
   updatedResources: GameState['resources']
+  updatedMerchants?: Array<{
+    location: CityId
+    industryIcons: string[]
+    bonusType: 'develop' | 'income' | 'victoryPoints' | 'money'
+    bonusValue: number
+    hasBeer: boolean
+  }>
+  merchantBonusesCollected: Array<{
+    type: 'develop' | 'income' | 'victoryPoints' | 'money'
+    value: number
+  }>
   logDetails: string[]
 } {
   let beerConsumed = 0
   const logDetails: string[] = []
   let updatedPlayers = [...context.players]
   const updatedResources = { ...context.resources }
+  let updatedMerchants = context.merchants ? [...context.merchants] : undefined
+  const merchantBonusesCollected: Array<{
+    type: 'develop' | 'income' | 'victoryPoints' | 'money'
+    value: number
+  }> = []
 
   const currentPlayer = getCurrentPlayer(context)
   const { ownBreweries, connectedBreweries } = findAvailableBreweries(
@@ -337,6 +354,27 @@ export function consumeBeerFromSources(
     }
   }
 
+  // If still need beer and merchant beer is allowed, consume from merchants
+  if (includeMerchantBeer && updatedMerchants && beerConsumed < beerRequired) {
+    // Find merchant at the location with beer
+    const merchantAtLocation = updatedMerchants.find(
+      (merchant) => merchant.location === location && merchant.hasBeer,
+    )
+
+    if (merchantAtLocation) {
+      // Consume merchant beer and collect bonus
+      merchantAtLocation.hasBeer = false
+      beerConsumed++
+      merchantBonusesCollected.push({
+        type: merchantAtLocation.bonusType,
+        value: merchantAtLocation.bonusValue,
+      })
+      logDetails.push(
+        `1 beer from merchant (${merchantAtLocation.bonusType} +${merchantAtLocation.bonusValue})`,
+      )
+    }
+  }
+
   // If still need beer, consume from general supply (fallback - should not happen in proper game)
   while (beerConsumed < beerRequired) {
     if (updatedResources.beer > 0) {
@@ -349,5 +387,11 @@ export function consumeBeerFromSources(
     }
   }
 
-  return { updatedPlayers, updatedResources, logDetails }
+  return {
+    updatedPlayers,
+    updatedResources,
+    updatedMerchants,
+    merchantBonusesCollected,
+    logDetails,
+  }
 }

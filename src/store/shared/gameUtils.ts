@@ -161,3 +161,57 @@ export function updatePlayerInList(
     index === currentPlayerIndex ? { ...player, ...updatedPlayer } : player,
   )
 }
+
+// Network validation functions
+export function getPlayerNetworkLocations(
+  context: GameState,
+  player: Player,
+): Set<CityId> {
+  const networkLocations = new Set<CityId>()
+
+  // Add locations where player has industry tiles
+  player.industries.forEach((industry) => {
+    networkLocations.add(industry.location)
+  })
+
+  // Add locations adjacent to player's links
+  player.links.forEach((link) => {
+    networkLocations.add(link.from)
+    networkLocations.add(link.to)
+  })
+
+  return networkLocations
+}
+
+export function isLocationInPlayerNetwork(
+  context: GameState,
+  player: Player,
+  location: CityId,
+): boolean {
+  // Exception: If player has no tiles on board, can build anywhere
+  if (player.industries.length === 0 && player.links.length === 0) {
+    return true
+  }
+
+  const networkLocations = getPlayerNetworkLocations(context, player)
+  return networkLocations.has(location)
+}
+
+export function validateIndustryBuildLocation(
+  context: GameState,
+  player: Player,
+  card: Card,
+  location: CityId,
+): boolean {
+  // Location cards can build anywhere
+  if (card.type === 'location' || card.type === 'wild_location') {
+    return true
+  }
+
+  // Industry cards must build in network (rules 161-162)
+  if (card.type === 'industry' || card.type === 'wild_industry') {
+    return isLocationInPlayerNetwork(context, player, location)
+  }
+
+  return false
+}

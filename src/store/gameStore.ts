@@ -114,6 +114,18 @@ export interface GameState {
     from: CityId
     to: CityId
   } | null
+  selectedSecondLink: {
+    from: CityId
+    to: CityId
+  } | null
+  isDoubleLinkSelected: boolean
+  merchants: Array<{
+    location: CityId
+    industryIcons: IndustryType[]
+    bonusType: 'develop' | 'income' | 'victoryPoints' | 'money'
+    bonusValue: number
+    hasBeer: boolean
+  }>
   // Building-related state
   selectedLocation: CityId | null
   selectedIndustryTile: IndustryTile | null
@@ -149,6 +161,20 @@ type GameEvent =
       type: 'SELECT_LINK'
       from: CityId
       to: CityId
+    }
+  | {
+      type: 'SELECT_SECOND_LINK'
+      from: CityId
+      to: CityId
+    }
+  | {
+      type: 'SELECT_DOUBLE_LINK_OPTION'
+    }
+  | {
+      type: 'CONFIRM_DOUBLE_LINK'
+    }
+  | {
+      type: 'CLEAR_SECOND_LINK'
     }
   | {
       type: 'SELECT_CARD'
@@ -336,6 +362,32 @@ export const gameStore = setup({
           from: event.from,
           to: event.to,
         },
+      }
+    }),
+
+    selectSecondLink: assign(({ context, event }) => {
+      if (event.type !== 'SELECT_SECOND_LINK') return {}
+      debugLog('selectSecondLink', context, event)
+      return {
+        selectedSecondLink: {
+          from: event.from,
+          to: event.to,
+        },
+      }
+    }),
+
+    selectDoubleLinkOption: assign(({ context }) => {
+      debugLog('selectDoubleLinkOption', context)
+      return {
+        isDoubleLinkSelected: true,
+      }
+    }),
+
+    clearSecondLink: assign(({ context }) => {
+      debugLog('clearSecondLink', context)
+      return {
+        selectedSecondLink: null,
+        isDoubleLinkSelected: false,
       }
     }),
 
@@ -564,6 +616,136 @@ export const gameStore = setup({
           [currentPlayer.id]: currentSpending + totalCost,
         },
         logs: [...context.logs, createLogEntry(logMessage, 'action')],
+      }
+    }),
+    
+    executeDoubleNetworkAction: assign(({ context }) => {
+      const currentPlayer = getCurrentPlayer(context)
+      if (!context.selectedCard || !context.selectedLink || !context.selectedSecondLink) {
+        throw new Error('Card or links not selected for double network action')
+      }
+
+      const updatedHand = removeCardFromHand(
+        currentPlayer,
+        context.selectedCard.id,
+      )
+      
+      // Double link building costs £15 total
+      const linkCost = GAME_CONSTANTS.DOUBLE_RAIL_LINK_COST // £15
+
+      const firstLink = {
+        from: context.selectedLink.from,
+        to: context.selectedLink.to,
+        type: context.era as 'rail',
+      }
+      
+      const secondLink = {
+        from: context.selectedSecondLink.from,
+        to: context.selectedSecondLink.to,
+        type: context.era as 'rail',
+      }
+
+      let coalCost = 0
+      const updatedCoalMarket = context.coalMarket.map((level) => ({
+        ...level,
+      }))
+      
+      // Consume 2 coal for double link (1 per link)
+      let coalFromMarket = 0
+      for (const level of updatedCoalMarket) {
+        while (level.cubes > 0 && coalFromMarket < 2) {
+          level.cubes--
+          coalCost += level.price
+          coalFromMarket++
+        }
+        if (coalFromMarket >= 2) break
+      }
+
+      // If market doesn't have enough coal, use fallback price
+      while (coalFromMarket < 2) {
+        coalCost += GAME_CONSTANTS.COAL_FALLBACK_PRICE
+        coalFromMarket++
+      }
+      
+      // Consume 1 beer (from brewery or merchant)
+      let updatedPlayer = { ...currentPlayer }
+      let beerConsumed = false
+      let beerSource = ''
+      
+      // First try own breweries
+      for (let i = 0; i < updatedPlayer.industries.length; i++) {
+        const industry = updatedPlayer.industries[i]!
+        if (industry.type === 'brewery' && !industry.flipped && industry.beerBarrelsOnTile > 0) {
+          updatedPlayer.industries[i] = {
+            ...industry,
+            beerBarrelsOnTile: industry.beerBarrelsOnTile - 1
+          }
+          beerConsumed = true
+          beerSource = 'own brewery'
+          break
+        }
+      }
+      
+      // If no own brewery beer, try connected opponent breweries
+      // (This would require network pathfinding - simplified for now)
+      
+      // If no brewery beer, try merchant beer (NOT restricted for network actions)
+      if (!beerConsumed) {
+        // Find merchant with beer that's connected to the network
+        // For now, simplified - just use any merchant with beer
+        const merchants = context.merchants || []
+        for (let i = 0; i < merchants.length; i++) {
+          const merchant = merchants[i]!
+          if (merchant.hasBeer) {
+            // Note: The rule "not a Merchant beer" only applies to Merchant beer BONUSES during Sell actions
+            // Regular merchant beer barrels can be consumed for Network actions
+            merchant.hasBeer = false
+            beerConsumed = true
+            beerSource = 'merchant'
+            break
+          }
+        }
+      }
+      
+      if (!beerConsumed) {
+        throw new Error('No beer available for double link building')
+      }
+
+      const totalCost = linkCost + coalCost
+      updatedPlayer = {
+        ...updatedPlayer,
+        hand: updatedHand,
+        money: updatedPlayer.money - totalCost,
+        links: [...updatedPlayer.links, firstLink, secondLink],
+      }
+
+      const logMessage = `${currentPlayer.name} built 2 rail links (${firstLink.from}-${firstLink.to} and ${secondLink.from}-${secondLink.to}) for £${linkCost} + 1 beer from ${beerSource} + 2 coal for £${coalCost}`
+
+      debugLog('executeDoubleNetworkAction', context)
+      return {
+        players: updatePlayerInList(
+          context.players,
+          context.currentPlayerIndex,
+          updatedPlayer,
+        ),
+        discardPile: [...context.discardPile, context.selectedCard],
+        coalMarket: updatedCoalMarket,
+        selectedCard: null,
+        selectedLink: null,
+        selectedSecondLink: null,
+        isDoubleLinkSelected: false,
+        selectedLocation: null,
+        selectedIndustryTile: null,
+        actionsRemaining: context.actionsRemaining - 1,
+        spentMoney: context.spentMoney + totalCost,
+        playerSpending: {
+          ...context.playerSpending,
+          [currentPlayer.id]: (context.playerSpending[currentPlayer.id] || 0) + totalCost,
+        },
+        logs: [
+          ...context.logs,
+          createLogEntry(logMessage, 'action'),
+        ],
       }
     }),
 
@@ -1362,6 +1544,41 @@ export const gameStore = setup({
       )
     },
 
+    canBuildSecondLink: ({ context }) => {
+      // Can only build second link in rail era with beer available
+      if (context.era !== 'rail') return false
+      if (!context.selectedLink) return false
+      
+      const currentPlayer = getCurrentPlayer(context)
+      
+      // Check for available beer sources
+      // 1. Own brewery beer
+      const ownBreweryBeer = currentPlayer.industries.some(industry => 
+        industry.type === 'brewery' && !industry.flipped && industry.beerBarrelsOnTile > 0
+      )
+      
+      // 2. Merchant beer (allowed for network actions)
+      const merchantBeer = (context.merchants || []).some(merchant => merchant.hasBeer)
+      
+      // 3. Connected opponent brewery beer (simplified check for now)
+      // TODO: Add proper network pathfinding for opponent breweries
+      
+      return ownBreweryBeer || merchantBeer
+    },
+
+    hasSelectedSecondLink: ({ context }) => {
+      return context.selectedSecondLink !== null && context.isDoubleLinkSelected
+    },
+
+    canCompleteDoubleLink: ({ context }) => {
+      return (
+        context.selectedLink !== null &&
+        context.selectedSecondLink !== null &&
+        context.isDoubleLinkSelected &&
+        context.era === 'rail'
+      )
+    },
+
     isEraEnd: ({ context }) => {
       // Era ends when draw deck is exhausted AND all players' hands are empty
       const drawDeckEmpty = context.drawPile.length === 0
@@ -1406,6 +1623,9 @@ export const gameStore = setup({
     playerSpending: {},
     isFinalRound: false,
     selectedLink: null,
+    selectedSecondLink: null,
+    isDoubleLinkSelected: false,
+    merchants: [],
     selectedLocation: null,
     selectedIndustryTile: null,
   },
@@ -1684,9 +1904,39 @@ export const gameStore = setup({
                       actions: 'executeNetworkAction',
                       guard: 'hasSelectedLink',
                     },
+                    SELECT_DOUBLE_LINK_OPTION: {
+                      target: 'selectingSecondLink',
+                      actions: 'selectDoubleLinkOption',
+                      guard: 'canBuildSecondLink',
+                    },
                     CANCEL: {
                       target: 'selectingLink',
                       actions: 'clearSelections',
+                    },
+                  },
+                },
+                selectingSecondLink: {
+                  on: {
+                    SELECT_SECOND_LINK: {
+                      target: 'confirmingDoubleLink',
+                      actions: 'selectSecondLink',
+                    },
+                    CANCEL: {
+                      target: 'confirmingLink',
+                      actions: 'clearSecondLink',
+                    },
+                  },
+                },
+                confirmingDoubleLink: {
+                  on: {
+                    CONFIRM_DOUBLE_LINK: {
+                      target: '#brassGame.playing.actionComplete',
+                      actions: 'executeDoubleNetworkAction',
+                      guard: 'canCompleteDoubleLink',
+                    },
+                    CANCEL: {
+                      target: 'selectingSecondLink',
+                      actions: 'clearSecondLink',
                     },
                   },
                 },

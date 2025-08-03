@@ -17,7 +17,7 @@ import {
   getInitialPlayerIndustryTiles,
   getLowestLevelTile,
 } from '../data/industryTiles'
-import { type GameState, gameStore } from './gameStore'
+import { type GameState, type Merchant, gameStore } from './gameStore'
 
 const DEBUG = true
 
@@ -34,6 +34,16 @@ type TestPlayer = {
   victoryPoints: number
   income: number
   industryTilesOnMat: ReturnType<typeof getInitialPlayerIndustryTiles>
+  industryTilesOnBoard?: Array<{
+    location: CityId
+    type: IndustryType
+    level: number
+    flipped: boolean
+    tile: IndustryTile
+    coalCubesOnTile: number
+    ironCubesOnTile: number
+    beerBarrelsOnTile: number
+  }>
 }
 
 type GameActor = Actor<typeof gameStore>
@@ -1499,6 +1509,631 @@ describe('Game Store State Machine', () => {
         // Winner determination logic will be implemented
         // Rule: "The player with the most VPs is declared the winner"
         // Tiebreakers: "highest income, then most money remaining"
+      })
+    })
+
+    // ============================================================================
+    // Merchant System Tests
+    // ============================================================================
+    describe('Merchant System', () => {
+      test('merchants are placed based on player count', () => {
+        // 2 players
+        const { actor: actor2p } = setupTestGame(2)
+        let snapshot = actor2p.getSnapshot()
+        expect(snapshot.context.merchants).toHaveLength(2)
+        expect(snapshot.context.merchants.map(m => m.location)).toEqual(['warrington', 'gloucester'])
+
+        // 3 players  
+        const { actor: actor3p } = setupTestGame(3)
+        snapshot = actor3p.getSnapshot()
+        expect(snapshot.context.merchants).toHaveLength(3)
+        expect(snapshot.context.merchants.map(m => m.location)).toEqual(['warrington', 'gloucester', 'oxford'])
+
+        // 4 players
+        const { actor: actor4p } = setupTestGame(4)
+        snapshot = actor4p.getSnapshot()
+        expect(snapshot.context.merchants).toHaveLength(5)
+        expect(snapshot.context.merchants.map(m => m.location)).toEqual(['warrington', 'gloucester', 'oxford', 'nottingham', 'shrewsbury'])
+      })
+
+      test('merchants start with beer barrels', () => {
+        const { actor } = setupTestGame()
+        const snapshot = actor.getSnapshot()
+        
+        snapshot.context.merchants.forEach(merchant => {
+          expect(merchant.hasBeer).toBe(true)
+        })
+      })
+
+      test('merchant beer is reset during Canal Era end', () => {
+        const { actor } = setupTestGame()
+        
+        // Simulate some merchant beer consumption
+        const merchants = actor.getSnapshot().context.merchants.map(m => ({ ...m, hasBeer: false }))
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          money: 100, // Set high money to avoid income issues
+        })
+        
+        // Trigger canal era end
+        actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
+        
+        const snapshot = actor.getSnapshot()
+        expect(snapshot.context.era).toBe('rail')
+        snapshot.context.merchants.forEach(merchant => {
+          expect(merchant.hasBeer).toBe(true)
+        })
+      })
+    })
+
+    // ============================================================================
+    // Industry Auto-Flipping Tests
+    // ============================================================================
+    describe('Industry Auto-Flipping', () => {
+      test('coal mine flips when last coal cube removed', () => {
+        const { actor } = setupTestGame()
+        
+        // Set up a coal mine with 1 coal cube
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [{
+            location: 'birmingham',
+            type: 'coal',
+            level: 1,
+            flipped: false,
+            tile: { cost: 5, coalProduced: 2, incomeIncrease: 1, victoryPoints: 1 } as IndustryTile,
+            coalCubesOnTile: 1, // Last cube
+            ironCubesOnTile: 0,
+            beerBarrelsOnTile: 0,
+          }],
+        })
+
+        const initialIncome = actor.getSnapshot().context.players[0]!.income
+
+        // Trigger industry flipping check
+        actor.send({ type: 'CHECK_INDUSTRY_FLIPPING' })
+
+        const snapshot = actor.getSnapshot()
+        const player = snapshot.context.players[0]!
+        const coalMine = player.industries[0]!
+
+        // Coal mine should be flipped
+        expect(coalMine.flipped).toBe(true)
+        
+        // Player income should increase (capped at level 30)
+        expect(player.income).toBe(Math.min(initialIncome + 1, 30))
+      })
+
+      test('iron works flips when last iron cube removed', () => {
+        const { actor } = setupTestGame()
+        
+        // Set up an iron works with 1 iron cube
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [{
+            location: 'birmingham',
+            type: 'iron',
+            level: 1,
+            flipped: false,
+            tile: { cost: 5, ironProduced: 4, incomeIncrease: 3, victoryPoints: 3 } as IndustryTile,
+            coalCubesOnTile: 0,
+            ironCubesOnTile: 1, // Last cube
+            beerBarrelsOnTile: 0,
+          }],
+        })
+
+        // Trigger industry flipping check
+        actor.send({ type: 'CHECK_INDUSTRY_FLIPPING' })
+
+        const snapshot = actor.getSnapshot()
+        const player = snapshot.context.players[0]!
+        const ironWorks = player.industries[0]!
+
+        // Iron works should be flipped
+        expect(ironWorks.flipped).toBe(true)
+        expect(player.income).toBeGreaterThan(10) // Initial income + increase
+      })
+
+      test('brewery flips when last beer barrel removed', () => {
+        const { actor } = setupTestGame()
+        
+        // Set up a brewery with 1 beer barrel
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [{
+            location: 'birmingham',
+            type: 'brewery',
+            level: 1,
+            flipped: false,
+            tile: { cost: 5, beerProduced: 1, incomeIncrease: 2, victoryPoints: 2 } as IndustryTile,
+            coalCubesOnTile: 0,
+            ironCubesOnTile: 0,
+            beerBarrelsOnTile: 1, // Last barrel
+          }],
+        })
+
+        // Trigger industry flipping check
+        actor.send({ type: 'CHECK_INDUSTRY_FLIPPING' })
+
+        const snapshot = actor.getSnapshot()
+        const player = snapshot.context.players[0]!
+        const brewery = player.industries[0]!
+
+        // Brewery should be flipped
+        expect(brewery.flipped).toBe(true)
+        expect(player.income).toBeGreaterThan(10) // Initial income + increase
+      })
+
+      test('income is capped at level 30', () => {
+        const { actor } = setupTestGame()
+        
+        // Set player income to 29 (near cap)
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          income: 29,
+          industries: [{
+            location: 'birmingham',
+            type: 'coal',
+            level: 1,
+            flipped: false,
+            tile: { cost: 5, coalProduced: 2, incomeIncrease: 5, victoryPoints: 1 } as IndustryTile,
+            coalCubesOnTile: 0, // Will trigger flip
+            ironCubesOnTile: 0,
+            beerBarrelsOnTile: 0,
+          }],
+        })
+
+        // Trigger industry flipping check
+        actor.send({ type: 'CHECK_INDUSTRY_FLIPPING' })
+
+        const snapshot = actor.getSnapshot()
+        const player = snapshot.context.players[0]!
+
+        // Income should be capped at 30
+        expect(player.income).toBe(30)
+      })
+
+      test('no flipping occurs for already flipped tiles', () => {
+        const { actor } = setupTestGame()
+        
+        // Set up already flipped coal mine
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [{
+            location: 'birmingham',
+            type: 'coal',
+            level: 1,
+            flipped: true, // Already flipped
+            tile: { cost: 5, coalProduced: 2, incomeIncrease: 1, victoryPoints: 1 } as IndustryTile,
+            coalCubesOnTile: 0,
+            ironCubesOnTile: 0,
+            beerBarrelsOnTile: 0,
+          }],
+        })
+
+        const initialIncome = actor.getSnapshot().context.players[0]!.income
+
+        // Trigger industry flipping check
+        actor.send({ type: 'CHECK_INDUSTRY_FLIPPING' })
+
+        const snapshot = actor.getSnapshot()
+        const player = snapshot.context.players[0]!
+
+        // Income should not change
+        expect(player.income).toBe(initialIncome)
+      })
+
+      test('auto-flipping triggers after action completion', () => {
+        const { actor } = setupTestGame()
+        let snapshot = actor.getSnapshot()
+
+        // Set up a player with a nearly depleted coal mine
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [{
+            location: 'birmingham',
+            type: 'coal',
+            level: 1,
+            flipped: false,
+            tile: { cost: 5, coalProduced: 2, incomeIncrease: 1, victoryPoints: 1 } as IndustryTile,
+            coalCubesOnTile: 1, // Will be depleted
+            ironCubesOnTile: 0,
+            beerBarrelsOnTile: 0,
+          }],
+        })
+
+        // Set up a hand to perform an action
+        const testCard: Card = {
+          id: 'test_location_1',
+          type: 'location',
+          location: 'birmingham',
+        }
+        
+        actor.send({
+          type: 'TEST_SET_PLAYER_HAND',
+          playerId: 0,
+          hand: [testCard],
+        })
+
+        // Take a loan action (which will complete and trigger auto-flipping)
+        actor.send({ type: 'TAKE_LOAN' })
+        actor.send({ type: 'SELECT_CARD', cardId: testCard.id })
+        actor.send({ type: 'CONFIRM' })
+
+        // After action completion, auto-flipping should have triggered
+        snapshot = actor.getSnapshot()
+        const player = snapshot.context.players[0]!
+        
+        // Check that the system is ready for another action (indicating action completed)
+        expect(snapshot.value).toEqual({ playing: { action: 'selectingAction' } })
+      })
+    })
+
+    // ============================================================================
+    // Rail Era Double Link Building Tests
+    // ============================================================================
+    describe('Rail Era Double Link Building', () => {
+      test('can build single rail link for £5 + 1 coal', () => {
+        const { actor } = setupTestGame()
+        
+        // Transition to rail era
+        actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
+        
+        let snapshot = actor.getSnapshot()
+        expect(snapshot.context.era).toBe('rail')
+
+        const initialMoney = snapshot.context.players[0]!.money
+        const initialCoalMarket = [...snapshot.context.coalMarket]
+
+        // Set up player hand
+        const testCard: Card = {
+          id: 'test_location_1',
+          type: 'location',
+          location: 'birmingham',
+        }
+        
+        actor.send({
+          type: 'TEST_SET_PLAYER_HAND',
+          playerId: 0,
+          hand: [testCard],
+        })
+
+        // Perform network action for single rail link
+        actor.send({ type: 'NETWORK' })
+        actor.send({ type: 'SELECT_CARD', cardId: testCard.id })
+        actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'worcester' })
+        actor.send({ type: 'CONFIRM' })
+
+        snapshot = actor.getSnapshot()
+        const player = snapshot.context.players[0]!
+
+        // Should have built 1 rail link
+        expect(player.links).toHaveLength(1)
+        expect(player.links[0]).toEqual({
+          from: 'birmingham',
+          to: 'worcester',
+          type: 'rail'
+        })
+
+        // Should cost £5 + coal cost
+        expect(player.money).toBeLessThan(initialMoney)
+      })
+
+      test('can build double rail links for £15 + 1 beer + 2 coal', () => {
+        const { actor } = setupTestGame()
+        
+        // Transition to rail era
+        actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
+        
+        // Set up player with brewery for beer
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [{
+            location: 'birmingham',
+            type: 'brewery',
+            level: 1,
+            flipped: false,
+            tile: { cost: 5, beerProduced: 1, incomeIncrease: 2, victoryPoints: 2 } as IndustryTile,
+            coalCubesOnTile: 0,
+            ironCubesOnTile: 0,
+            beerBarrelsOnTile: 1, // Has beer
+          }],
+        })
+
+        let snapshot = actor.getSnapshot()
+        const initialMoney = snapshot.context.players[0]!.money
+
+        // Set up player hand
+        const testCard: Card = {
+          id: 'test_location_1',
+          type: 'location',
+          location: 'birmingham',
+        }
+        
+        actor.send({
+          type: 'TEST_SET_PLAYER_HAND',
+          playerId: 0,
+          hand: [testCard],
+        })
+
+        // Perform network action and choose double link building
+        actor.send({ type: 'NETWORK' })
+        actor.send({ type: 'SELECT_CARD', cardId: testCard.id })
+        actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'worcester' })
+        actor.send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })
+        actor.send({ type: 'SELECT_SECOND_LINK', from: 'worcester', to: 'kidderminster' })
+        actor.send({ type: 'CONFIRM' })
+
+        snapshot = actor.getSnapshot()
+        const player = snapshot.context.players[0]!
+
+        // Should have built 2 rail links
+        expect(player.links).toHaveLength(2)
+        expect(player.links).toEqual([
+          { from: 'birmingham', to: 'worcester', type: 'rail' },
+          { from: 'worcester', to: 'kidderminster', type: 'rail' }
+        ])
+
+        // Should cost £15 + coal costs for 2 links
+        expect(player.money).toBeLessThan(initialMoney)
+      })
+
+      test('cannot build double links without beer', () => {
+        const { actor } = setupTestGame()
+        
+        // Transition to rail era
+        actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
+        
+        let snapshot = actor.getSnapshot()
+        expect(snapshot.context.era).toBe('rail')
+
+        // Set up player hand
+        const testCard: Card = {
+          id: 'test_location_1',
+          type: 'location',
+          location: 'birmingham',
+        }
+        
+        actor.send({
+          type: 'TEST_SET_PLAYER_HAND',
+          playerId: 0,
+          hand: [testCard],
+        })
+
+        // Perform network action
+        actor.send({ type: 'NETWORK' })
+        actor.send({ type: 'SELECT_CARD', cardId: testCard.id })
+        actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'worcester' })
+
+        snapshot = actor.getSnapshot()
+        
+        // Should not be able to choose double link build without beer
+        expect(snapshot.can({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })).toBe(false)
+      })
+
+      test('double link building consumes merchant beer', () => {
+        const { actor } = setupTestGame()
+        
+        // Transition to rail era (merchants get beer reset)
+        actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
+        
+        let snapshot = actor.getSnapshot()
+        expect(snapshot.context.merchants.some(m => m.hasBeer)).toBe(true)
+
+        // Set up player hand
+        const testCard: Card = {
+          id: 'test_location_1',
+          type: 'location',
+          location: 'birmingham',
+        }
+        
+        actor.send({
+          type: 'TEST_SET_PLAYER_HAND',
+          playerId: 0,
+          hand: [testCard],
+        })
+
+        // Should be able to build double links with merchant beer
+        actor.send({ type: 'NETWORK' })
+        actor.send({ type: 'SELECT_CARD', cardId: testCard.id })
+        actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'worcester' })
+
+        snapshot = actor.getSnapshot()
+        expect(snapshot.can({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })).toBe(true)
+      })
+
+      test('cannot build double links in canal era', () => {
+        const { actor } = setupTestGame()
+        
+        let snapshot = actor.getSnapshot()
+        expect(snapshot.context.era).toBe('canal')
+
+        // Set up player with brewery
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          industries: [{
+            location: 'birmingham',
+            type: 'brewery',
+            level: 1,
+            flipped: false,
+            tile: { cost: 5, beerProduced: 1, incomeIncrease: 2, victoryPoints: 2 } as IndustryTile,
+            coalCubesOnTile: 0,
+            ironCubesOnTile: 0,
+            beerBarrelsOnTile: 1,
+          }],
+        })
+
+        // Set up player hand
+        const testCard: Card = {
+          id: 'test_location_1',
+          type: 'location',
+          location: 'birmingham',
+        }
+        
+        actor.send({
+          type: 'TEST_SET_PLAYER_HAND',
+          playerId: 0,
+          hand: [testCard],
+        })
+
+        // Perform network action
+        actor.send({ type: 'NETWORK' })
+        actor.send({ type: 'SELECT_CARD', cardId: testCard.id })
+        actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'worcester' })
+
+        snapshot = actor.getSnapshot()
+        
+        // Should not be able to choose double link build in canal era
+        expect(snapshot.can({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })).toBe(false)
+      })
+    })
+
+    // ============================================================================
+    // Network Connection Validation Tests
+    // ============================================================================
+    describe('Network Connection Validation', () => {
+      test('industry cards require network connection for building', () => {
+        const { actor } = setupTestGame()
+        
+        // Build initial industry to establish network
+        const { industryCard } = buildIndustryAction(actor, 'coal', 'birmingham')
+        
+        let snapshot = actor.getSnapshot()
+        const player = snapshot.context.players[0]!
+        
+        // Player should have industry at Birmingham
+        expect(player.industries).toHaveLength(1)
+        expect(player.industries[0]!.location).toBe('birmingham')
+
+        // Set up industry card for testing
+        const testIndustryCard: IndustryCard = {
+          id: 'test_industry_1',
+          type: 'industry',
+          industries: ['cotton'],
+        }
+        
+        actor.send({
+          type: 'TEST_SET_PLAYER_HAND',
+          playerId: 0,
+          hand: [testIndustryCard],
+        })
+
+        // Try to build at connected location (Birmingham - should work)
+        actor.send({ type: 'BUILD' })
+        actor.send({ type: 'SELECT_CARD', cardId: testIndustryCard.id })
+        
+        snapshot = actor.getSnapshot()
+        expect(snapshot.can({ type: 'SELECT_LOCATION', cityId: 'birmingham' })).toBe(true)
+        
+        // Try to build at unconnected location (should fail)
+        expect(snapshot.can({ type: 'SELECT_LOCATION', cityId: 'stoke' })).toBe(false)
+      })
+
+      test('location cards can build anywhere regardless of network', () => {
+        const { actor } = setupTestGame()
+        
+        // Set up location card
+        const testLocationCard: LocationCard = {
+          id: 'test_location_1',
+          type: 'location',
+          location: 'stoke',
+        }
+        
+        actor.send({
+          type: 'TEST_SET_PLAYER_HAND',
+          playerId: 0,
+          hand: [testLocationCard],
+        })
+
+        // Should be able to build at the specified location even without network
+        actor.send({ type: 'BUILD' })
+        actor.send({ type: 'SELECT_CARD', cardId: testLocationCard.id })
+        
+        const snapshot = actor.getSnapshot()
+        expect(snapshot.can({ type: 'SELECT_LOCATION', cityId: 'stoke' })).toBe(true)
+      })
+
+      test('players with no tiles can build anywhere initially', () => {
+        const { actor } = setupTestGame()
+        
+        // Set up industry card
+        const testIndustryCard: IndustryCard = {
+          id: 'test_industry_1',
+          type: 'industry',
+          industries: ['coal'],
+        }
+        
+        actor.send({
+          type: 'TEST_SET_PLAYER_HAND',
+          playerId: 0,
+          hand: [testIndustryCard],
+        })
+
+        // Player has no tiles initially, should be able to build anywhere
+        actor.send({ type: 'BUILD' })
+        actor.send({ type: 'SELECT_CARD', cardId: testIndustryCard.id })
+        
+        const snapshot = actor.getSnapshot()
+        expect(snapshot.can({ type: 'SELECT_LOCATION', cityId: 'birmingham' })).toBe(true)
+        expect(snapshot.can({ type: 'SELECT_LOCATION', cityId: 'stoke' })).toBe(true)
+      })
+
+      test('network includes industry locations and adjacent link locations', () => {
+        const { actor } = setupTestGame()
+        
+        // Build industry at Birmingham
+        buildIndustryAction(actor, 'coal', 'birmingham')
+        
+        // Build link from Birmingham to Worcester
+        const testCard: Card = {
+          id: 'test_location_1',
+          type: 'location',
+          location: 'birmingham',
+        }
+        
+        actor.send({
+          type: 'TEST_SET_PLAYER_HAND',
+          playerId: 0,
+          hand: [testCard],
+        })
+
+        actor.send({ type: 'NETWORK' })
+        actor.send({ type: 'SELECT_CARD', cardId: testCard.id })
+        actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'worcester' })
+        actor.send({ type: 'CONFIRM' })
+
+        // Now Worcester is part of network through the link
+        const testIndustryCard: IndustryCard = {
+          id: 'test_industry_2',
+          type: 'industry',
+          industries: ['cotton'],
+        }
+        
+        actor.send({
+          type: 'TEST_SET_PLAYER_HAND',
+          playerId: 0,
+          hand: [testIndustryCard],
+        })
+
+        actor.send({ type: 'BUILD' })
+        actor.send({ type: 'SELECT_CARD', cardId: testIndustryCard.id })
+        
+        const snapshot = actor.getSnapshot()
+        
+        // Should be able to build at Worcester (connected via link)
+        expect(snapshot.can({ type: 'SELECT_LOCATION', cityId: 'worcester' })).toBe(true)
+        
+        // Should NOT be able to build at unconnected location
+        expect(snapshot.can({ type: 'SELECT_LOCATION', cityId: 'stoke' })).toBe(false)
       })
     })
   })

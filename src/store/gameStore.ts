@@ -40,6 +40,59 @@ import {
   updatePlayerInList,
 } from './shared/gameUtils'
 
+// Create merchants based on player count per rules 374-376
+const createMerchantsForPlayerCount = (playerCount: number): Merchant[] => {
+  const allMerchants: Merchant[] = [
+    {
+      location: 'warrington',
+      industryIcons: ['cotton', 'manufacturer', 'pottery'],
+      bonusType: 'money',
+      bonusValue: 5,
+      hasBeer: true,
+    },
+    {
+      location: 'gloucester',
+      industryIcons: ['cotton', 'manufacturer', 'pottery'],
+      bonusType: 'develop',
+      bonusValue: 1,
+      hasBeer: true,
+    },
+    {
+      location: 'oxford',
+      industryIcons: ['cotton', 'manufacturer', 'pottery'],
+      bonusType: 'income',
+      bonusValue: 2,
+      hasBeer: true,
+    },
+    {
+      location: 'nottingham',
+      industryIcons: ['cotton', 'manufacturer', 'pottery'],
+      bonusType: 'victoryPoints',
+      bonusValue: 2,
+      hasBeer: true,
+    },
+    {
+      location: 'shrewsbury',
+      industryIcons: ['cotton', 'manufacturer', 'pottery'],
+      bonusType: 'victoryPoints',
+      bonusValue: 2,
+      hasBeer: true,
+    },
+  ]
+
+  // Place merchants based on player count
+  switch (playerCount) {
+    case 2:
+      return [allMerchants[0]!, allMerchants[1]!] // Warrington + Gloucester
+    case 3:
+      return [allMerchants[0]!, allMerchants[1]!, allMerchants[2]!] // + Oxford
+    case 4:
+      return allMerchants // All merchants
+    default:
+      throw new Error(`Invalid player count: ${playerCount}`)
+  }
+}
+
 export type LogEntryType = 'system' | 'action' | 'info' | 'error'
 
 export interface LogEntry {
@@ -83,6 +136,14 @@ export interface Player {
   }[]
 }
 
+export interface Merchant {
+  location: CityId
+  industryIcons: IndustryType[]
+  bonusType: 'develop' | 'income' | 'victoryPoints' | 'money'
+  bonusValue: number
+  hasBeer: boolean
+}
+
 export interface GameState {
   players: Player[]
   currentPlayerIndex: number
@@ -97,6 +158,7 @@ export interface GameState {
   // Resource markets - explicit structure with max capacity per price
   coalMarket: Array<{ price: number; cubes: number; maxCubes: number }>
   ironMarket: Array<{ price: number; cubes: number; maxCubes: number }>
+  merchants: Merchant[]
   logs: LogEntry[]
   // Card-related state
   drawPile: Card[]
@@ -111,6 +173,10 @@ export interface GameState {
   isFinalRound: boolean
   // Network-related state
   selectedLink: {
+    from: CityId
+    to: CityId
+  } | null
+  selectedSecondLink: {
     from: CityId
     to: CityId
   } | null
@@ -170,6 +236,20 @@ type GameEvent =
     }
   | {
       type: 'BUILD_SECOND_LINK'
+    }
+  | {
+      type: 'SELECT_SECOND_LINK'
+      from: CityId
+      to: CityId
+    }
+  | {
+      type: 'CHOOSE_DOUBLE_LINK_BUILD'
+    }
+  | {
+      type: 'EXECUTE_DOUBLE_NETWORK_ACTION'
+    }
+  | {
+      type: 'CHECK_INDUSTRY_FLIPPING'
     }
   | {
       type: 'TEST_SET_PLAYER_HAND'
@@ -279,6 +359,7 @@ export const gameStore = setup({
           { price: 5, cubes: 2, maxCubes: 2 },
           { price: 6, cubes: 0, maxCubes: Infinity }, // Infinite capacity fallback
         ],
+        merchants: createMerchantsForPlayerCount(playerCount),
         logs: [createLogEntry('Game started', 'system')],
         drawPile: shuffledCards.slice(currentIndex),
         discardPile: [],
@@ -290,6 +371,7 @@ export const gameStore = setup({
         playerSpending: {},
         isFinalRound: false,
         selectedLink: null,
+        selectedSecondLink: null,
         selectedLocation: null,
         selectedIndustryTile: null,
       }
@@ -630,27 +712,75 @@ export const gameStore = setup({
         throw new Error('No card selected for sell action')
       }
 
-      // For now, simulate selling 1 cotton mill/manufacturer/pottery tile
-      // In a full implementation, this would:
-      // 1. Check player has unflipped Cotton Mill, Manufacturer, or Pottery tiles
-      // 2. Verify the tile is connected to a Merchant tile with matching industry icon
-      // 3. Consume required beer (usually 1) from breweries or merchant beer
-      // 4. Flip the industry tile and advance player income
-      // 5. Potentially collect merchant beer bonus if using merchant beer
-
-      const tilesFlipped = 1 // Simplified - would be dynamic based on player choice
-      const beerRequired = tilesFlipped // Most tiles require 1 beer to sell
-
-      // Use enhanced beer consumption logic
-      // For now, assume we're selling at a location where the player has other industries
-      const sellLocation = currentPlayer.industries[0]?.location || 'birmingham' // Fallback location
-      const beerResult = consumeBeerFromSources(
-        context,
-        sellLocation,
-        beerRequired,
+      // Find player's Cotton Mill, Manufacturer, or Pottery tiles that can be sold
+      const sellableIndustries = currentPlayer.industries.filter(
+        industry => 
+          !industry.flipped && 
+          (industry.type === 'cotton' || industry.type === 'manufacturer' || industry.type === 'pottery')
       )
-      const updatedPlayersFromBeer = beerResult.updatedPlayers
-      const updatedResources = beerResult.updatedResources
+
+      if (sellableIndustries.length === 0) {
+        throw new Error('No Cotton Mill, Manufacturer, or Pottery tiles available to sell')
+      }
+
+      // For now, sell the first available tile (in full implementation, player would choose)
+      const industryToSell = sellableIndustries[0]!
+
+      // Check if industry is connected to a merchant with matching industry icon
+      const connectedMerchant = context.merchants.find(
+        merchant => 
+          merchant.location === industryToSell.location &&
+          merchant.industryIcons.includes(industryToSell.type)
+      )
+
+      if (!connectedMerchant) {
+        throw new Error(`Industry at ${industryToSell.location} is not connected to a merchant with ${industryToSell.type} icon`)
+      }
+
+      const beerRequired = industryToSell.tile.beerRequired || 1
+
+      // Try to use merchant beer first if available
+      let updatedMerchants = [...context.merchants]
+      let merchantBeerUsed = false
+      let bonusCollected = ''
+
+      if (connectedMerchant.hasBeer && beerRequired > 0) {
+        // Use merchant beer and collect bonus
+        const merchantIndex = updatedMerchants.findIndex(m => m.location === connectedMerchant.location)
+        updatedMerchants[merchantIndex] = {
+          ...connectedMerchant,
+          hasBeer: false,
+        }
+        merchantBeerUsed = true
+        
+        // Apply merchant bonus
+        switch (connectedMerchant.bonusType) {
+          case 'money':
+            bonusCollected = `+£${connectedMerchant.bonusValue} money bonus`
+            break
+          case 'income':
+            bonusCollected = `+${connectedMerchant.bonusValue} income bonus`
+            break
+          case 'victoryPoints':
+            bonusCollected = `+${connectedMerchant.bonusValue} VP bonus`
+            break
+          case 'develop':
+            bonusCollected = `develop bonus (remove ${connectedMerchant.bonusValue} tile)`
+            break
+        }
+      }
+
+      // If merchant beer wasn't used or not enough, consume from other sources
+      const remainingBeerNeeded = merchantBeerUsed ? Math.max(0, beerRequired - 1) : beerRequired
+      let beerResult = { updatedPlayers: context.players, updatedResources: context.resources, logDetails: [] }
+      
+      if (remainingBeerNeeded > 0) {
+        beerResult = consumeBeerFromSources(
+          context,
+          industryToSell.location,
+          remainingBeerNeeded,
+        )
+      }
 
       const updatedHand = removeCardFromHand(
         currentPlayer,
@@ -658,28 +788,60 @@ export const gameStore = setup({
       )
 
       // Get the current player's updated state after beer consumption
-      const currentPlayerAfterBeer =
-        updatedPlayersFromBeer[context.currentPlayerIndex]!
-      const updatedPlayer = {
-        ...currentPlayerAfterBeer,
+      const currentPlayerAfterBeer = beerResult.updatedPlayers[context.currentPlayerIndex]!
+      
+      // Apply merchant bonus to player
+      let playerAfterBonus = { ...currentPlayerAfterBeer }
+      if (merchantBeerUsed) {
+        switch (connectedMerchant.bonusType) {
+          case 'money':
+            playerAfterBonus.money += connectedMerchant.bonusValue
+            break
+          case 'income':
+            playerAfterBonus.income = Math.min(
+              playerAfterBonus.income + connectedMerchant.bonusValue,
+              GAME_CONSTANTS.MAX_INCOME_LEVEL
+            )
+            break
+          case 'victoryPoints':
+            playerAfterBonus.victoryPoints += connectedMerchant.bonusValue
+            break
+          // Develop bonus would be handled separately
+        }
+      }
+
+      // Flip the industry tile and advance income
+      const updatedIndustries = currentPlayerAfterBeer.industries.map(industry => {
+        if (industry.location === industryToSell.location && industry.type === industryToSell.type) {
+          return { ...industry, flipped: true }
+        }
+        return industry
+      })
+
+      const incomeIncrease = industryToSell.tile.incomeIncrease || 0
+      const finalPlayer = {
+        ...playerAfterBonus,
         hand: updatedHand,
+        industries: updatedIndustries,
+        income: Math.min(playerAfterBonus.income + incomeIncrease, GAME_CONSTANTS.MAX_INCOME_LEVEL),
       }
 
       debugLog('executeSellAction', context)
       return {
         players: updatePlayerInList(
-          updatedPlayersFromBeer,
+          beerResult.updatedPlayers,
           context.currentPlayerIndex,
-          updatedPlayer,
+          finalPlayer,
         ),
+        merchants: updatedMerchants,
         discardPile: [...context.discardPile, context.selectedCard],
-        resources: updatedResources,
+        resources: beerResult.updatedResources,
         selectedCard: null,
         actionsRemaining: context.actionsRemaining - 1,
         logs: [
           ...context.logs,
           createLogEntry(
-            `${currentPlayer.name} sold (flipped ${tilesFlipped} tile${tilesFlipped > 1 ? 's' : ''}, ${beerResult.logDetails.join(', ')}) using ${getCardDescription(context.selectedCard)}`,
+            `${currentPlayer.name} sold ${industryToSell.type} at ${industryToSell.location} (${merchantBeerUsed ? 'merchant beer + ' + bonusCollected : beerResult.logDetails.join(', ')}, income +${incomeIncrease}) using ${getCardDescription(context.selectedCard)}`,
             'action',
           ),
         ],
@@ -1039,6 +1201,178 @@ export const gameStore = setup({
     clearIndustryTile: assign({
       selectedIndustryTile: null,
     }),
+
+    selectSecondLink: assign(({ context, event }) => {
+      if (event.type !== 'SELECT_SECOND_LINK') return {}
+      debugLog('selectSecondLink', context, event)
+      return {
+        selectedSecondLink: {
+          from: event.from,
+          to: event.to,
+        },
+      }
+    }),
+
+    clearSecondLink: assign({
+      selectedSecondLink: null,
+    }),
+
+    checkAndFlipIndustryTiles: assign(({ context }) => {
+      let updatedPlayers = [...context.players]
+      const logs = [...context.logs]
+      let hasFlips = false
+
+      // Check all players' industries for resource depletion
+      for (let playerIndex = 0; playerIndex < updatedPlayers.length; playerIndex++) {
+        const player = updatedPlayers[playerIndex]!
+        const updatedIndustries = [...player.industries]
+
+        for (let industryIndex = 0; industryIndex < updatedIndustries.length; industryIndex++) {
+          const industry = updatedIndustries[industryIndex]!
+          
+          // Skip already flipped tiles
+          if (industry.flipped) continue
+
+          // Check if industry should flip based on resource depletion
+          let shouldFlip = false
+          if (industry.type === 'coal' && industry.coalCubesOnTile === 0) {
+            shouldFlip = true
+          } else if (industry.type === 'iron' && industry.ironCubesOnTile === 0) {
+            shouldFlip = true
+          } else if (industry.type === 'brewery' && industry.beerBarrelsOnTile === 0) {
+            shouldFlip = true
+          }
+
+          if (shouldFlip) {
+            // Flip the industry tile
+            updatedIndustries[industryIndex] = {
+              ...industry,
+              flipped: true,
+            }
+
+            // Advance player income (capped at level 30)
+            const incomeIncrease = industry.tile.incomeIncrease || 0
+            const currentIncome = player.income
+            const newIncome = Math.min(currentIncome + incomeIncrease, GAME_CONSTANTS.MAX_INCOME_LEVEL)
+            
+            updatedPlayers[playerIndex] = {
+              ...player,
+              industries: updatedIndustries,
+              income: newIncome,
+            }
+
+            hasFlips = true
+            logs.push(
+              createLogEntry(
+                `${player.name}'s ${industry.type} at ${industry.location} flipped (income +${incomeIncrease}, now ${newIncome})`,
+                'info'
+              )
+            )
+          }
+        }
+      }
+
+      return hasFlips ? { players: updatedPlayers, logs } : {}
+    }),
+
+    executeDoubleNetworkAction: assign(({ context }) => {
+      const currentPlayer = getCurrentPlayer(context)
+      if (!context.selectedCard || !context.selectedLink || !context.selectedSecondLink) {
+        throw new Error('Card or links not selected for double network action')
+      }
+
+      const updatedHand = removeCardFromHand(
+        currentPlayer,
+        context.selectedCard.id,
+      )
+
+      // Cost for double rail links: £15 + 1 beer + 2 coal
+      const totalCost = GAME_CONSTANTS.RAIL_DOUBLE_LINK_COST
+
+      const firstLink = {
+        from: context.selectedLink.from,
+        to: context.selectedLink.to,
+        type: 'rail' as const,
+      }
+
+      const secondLink = {
+        from: context.selectedSecondLink.from,
+        to: context.selectedSecondLink.to,
+        type: 'rail' as const,
+      }
+
+      // Consume 1 beer from available sources
+      const beerResult = consumeBeerFromSources(
+        context,
+        context.selectedSecondLink.to, // Beer consumption location for second link
+        1
+      )
+
+      // Consume 2 coal (1 per link) from cheapest market prices
+      let coalCost = 0
+      const updatedCoalMarket = context.coalMarket.map((level) => ({
+        ...level,
+      }))
+      let coalFromMarket = 0
+
+      // Find cheapest available coal and consume 2
+      for (const level of updatedCoalMarket) {
+        while (level.cubes > 0 && coalFromMarket < 2) {
+          level.cubes-- // Remove 1 cube from this price level
+          coalCost += level.price
+          coalFromMarket++
+        }
+        if (coalFromMarket >= 2) break
+      }
+
+      // If market doesn't have enough, use fallback price
+      while (coalFromMarket < 2) {
+        coalCost += GAME_CONSTANTS.COAL_FALLBACK_PRICE
+        coalFromMarket++
+      }
+
+      const fullCost = totalCost + coalCost
+      const updatedPlayer = {
+        ...currentPlayer,
+        hand: updatedHand,
+        money: currentPlayer.money - fullCost,
+        links: [...currentPlayer.links, firstLink, secondLink],
+      }
+
+      // Track money spent
+      const currentSpending = context.playerSpending[currentPlayer.id] || 0
+
+      debugLog('executeDoubleNetworkAction', context)
+      return {
+        players: updatePlayerInList(
+          beerResult.updatedPlayers,
+          context.currentPlayerIndex,
+          updatedPlayer,
+        ),
+        discardPile: [...context.discardPile, context.selectedCard],
+        coalMarket: updatedCoalMarket,
+        resources: beerResult.updatedResources,
+        selectedCard: null,
+        selectedLink: null,
+        selectedSecondLink: null,
+        selectedLocation: null,
+        selectedIndustryTile: null,
+        actionsRemaining: context.actionsRemaining - 1,
+        spentMoney: context.spentMoney + fullCost,
+        playerSpending: {
+          ...context.playerSpending,
+          [currentPlayer.id]: currentSpending + fullCost,
+        },
+        logs: [
+          ...beerResult.logDetails.map(detail => createLogEntry(detail, 'info')),
+          ...context.logs,
+          createLogEntry(
+            `${currentPlayer.name} built 2 rail links (${context.selectedLink.from}-${context.selectedLink.to}, ${context.selectedSecondLink.from}-${context.selectedSecondLink.to}) for £${fullCost} + 1 beer + 2 coal`,
+            'action',
+          ),
+        ],
+      }
+    }),
     setPlayerHand: assign(({ context, event }) => {
       if (event.type !== 'TEST_SET_PLAYER_HAND') return {}
 
@@ -1180,7 +1514,11 @@ export const gameStore = setup({
         }
       }
 
-      // Reset merchant beer (simplified - would place 1 beer on each empty space beside merchants)
+      // Reset merchant beer - place 1 beer on each merchant space
+      const updatedMerchants = context.merchants.map(merchant => ({
+        ...merchant,
+        hasBeer: true,
+      }))
       logMessages.push('Merchant beer reset for Rail Era')
 
       // Shuffle all discard piles together to create new draw deck
@@ -1212,6 +1550,7 @@ export const gameStore = setup({
 
       return {
         players: updatedPlayers,
+        merchants: updatedMerchants,
         era: 'rail' as const,
         round: 1,
         actionsRemaining: 2, // Rail Era starts with 2 actions per turn
@@ -1337,7 +1676,33 @@ export const gameStore = setup({
         return locationCard.location === event.cityId
       }
 
-      // Industry and wild industry cards can select any location (for now)
+      // Industry and wild industry cards require network connection
+      if (context.selectedCard.type === 'industry' || context.selectedCard.type === 'wild_industry') {
+        const currentPlayer = getCurrentPlayer(context)
+        
+        // Exception: If player has no industries or links on board, can build anywhere
+        const hasNoTilesOnBoard =
+          currentPlayer.industries.length === 0 &&
+          currentPlayer.links.length === 0
+        if (hasNoTilesOnBoard) return true
+
+        // Check if location is part of player's network
+        const playerLocations = new Set<CityId>()
+
+        // Add locations with player's industries
+        currentPlayer.industries.forEach((industry) => {
+          playerLocations.add(industry.location)
+        })
+
+        // Add locations adjacent to player's links
+        currentPlayer.links.forEach((link) => {
+          playerLocations.add(link.from)
+          playerLocations.add(link.to)
+        })
+
+        return playerLocations.has(event.cityId)
+      }
+
       return true
     },
     canSelectIndustryType: ({ context, event }) => {
@@ -1379,6 +1744,38 @@ export const gameStore = setup({
         context.players.every((player) => player.hand.length === 0)
       )
     },
+
+    canBuildSecondLink: ({ context }) => {
+      // Can only build second link in rail era with beer available
+      if (context.era !== 'rail') return false
+      if (!context.selectedLink) return false
+
+      const currentPlayer = getCurrentPlayer(context)
+      
+      // Check if player has access to beer (own breweries or merchant beer)
+      const hasOwnBeer = currentPlayer.industries.some(
+        industry => industry.type === 'brewery' && !industry.flipped && industry.beerBarrelsOnTile > 0
+      )
+      
+      // Check for merchant beer or connected opponent breweries
+      const hasMerchantBeer = context.merchants.some(merchant => merchant.hasBeer)
+      
+      // TODO: Check for connected opponent breweries (simplified for now)
+      const hasConnectedOpponentBeer = false
+
+      return hasOwnBeer || hasMerchantBeer || hasConnectedOpponentBeer
+    },
+
+    hasSelectedSecondLink: ({ context }) => context.selectedSecondLink !== null,
+
+    canCompleteDoubleLink: ({ context }) => {
+      return (
+        context.selectedCard !== null &&
+        context.selectedLink !== null &&
+        context.selectedSecondLink !== null &&
+        context.era === 'rail'
+      )
+    },
   },
 }).createMachine({
   id: 'brassGame',
@@ -1395,6 +1792,7 @@ export const gameStore = setup({
     },
     coalMarket: [],
     ironMarket: [],
+    merchants: [],
     logs: [],
     drawPile: [],
     discardPile: [],
@@ -1406,6 +1804,7 @@ export const gameStore = setup({
     playerSpending: {},
     isFinalRound: false,
     selectedLink: null,
+    selectedSecondLink: null,
     selectedLocation: null,
     selectedIndustryTile: null,
   },
@@ -1446,6 +1845,9 @@ export const gameStore = setup({
         },
         TRIGGER_RAIL_ERA_END: {
           actions: 'triggerRailEraEnd',
+        },
+        CHECK_INDUSTRY_FLIPPING: {
+          actions: 'checkAndFlipIndustryTiles',
         },
       },
       states: {
@@ -1684,9 +2086,38 @@ export const gameStore = setup({
                       actions: 'executeNetworkAction',
                       guard: 'hasSelectedLink',
                     },
+                    CHOOSE_DOUBLE_LINK_BUILD: {
+                      target: 'selectingSecondLink',
+                      guard: 'canBuildSecondLink',
+                    },
                     CANCEL: {
                       target: 'selectingLink',
                       actions: 'clearSelections',
+                    },
+                  },
+                },
+                selectingSecondLink: {
+                  on: {
+                    SELECT_SECOND_LINK: {
+                      target: 'confirmingDoubleLink',
+                      actions: 'selectSecondLink',
+                    },
+                    CANCEL: {
+                      target: 'confirmingLink',
+                      actions: 'clearSecondLink',
+                    },
+                  },
+                },
+                confirmingDoubleLink: {
+                  on: {
+                    CONFIRM: {
+                      target: '#brassGame.playing.actionComplete',
+                      actions: 'executeDoubleNetworkAction',
+                      guard: 'canCompleteDoubleLink',
+                    },
+                    CANCEL: {
+                      target: 'selectingSecondLink',
+                      actions: 'clearSecondLink',
                     },
                   },
                 },
@@ -1701,7 +2132,7 @@ export const gameStore = setup({
           },
         },
         actionComplete: {
-          entry: 'refillPlayerHand',
+          entry: ['refillPlayerHand', 'checkAndFlipIndustryTiles'],
           always: [
             {
               guard: 'hasActionsRemaining',

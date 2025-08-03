@@ -691,17 +691,23 @@ describe('Game Store State Machine', () => {
   describe('Sell Actions', () => {
     test('beer consumption for selling', () => {
       const { actor } = setupTestGame()
+      
+      // First build a cotton mill (sellable industry) so we have something to sell
+      buildIndustryAction(actor, 'cotton', 'birmingham')
+      
       let snapshot = actor.getSnapshot()
-      const initialPlayer = snapshot.context.players[0]!
-      const initialHandSize = initialPlayer.hand.length
+      const currentPlayerIndex = snapshot.context.currentPlayerIndex
+      const currentPlayer = snapshot.context.players[currentPlayerIndex]!
+      const initialHandSize = currentPlayer.hand.length
 
       actor.send({ type: 'SELL' })
-      actor.send({ type: 'SELECT_CARD', cardId: initialPlayer.hand[0]!.id })
+      actor.send({ type: 'SELECT_CARD', cardId: currentPlayer.hand[0]!.id })
       actor.send({ type: 'CONFIRM' })
 
       snapshot = actor.getSnapshot()
+      const playerAfterSell = snapshot.context.players[currentPlayerIndex]!
       // After action, hand is refilled to original size
-      expect(snapshot.context.players[0]!.hand.length).toBe(initialHandSize)
+      expect(playerAfterSell.hand.length).toBe(initialHandSize)
     })
   })
 

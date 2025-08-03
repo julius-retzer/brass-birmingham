@@ -691,23 +691,23 @@ describe('Game Store State Machine', () => {
   describe('Sell Actions', () => {
     test('beer consumption for selling', () => {
       const { actor } = setupTestGame()
-      
+
       // First build a cotton mill (sellable industry) so we have something to sell
       buildIndustryAction(actor, 'cotton', 'birmingham')
-      
+
       // The current player should be the one who built the cotton mill (player 0)
       // After build action, it switches to next player, so we need to get back to player 0
       let snapshot = actor.getSnapshot()
       const playerWithCottonMill = 0 // Player who built the cotton mill
       const currentPlayerIndex = snapshot.context.currentPlayerIndex
-      
+
       // If we're not on the player who built the cotton mill, we need to get to their turn
       if (currentPlayerIndex !== playerWithCottonMill) {
         // Complete current player's action to get back to player 0
         takeLoanAction(actor)
         snapshot = actor.getSnapshot()
       }
-      
+
       const currentPlayer = snapshot.context.players[playerWithCottonMill]!
       const initialHandSize = currentPlayer.hand.length
 

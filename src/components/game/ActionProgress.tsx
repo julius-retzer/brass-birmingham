@@ -53,7 +53,7 @@ export function ActionProgress({
         alertBorder: 'border-orange-200',
         stepCurrentBg: 'bg-orange-500',
         stepCurrentBorder: 'border-orange-500',
-        stepCurrentText: 'text-orange-700'
+        stepCurrentText: 'text-orange-700',
       },
       developing: {
         cardBg: 'bg-purple-50',
@@ -63,7 +63,7 @@ export function ActionProgress({
         alertBorder: 'border-purple-200',
         stepCurrentBg: 'bg-purple-500',
         stepCurrentBorder: 'border-purple-500',
-        stepCurrentText: 'text-purple-700'
+        stepCurrentText: 'text-purple-700',
       },
       selling: {
         cardBg: 'bg-green-50',
@@ -73,7 +73,7 @@ export function ActionProgress({
         alertBorder: 'border-green-200',
         stepCurrentBg: 'bg-green-500',
         stepCurrentBorder: 'border-green-500',
-        stepCurrentText: 'text-green-700'
+        stepCurrentText: 'text-green-700',
       },
       networking: {
         cardBg: 'bg-blue-50',
@@ -83,7 +83,7 @@ export function ActionProgress({
         alertBorder: 'border-blue-200',
         stepCurrentBg: 'bg-blue-500',
         stepCurrentBorder: 'border-blue-500',
-        stepCurrentText: 'text-blue-700'
+        stepCurrentText: 'text-blue-700',
       },
       scouting: {
         cardBg: 'bg-yellow-50',
@@ -93,7 +93,7 @@ export function ActionProgress({
         alertBorder: 'border-yellow-200',
         stepCurrentBg: 'bg-yellow-500',
         stepCurrentBorder: 'border-yellow-500',
-        stepCurrentText: 'text-yellow-700'
+        stepCurrentText: 'text-yellow-700',
       },
       takingLoan: {
         cardBg: 'bg-red-50',
@@ -103,8 +103,8 @@ export function ActionProgress({
         alertBorder: 'border-red-200',
         stepCurrentBg: 'bg-red-500',
         stepCurrentBorder: 'border-red-500',
-        stepCurrentText: 'text-red-700'
-      }
+        stepCurrentText: 'text-red-700',
+      },
     }
     return colors[action as keyof typeof colors] || colors.building
   }
@@ -364,7 +364,9 @@ export function ActionProgress({
 
         {/* Current Step Help */}
         {currentStep && (
-          <Alert className={`${actionColors.alertBorder} ${actionColors.alertBg}`}>
+          <Alert
+            className={`${actionColors.alertBorder} ${actionColors.alertBg}`}
+          >
             <HelpCircle className="h-4 w-4" />
             <AlertDescription>
               <div className="space-y-1">

@@ -183,6 +183,12 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
             selectedIndustryTile={snapshot.context.selectedIndustryTile}
             playerMoney={currentPlayer?.money}
             era={snapshot.context.era}
+            onChooseDoubleLink={() =>
+              send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })
+            }
+            canBuildSecondLink={
+              isConfirmingLink && snapshot.context.era === 'rail'
+            }
           />
         )}
       </CardContent>

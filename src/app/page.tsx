@@ -9,9 +9,12 @@ import { IndustryTilesDisplay } from '../components/IndustryTilesDisplay'
 import { PlayerHand } from '../components/PlayerHand'
 import { ActionButtons } from '../components/game/ActionButtons'
 import { ActionProgress } from '../components/game/ActionProgress'
+import { BuildSecondLink } from '../components/game/BuildSecondLink'
 import { DevelopInterface } from '../components/game/DevelopInterface'
+import { EraTransition } from '../components/game/EraTransition'
 import { GameHeader } from '../components/game/GameHeader'
 import { IndustryTypeSelector } from '../components/game/IndustryTypeSelector'
+import { MerchantDisplay } from '../components/game/MerchantDisplay'
 import { QuickStatusBar } from '../components/game/QuickStatusBar'
 import { ResourceMarkets } from '../components/game/ResourceMarkets'
 import { ResourcesDisplay } from '../components/game/ResourcesDisplay'
@@ -53,8 +56,10 @@ export default function Home() {
     selectedCardsForScout,
     spentMoney,
     selectedLink,
+    selectedSecondLink,
     selectedLocation,
     selectedIndustryTile,
+    merchants,
   } = snapshot.context
 
   console.log('snapshot.context', snapshot.context)
@@ -91,6 +96,14 @@ export default function Home() {
 
   const currentPlayer = players[currentPlayerIndex]
   const isActionSelection = snapshot.matches({ playing: 'action' })
+
+  // Detect era transition conditions
+  const isEraEnd =
+    era === 'canal' &&
+    snapshot.context.drawPile.length === 0 &&
+    players.every((player) => player.hand.length === 0)
+
+  const shouldShowEraTransition = isEraEnd
 
   console.log('🚀 ~ Home ~ isActionSelection:', isActionSelection)
   // Get the current action from state matches
@@ -204,6 +217,20 @@ export default function Home() {
     ) {
       return { action: 'networking', subState: 'confirmingLink' }
     }
+    if (
+      snapshot.matches({
+        playing: { action: { networking: 'selectingSecondLink' } },
+      })
+    ) {
+      return { action: 'networking', subState: 'selectingSecondLink' }
+    }
+    if (
+      snapshot.matches({
+        playing: { action: { networking: 'confirmingDoubleLink' } },
+      })
+    ) {
+      return { action: 'networking', subState: 'confirmingDoubleLink' }
+    }
 
     return null
   }
@@ -272,6 +299,10 @@ export default function Home() {
               : 'Select a rail connection to build (£5, requires coal)'
           case 'confirmingLink':
             return 'Confirm link building'
+          case 'selectingSecondLink':
+            return 'Select a second rail connection to build (requires beer)'
+          case 'confirmingDoubleLink':
+            return 'Confirm double link building'
           default:
             return null
         }
@@ -288,6 +319,10 @@ export default function Home() {
 
   const handleLinkSelect = (from: CityId, to: CityId) => {
     send({ type: 'SELECT_LINK', from, to })
+  }
+
+  const handleSecondLinkSelect = (from: CityId, to: CityId) => {
+    send({ type: 'SELECT_SECOND_LINK', from, to })
   }
 
   const handleCitySelect = (cityId: CityId) => {
@@ -381,23 +416,49 @@ export default function Home() {
           />
         </div>
 
+        {/* Era Transition Modal/Overlay */}
+        {shouldShowEraTransition && (
+          <div className="mb-6">
+            <EraTransition
+              players={players}
+              fromEra="canal"
+              toEra="rail"
+              onCompleteTransition={() => {
+                send({ type: 'TRIGGER_CANAL_ERA_END' })
+              }}
+            />
+          </div>
+        )}
+
         <div className="grid xl:grid-cols-4 lg:grid-cols-3 gap-6">
           {/* Column 1: Game Board & Network */}
           <div className="xl:col-span-2 lg:col-span-2 space-y-6">
             <Board
-              isNetworking={isInState('networking', 'selectingLink')}
+              isNetworking={
+                isInState('networking', 'selectingLink') ||
+                isInState('networking', 'selectingSecondLink')
+              }
               isBuilding={Boolean(isInState('building', 'selectingLocation'))}
               era={era}
-              onLinkSelect={handleLinkSelect}
+              onLinkSelect={
+                isInState('networking', 'selectingSecondLink')
+                  ? handleSecondLinkSelect
+                  : handleLinkSelect
+              }
               onCitySelect={handleCitySelect}
-              selectedLink={selectedLink}
+              selectedLink={
+                isInState('networking', 'selectingSecondLink')
+                  ? selectedSecondLink
+                  : selectedLink
+              }
               selectedCity={selectedCity}
               players={players}
               currentPlayerIndex={currentPlayerIndex}
               selectedIndustryType={selectedIndustryTile?.type || null}
               showSelectionFeedback={Boolean(
                 isInState('building', 'selectingLocation') ||
-                  isInState('networking', 'selectingLink'),
+                  isInState('networking', 'selectingLink') ||
+                  isInState('networking', 'selectingSecondLink'),
               )}
             />
           </div>
@@ -484,6 +545,23 @@ export default function Home() {
               />
             )}
 
+            {(isInState('networking', 'selectingSecondLink') ||
+              isInState('networking', 'confirmingDoubleLink')) &&
+              currentPlayer &&
+              selectedLink && (
+                <BuildSecondLink
+                  player={currentPlayer}
+                  era={era}
+                  firstLink={selectedLink}
+                  selectedLink={selectedSecondLink}
+                  onLinkSelect={handleSecondLinkSelect}
+                  onConfirm={() =>
+                    send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
+                  }
+                  onCancel={() => send({ type: 'CANCEL' })}
+                />
+              )}
+
             {/* Actions */}
             {snapshot.matches('playing') && (
               <ActionButtons snapshot={snapshot} send={send} />
@@ -511,6 +589,9 @@ export default function Home() {
             <ResourcesDisplay resources={resources} />
 
             <ResourceMarkets coalMarket={coalMarket} ironMarket={ironMarket} />
+
+            {/* Merchants */}
+            <MerchantDisplay merchants={merchants} />
 
             {/* Industry Tiles */}
             {currentPlayer && (

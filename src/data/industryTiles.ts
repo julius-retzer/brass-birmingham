@@ -17,6 +17,7 @@ export interface IndustryTile {
   canBuildInCanalEra: boolean
   canBuildInRailEra: boolean
   hasLightbulbIcon: boolean // For pottery tiles that cannot be developed
+  incomeAdvancement: number // Income advancement when tile flips
 }
 
 // Industry tile definitions based on the rules
@@ -39,6 +40,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: false, // Level 1 removed at end of Canal Era
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'cotton_2',
@@ -56,6 +59,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'cotton_3',
@@ -73,6 +78,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'cotton_4',
@@ -90,6 +97,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
   ],
   coal: [
@@ -109,6 +118,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: false, // Level 1 removed at end of Canal Era
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'coal_2',
@@ -126,6 +137,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'coal_3',
@@ -143,6 +156,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'coal_4',
@@ -160,6 +175,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
   ],
   iron: [
@@ -179,6 +196,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: false, // Level 1 removed at end of Canal Era
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'iron_2',
@@ -196,6 +215,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'iron_3',
@@ -213,6 +234,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'iron_4',
@@ -230,6 +253,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
   ],
   manufacturer: [
@@ -249,6 +274,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: false, // Level 1 removed at end of Canal Era
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'manufacturer_2',
@@ -266,6 +293,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'manufacturer_3',
@@ -283,6 +312,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'manufacturer_4',
@@ -300,6 +331,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
   ],
   pottery: [
@@ -319,6 +352,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true, // Special: Level 1 pottery can be built in Rail Era
       hasLightbulbIcon: true, // Cannot be developed
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'pottery_2',
@@ -336,6 +371,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'pottery_3',
@@ -353,6 +390,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'pottery_4',
@@ -370,6 +409,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
   ],
   brewery: [
@@ -389,6 +430,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: false, // Level 1 removed at end of Canal Era
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'brewery_2',
@@ -406,6 +449,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'brewery_3',
@@ -423,6 +468,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
     {
       id: 'brewery_4',
@@ -440,6 +487,8 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: true,
       hasLightbulbIcon: false,
+      linkScoringIcons: 1,
+      incomeAdvancement: 2,
     },
   ],
 }

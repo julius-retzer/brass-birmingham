@@ -52,6 +52,12 @@ export interface LogEntry {
   timestamp: Date
 }
 
+export interface Link {
+  from: CityId
+  to: CityId
+  type: 'canal' | 'rail'
+}
+
 export interface Merchant {
   location: CityId
   industryIcons: IndustryType[]
@@ -78,11 +84,7 @@ export interface Player {
   // Industry tiles on player mat (available to build)
   industryTilesOnMat: Record<IndustryType, IndustryTile[]>
   // Built items on board
-  links: {
-    from: CityId
-    to: CityId
-    type: 'canal' | 'rail'
-  }[]
+  links: Link[]
   industries: {
     location: CityId
     type: IndustryType
@@ -242,56 +244,56 @@ export type GameStoreActor = Actor<typeof gameStore>
 // Helper function to create merchants based on player count
 const createMerchantsForPlayerCount = (playerCount: number): Merchant[] => {
   const merchants: Merchant[] = []
-  
+
   // Base merchants for all player counts (2+)
   merchants.push(
     {
       location: 'warrington' as CityId,
-      industryIcons: ['cotton', 'manufacturer', 'pottery'],
+      industryIcons: ['cotton', 'manufacturer', 'pottery'] as IndustryType[],
       bonusType: 'money',
       bonusValue: 5,
       hasBeer: true,
     },
     {
       location: 'gloucester' as CityId,
-      industryIcons: ['cotton', 'manufacturer', 'pottery'],
+      industryIcons: ['cotton', 'manufacturer', 'pottery'] as IndustryType[],
       bonusType: 'develop',
       bonusValue: 1,
       hasBeer: true,
-    }
+    },
   )
-  
+
   // Add Oxford for 3+ players
   if (playerCount >= 3) {
     merchants.push({
       location: 'oxford' as CityId,
-      industryIcons: ['cotton', 'manufacturer', 'pottery'],
+      industryIcons: ['cotton', 'manufacturer', 'pottery'] as IndustryType[],
       bonusType: 'income',
       bonusValue: 2,
       hasBeer: true,
     })
   }
-  
+
   // Add Nottingham and Shrewsbury for 4 players
   if (playerCount >= 4) {
     merchants.push(
       {
         location: 'nottingham' as CityId,
-        industryIcons: ['cotton', 'manufacturer', 'pottery'],
+        industryIcons: ['cotton', 'manufacturer', 'pottery'] as IndustryType[],
         bonusType: 'victoryPoints',
         bonusValue: 2,
         hasBeer: true,
       },
       {
         location: 'shrewsbury' as CityId,
-        industryIcons: ['cotton', 'manufacturer', 'pottery'],
+        industryIcons: ['cotton', 'manufacturer', 'pottery'] as IndustryType[],
         bonusType: 'victoryPoints',
         bonusValue: 2,
         hasBeer: true,
-      }
+      },
     )
   }
-  
+
   return merchants
 }
 
@@ -674,7 +676,11 @@ export const gameStore = setup({
 
     executeDoubleNetworkAction: assign(({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
-      if (!context.selectedCard || !context.selectedLink || !context.selectedSecondLink) {
+      if (
+        !context.selectedCard ||
+        !context.selectedLink ||
+        !context.selectedSecondLink
+      ) {
         throw new Error('Card or links not selected for double network action')
       }
 
@@ -709,7 +715,7 @@ export const gameStore = setup({
         to: context.selectedLink.to,
         type: context.era as 'canal' | 'rail',
       }
-      
+
       const secondLink = {
         from: context.selectedSecondLink.from,
         to: context.selectedSecondLink.to,
@@ -754,27 +760,41 @@ export const gameStore = setup({
     }),
 
     checkAndFlipIndustryTiles: assign(({ context }) => {
-      let updatedPlayers = [...context.players]
+      const updatedPlayers = [...context.players]
       const logMessages: string[] = []
 
       // Check all players' industries for auto-flipping
-      for (let playerIndex = 0; playerIndex < updatedPlayers.length; playerIndex++) {
+      for (
+        let playerIndex = 0;
+        playerIndex < updatedPlayers.length;
+        playerIndex++
+      ) {
         const player = updatedPlayers[playerIndex]!
-        
-        for (let industryIndex = 0; industryIndex < player.industries.length; industryIndex++) {
+
+        for (
+          let industryIndex = 0;
+          industryIndex < player.industries.length;
+          industryIndex++
+        ) {
           const industry = player.industries[industryIndex]!
-          
+
           // Skip already flipped tiles
           if (industry.flipped) continue
 
           let shouldFlip = false
-          
+
           // Check flipping conditions for different industry types
           if (industry.type === 'coal' && industry.coalCubesOnTile === 0) {
             shouldFlip = true
-          } else if (industry.type === 'iron' && industry.ironCubesOnTile === 0) {
+          } else if (
+            industry.type === 'iron' &&
+            industry.ironCubesOnTile === 0
+          ) {
             shouldFlip = true
-          } else if (industry.type === 'brewery' && industry.beerBarrelsOnTile === 0) {
+          } else if (
+            industry.type === 'brewery' &&
+            industry.beerBarrelsOnTile === 0
+          ) {
             shouldFlip = true
           }
 
@@ -922,9 +942,7 @@ export const gameStore = setup({
 
       // Flip the industry and advance income
       const updatedIndustries = currentPlayer.industries.map((industry) =>
-        industry === industryToSell
-          ? { ...industry, flipped: true }
-          : industry,
+        industry === industryToSell ? { ...industry, flipped: true } : industry,
       )
 
       const incomeAdvancement = industryToSell.tile.incomeAdvancement || 0
@@ -1714,7 +1732,7 @@ export const gameStore = setup({
       if (!context.selectedLink) return false
 
       const currentPlayer = getCurrentPlayer(context)
-      
+
       // Check if player has access to beer (own breweries, connected breweries, or merchant beer)
       const { ownBreweries, connectedBreweries } = findAvailableBreweries(
         context,

@@ -299,7 +299,9 @@ export function consumeBeerFromSources(
   const logDetails: string[] = []
   let updatedPlayers = [...context.players]
   const updatedResources = { ...context.resources }
-  let updatedMerchants = context.merchants ? [...context.merchants] : undefined
+  const updatedMerchants = context.merchants
+    ? [...context.merchants]
+    : undefined
   const merchantBonusesCollected: Array<{
     type: 'develop' | 'income' | 'victoryPoints' | 'money'
     value: number

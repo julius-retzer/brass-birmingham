@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from '../ui/dialog'
 import { Separator } from '../ui/separator'
+import { ResourceConsumptionFeedback } from './ResourceConsumptionFeedback'
 
 interface ActionConfirmModalProps {
   isOpen: boolean
@@ -35,6 +36,8 @@ interface ActionConfirmModalProps {
   selectedIndustryTile?: IndustryTile | null
   playerMoney?: number
   era?: 'canal' | 'rail'
+  onChooseDoubleLink?: () => void
+  canBuildSecondLink?: boolean
 }
 
 export function ActionConfirmModal({
@@ -47,6 +50,8 @@ export function ActionConfirmModal({
   selectedIndustryTile,
   playerMoney = 0,
   era = 'canal',
+  onChooseDoubleLink,
+  canBuildSecondLink = false,
 }: ActionConfirmModalProps) {
   const getActionTitle = () => {
     switch (action) {
@@ -253,12 +258,44 @@ export function ActionConfirmModal({
               </div>
             )}
           </div>
+
+          {/* Enhanced Resource Consumption Feedback */}
+          {action === 'networking' && era === 'rail' && (
+            <ResourceConsumptionFeedback
+              resourceType="coal"
+              totalRequired={1}
+              sources={[
+                {
+                  type: 'market',
+                  cost: 4, // Example cost - would be dynamic in real implementation
+                  amount: 1,
+                },
+              ]}
+              totalCost={4}
+              canAfford={playerMoney >= 4}
+              playerMoney={playerMoney}
+              className="mt-4"
+            />
+          )}
         </div>
 
         <DialogFooter className="flex gap-2">
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
+          {action === 'networking' &&
+            era === 'rail' &&
+            canBuildSecondLink &&
+            onChooseDoubleLink && (
+              <Button
+                variant="secondary"
+                onClick={onChooseDoubleLink}
+                className="min-w-[120px]"
+              >
+                <Beer className="h-4 w-4 mr-2" />
+                Build 2 Links
+              </Button>
+            )}
           <Button
             onClick={onConfirm}
             disabled={!canAfford}

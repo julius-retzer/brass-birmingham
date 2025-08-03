@@ -50,9 +50,11 @@ export function findConnectedCoalMines(
   // TODO: Implement proper distance calculation through network connectivity
   // For now, prioritize coal mines at the same location, then any available coal mine
   // This is a simplified implementation that needs proper network path finding
-  
+
   // First priority: coal mines at the same location (distance 0)
-  const sameLocationMines = allCoalMines.filter(mine => mine.location === location)
+  const sameLocationMines = allCoalMines.filter(
+    (mine) => mine.location === location,
+  )
   if (sameLocationMines.length > 0) {
     return sameLocationMines
   }

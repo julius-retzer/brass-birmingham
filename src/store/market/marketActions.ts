@@ -6,6 +6,7 @@ import {
   findAvailableIronWorks,
   findConnectedCoalMines,
   getCurrentPlayer,
+  hasMarketAccess,
 } from '../shared/gameUtils'
 
 export function consumeCoalFromSources(
@@ -55,34 +56,46 @@ export function consumeCoalFromSources(
   }
 
   // If still need coal, consume from coal market (cheapest first)
+  // But first check if player has market access
+  const hasCoalMarketAccess = hasMarketAccess(context, context.currentPlayerIndex, 'coal')
+  
   while (coalConsumed < coalRequired) {
     let foundCoal = false
 
-    // Find cheapest available coal (price levels in order)
-    for (const level of updatedCoalMarket) {
-      if (level.cubes > 0) {
-        level.cubes--
-        coalCost += level.price
-        coalConsumed++
-        logDetails.push(`consumed 1 coal from market for £${level.price}`)
-        foundCoal = true
-        break
+    if (hasCoalMarketAccess) {
+      // Find cheapest available coal (price levels in order)
+      for (const level of updatedCoalMarket) {
+        if (level.cubes > 0) {
+          level.cubes--
+          coalCost += level.price
+          coalConsumed++
+          logDetails.push(`consumed 1 coal from market for £${level.price}`)
+          foundCoal = true
+          break
+        }
       }
-    }
 
-    // If market is empty, still buy at fallback price (infinite capacity fallback)
-    if (!foundCoal) {
-      const fallbackLevel = updatedCoalMarket.find(
-        (l) => l.price === GAME_CONSTANTS.COAL_FALLBACK_PRICE,
-      )
-      if (fallbackLevel) {
-        // Don't decrement cubes for infinite capacity level
-        coalCost += GAME_CONSTANTS.COAL_FALLBACK_PRICE
-        coalConsumed++
-        logDetails.push(
-          `consumed 1 coal from general supply for £${GAME_CONSTANTS.COAL_FALLBACK_PRICE}`,
+      // If market is empty, still buy at fallback price (infinite capacity fallback)
+      if (!foundCoal) {
+        const fallbackLevel = updatedCoalMarket.find(
+          (l) => l.price === GAME_CONSTANTS.COAL_FALLBACK_PRICE,
         )
+        if (fallbackLevel) {
+          // Don't decrement cubes for infinite capacity level
+          coalCost += GAME_CONSTANTS.COAL_FALLBACK_PRICE
+          coalConsumed++
+          logDetails.push(
+            `consumed 1 coal from general supply for £${GAME_CONSTANTS.COAL_FALLBACK_PRICE}`,
+          )
+        }
       }
+    } else {
+      // No market access - can only buy at high fallback price
+      coalCost += GAME_CONSTANTS.COAL_FALLBACK_PRICE
+      coalConsumed++
+      logDetails.push(
+        `consumed 1 coal (no market access) for £${GAME_CONSTANTS.COAL_FALLBACK_PRICE}`,
+      )
     }
   }
 

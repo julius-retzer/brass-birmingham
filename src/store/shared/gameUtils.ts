@@ -138,6 +138,59 @@ export function createLogEntry(message: string, type: LogEntryType): LogEntry {
   }
 }
 
+// Network validation helper functions
+export function isLocationInPlayerNetwork(
+  context: GameState, 
+  targetLocation: CityId, 
+  playerIndex: number
+): boolean {
+  const player = context.players[playerIndex]
+  if (!player) return false
+
+  // A location is part of your network if:
+  // 1. It contains one or more of your industry tiles
+  // 2. It is adjacent to one or more of your link tiles
+
+  // Check if player has industry at this location
+  const hasIndustryAtLocation = player.industries.some(
+    industry => industry.location === targetLocation
+  )
+  if (hasIndustryAtLocation) return true
+
+  // Check if location is adjacent to any of player's links
+  const isAdjacentToPlayerLink = player.links.some(
+    link => link.from === targetLocation || link.to === targetLocation
+  )
+  if (isAdjacentToPlayerLink) return true
+
+  // TODO: Add BFS pathfinding for multi-hop connections through other players' links
+  // For now, this basic implementation covers direct connections
+
+  return false
+}
+
+export function hasMarketAccess(
+  context: GameState,
+  playerIndex: number,
+  marketType: 'coal' | 'iron'
+): boolean {
+  if (marketType === 'iron') {
+    // Iron market is always accessible
+    return true
+  }
+
+  // Coal market requires connection to merchant with [↔] icon
+  const player = context.players[playerIndex]
+  if (!player) return false
+
+  // Check if player is connected to any merchant that provides market access
+  const merchantsWithMarketAccess = ['warrington', 'shrewsbury', 'nottingham', 'gloucester', 'oxford']
+  
+  return merchantsWithMarketAccess.some(merchantLocation => 
+    isLocationInPlayerNetwork(context, merchantLocation, playerIndex)
+  )
+}
+
 // Card utilities
 export function findCardInHand(player: Player, cardId: string): Card | null {
   return player.hand.find((card) => card.id === cardId) ?? null

@@ -114,6 +114,10 @@ export interface GameState {
     from: CityId
     to: CityId
   } | null
+  selectedSecondLink: {
+    from: CityId
+    to: CityId
+  } | null
   // Building-related state
   selectedLocation: CityId | null
   selectedIndustryTile: IndustryTile | null
@@ -339,6 +343,17 @@ export const gameStore = setup({
       }
     }),
 
+    selectSecondLink: assign(({ context, event }) => {
+      if (event.type !== 'SELECT_LINK') return {}
+      debugLog('selectSecondLink', context, event)
+      return {
+        selectedSecondLink: {
+          from: event.from,
+          to: event.to,
+        },
+      }
+    }),
+
     executeLoanAction: assign(({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
       if (!context.selectedCard) {
@@ -555,6 +570,135 @@ export const gameStore = setup({
         // Note: general coal supply remains unchanged when consuming from market
         selectedCard: null,
         selectedLink: null,
+        selectedSecondLink: null,
+        selectedLocation: null,
+        selectedIndustryTile: null,
+        actionsRemaining: context.actionsRemaining - 1,
+        spentMoney: context.spentMoney + totalCost,
+        playerSpending: {
+          ...context.playerSpending,
+          [currentPlayer.id]: currentSpending + totalCost,
+        },
+        logs: [...context.logs, createLogEntry(logMessage, 'action')],
+      }
+    }),
+
+    executeDoubleNetworkAction: assign(({ context }) => {
+      const currentPlayer = getCurrentPlayer(context)
+      if (!context.selectedCard || !context.selectedLink || !context.selectedSecondLink) {
+        throw new Error('Card, first link, or second link not selected for double network action')
+      }
+
+      if (context.era !== 'rail') {
+        throw new Error('Double link building only available in rail era')
+      }
+
+      const updatedHand = removeCardFromHand(
+        currentPlayer,
+        context.selectedCard.id,
+      )
+
+      // Rail era double link: £15 + 1 beer + 2 coal
+      const linkCost = 15 // Fixed cost for double rail link
+      
+      const firstLink = {
+        from: context.selectedLink.from,
+        to: context.selectedLink.to,
+        type: 'rail' as const,
+      }
+
+      const secondLink = {
+        from: context.selectedSecondLink.from,
+        to: context.selectedSecondLink.to,
+        type: 'rail' as const,
+      }
+
+      // Find beer source - must be from breweries (not merchant beer)
+      let updatedPlayers = [...context.players]
+      let beerSource = ''
+      let beerCost = 0
+
+      // Check player's own breweries first
+      for (const industry of currentPlayer.industries) {
+        if (industry.type === 'brewery' && !industry.flipped && industry.beerBarrelsOnTile > 0) {
+          industry.beerBarrelsOnTile--
+          beerSource = `own brewery at ${industry.location}`
+          break
+        }
+      }
+
+      // If no own brewery beer, check connected opponent breweries
+      if (!beerSource) {
+        // For now, simplified: check if second link destination has opponent brewery
+        for (let i = 0; i < updatedPlayers.length; i++) {
+          if (i === context.currentPlayerIndex) continue
+          
+          const opponent = updatedPlayers[i]!
+          for (const industry of opponent.industries) {
+            if (
+              industry.type === 'brewery' && 
+              !industry.flipped && 
+              industry.beerBarrelsOnTile > 0 &&
+              industry.location === context.selectedSecondLink.to
+            ) {
+              industry.beerBarrelsOnTile--
+              beerSource = `connected brewery at ${industry.location}`
+              break
+            }
+          }
+          if (beerSource) break
+        }
+      }
+
+      if (!beerSource) {
+        throw new Error('No beer available for double link building')
+      }
+
+      // Consume coal for both links (2 coal total)
+      let coalCost = 0
+      const updatedCoalMarket = context.coalMarket.map((level) => ({ ...level }))
+      let coalFromMarket = 0
+
+      // Consume 2 coal from market (cheapest first)
+      for (const level of updatedCoalMarket) {
+        while (level.cubes > 0 && coalFromMarket < 2) {
+          level.cubes--
+          coalCost += level.price
+          coalFromMarket++
+        }
+        if (coalFromMarket >= 2) break
+      }
+
+      // If market doesn't have enough, use fallback price
+      while (coalFromMarket < 2) {
+        coalCost += GAME_CONSTANTS.COAL_FALLBACK_PRICE
+        coalFromMarket++
+      }
+
+      const totalCost = linkCost + coalCost
+      const updatedPlayer = {
+        ...currentPlayer,
+        hand: updatedHand,
+        money: currentPlayer.money - totalCost,
+        links: [...currentPlayer.links, firstLink, secondLink],
+      }
+
+      // Update the current player in the players array
+      updatedPlayers[context.currentPlayerIndex] = updatedPlayer
+
+      // Track money spent
+      const currentSpending = context.playerSpending[currentPlayer.id] || 0
+
+      const logMessage = `${currentPlayer.name} built 2 rail links: ${firstLink.from}-${firstLink.to} and ${secondLink.from}-${secondLink.to} (£15 + 1 beer from ${beerSource} + 2 coal for £${coalCost})`
+
+      debugLog('executeDoubleNetworkAction', context)
+      return {
+        players: updatedPlayers,
+        discardPile: [...context.discardPile, context.selectedCard],
+        coalMarket: updatedCoalMarket,
+        selectedCard: null,
+        selectedLink: null,
+        selectedSecondLink: null,
         selectedLocation: null,
         selectedIndustryTile: null,
         actionsRemaining: context.actionsRemaining - 1,
@@ -962,6 +1106,7 @@ export const gameStore = setup({
       selectedCard: null,
       selectedCardsForScout: [],
       selectedLink: null,
+      selectedSecondLink: null,
       selectedLocation: null,
       selectedIndustryTile: null,
     }),
@@ -1038,6 +1183,10 @@ export const gameStore = setup({
 
     clearIndustryTile: assign({
       selectedIndustryTile: null,
+    }),
+
+    clearSecondLink: assign({
+      selectedSecondLink: null,
     }),
     setPlayerHand: assign(({ context, event }) => {
       if (event.type !== 'TEST_SET_PLAYER_HAND') return {}
@@ -1371,6 +1520,52 @@ export const gameStore = setup({
       return drawDeckEmpty && allHandsEmpty
     },
 
+    canBuildSecondLink: ({ context }) => {
+      // Can only build second link in rail era
+      if (context.era !== 'rail') return false
+      
+      // Must have first link selected
+      if (!context.selectedLink) return false
+      
+      // Check if player has beer available
+      const currentPlayer = getCurrentPlayer(context)
+      
+      // Check own breweries for beer
+      const hasOwnBeer = currentPlayer.industries.some(
+        (industry) => 
+          industry.type === 'brewery' && 
+          !industry.flipped && 
+          industry.beerBarrelsOnTile > 0
+      )
+      
+      if (hasOwnBeer) return true
+      
+      // Check connected opponent breweries
+      // For now, simplified check - would need full network connectivity in production
+      const hasConnectedOpponentBeer = context.players.some((player, index) => {
+        if (index === context.currentPlayerIndex) return false
+        
+        return player.industries.some(
+          (industry) =>
+            industry.type === 'brewery' &&
+            !industry.flipped &&
+            industry.beerBarrelsOnTile > 0
+        )
+      })
+      
+      return hasConnectedOpponentBeer
+    },
+
+    hasSelectedSecondLink: ({ context }) => context.selectedSecondLink !== null,
+
+    canCompleteDoubleLink: ({ context }) => {
+      return (
+        context.selectedCard !== null &&
+        context.selectedLink !== null &&
+        context.selectedSecondLink !== null
+      )
+    },
+
     isGameEnd: ({ context }) => {
       // Game ends after Rail Era scoring
       return (
@@ -1406,6 +1601,7 @@ export const gameStore = setup({
     playerSpending: {},
     isFinalRound: false,
     selectedLink: null,
+    selectedSecondLink: null,
     selectedLocation: null,
     selectedIndustryTile: null,
   },
@@ -1684,9 +1880,39 @@ export const gameStore = setup({
                       actions: 'executeNetworkAction',
                       guard: 'hasSelectedLink',
                     },
+                    BUILD_SECOND_LINK: {
+                      target: 'selectingSecondLink',
+                      guard: 'canBuildSecondLink',
+                    },
                     CANCEL: {
                       target: 'selectingLink',
                       actions: 'clearSelections',
+                    },
+                  },
+                },
+                selectingSecondLink: {
+                  on: {
+                    SELECT_LINK: {
+                      target: 'confirmingDoubleLink',
+                      actions: 'selectSecondLink',
+                      guard: 'canBuildLink',
+                    },
+                    CANCEL: {
+                      target: 'confirmingLink',
+                      actions: 'clearSecondLink',
+                    },
+                  },
+                },
+                confirmingDoubleLink: {
+                  on: {
+                    CONFIRM: {
+                      target: '#brassGame.playing.actionComplete',
+                      actions: 'executeDoubleNetworkAction',
+                      guard: 'canCompleteDoubleLink',
+                    },
+                    CANCEL: {
+                      target: 'selectingSecondLink',
+                      actions: 'clearSecondLink',
                     },
                   },
                 },

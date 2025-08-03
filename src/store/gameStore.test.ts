@@ -1457,6 +1457,404 @@ describe('Game Store State Machine', () => {
       })
     })
 
+    describe('Rail Era Double Link Building', () => {
+      test('can build single rail link for £5 + 1 coal', () => {
+        const { actor } = setupTestGame()
+        transitionToRailEra(actor)
+
+        // Give player coal and money
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          money: 20,
+        })
+        actor.send({
+          type: 'TEST_UPDATE_MARKET',
+          marketUpdates: {
+            coalMarket: {
+              supply: [
+                { level: 1, amount: 10, price: 1 },
+                { level: 2, amount: 5, price: 2 },
+              ],
+            },
+          },
+        })
+
+        const snapshot = actor.getSnapshot()
+        expect(snapshot.context.era).toBe('rail')
+
+        // Start Network action
+        actor.send({ type: 'NETWORK' })
+        expect(actor.getSnapshot().value).toBe('networking')
+
+        // Select a link card
+        const linkCard = snapshot.context.players[0]!.hand.find(
+          (card) => card.type === 'location' && card.subtype === 'link',
+        )!
+        actor.send({ type: 'SELECT_CARD', cardId: linkCard.id })
+
+        // Select a rail link
+        actor.send({
+          type: 'SELECT_LINK',
+          link: { from: 'Manchester', to: 'Salford' },
+        })
+
+        // Execute single link (default behavior)
+        actor.send({ type: 'EXECUTE_NETWORK_ACTION' })
+
+        const finalSnapshot = actor.getSnapshot()
+        expect(finalSnapshot.value).toBe('actionComplete')
+
+        // Verify single link built
+        const finalPlayer = finalSnapshot.context.players[0]!
+        expect(finalPlayer.money).toBe(14) // 20 - 5 (link) - 1 (coal)
+        expect(finalSnapshot.context.links).toHaveLength(1)
+        expect(finalSnapshot.context.links[0]).toMatchObject({
+          from: 'Manchester',
+          to: 'Salford',
+          type: 'rail',
+        })
+      })
+
+      test('can build double rail links for £15 + 1 beer + 2 coal', () => {
+        const { actor } = setupTestGame()
+        transitionToRailEra(actor)
+
+        // Give player money, beer, and coal access
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          money: 30,
+        })
+
+        // Add brewery with beer to player's tiles
+        actor.send({
+          type: 'TEST_ADD_INDUSTRY_TILE',
+          playerId: 0,
+          industryTile: {
+            type: 'brewery',
+            level: 1,
+            location: 'Manchester',
+            resources: { beer: 1 },
+            flipped: false,
+            era: 'canal',
+          },
+        })
+
+        actor.send({
+          type: 'TEST_UPDATE_MARKET',
+          marketUpdates: {
+            coalMarket: {
+              supply: [
+                { level: 1, amount: 10, price: 1 },
+                { level: 2, amount: 5, price: 2 },
+              ],
+            },
+          },
+        })
+
+        const snapshot = actor.getSnapshot()
+        expect(snapshot.context.era).toBe('rail')
+
+        // Start Network action
+        actor.send({ type: 'NETWORK' })
+        expect(actor.getSnapshot().value).toBe('networking')
+
+        // Select a link card
+        const linkCard = snapshot.context.players[0]!.hand.find(
+          (card) => card.type === 'location' && card.subtype === 'link',
+        )!
+        actor.send({ type: 'SELECT_CARD', cardId: linkCard.id })
+
+        // Select first rail link
+        actor.send({
+          type: 'SELECT_LINK',
+          link: { from: 'Manchester', to: 'Salford' },
+        })
+
+        // Choose to build double links
+        actor.send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })
+
+        // Should now be in selecting second link state
+        expect(actor.getSnapshot().value).toBe('selectingSecondLink')
+
+        // Select second rail link
+        actor.send({
+          type: 'SELECT_SECOND_LINK',
+          link: { from: 'Salford', to: 'Bolton' },
+        })
+
+        // Execute double link action
+        actor.send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
+
+        const finalSnapshot = actor.getSnapshot()
+        expect(finalSnapshot.value).toBe('actionComplete')
+
+        // Verify double links built and resources consumed
+        const finalPlayer = finalSnapshot.context.players[0]!
+        expect(finalPlayer.money).toBe(13) // 30 - 15 (links) - 2 (coal)
+        expect(finalSnapshot.context.links).toHaveLength(2)
+        expect(finalSnapshot.context.links).toContainEqual({
+          from: 'Manchester',
+          to: 'Salford',
+          type: 'rail',
+        })
+        expect(finalSnapshot.context.links).toContainEqual({
+          from: 'Salford',
+          to: 'Bolton',
+          type: 'rail',
+        })
+
+        // Verify beer consumed from brewery
+        const brewery = finalPlayer.industryTilesOnBoard.find(
+          (tile) => tile.type === 'brewery',
+        )!
+        expect(brewery.resources.beer).toBe(0)
+      })
+
+      test('can consume beer from connected opponent brewery for double links', () => {
+        const { actor } = setupTestGame()
+        transitionToRailEra(actor)
+
+        // Give player money
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          money: 30,
+        })
+
+        // Add brewery with beer to opponent (player 1)
+        actor.send({
+          type: 'TEST_ADD_INDUSTRY_TILE',
+          playerId: 1,
+          industryTile: {
+            type: 'brewery',
+            level: 1,
+            location: 'Bolton',
+            resources: { beer: 1 },
+            flipped: false,
+            era: 'canal',
+          },
+        })
+
+        // Add link from player to connect to opponent brewery
+        actor.send({
+          type: 'TEST_ADD_LINK',
+          link: { from: 'Manchester', to: 'Salford', type: 'rail' },
+        })
+
+        actor.send({
+          type: 'TEST_UPDATE_MARKET',
+          marketUpdates: {
+            coalMarket: {
+              supply: [
+                { level: 1, amount: 10, price: 1 },
+                { level: 2, amount: 5, price: 2 },
+              ],
+            },
+          },
+        })
+
+        // Start Network action to build double links
+        actor.send({ type: 'NETWORK' })
+
+        const linkCard = actor.getSnapshot().context.players[0]!.hand.find(
+          (card) => card.type === 'location' && card.subtype === 'link',
+        )!
+        actor.send({ type: 'SELECT_CARD', cardId: linkCard.id })
+
+        // First link continues existing network
+        actor.send({
+          type: 'SELECT_LINK',
+          link: { from: 'Salford', to: 'Bolton' },
+        })
+
+        // Choose double links
+        actor.send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })
+
+        // Second link connects to brewery location
+        actor.send({
+          type: 'SELECT_SECOND_LINK',
+          link: { from: 'Bolton', to: 'Chorley' },
+        })
+
+        // Execute - should consume beer from opponent brewery at Bolton
+        actor.send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
+
+        const finalSnapshot = actor.getSnapshot()
+        expect(finalSnapshot.value).toBe('actionComplete')
+
+        // Verify opponent brewery beer consumed
+        const opponentPlayer = finalSnapshot.context.players[1]!
+        const brewery = opponentPlayer.industryTilesOnBoard.find(
+          (tile) => tile.type === 'brewery',
+        )!
+        expect(brewery.resources.beer).toBe(0)
+      })
+
+      test('can consume beer from merchant for double links', () => {
+        const { actor } = setupTestGame()
+        transitionToRailEra(actor)
+
+        // Give player money
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          money: 30,
+        })
+
+        // Ensure merchant has beer (they start with beer)
+        const snapshot = actor.getSnapshot()
+        const merchant = snapshot.context.merchants.find(
+          (m) => m.location === 'Warrington',
+        )!
+        expect(merchant.hasBeer).toBe(true)
+
+        // Add network connection to merchant location
+        actor.send({
+          type: 'TEST_ADD_INDUSTRY_TILE',
+          playerId: 0,
+          industryTile: {
+            type: 'cottonMill',
+            level: 1,
+            location: 'Warrington',
+            resources: {},
+            flipped: false,
+            era: 'canal',
+          },
+        })
+
+        actor.send({
+          type: 'TEST_UPDATE_MARKET',
+          marketUpdates: {
+            coalMarket: {
+              supply: [
+                { level: 1, amount: 10, price: 1 },
+                { level: 2, amount: 5, price: 2 },
+              ],
+            },
+          },
+        })
+
+        // Start Network action
+        actor.send({ type: 'NETWORK' })
+
+        const linkCard = snapshot.context.players[0]!.hand.find(
+          (card) => card.type === 'location' && card.subtype === 'link',
+        )!
+        actor.send({ type: 'SELECT_CARD', cardId: linkCard.id })
+
+        // Build from connected location
+        actor.send({
+          type: 'SELECT_LINK',
+          link: { from: 'Warrington', to: 'Wigan' },
+        })
+
+        // Choose double links
+        actor.send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })
+
+        actor.send({
+          type: 'SELECT_SECOND_LINK',
+          link: { from: 'Wigan', to: 'Bolton' },
+        })
+
+        // Execute - should consume beer from merchant
+        actor.send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
+
+        const finalSnapshot = actor.getSnapshot()
+        expect(finalSnapshot.value).toBe('actionComplete')
+
+        // Verify merchant beer consumed
+        const finalMerchant = finalSnapshot.context.merchants.find(
+          (m) => m.location === 'Warrington',
+        )!
+        expect(finalMerchant.hasBeer).toBe(false)
+      })
+
+      test('prevents double link building without beer', () => {
+        const { actor } = setupTestGame()
+        transitionToRailEra(actor)
+
+        // Give player money but no beer sources
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          money: 30,
+        })
+
+        actor.send({
+          type: 'TEST_UPDATE_MARKET',
+          marketUpdates: {
+            coalMarket: {
+              supply: [
+                { level: 1, amount: 10, price: 1 },
+                { level: 2, amount: 5, price: 2 },
+              ],
+            },
+          },
+        })
+
+        // Start Network action
+        actor.send({ type: 'NETWORK' })
+
+        const linkCard = actor.getSnapshot().context.players[0]!.hand.find(
+          (card) => card.type === 'location' && card.subtype === 'link',
+        )!
+        actor.send({ type: 'SELECT_CARD', cardId: linkCard.id })
+
+        actor.send({
+          type: 'SELECT_LINK',
+          link: { from: 'Manchester', to: 'Salford' },
+        })
+
+        // Should not be able to choose double link build without beer
+        const snapshot = actor.getSnapshot()
+        expect(snapshot.can({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })).toBe(false)
+      })
+
+      test('prevents double link building in canal era', () => {
+        const { actor } = setupTestGame()
+        // Stay in canal era
+
+        // Give player money and beer
+        actor.send({
+          type: 'TEST_SET_PLAYER_STATE',
+          playerId: 0,
+          money: 30,
+        })
+
+        actor.send({
+          type: 'TEST_ADD_INDUSTRY_TILE',
+          playerId: 0,
+          industryTile: {
+            type: 'brewery',
+            level: 1,
+            location: 'Manchester',
+            resources: { beer: 1 },
+            flipped: false,
+            era: 'canal',
+          },
+        })
+
+        // Start Network action
+        actor.send({ type: 'NETWORK' })
+
+        const linkCard = actor.getSnapshot().context.players[0]!.hand.find(
+          (card) => card.type === 'location' && card.subtype === 'link',
+        )!
+        actor.send({ type: 'SELECT_CARD', cardId: linkCard.id })
+
+        actor.send({
+          type: 'SELECT_LINK',
+          link: { from: 'Manchester', to: 'Salford' },
+        })
+
+        // Should not be able to choose double link build in canal era
+        const snapshot = actor.getSnapshot()
+        expect(snapshot.can({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })).toBe(false)
+      })
+    })
+
     describe('Game End Detection', () => {
       test('detects game end after Rail Era completes', () => {
         const { actor } = setupTestGame()

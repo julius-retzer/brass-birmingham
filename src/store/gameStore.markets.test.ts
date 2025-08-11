@@ -281,7 +281,28 @@ describe('Game Store - Markets and Resources', () => {
       ],
     })
 
-    const snapshot = actor.getSnapshot()
+    // Build a canal link chain that connects Birmingham -> Dudley via Stoke
+    // First link Birmingham <-> Dudley
+    actor.send({ type: 'NETWORK' })
+    let snapshot = actor.getSnapshot()
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: snapshot.context.players[0]!.hand[0]!.id,
+    })
+    actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'dudley' })
+    actor.send({ type: 'CONFIRM' })
+
+    // Then link Dudley <-> Stoke
+    actor.send({ type: 'NETWORK' })
+    snapshot = actor.getSnapshot()
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: snapshot.context.players[0]!.hand[0]!.id,
+    })
+    actor.send({ type: 'SELECT_LINK', from: 'dudley', to: 'stoke' })
+    actor.send({ type: 'CONFIRM' })
+
+    snapshot = actor.getSnapshot()
 
     // Then consume 2 coal at Birmingham: 1 from connected mine (free), 1 from market
     const { consumeCoalFromSources } = await import('./market/marketActions')

@@ -165,7 +165,9 @@ export function buildIndustryTile(
 
   if (tile.type === 'coal') {
     // RULE: Coal mines only sell automatically if connected to merchant spaces with [left-right arrows] icon
-    const { connected: isConnectedToMerchant } = isLocationConnectedToMerchant(context, context.selectedLocation!)
+    const { connected: isConnectedToMerchant, connectedMerchants } = isLocationConnectedToMerchant(context, context.selectedLocation!)
+    
+    
     if (isConnectedToMerchant && newIndustry.coalCubesOnTile > 0) {
       const sellResult = sellCoalToMarket(updatedCoalMarket, newIndustry.coalCubesOnTile)
       updatedCoalMarket = sellResult.updatedMarket

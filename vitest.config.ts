@@ -7,7 +7,5 @@ export default defineConfig({
     teardownTimeout: 3000,
     globals: true,
     environment: 'node',
-    // Add explicit cleanup
-    onConsoleLog: () => false, // Suppress console logs that might cause hanging
   },
 })

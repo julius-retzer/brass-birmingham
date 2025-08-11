@@ -40,7 +40,7 @@ describe('Game Store - Auto flipping and resource priority', () => {
   test('iron works flips when its last iron is consumed during develop', () => {
     const { actor } = setup()
 
-    // Give current player an iron works with 1 iron cube remaining
+    // Give current player an iron works with 1 iron cube remaining + tiles to develop
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
       playerId: 0,
@@ -56,23 +56,46 @@ describe('Game Store - Auto flipping and resource priority', () => {
             level: 1,
             canBuildInCanalEra: true,
             canBuildInRailEra: true,
-            incomeAdvancement: 0,
-            victoryPoints: 0,
+            incomeAdvancement: 2,
+            victoryPoints: 1,
           },
           coalCubesOnTile: 0,
           ironCubesOnTile: 1,
           beerBarrelsOnTile: 0,
         },
       ],
+      industryTilesOnMat: {
+        coal: [
+          {
+            id: 'coal_1',
+            type: 'coal',
+            level: 1,
+            cost: 5,
+            victoryPoints: 1,
+            incomeSpaces: 1,
+            linkScoringIcons: 1,
+            coalRequired: 0,
+            ironRequired: 0,
+            beerRequired: 0,
+            beerProduced: 0,
+            coalProduced: 2,
+            ironProduced: 0,
+            canBuildInCanalEra: true,
+            canBuildInRailEra: false,
+            hasLightbulbIcon: false,
+            incomeAdvancement: 2,
+          },
+        ],
+      },
     })
 
     const s0 = actor.getSnapshot()
     const initialHandCard = s0.context.players[0]!.hand[0]!
-
     // Perform develop (uses 1 iron via consumeIronFromSources)
     actor.send({ type: 'DEVELOP' })
     actor.send({ type: 'SELECT_CARD', cardId: initialHandCard.id })
-    actor.send({ type: 'CONFIRM' })
+    actor.send({ type: 'CONFIRM' }) // Move to confirmingDevelop state
+    actor.send({ type: 'CONFIRM' }) // Actually execute the develop action
 
     const s1 = actor.getSnapshot()
     const industry = s1.context.players[0]!.industries[0]!
@@ -83,7 +106,7 @@ describe('Game Store - Auto flipping and resource priority', () => {
   test('develop consumes iron from iron works before iron market (free first)', () => {
     const { actor } = setup()
 
-    // Provide an iron works with 1 iron cube so develop should be free
+    // Provide an iron works with 1 iron cube so develop should be free + tiles to develop
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
       playerId: 0,
@@ -108,6 +131,29 @@ describe('Game Store - Auto flipping and resource priority', () => {
           beerBarrelsOnTile: 0,
         },
       ],
+      industryTilesOnMat: {
+        coal: [
+          {
+            id: 'coal_1',
+            type: 'coal',
+            level: 1,
+            cost: 5,
+            victoryPoints: 1,
+            incomeSpaces: 1,
+            linkScoringIcons: 1,
+            coalRequired: 0,
+            ironRequired: 0,
+            beerRequired: 0,
+            beerProduced: 0,
+            coalProduced: 2,
+            ironProduced: 0,
+            canBuildInCanalEra: true,
+            canBuildInRailEra: false,
+            hasLightbulbIcon: false,
+            incomeAdvancement: 2,
+          },
+        ],
+      },
     })
 
     let s = actor.getSnapshot()
@@ -116,7 +162,8 @@ describe('Game Store - Auto flipping and resource priority', () => {
 
     actor.send({ type: 'DEVELOP' })
     actor.send({ type: 'SELECT_CARD', cardId: card.id })
-    actor.send({ type: 'CONFIRM' })
+    actor.send({ type: 'CONFIRM' }) // Move to confirmingDevelop state
+    actor.send({ type: 'CONFIRM' }) // Actually execute the develop action
 
     s = actor.getSnapshot()
     const endMoney = s.context.players[0]!.money
@@ -128,12 +175,35 @@ describe('Game Store - Auto flipping and resource priority', () => {
   test('develop consumes from iron market when no iron works available (cost > 0)', () => {
     const { actor } = setup()
 
-    // Ensure no iron works; keep money to observe cost
+    // Ensure no iron works; keep money to observe cost; add tiles to develop
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
       playerId: 0,
       money: 50,
       industries: [],
+      industryTilesOnMat: {
+        coal: [
+          {
+            id: 'coal_1',
+            type: 'coal',
+            level: 1,
+            cost: 5,
+            victoryPoints: 1,
+            incomeSpaces: 1,
+            linkScoringIcons: 1,
+            coalRequired: 0,
+            ironRequired: 0,
+            beerRequired: 0,
+            beerProduced: 0,
+            coalProduced: 2,
+            ironProduced: 0,
+            canBuildInCanalEra: true,
+            canBuildInRailEra: false,
+            hasLightbulbIcon: false,
+            incomeAdvancement: 2,
+          },
+        ],
+      },
     })
 
     let s = actor.getSnapshot()
@@ -142,7 +212,8 @@ describe('Game Store - Auto flipping and resource priority', () => {
 
     actor.send({ type: 'DEVELOP' })
     actor.send({ type: 'SELECT_CARD', cardId: card.id })
-    actor.send({ type: 'CONFIRM' })
+    actor.send({ type: 'CONFIRM' }) // Move to confirmingDevelop state
+    actor.send({ type: 'CONFIRM' }) // Actually execute the develop action
 
     s = actor.getSnapshot()
     const endMoney = s.context.players[0]!.money

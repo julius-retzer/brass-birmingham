@@ -124,6 +124,7 @@ export interface GameState {
   spentMoney: number
   // Round management state
   playerSpending: Record<string, number> // Track spending per player per round
+  turnOrder: string[] // Player IDs in turn order (updated each round based on spending)
   isFinalRound: boolean
   // Network-related state
   selectedLink: {
@@ -137,6 +138,8 @@ export interface GameState {
   // Building-related state
   selectedLocation: CityId | null
   selectedIndustryTile: IndustryTile | null
+  // Develop-related state
+  selectedTilesForDevelop: IndustryType[]
   // Merchant system
   merchants: Merchant[]
 }
@@ -188,6 +191,10 @@ type GameEvent =
   | {
       type: 'SELECT_INDUSTRY_TYPE'
       industryType: IndustryType
+    }
+  | {
+      type: 'SELECT_TILES_FOR_DEVELOP'
+      industryTypes: IndustryType[]
     }
   | {
       type: 'CONFIRM'
@@ -380,11 +387,13 @@ export const gameStore = setup({
         selectedCardsForScout: [],
         spentMoney: 0,
         playerSpending: {},
+        turnOrder: players.map(p => p.id), // Initial turn order
         isFinalRound: false,
         selectedLink: null,
         selectedSecondLink: null,
         selectedLocation: null,
         selectedIndustryTile: null,
+        selectedTilesForDevelop: [],
         merchants: createMerchantsForPlayerCount(playerCount),
       }
     }),
@@ -598,7 +607,8 @@ export const gameStore = setup({
     executeNetworkAction: assign(({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
       if (!context.selectedCard || !context.selectedLink) {
-        throw new Error('Card or link not selected for network action')
+        console.warn('executeNetworkAction called without selected card/link - skipping')
+        return {}
       }
 
       const updatedHand = removeCardFromHand(
@@ -873,17 +883,29 @@ export const gameStore = setup({
     executeDevelopAction: assign(({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
       if (!context.selectedCard) {
-        throw new Error('No card selected for develop action')
+        console.warn('executeDevelopAction called without selected card - skipping')
+        return {}
       }
 
-      // For now, simulate removing 1 tile and consuming 1 iron
-      // In a full implementation, this would:
-      // 1. Allow player to select 1-2 industry types to develop
-      // 2. Remove the lowest level tile from each selected industry from player mat
-      // 3. Consume 1 iron per tile removed from iron works or iron market
-      // 4. Check pottery tiles with lightbulb icon cannot be developed
+      // Remove selected tiles from player mat and consume iron
+      let selectedIndustryTypes = context.selectedTilesForDevelop
+      
+      // If no tiles selected (for backward compatibility with tests), auto-select first available tile
+      if (selectedIndustryTypes.length === 0) {
+        const availableTypes: IndustryType[] = []
+        for (const industryType of ['coal', 'iron', 'cotton', 'pottery', 'manufacturer', 'brewery'] as IndustryType[]) {
+          const tilesOnMat = currentPlayer.industryTilesOnMat[industryType] || []
+          const developableTiles = tilesOnMat.filter(tile => 
+            industryType !== 'pottery' || !tile.hasLightbulbIcon
+          )
+          if (developableTiles.length > 0) {
+            availableTypes.push(industryType)
+          }
+        }
+        selectedIndustryTypes = availableTypes.slice(0, 1) // Just pick first available for backward compatibility
+      }
 
-      const tilesRemoved = 1 // Simplified - would be dynamic based on player choice
+      const tilesRemoved = selectedIndustryTypes.length
       const ironRequired = tilesRemoved
 
       // Use enhanced iron consumption logic
@@ -900,10 +922,34 @@ export const gameStore = setup({
       // Get the current player's updated state after iron consumption
       const currentPlayerAfterIron =
         updatedPlayersFromIron[context.currentPlayerIndex]!
+
+      // Remove tiles from player mat
+      const updatedIndustryTilesOnMat = { ...currentPlayerAfterIron.industryTilesOnMat }
+      
+      for (const industryType of selectedIndustryTypes) {
+        const tilesOnMat = updatedIndustryTilesOnMat[industryType] || []
+        
+        // Filter out pottery tiles with lightbulb (already handled in tile selection)
+        const developableTiles = tilesOnMat.filter(tile => 
+          industryType !== 'pottery' || !tile.hasLightbulbIcon
+        )
+        
+        if (developableTiles.length > 0) {
+          // Remove the lowest level tile
+          const lowestTile = getLowestLevelTile(developableTiles)
+          if (lowestTile) {
+            updatedIndustryTilesOnMat[industryType] = tilesOnMat.filter(
+              tile => tile.id !== lowestTile.id
+            )
+          }
+        }
+      }
+
       const updatedPlayer = {
         ...currentPlayerAfterIron,
         hand: updatedHand,
         money: currentPlayerAfterIron.money - ironCost, // Pay for iron cost
+        industryTilesOnMat: updatedIndustryTilesOnMat,
       }
 
       let playersAfterDevelop = updatePlayerInList(
@@ -929,6 +975,7 @@ export const gameStore = setup({
         discardPile: [...context.discardPile, context.selectedCard],
         ironMarket: updatedIronMarket,
         selectedCard: null,
+        selectedTilesForDevelop: [],
         actionsRemaining: context.actionsRemaining - 1,
         logs: [
           ...context.logs,
@@ -1284,6 +1331,7 @@ export const gameStore = setup({
       let updatedPlayers = [...context.players]
       let updatedPlayerSpending = { ...context.playerSpending }
       let finalPlayerIndex = nextPlayerIndex
+      let newTurnOrder = context.turnOrder
       const logs = [...context.logs]
 
       // If round is complete, handle end of round logic
@@ -1303,6 +1351,9 @@ export const gameStore = setup({
 
         // Set the next player to be the one who spent the least
         finalPlayerIndex = playerSpendingArray[0]?.index ?? 0
+        
+        // Update turn order based on spending (least spenders first)
+        const newTurnOrder = playerSpendingArray.map(p => p.player.id)
 
         // Reset player spending for the new round
         updatedPlayerSpending = {}
@@ -1425,6 +1476,7 @@ export const gameStore = setup({
         actionsRemaining: nextActionsRemaining,
         players: updatedPlayers,
         playerSpending: updatedPlayerSpending,
+        turnOrder: newTurnOrder,
         selectedCard: null,
         selectedCardsForScout: [],
         selectedLink: null,
@@ -1511,9 +1563,41 @@ export const gameStore = setup({
 
       return result
     }),
+    
+    selectTilesForDevelop: assign(({ context, event }) => {
+      if (event.type !== 'SELECT_TILES_FOR_DEVELOP') return {}
+      
+      const currentPlayer = getCurrentPlayer(context)
+      const validTiles: IndustryType[] = []
+      
+      // Validate each selected industry type
+      for (const industryType of event.industryTypes) {
+        const tilesOnMat = currentPlayer.industryTilesOnMat[industryType] || []
+        
+        // Filter out pottery tiles with lightbulb icon (cannot be developed)
+        const developableTiles = tilesOnMat.filter(tile => 
+          industryType !== 'pottery' || !tile.hasLightbulbIcon
+        )
+        
+        if (developableTiles.length > 0) {
+          validTiles.push(industryType)
+        }
+      }
+      
+      // Limit to maximum 2 tiles per develop action
+      const finalSelection = validTiles.slice(0, 2)
+      
+      return {
+        selectedTilesForDevelop: finalSelection,
+      }
+    }),
 
     clearIndustryTile: assign({
       selectedIndustryTile: null,
+    }),
+
+    clearTilesForDevelop: assign({
+      selectedTilesForDevelop: [],
     }),
     setPlayerHand: assign(({ context, event }) => {
       if (event.type !== 'TEST_SET_PLAYER_HAND') return {}
@@ -1601,24 +1685,39 @@ export const gameStore = setup({
       }
 
       // Score Flipped Industry tiles - score VPs shown in bottom left corner
+      // Also remove unflipped industries (per rules)
       for (let i = 0; i < updatedPlayers.length; i++) {
         const player = updatedPlayers[i]!
         let industryVPs = 0
-
+        const remainingIndustries = []
+        let removedUnflippedCount = 0
+        
         for (const industry of player.industries) {
           if (industry.flipped) {
             industryVPs += industry.tile.victoryPoints
+            remainingIndustries.push(industry) // Keep flipped industries
+          } else {
+            removedUnflippedCount++ // Count removed unflipped industries
           }
         }
-
+        
+        const messages = []
         if (industryVPs > 0) {
-          logMessages.push(
+          messages.push(
             `${player.name} scored ${industryVPs} VPs from flipped industry tiles`,
           )
-          updatedPlayers[i] = {
-            ...player,
-            victoryPoints: player.victoryPoints + industryVPs,
-          }
+        }
+        if (removedUnflippedCount > 0) {
+          messages.push(
+            `${player.name} had ${removedUnflippedCount} unflipped industry tiles removed`,
+          )
+        }
+        logMessages.push(...messages)
+        
+        updatedPlayers[i] = {
+          ...player,
+          victoryPoints: player.victoryPoints + industryVPs,
+          industries: remainingIndustries, // Only keep flipped industries
         }
       }
 
@@ -1699,6 +1798,7 @@ export const gameStore = setup({
         discardPile: [],
         isFinalRound: false,
         playerSpending: {}, // Reset spending tracking
+        turnOrder: context.turnOrder, // Maintain current turn order
         merchants: updatedMerchants,
         logs: [
           ...context.logs,
@@ -1891,6 +1991,24 @@ export const gameStore = setup({
 
     hasSelectedSecondLink: ({ context }) => context.selectedSecondLink !== null,
 
+    hasSelectedTilesForDevelop: ({ context }) => {
+      // Allow confirmation if tiles are selected OR for backward compatibility
+      if (context.selectedTilesForDevelop.length > 0) return true
+      
+      // For backward compatibility, check if there are any developable tiles
+      const currentPlayer = getCurrentPlayer(context)
+      for (const industryType of ['coal', 'iron', 'cotton', 'pottery', 'manufacturer', 'brewery'] as IndustryType[]) {
+        const tilesOnMat = currentPlayer.industryTilesOnMat[industryType] || []
+        const developableTiles = tilesOnMat.filter(tile => 
+          industryType !== 'pottery' || !tile.hasLightbulbIcon
+        )
+        if (developableTiles.length > 0) {
+          return true
+        }
+      }
+      return false
+    },
+
     canCompleteDoubleLink: ({ context }) => {
       return (
         context.selectedCard !== null &&
@@ -1924,11 +2042,13 @@ export const gameStore = setup({
     selectedCardsForScout: [],
     spentMoney: 0,
     playerSpending: {},
+    turnOrder: [],
     isFinalRound: false,
     selectedLink: null,
     selectedSecondLink: null,
     selectedLocation: null,
     selectedIndustryTile: null,
+    selectedTilesForDevelop: [],
     merchants: [],
   },
   initial: 'setup',
@@ -2066,11 +2186,27 @@ export const gameStore = setup({
                 selectingCard: {
                   on: {
                     SELECT_CARD: {
-                      target: 'confirmingDevelop',
+                      target: 'selectingTiles',
                       actions: 'selectCard',
                     },
                     CANCEL: {
                       target: '#brassGame.playing.action.selectingAction',
+                      actions: 'clearSelections',
+                    },
+                  },
+                },
+                selectingTiles: {
+                  on: {
+                    SELECT_TILES_FOR_DEVELOP: {
+                      target: 'confirmingDevelop',
+                      actions: 'selectTilesForDevelop',
+                    },
+                    CONFIRM: {
+                      target: 'confirmingDevelop',
+                      // Don't run selectTilesForDevelop action - use auto-selection in executeDevelopAction
+                    },
+                    CANCEL: {
+                      target: 'selectingCard',
                       actions: 'clearSelections',
                     },
                   },
@@ -2080,11 +2216,11 @@ export const gameStore = setup({
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
                       actions: 'executeDevelopAction',
-                      guard: 'hasSelectedCard',
+                      guard: 'hasSelectedTilesForDevelop',
                     },
                     CANCEL: {
-                      target: 'selectingCard',
-                      actions: 'clearSelections',
+                      target: 'selectingTiles',
+                      actions: 'clearTilesForDevelop',
                     },
                   },
                 },

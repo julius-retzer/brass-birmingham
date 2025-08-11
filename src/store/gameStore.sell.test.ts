@@ -41,11 +41,11 @@ const setupGame = () => {
   return { actor, players }
 }
 
-const setupSellTest = (actor: ReturnType<typeof createActor>) => {
+const setupSellTest = (actor: ReturnType<typeof createActor>, playerId = 0) => {
   // Provide a sellable cotton industry connected to a merchant (Warrington) via Stoke
   actor.send({
     type: 'TEST_SET_PLAYER_STATE',
-    playerId: 0,
+    playerId,
     industries: [
       {
         location: 'stoke',
@@ -76,23 +76,47 @@ const setupSellTest = (actor: ReturnType<typeof createActor>) => {
 describe('Game Store - Sell Actions', () => {
   test('sell action - basic mechanics (flip, income, merchant beer, money bonus)', () => {
     const { actor } = setupGame()
-    setupSellTest(actor)
-
+    
     let snapshot = actor.getSnapshot()
-    const initialMoney = snapshot.context.players[0]!.money
-    const initialIncome = snapshot.context.players[0]!.income
     const initialActions = snapshot.context.actionsRemaining
     const initialDiscard = snapshot.context.discardPile.length
     const initialPlayerIndex = snapshot.context.currentPlayerIndex
 
-    // Start selling and select any card (guard requires a selected card)
+    // Player 0 creates canal link Stoke <-> Warrington for connectivity
+    actor.send({ type: 'NETWORK' })
+    snapshot = actor.getSnapshot()
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!.id,
+    })
+    actor.send({ type: 'SELECT_LINK', from: 'stoke', to: 'warrington' })
+    actor.send({ type: 'CONFIRM' })
+
+    // After network, it's player 1's turn - pass to get back to player 0
+    snapshot = actor.getSnapshot()
+    actor.send({ type: 'PASS' })
+    snapshot = actor.getSnapshot()
+    const p1Card = snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
+    actor.send({ type: 'SELECT_CARD', cardId: p1Card.id })
+    actor.send({ type: 'CONFIRM' })
+    
+    // Now round 2 - set up sell test for current player
+    snapshot = actor.getSnapshot()
+    const currentPlayerId = snapshot.context.currentPlayerIndex
+    setupSellTest(actor, currentPlayerId)
+    
+    const initialMoney = snapshot.context.players[currentPlayerId]!.money
+    const initialIncome = snapshot.context.players[currentPlayerId]!.income
+    
+    // Perform sell action
     actor.send({ type: 'SELL' })
-    const cardToUse = snapshot.context.players[0]!.hand[0]!
+    snapshot = actor.getSnapshot()
+    const cardToUse = snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
     actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
     actor.send({ type: 'CONFIRM' })
 
     snapshot = actor.getSnapshot()
-    const updatedPlayer = snapshot.context.players[0]!
+    const updatedPlayer = snapshot.context.players[currentPlayerId]!
 
     // Industry should be flipped
     const cotton = updatedPlayer.industries.find((i) => i.type === 'cotton')!
@@ -101,8 +125,8 @@ describe('Game Store - Sell Actions', () => {
     // Income should have increased by incomeAdvancement (clamped in machine)
     expect(updatedPlayer.income).toBeGreaterThan(initialIncome)
 
-    // Discard pile should include the used card
-    expect(snapshot.context.discardPile.length).toBe(initialDiscard + 1)
+    // Discard pile should include the used cards (network + pass + sell = 3 cards)
+    expect(snapshot.context.discardPile.length).toBe(initialDiscard + 3)
 
     // Turn should have advanced to next player after action completes
     expect(snapshot.context.currentPlayerIndex).not.toBe(initialPlayerIndex)
@@ -113,8 +137,9 @@ describe('Game Store - Sell Actions', () => {
     )!
     expect(warrington.hasBeer).toBe(false)
 
-    // Money bonus (+£5) from Warrington merchant
-    expect(updatedPlayer.money).toBe(initialMoney + 5)
+    // Money bonus (+£5) from Warrington merchant  
+    // setupSellTest sets money to 20, so we should have 20 + 5 = 25
+    expect(updatedPlayer.money).toBe(25)
   })
 
   test('sell action - requires card selection (guard)', () => {
@@ -152,10 +177,33 @@ describe('Game Store - Sell Actions', () => {
 
   test('sell action - flip and income increase without asserting money if no money bonus', () => {
     const { actor } = setupGame()
-    // Provide a pottery at Stoke (also connected); still hits Warrington with money bonus, but we focus on flip/income
+    
+    // Player 0 creates canal link Stoke <-> Warrington for connectivity
+    actor.send({ type: 'NETWORK' })
+    let snapshot = actor.getSnapshot()
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!.id,
+    })
+    actor.send({ type: 'SELECT_LINK', from: 'stoke', to: 'warrington' })
+    actor.send({ type: 'CONFIRM' })
+
+    // After network, it's player 1's turn - pass to get back to player 0
+    snapshot = actor.getSnapshot()
+    actor.send({ type: 'PASS' })
+    snapshot = actor.getSnapshot()
+    const p1Card = snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
+    actor.send({ type: 'SELECT_CARD', cardId: p1Card.id })
+    actor.send({ type: 'CONFIRM' })
+
+    // Now round 2 - set up pottery for the current player
+    snapshot = actor.getSnapshot()
+    const currentPlayerId = snapshot.context.currentPlayerIndex
+    
+    // Provide a pottery at Stoke for the current player
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
-      playerId: 0,
+      playerId: currentPlayerId,
       industries: [
         {
           location: 'stoke',
@@ -181,21 +229,22 @@ describe('Game Store - Sell Actions', () => {
       income: 5,
       money: 10,
     })
-
-    let snapshot = actor.getSnapshot()
-    const initialIncome = snapshot.context.players[0]!.income
+    
+    snapshot = actor.getSnapshot()
+    const initialIncome = snapshot.context.players[currentPlayerId]!.income
 
     actor.send({ type: 'SELL' })
-    const cardToUse = snapshot.context.players[0]!.hand[0]!
+    snapshot = actor.getSnapshot()
+    const cardToUse = snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
     actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
     actor.send({ type: 'CONFIRM' })
 
     snapshot = actor.getSnapshot()
-    const pottery = snapshot.context.players[0]!.industries.find(
+    const pottery = snapshot.context.players[currentPlayerId]!.industries.find(
       (i) => i.type === 'pottery',
     )!
     expect(pottery.flipped).toBe(true)
-    expect(snapshot.context.players[0]!.income).toBeGreaterThan(initialIncome)
+    expect(snapshot.context.players[currentPlayerId]!.income).toBeGreaterThan(initialIncome)
   })
 
   test('sell action - requires connectivity to a merchant that buys the industry', () => {

@@ -9,7 +9,11 @@ import {
   sellIronToMarket, 
   isLocationConnectedToMerchant
 } from '../market/marketActions'
-import { getCardDescription } from '../shared/gameUtils'
+import { 
+  canOverbuildIndustry,
+  getCardDescription,
+  performOverbuild,
+} from '../shared/gameUtils'
 
 // Build validation functions
 export function validateBuildActionSelections(context: GameState): void {
@@ -91,6 +95,19 @@ export function buildIndustryTile(
   let ironCost = 0
   const resourceLogDetails: string[] = []
 
+  // Check for overbuilding
+  const overbuildCheck = canOverbuildIndustry(
+    context,
+    context.currentPlayerIndex,
+    context.selectedLocation!,
+    tile.type,
+    tile.level
+  )
+
+  if (!overbuildCheck.canOverbuild && overbuildCheck.reason) {
+    throw new Error(overbuildCheck.reason)
+  }
+
   // Consume coal if required
   if (tile.coalRequired > 0) {
     const coalResult = consumeCoalFromSources(
@@ -148,7 +165,7 @@ export function buildIndustryTile(
 
   if (tile.type === 'coal') {
     // RULE: Coal mines only sell automatically if connected to merchant spaces with [left-right arrows] icon
-    const isConnectedToMerchant = isLocationConnectedToMerchant(context.selectedLocation!)
+    const { connected: isConnectedToMerchant } = isLocationConnectedToMerchant(context, context.selectedLocation!)
     if (isConnectedToMerchant && newIndustry.coalCubesOnTile > 0) {
       const sellResult = sellCoalToMarket(updatedCoalMarket, newIndustry.coalCubesOnTile)
       updatedCoalMarket = sellResult.updatedMarket
@@ -184,6 +201,15 @@ export function buildIndustryTile(
     updatedTilesOnMat[tileType] = updatedTilesOnMat[tileType].filter((t) => t.id !== tile.id)
   }
 
+  // Handle overbuilding if necessary
+  if (overbuildCheck.existingIndustry) {
+    updatedPlayersFromResources = performOverbuild(
+      context,
+      overbuildCheck.existingIndustry,
+      newIndustry
+    )
+  }
+
   // Get updated player state from resource consumption
   const currentPlayerFromResources = updatedPlayersFromResources[context.currentPlayerIndex]!
   const finalMoney = currentPlayerFromResources.money - totalCost + marketIncome
@@ -206,7 +232,10 @@ export function buildIndustryTile(
   const resourceString = resourceLogDetails.length > 0 ? ` (consumed ${resourceLogDetails.join(', ')})` : ''
   const marketString = marketLogDetails.length > 0 ? ` (${marketLogDetails.join(', ')})` : ''
   const incomeString = newIndustry.flipped ? ` (tile flipped, +${newIndustry.tile.incomeSpaces} income)` : ''
-  const logMessage = `${currentPlayer.name} built ${tile.type} Level ${tile.level} at ${context.selectedLocation} for £${totalCost}${resourceString}${marketString}${incomeString} using ${getCardDescription(context.selectedCard!)}`
+  const overbuildString = overbuildCheck.existingIndustry 
+    ? ` (overbuilt ${overbuildCheck.existingIndustry.playerIndex === context.currentPlayerIndex ? 'own' : 'opponent\'s'} level ${overbuildCheck.existingIndustry.industry.level})`
+    : ''
+  const logMessage = `${currentPlayer.name} built ${tile.type} Level ${tile.level} at ${context.selectedLocation} for £${totalCost}${resourceString}${marketString}${incomeString}${overbuildString} using ${getCardDescription(context.selectedCard!)}`
 
   return {
     updatedPlayer,

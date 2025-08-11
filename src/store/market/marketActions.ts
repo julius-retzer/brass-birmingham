@@ -1,7 +1,10 @@
 import type { CityId } from '../../data/board'
 import { GAME_CONSTANTS } from '../constants'
 import type { GameState, Player } from '../gameStore'
+import type { IndustryType } from '../../data/cards'
 import {
+  calculateNetworkDistance,
+  checkAndFlipIndustryTilesLogic,
   findAvailableBreweries,
   findAvailableIronWorks,
   findConnectedCoalMines,
@@ -37,20 +40,28 @@ export function consumeCoalFromSources(
     if (coalConsumed >= coalRequired) break
 
     if (coalMine.coalCubesOnTile > 0) {
+      // Consume as many cubes as possible from this mine (up to requirement)
+      const cubesToConsume = Math.min(
+        coalMine.coalCubesOnTile,
+        coalRequired - coalConsumed,
+      )
+      
       // Find the player who owns this coal mine and update it
       updatedPlayers = updatedPlayers.map((player) => ({
         ...player,
         industries: player.industries.map((industry) =>
           industry === coalMine
-            ? { ...industry, coalCubesOnTile: industry.coalCubesOnTile - 1 }
+            ? { ...industry, coalCubesOnTile: industry.coalCubesOnTile - cubesToConsume }
             : industry,
         ),
       }))
 
-      coalConsumed++
-      logDetails.push(`1 coal from connected coal mine (free)`)
-
-      // TODO: Check if coal mine should flip when empty
+      coalConsumed += cubesToConsume
+      if (cubesToConsume === 1) {
+        logDetails.push(`1 coal from connected coal mine (free)`)
+      } else {
+        logDetails.push(`${cubesToConsume} coal from connected coal mine (free)`)
+      }
     }
   }
 
@@ -86,6 +97,18 @@ export function consumeCoalFromSources(
     }
   }
 
+  // Check for auto-flipping after coal consumption
+  const contextAfterCoalConsumption = { ...context, players: updatedPlayers }
+  const autoFlipResult = checkAndFlipIndustryTilesLogic(contextAfterCoalConsumption)
+  
+  if (autoFlipResult.players) {
+    updatedPlayers = autoFlipResult.players
+  }
+  
+  if (autoFlipResult.logs) {
+    logDetails.push(...autoFlipResult.logs.map(log => log.message))
+  }
+
   return { updatedPlayers, updatedCoalMarket, coalCost, logDetails }
 }
 
@@ -107,25 +130,32 @@ export function consumeIronFromSources(
   // First, try to consume from any available iron works (free)
   const availableIronWorks = findAvailableIronWorks(context)
 
-  // TODO: For iron and coal you can consume multiple cubes from single tile.
   for (const ironWorks of availableIronWorks) {
     if (ironConsumed >= ironRequired) break
 
     if (ironWorks.ironCubesOnTile > 0) {
+      // Consume as many cubes as possible from this iron works (up to requirement)
+      const cubesToConsume = Math.min(
+        ironWorks.ironCubesOnTile,
+        ironRequired - ironConsumed,
+      )
+      
       // Find the player who owns this iron works and update it
       updatedPlayers = updatedPlayers.map((player) => ({
         ...player,
         industries: player.industries.map((industry) =>
           industry === ironWorks
-            ? { ...industry, ironCubesOnTile: industry.ironCubesOnTile - 1 }
+            ? { ...industry, ironCubesOnTile: industry.ironCubesOnTile - cubesToConsume }
             : industry,
         ),
       }))
 
-      ironConsumed++
-      logDetails.push(`1 iron from iron works (free)`)
-
-      // TODO: Check if iron works should flip when empty
+      ironConsumed += cubesToConsume
+      if (cubesToConsume === 1) {
+        logDetails.push(`1 iron from iron works (free)`)
+      } else {
+        logDetails.push(`${cubesToConsume} iron from iron works (free)`)
+      }
     }
   }
 
@@ -161,17 +191,41 @@ export function consumeIronFromSources(
     }
   }
 
+  // Check for auto-flipping after iron consumption
+  const contextAfterIronConsumption = { ...context, players: updatedPlayers }
+  const autoFlipResult = checkAndFlipIndustryTilesLogic(contextAfterIronConsumption)
+  
+  if (autoFlipResult.players) {
+    updatedPlayers = autoFlipResult.players
+  }
+  
+  if (autoFlipResult.logs) {
+    logDetails.push(...autoFlipResult.logs.map(log => log.message))
+  }
+
   return { updatedPlayers, updatedIronMarket, ironCost, logDetails }
 }
 
-// Helper function to check if a location is connected to a merchant
-export function isLocationConnectedToMerchant(location: CityId): boolean {
-  // Based on the board data, these connections exist:
-  // Stoke -> Warrington, Coalbrookdale -> Shrewsbury
-  // TODO: This should use proper network connectivity check, but for now hardcode known connections
-  const merchantConnections = new Set<CityId>(['stoke', 'coalbrookdale'])
-
-  return merchantConnections.has(location)
+// Helper function to check if a location is connected to any merchant
+export function isLocationConnectedToMerchant(
+  context: GameState,
+  location: CityId,
+): { connected: boolean; connectedMerchants: CityId[] } {
+  const merchantLocations: CityId[] = ['warrington', 'gloucester', 'oxford', 'nottingham', 'shrewsbury']
+  
+  const connectedMerchants: CityId[] = []
+  
+  for (const merchantLocation of merchantLocations) {
+    const distance = calculateNetworkDistance(context, location, merchantLocation)
+    if (distance !== Infinity) {
+      connectedMerchants.push(merchantLocation)
+    }
+  }
+  
+  return {
+    connected: connectedMerchants.length > 0,
+    connectedMerchants,
+  }
 }
 
 // Helper function to sell coal to market (most expensive spaces first)
@@ -285,7 +339,7 @@ export function consumeBeerFromSources(
   updatedResources: GameState['resources']
   updatedMerchants?: Array<{
     location: CityId
-    industryIcons: string[]
+    industryIcons: IndustryType[]
     bonusType: 'develop' | 'income' | 'victoryPoints' | 'money'
     bonusValue: number
     hasBeer: boolean
@@ -338,7 +392,6 @@ export function consumeBeerFromSources(
       beerConsumed++
       logDetails.push(`1 beer from own brewery at ${brewery.location} (free)`)
 
-      // TODO: Check if brewery should flip when empty
       break // Only consume from one brewery at a time
     }
   }
@@ -361,27 +414,25 @@ export function consumeBeerFromSources(
       beerConsumed++
       logDetails.push(`1 beer from connected opponent brewery at ${brewery.location} (free)`)
 
-      // TODO: Check if brewery should flip when empty
       break // Only consume from one connected brewery at a time
     }
   }
 
   // If still need beer and merchant beer is allowed, consume from merchants
   if (includeMerchantBeer && updatedMerchants && beerConsumed < beerRequired) {
-    // Find merchant connected to this location with beer
-    // NOTE: This is simplified - in full game would check proper network connectivity
-    // Stoke connects to Warrington, Coalbrookdale connects to Shrewsbury
+    // Find merchants connected to this location with beer
+    
     let connectedMerchant = null
     
-    if (location === 'stoke') {
-      connectedMerchant = updatedMerchants.find(m => m.location === 'warrington' && m.hasBeer)
-    } else if (location === 'coalbrookdale') {
-      connectedMerchant = updatedMerchants.find(m => m.location === 'shrewsbury' && m.hasBeer)
-    }
-    
-    // Also check if there's a merchant directly at this location (for edge cities)
-    if (!connectedMerchant) {
-      connectedMerchant = updatedMerchants.find(m => m.location === location && m.hasBeer)
+    // Find first available connected merchant with beer
+    for (const merchant of updatedMerchants) {
+      if (merchant.hasBeer) {
+        const distance = calculateNetworkDistance(context, location, merchant.location)
+        if (distance !== Infinity) {
+          connectedMerchant = merchant
+          break
+        }
+      }
     }
 
     if (connectedMerchant) {
@@ -409,6 +460,18 @@ export function consumeBeerFromSources(
       logDetails,
       errorMessage: `Insufficient beer available. Required: ${beerRequired}, available: ${beerConsumed}`,
     }
+  }
+
+  // Check for auto-flipping after beer consumption
+  const contextAfterBeerConsumption = { ...context, players: updatedPlayers }
+  const autoFlipResult = checkAndFlipIndustryTilesLogic(contextAfterBeerConsumption)
+  
+  if (autoFlipResult.players) {
+    updatedPlayers = autoFlipResult.players
+  }
+  
+  if (autoFlipResult.logs) {
+    logDetails.push(...autoFlipResult.logs.map(log => log.message))
   }
 
   return {

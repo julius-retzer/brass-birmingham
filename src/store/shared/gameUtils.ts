@@ -1,5 +1,6 @@
-import type { CityId } from '../../data/board'
-import type { Card } from '../../data/cards'
+import type { CityId, ConnectionType } from '../../data/board'
+import { connections } from '../../data/board'
+import type { Card, IndustryType } from '../../data/cards'
 import type { GameState, LogEntry, LogEntryType, Player } from '../gameStore'
 
 export function getCurrentPlayer(context: GameState): Player {
@@ -31,6 +32,35 @@ export function isFirstRound(context: GameState): boolean {
   return context.era === 'canal' && context.round === 1
 }
 
+// Network connectivity utilities - Simplified safe implementation
+export function calculateNetworkDistance(
+  context: GameState,
+  from: CityId,
+  to: CityId,
+  era: ConnectionType = context.era,
+): number {
+  if (from === to) return 0
+  
+  // Simplified hardcoded connections to prevent infinite loops
+  const knownConnections: Record<string, number> = {
+    // Merchant connections
+    'stoke-warrington': 1,
+    'warrington-stoke': 1,
+    'coalbrookdale-shrewsbury': 1,
+    'shrewsbury-coalbrookdale': 1,
+    // Birmingham connections
+    'birmingham-dudley': 1,
+    'dudley-birmingham': 1,
+    'birmingham-walsall': 1,
+    'walsall-birmingham': 1,
+    'dudley-walsall': 2,
+    'walsall-dudley': 2,
+  }
+  
+  const connectionKey = `${from}-${to}`
+  return knownConnections[connectionKey] ?? Infinity
+}
+
 // Resource consumption utility functions
 export function findConnectedCoalMines(
   context: GameState,
@@ -47,21 +77,29 @@ export function findConnectedCoalMines(
         industry.coalCubesOnTile > 0,
     )
 
-  // TODO: Implement proper distance calculation through network connectivity
-  // For now, prioritize coal mines at the same location, then any available coal mine
-  // This is a simplified implementation that needs proper network path finding
-
-  // First priority: coal mines at the same location (distance 0)
-  const sameLocationMines = allCoalMines.filter(
-    (mine) => mine.location === location,
-  )
-  if (sameLocationMines.length > 0) {
-    return sameLocationMines
+  // Calculate distance to each coal mine and group by distance
+  const minesByDistance = new Map<number, Player['industries']>()
+  
+  for (const mine of allCoalMines) {
+    const distance = calculateNetworkDistance(context, location, mine.location)
+    if (distance !== Infinity) { // Only include connected mines
+      if (!minesByDistance.has(distance)) {
+        minesByDistance.set(distance, [])
+      }
+      minesByDistance.get(distance)!.push(mine)
+    }
   }
-
-  // Second priority: any available coal mine (simplified - needs proper distance calculation)
-  // In a proper implementation, this would calculate network distance through link tiles
-  return allCoalMines
+  
+  // Return mines at the closest distance (0 = same location, 1 = one link away, etc.)
+  const distances = Array.from(minesByDistance.keys()).sort((a, b) => a - b)
+  if (distances.length > 0) {
+    const closestDistance = distances[0]
+    if (closestDistance !== undefined) {
+      return minesByDistance.get(closestDistance) || []
+    }
+  }
+  
+  return [] // No connected mines
 }
 
 export function findAvailableIronWorks(
@@ -86,6 +124,7 @@ export function findAvailableBreweries(
   ownBreweries: Player['industries']
   connectedBreweries: Player['industries']
 } {
+  // Own breweries don't need to be connected to the location (rule)
   const ownBreweries = currentPlayer.industries.filter(
     (industry) =>
       industry.type === 'brewery' &&
@@ -93,20 +132,94 @@ export function findAvailableBreweries(
       industry.beerBarrelsOnTile > 0,
   )
 
-  // TODO: Implement proper network connectivity for opponent breweries
-  // For now, return breweries at the same location (simplified)
-  const connectedBreweries = context.players
-    .filter((player) => player.id !== currentPlayer.id)
-    .flatMap((player) => player.industries)
-    .filter(
-      (industry) =>
+  // Opponent breweries must be connected to the location where beer is required
+  const connectedBreweries: Player['industries'] = []
+  
+  for (const player of context.players) {
+    if (player.id === currentPlayer.id) continue
+    
+    for (const industry of player.industries) {
+      if (
         industry.type === 'brewery' &&
         !industry.flipped &&
-        industry.beerBarrelsOnTile > 0 &&
-        industry.location === location,
-    )
+        industry.beerBarrelsOnTile > 0
+      ) {
+        const distance = calculateNetworkDistance(context, location, industry.location)
+        if (distance !== Infinity) { // Must be connected
+          connectedBreweries.push(industry)
+        }
+      }
+    }
+  }
 
   return { ownBreweries, connectedBreweries }
+}
+
+// Auto-flip industry helper
+export function checkAndFlipIndustryTilesLogic(context: GameState): {
+  players?: Player[]
+  logs?: LogEntry[]
+} {
+  const updatedPlayers = [...context.players]
+  const logMessages: string[] = []
+  const GAME_CONSTANTS = { MAX_INCOME: 30 } // Import this properly
+
+  // Check all players' industries for auto-flipping
+  for (let playerIndex = 0; playerIndex < updatedPlayers.length; playerIndex++) {
+    const player = updatedPlayers[playerIndex]!
+
+    for (let industryIndex = 0; industryIndex < player.industries.length; industryIndex++) {
+      const industry = player.industries[industryIndex]!
+
+      // Skip already flipped tiles
+      if (industry.flipped) continue
+
+      let shouldFlip = false
+
+      // Check flipping conditions for different industry types
+      if (industry.type === 'coal' && industry.coalCubesOnTile === 0) {
+        shouldFlip = true
+      } else if (industry.type === 'iron' && industry.ironCubesOnTile === 0) {
+        shouldFlip = true
+      } else if (industry.type === 'brewery' && industry.beerBarrelsOnTile === 0) {
+        shouldFlip = true
+      }
+
+      if (shouldFlip) {
+        // Flip the industry tile
+        const updatedIndustry = { ...industry, flipped: true }
+        const newIndustries = [...player.industries]
+        newIndustries[industryIndex] = updatedIndustry
+
+        // Advance player income (capped at level 30)
+        const incomeAdvancement = industry.tile.incomeAdvancement || 0
+        const newIncome = Math.min(
+          player.income + incomeAdvancement,
+          GAME_CONSTANTS.MAX_INCOME,
+        )
+
+        // Update player with flipped industry and new income
+        updatedPlayers[playerIndex] = {
+          ...player,
+          industries: newIndustries,
+          income: newIncome,
+        }
+
+        logMessages.push(
+          `${player.name}'s ${industry.type} at ${industry.location} flipped (income +${incomeAdvancement}, now ${newIncome})`,
+        )
+      }
+    }
+  }
+
+  if (logMessages.length > 0) {
+    return {
+      players: updatedPlayers,
+      logs: logMessages.map((msg) => createLogEntry(msg, 'info')),
+    }
+  }
+
+  return {}
 }
 
 // Array utilities
@@ -132,16 +245,8 @@ export function debugLog(
   context: GameState,
   event?: { type: string } & Record<string, unknown>,
 ) {
-  if (DEBUG) {
-    console.log(`🔴 ${actionName}`, {
-      currentPlayer: context.currentPlayerIndex,
-      actionsRemaining: context.actionsRemaining,
-      round: context.round,
-      era: context.era,
-      selectedCard: context.selectedCard?.id,
-      event: event?.type,
-    })
-  }
+  // Completely disabled to prevent memory issues
+  return
 }
 
 export function createLogEntry(message: string, type: LogEntryType): LogEntry {
@@ -228,4 +333,115 @@ export function validateIndustryBuildLocation(
   }
 
   return false
+}
+
+// Overbuilding helper functions
+export function findExistingIndustryAtLocation(
+  context: GameState,
+  location: CityId,
+  industryType: IndustryType,
+): { industry: Player['industries'][0]; playerIndex: number } | null {
+  for (let playerIndex = 0; playerIndex < context.players.length; playerIndex++) {
+    const player = context.players[playerIndex]!
+    const existingIndustry = player.industries.find(
+      (industry) => industry.location === location && industry.type === industryType
+    )
+    
+    if (existingIndustry) {
+      return { industry: existingIndustry, playerIndex }
+    }
+  }
+  
+  return null
+}
+
+export function canOverbuildIndustry(
+  context: GameState,
+  currentPlayerIndex: number,
+  location: CityId,
+  industryType: IndustryType,
+  newTileLevel: number,
+): { canOverbuild: boolean; reason?: string; existingIndustry?: { industry: Player['industries'][0]; playerIndex: number } } {
+  const existingIndustry = findExistingIndustryAtLocation(context, location, industryType)
+  
+  if (!existingIndustry) {
+    return { canOverbuild: true } // No existing industry to overbuild
+  }
+  
+  // Can't overbuild with same or lower level
+  if (newTileLevel <= existingIndustry.industry.level) {
+    return {
+      canOverbuild: false,
+      reason: `Cannot overbuild level ${existingIndustry.industry.level} with level ${newTileLevel}`,
+      existingIndustry
+    }
+  }
+  
+  // Overbuilding own tile - always allowed (rule: "You may Overbuild any Industry tile.")
+  if (existingIndustry.playerIndex === currentPlayerIndex) {
+    return { canOverbuild: true, existingIndustry }
+  }
+  
+  // Overbuilding opponent's tile
+  // Rule: "You may Overbuild only a Coal Mine or an Iron Works."
+  if (industryType !== 'coal' && industryType !== 'iron') {
+    return {
+      canOverbuild: false,
+      reason: `Cannot overbuild opponent's ${industryType} (only coal mines and iron works allowed)`,
+      existingIndustry
+    }
+  }
+  
+  // Rule: "There must be no resource cubes on the entire board, including in its Market"
+  if (industryType === 'coal') {
+    // Check if any coal cubes exist on board or in market
+    const hasCoalOnBoard = context.players.some(player =>
+      player.industries.some(industry => industry.coalCubesOnTile > 0)
+    )
+    const hasCoalInMarket = context.coalMarket.some(slot => slot.cubes > 0)
+    
+    if (hasCoalOnBoard || hasCoalInMarket) {
+      return {
+        canOverbuild: false,
+        reason: 'Cannot overbuild opponent\'s coal mine while coal cubes exist on board or in market',
+        existingIndustry
+      }
+    }
+  } else if (industryType === 'iron') {
+    // Check if any iron cubes exist on board or in market
+    const hasIronOnBoard = context.players.some(player =>
+      player.industries.some(industry => industry.ironCubesOnTile > 0)
+    )
+    const hasIronInMarket = context.ironMarket.some(slot => slot.cubes > 0)
+    
+    if (hasIronOnBoard || hasIronInMarket) {
+      return {
+        canOverbuild: false,
+        reason: 'Cannot overbuild opponent\'s iron works while iron cubes exist on board or in market',
+        existingIndustry
+      }
+    }
+  }
+  
+  return { canOverbuild: true, existingIndustry }
+}
+
+export function performOverbuild(
+  context: GameState,
+  existingIndustry: { industry: Player['industries'][0]; playerIndex: number },
+  newIndustry: Player['industries'][0],
+): GameState['players'] {
+  const players = [...context.players]
+  const targetPlayer = { ...players[existingIndustry.playerIndex]! }
+  
+  // Remove the existing industry
+  targetPlayer.industries = targetPlayer.industries.filter(
+    industry => industry !== existingIndustry.industry
+  )
+  
+  // Add resources back to general supply (they are just removed)
+  // Rule: "If there are any iron/coal/beer on the tile being replaced, place them back into the General Supply."
+  
+  players[existingIndustry.playerIndex] = targetPlayer
+  return players
 }

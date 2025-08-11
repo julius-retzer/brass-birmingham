@@ -29,6 +29,8 @@ import {
   consumeIronFromSources,
 } from './market/marketActions'
 import {
+  calculateNetworkDistance,
+  checkAndFlipIndustryTilesLogic,
   createLogEntry,
   debugLog,
   drawCards,
@@ -517,12 +519,31 @@ export const gameStore = setup({
         const currentSpending = context.playerSpending[currentPlayer.id] || 0
 
         // Use the updated players list from the build result
+        let playersAfterBuild = updatePlayerInList(
+          buildResult.updatedPlayers,
+          context.currentPlayerIndex,
+          updatedPlayer,
+        )
+
+        // Check for auto-flipping industries after resource consumption
+        const contextAfterBuild = {
+          ...context,
+          players: playersAfterBuild,
+          coalMarket: updatedCoalMarket,
+          ironMarket: updatedIronMarket,
+        }
+        // Apply the checkAndFlipIndustryTiles logic manually
+        const autoFlipContext = {
+          ...contextAfterBuild,
+          players: playersAfterBuild,
+        }
+        const autoFlipResult = checkAndFlipIndustryTilesLogic(autoFlipContext)
+        if (autoFlipResult.players) {
+          playersAfterBuild = autoFlipResult.players
+        }
+
         const result: Partial<GameState> = {
-          players: updatePlayerInList(
-            buildResult.updatedPlayers,
-            context.currentPlayerIndex,
-            updatedPlayer,
-          ),
+          players: playersAfterBuild,
           discardPile: [...context.discardPile, context.selectedCard!],
           selectedCard: null,
           selectedLocation: null,
@@ -533,7 +554,11 @@ export const gameStore = setup({
             ...context.playerSpending,
             [currentPlayer.id]: currentSpending + totalCost,
           },
-          logs: [...context.logs, createLogEntry(logMessage, 'action')],
+          logs: [
+            ...context.logs,
+            createLogEntry(logMessage, 'action'),
+            ...(autoFlipResult.logs || []),
+          ],
         }
 
         // Update resource markets if they were modified
@@ -702,7 +727,10 @@ export const gameStore = setup({
       )
 
       if (!beerResult.success) {
-        throw new Error(beerResult.errorMessage || 'Beer consumption failed for network action')
+        throw new Error(
+          beerResult.errorMessage ||
+            'Beer consumption failed for network action',
+        )
       }
 
       // Consume 2 coal (1 per link)
@@ -878,13 +906,26 @@ export const gameStore = setup({
         money: currentPlayerAfterIron.money - ironCost, // Pay for iron cost
       }
 
+      let playersAfterDevelop = updatePlayerInList(
+        updatedPlayersFromIron,
+        context.currentPlayerIndex,
+        updatedPlayer,
+      )
+
+      // Check for auto-flipping industries after iron consumption
+      const contextAfterDevelop = {
+        ...context,
+        players: playersAfterDevelop,
+        ironMarket: updatedIronMarket,
+      }
+      const autoFlipResult = checkAndFlipIndustryTilesLogic(contextAfterDevelop)
+      if (autoFlipResult.players) {
+        playersAfterDevelop = autoFlipResult.players
+      }
+
       debugLog('executeDevelopAction', context)
       return {
-        players: updatePlayerInList(
-          updatedPlayersFromIron,
-          context.currentPlayerIndex,
-          updatedPlayer,
-        ),
+        players: playersAfterDevelop,
         discardPile: [...context.discardPile, context.selectedCard],
         ironMarket: updatedIronMarket,
         selectedCard: null,
@@ -895,6 +936,7 @@ export const gameStore = setup({
             `${currentPlayer.name} developed (removed ${tilesRemoved} tile${tilesRemoved > 1 ? 's' : ''}, ${ironResult.logDetails.join(', ')}) using ${getCardDescription(context.selectedCard)}`,
             'action',
           ),
+          ...(autoFlipResult.logs || []),
         ],
       }
     }),
@@ -921,18 +963,31 @@ export const gameStore = setup({
       const sellLocation = industryToSell.location
 
       // Check if industry is connected to a merchant with matching icon
-      const connectedMerchant = context.merchants.find(
-        (merchant) =>
-          merchant.industryIcons.includes(industryToSell.type) &&
-          // TODO: Add proper network connectivity check
-          // For now, assume all industries are connected to merchants for testing
-          true,
-      )
+      const connectedMerchant = context.merchants.find((merchant) => {
+        if (!merchant.industryIcons.includes(industryToSell.type)) {
+          return false
+        }
+
+        // Check network connectivity between industry location and merchant
+        const distance = calculateNetworkDistance(
+          context,
+          sellLocation,
+          merchant.location,
+        )
+        return distance !== Infinity
+      })
 
       if (!connectedMerchant) {
-        throw new Error(
-          `No merchant connected with ${industryToSell.type} icon`,
-        )
+        return {
+          ...context,
+          logs: [
+            ...context.logs,
+            createLogEntry(
+              `Cannot sell: No merchant connected with ${industryToSell.type} icon`,
+              'error',
+            ),
+          ],
+        }
       }
 
       // Consume beer (can use merchant beer for sell actions)
@@ -999,8 +1054,46 @@ export const gameStore = setup({
             updatedPlayer.victoryPoints += bonus.value
             break
           case 'develop':
-            // Remove lowest level tile from player mat (simplified)
-            // In full implementation, player would choose which tile to remove
+            // Remove 1 of the lowest level tiles of any industry from Player Mat
+            // RULE: Find lowest level tile (excluding pottery with lightbulb icon)
+            let lowestLevel = Infinity
+            let industryTypeToRemove: IndustryType | null = null
+
+            for (const [industryType, tiles] of Object.entries(
+              updatedPlayer.industryTilesOnMat,
+            )) {
+              for (const tile of tiles) {
+                // Skip pottery tiles with lightbulb icon
+                if (tile.type === 'pottery' && tile.hasLightbulbIcon) {
+                  continue
+                }
+
+                if (tile.level < lowestLevel) {
+                  lowestLevel = tile.level
+                  industryTypeToRemove = industryType as IndustryType
+                }
+              }
+            }
+
+            // Remove the lowest level tile found
+            if (industryTypeToRemove) {
+              const tiles =
+                updatedPlayer.industryTilesOnMat[industryTypeToRemove]
+              const tileIndex = tiles.findIndex(
+                (t) =>
+                  t.level === lowestLevel &&
+                  !(t.type === 'pottery' && t.hasLightbulbIcon),
+              )
+
+              if (tileIndex !== -1) {
+                updatedPlayer.industryTilesOnMat = {
+                  ...updatedPlayer.industryTilesOnMat,
+                  [industryTypeToRemove]: tiles.filter(
+                    (_, index) => index !== tileIndex,
+                  ),
+                }
+              }
+            }
             break
         }
       }
@@ -1008,24 +1101,38 @@ export const gameStore = setup({
       // Get player state after beer consumption and merge with sell updates
       const playerFromBeer =
         beerResult.updatedPlayers[context.currentPlayerIndex]!
-      
+
       // Update the industries from beer consumption with the flipped industry
       const finalIndustries = playerFromBeer.industries.map((industry) =>
         industry === industryToSell ? { ...industry, flipped: true } : industry,
       )
-      
+
       updatedPlayer = {
         ...playerFromBeer, // Start with beer consumption changes
         ...updatedPlayer, // Apply sell-specific updates (hand, income, bonuses)
         industries: finalIndustries, // Use properly merged industries
       }
 
+      let playersAfterSell = updatePlayerInList(
+        beerResult.updatedPlayers,
+        context.currentPlayerIndex,
+        updatedPlayer,
+      )
+
+      // Check for auto-flipping industries after beer consumption
+      const contextAfterSell = {
+        ...context,
+        players: playersAfterSell,
+        resources: beerResult.updatedResources,
+        merchants: beerResult.updatedMerchants || context.merchants,
+      }
+      const autoFlipResult = checkAndFlipIndustryTilesLogic(contextAfterSell)
+      if (autoFlipResult.players) {
+        playersAfterSell = autoFlipResult.players
+      }
+
       const result: Partial<GameState> = {
-        players: updatePlayerInList(
-          beerResult.updatedPlayers,
-          context.currentPlayerIndex,
-          updatedPlayer,
-        ),
+        players: playersAfterSell,
         discardPile: [...context.discardPile, context.selectedCard],
         resources: beerResult.updatedResources,
         selectedCard: null,
@@ -1036,6 +1143,7 @@ export const gameStore = setup({
             `${currentPlayer.name} sold ${industryToSell.type} at ${sellLocation} (flipped, income +${incomeAdvancement}, ${beerResult.logDetails.join(', ')}) using ${getCardDescription(context.selectedCard)}`,
             'action',
           ),
+          ...(autoFlipResult.logs || []),
         ],
       }
 
@@ -1175,6 +1283,7 @@ export const gameStore = setup({
 
       let updatedPlayers = [...context.players]
       let updatedPlayerSpending = { ...context.playerSpending }
+      let finalPlayerIndex = nextPlayerIndex
       const logs = [...context.logs]
 
       // If round is complete, handle end of round logic
@@ -1191,6 +1300,12 @@ export const gameStore = setup({
           if (a.spent !== b.spent) return a.spent - b.spent
           return a.index - b.index
         })
+
+        // Set the next player to be the one who spent the least
+        finalPlayerIndex = playerSpendingArray[0]?.index ?? 0
+
+        // Reset player spending for the new round
+        updatedPlayerSpending = {}
 
         // 2. Collect income (if not final round)
         if (!context.isFinalRound) {
@@ -1305,7 +1420,7 @@ export const gameStore = setup({
 
       debugLog('nextPlayer', context)
       return {
-        currentPlayerIndex: nextPlayerIndex,
+        currentPlayerIndex: finalPlayerIndex,
         round: nextRound,
         actionsRemaining: nextActionsRemaining,
         players: updatedPlayers,

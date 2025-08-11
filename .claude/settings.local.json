@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout 20 pnpm test)",
+      "Bash(timeout 30s pnpm test)",
+      "Bash(gtimeout:*)",
+      "Bash(pnmp test:*)"
+    ],
+    "deny": []
+  }
+}

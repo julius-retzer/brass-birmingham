@@ -40,7 +40,6 @@ export const industryTileDefinitions: Record<string, IndustryTile[]> = {
       canBuildInCanalEra: true,
       canBuildInRailEra: false, // Level 1 removed at end of Canal Era
       hasLightbulbIcon: false,
-      linkScoringIcons: 1,
       incomeAdvancement: 2,
     },
     {

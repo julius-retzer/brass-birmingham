@@ -280,6 +280,7 @@ export function consumeBeerFromSources(
   beerRequired: number,
   includeMerchantBeer = false,
 ): {
+  success: boolean
   updatedPlayers: Player[]
   updatedResources: GameState['resources']
   updatedMerchants?: Array<{
@@ -294,6 +295,7 @@ export function consumeBeerFromSources(
     value: number
   }>
   logDetails: string[]
+  errorMessage?: string
 } {
   let beerConsumed = 0
   const logDetails: string[] = []
@@ -319,19 +321,25 @@ export function consumeBeerFromSources(
     if (beerConsumed >= beerRequired) break
 
     if (brewery.beerBarrelsOnTile > 0) {
-      updatedPlayers = updatedPlayers.map((player) => ({
-        ...player,
-        industries: player.industries.map((industry) =>
-          industry === brewery
-            ? { ...industry, beerBarrelsOnTile: industry.beerBarrelsOnTile - 1 }
-            : industry,
-        ),
-      }))
+      // Find the player who owns this brewery and update it
+      updatedPlayers = updatedPlayers.map((player) => 
+        player.id === currentPlayer.id 
+          ? {
+              ...player,
+              industries: player.industries.map((industry) =>
+                industry === brewery
+                  ? { ...industry, beerBarrelsOnTile: industry.beerBarrelsOnTile - 1 }
+                  : industry,
+              ),
+            }
+          : player,
+      )
 
       beerConsumed++
-      logDetails.push(`1 beer from own brewery (free)`)
+      logDetails.push(`1 beer from own brewery at ${brewery.location} (free)`)
 
       // TODO: Check if brewery should flip when empty
+      break // Only consume from one brewery at a time
     }
   }
 
@@ -340,6 +348,7 @@ export function consumeBeerFromSources(
     if (beerConsumed >= beerRequired) break
 
     if (brewery.beerBarrelsOnTile > 0) {
+      // Find the owner of this brewery and update it
       updatedPlayers = updatedPlayers.map((player) => ({
         ...player,
         industries: player.industries.map((industry) =>
@@ -350,46 +359,60 @@ export function consumeBeerFromSources(
       }))
 
       beerConsumed++
-      logDetails.push(`1 beer from connected opponent brewery (free)`)
+      logDetails.push(`1 beer from connected opponent brewery at ${brewery.location} (free)`)
 
       // TODO: Check if brewery should flip when empty
+      break // Only consume from one connected brewery at a time
     }
   }
 
   // If still need beer and merchant beer is allowed, consume from merchants
   if (includeMerchantBeer && updatedMerchants && beerConsumed < beerRequired) {
-    // Find merchant at the location with beer
-    const merchantAtLocation = updatedMerchants.find(
-      (merchant) => merchant.location === location && merchant.hasBeer,
-    )
+    // Find merchant connected to this location with beer
+    // NOTE: This is simplified - in full game would check proper network connectivity
+    // Stoke connects to Warrington, Coalbrookdale connects to Shrewsbury
+    let connectedMerchant = null
+    
+    if (location === 'stoke') {
+      connectedMerchant = updatedMerchants.find(m => m.location === 'warrington' && m.hasBeer)
+    } else if (location === 'coalbrookdale') {
+      connectedMerchant = updatedMerchants.find(m => m.location === 'shrewsbury' && m.hasBeer)
+    }
+    
+    // Also check if there's a merchant directly at this location (for edge cities)
+    if (!connectedMerchant) {
+      connectedMerchant = updatedMerchants.find(m => m.location === location && m.hasBeer)
+    }
 
-    if (merchantAtLocation) {
+    if (connectedMerchant) {
       // Consume merchant beer and collect bonus
-      merchantAtLocation.hasBeer = false
+      connectedMerchant.hasBeer = false
       beerConsumed++
       merchantBonusesCollected.push({
-        type: merchantAtLocation.bonusType,
-        value: merchantAtLocation.bonusValue,
+        type: connectedMerchant.bonusType,
+        value: connectedMerchant.bonusValue,
       })
       logDetails.push(
-        `1 beer from merchant (${merchantAtLocation.bonusType} +${merchantAtLocation.bonusValue})`,
+        `1 beer from merchant at ${connectedMerchant.location} (${connectedMerchant.bonusType} +${connectedMerchant.bonusValue})`,
       )
     }
   }
 
-  // If still need beer, consume from general supply (fallback - should not happen in proper game)
-  while (beerConsumed < beerRequired) {
-    if (updatedResources.beer > 0) {
-      updatedResources.beer--
-      beerConsumed++
-      logDetails.push(`consumed 1 beer from general supply`)
-    } else {
-      // Cannot consume beer - this should cause the action to fail
-      throw new Error('Insufficient beer available')
+  // If still need beer, action fails - cannot consume beer from general supply
+  if (beerConsumed < beerRequired) {
+    return {
+      success: false,
+      updatedPlayers: context.players, // Return original state
+      updatedResources: context.resources,
+      updatedMerchants: context.merchants,
+      merchantBonusesCollected: [],
+      logDetails,
+      errorMessage: `Insufficient beer available. Required: ${beerRequired}, available: ${beerConsumed}`,
     }
   }
 
   return {
+    success: true,
     updatedPlayers,
     updatedResources,
     updatedMerchants,

@@ -701,6 +701,10 @@ export const gameStore = setup({
         false, // No merchant beer for Network actions
       )
 
+      if (!beerResult.success) {
+        throw new Error(beerResult.errorMessage || 'Beer consumption failed for network action')
+      }
+
       // Consume 2 coal (1 per link)
       const coalResult = consumeCoalFromSources(
         context,
@@ -932,13 +936,28 @@ export const gameStore = setup({
       }
 
       // Consume beer (can use merchant beer for sell actions)
-      const beerRequired = 1 // Most tiles require 1 beer
+      const beerRequired = industryToSell.tile.beerRequired
       const beerResult = consumeBeerFromSources(
         context,
         sellLocation,
         beerRequired,
         true, // Allow merchant beer for sell actions
       )
+
+      if (!beerResult.success) {
+        // Cannot sell without required beer - return early with no changes
+        debugLog('executeSellAction - insufficient beer', context)
+        return {
+          // No state changes - sell action fails silently
+          logs: [
+            ...context.logs,
+            createLogEntry(
+              `${currentPlayer.name} cannot sell ${industryToSell.type} at ${sellLocation} - insufficient beer (${beerResult.errorMessage})`,
+              'error',
+            ),
+          ],
+        }
+      }
 
       // Flip the industry and advance income
       const updatedIndustries = currentPlayer.industries.map((industry) =>
@@ -986,12 +1005,19 @@ export const gameStore = setup({
         }
       }
 
-      // Get player state after beer consumption
+      // Get player state after beer consumption and merge with sell updates
       const playerFromBeer =
         beerResult.updatedPlayers[context.currentPlayerIndex]!
+      
+      // Update the industries from beer consumption with the flipped industry
+      const finalIndustries = playerFromBeer.industries.map((industry) =>
+        industry === industryToSell ? { ...industry, flipped: true } : industry,
+      )
+      
       updatedPlayer = {
-        ...playerFromBeer,
-        ...updatedPlayer, // Override with sell-specific updates
+        ...playerFromBeer, // Start with beer consumption changes
+        ...updatedPlayer, // Apply sell-specific updates (hand, income, bonuses)
+        industries: finalIndustries, // Use properly merged industries
       }
 
       const result: Partial<GameState> = {

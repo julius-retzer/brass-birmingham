@@ -236,6 +236,10 @@ type GameEvent =
       allPlayersHandsEmpty: boolean
     }
   | {
+      type: 'TEST_SET_DRAW_PILE'
+      drawPile: Card[]
+    }
+  | {
       type: 'TRIGGER_ERA_SCORING'
     }
   | {
@@ -387,7 +391,7 @@ export const gameStore = setup({
         selectedCardsForScout: [],
         spentMoney: 0,
         playerSpending: {},
-        turnOrder: players.map(p => p.id), // Initial turn order
+        turnOrder: players.map((p) => p.id), // Initial turn order
         isFinalRound: false,
         selectedLink: null,
         selectedSecondLink: null,
@@ -607,7 +611,9 @@ export const gameStore = setup({
     executeNetworkAction: assign(({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
       if (!context.selectedCard || !context.selectedLink) {
-        console.warn('executeNetworkAction called without selected card/link - skipping')
+        console.warn(
+          'executeNetworkAction called without selected card/link - skipping',
+        )
         return {}
       }
 
@@ -883,20 +889,30 @@ export const gameStore = setup({
     executeDevelopAction: assign(({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
       if (!context.selectedCard) {
-        console.warn('executeDevelopAction called without selected card - skipping')
+        console.warn(
+          'executeDevelopAction called without selected card - skipping',
+        )
         return {}
       }
 
       // Remove selected tiles from player mat and consume iron
       let selectedIndustryTypes = context.selectedTilesForDevelop
-      
+
       // If no tiles selected (for backward compatibility with tests), auto-select first available tile
       if (selectedIndustryTypes.length === 0) {
         const availableTypes: IndustryType[] = []
-        for (const industryType of ['coal', 'iron', 'cotton', 'pottery', 'manufacturer', 'brewery'] as IndustryType[]) {
-          const tilesOnMat = currentPlayer.industryTilesOnMat[industryType] || []
-          const developableTiles = tilesOnMat.filter(tile => 
-            industryType !== 'pottery' || !tile.hasLightbulbIcon
+        for (const industryType of [
+          'coal',
+          'iron',
+          'cotton',
+          'pottery',
+          'manufacturer',
+          'brewery',
+        ] as IndustryType[]) {
+          const tilesOnMat =
+            currentPlayer.industryTilesOnMat[industryType] || []
+          const developableTiles = tilesOnMat.filter(
+            (tile) => industryType !== 'pottery' || !tile.hasLightbulbIcon,
           )
           if (developableTiles.length > 0) {
             availableTypes.push(industryType)
@@ -924,22 +940,24 @@ export const gameStore = setup({
         updatedPlayersFromIron[context.currentPlayerIndex]!
 
       // Remove tiles from player mat
-      const updatedIndustryTilesOnMat = { ...currentPlayerAfterIron.industryTilesOnMat }
-      
+      const updatedIndustryTilesOnMat = {
+        ...currentPlayerAfterIron.industryTilesOnMat,
+      }
+
       for (const industryType of selectedIndustryTypes) {
         const tilesOnMat = updatedIndustryTilesOnMat[industryType] || []
-        
+
         // Filter out pottery tiles with lightbulb (already handled in tile selection)
-        const developableTiles = tilesOnMat.filter(tile => 
-          industryType !== 'pottery' || !tile.hasLightbulbIcon
+        const developableTiles = tilesOnMat.filter(
+          (tile) => industryType !== 'pottery' || !tile.hasLightbulbIcon,
         )
-        
+
         if (developableTiles.length > 0) {
           // Remove the lowest level tile
           const lowestTile = getLowestLevelTile(developableTiles)
           if (lowestTile) {
             updatedIndustryTilesOnMat[industryType] = tilesOnMat.filter(
-              tile => tile.id !== lowestTile.id
+              (tile) => tile.id !== lowestTile.id,
             )
           }
         }
@@ -1331,7 +1349,7 @@ export const gameStore = setup({
       let updatedPlayers = [...context.players]
       let updatedPlayerSpending = { ...context.playerSpending }
       let finalPlayerIndex = nextPlayerIndex
-      let newTurnOrder = context.turnOrder
+      const newTurnOrder = context.turnOrder
       const logs = [...context.logs]
 
       // If round is complete, handle end of round logic
@@ -1351,9 +1369,9 @@ export const gameStore = setup({
 
         // Set the next player to be the one who spent the least
         finalPlayerIndex = playerSpendingArray[0]?.index ?? 0
-        
+
         // Update turn order based on spending (least spenders first)
-        const newTurnOrder = playerSpendingArray.map(p => p.player.id)
+        const newTurnOrder = playerSpendingArray.map((p) => p.player.id)
 
         // Reset player spending for the new round
         updatedPlayerSpending = {}
@@ -1563,30 +1581,30 @@ export const gameStore = setup({
 
       return result
     }),
-    
+
     selectTilesForDevelop: assign(({ context, event }) => {
       if (event.type !== 'SELECT_TILES_FOR_DEVELOP') return {}
-      
+
       const currentPlayer = getCurrentPlayer(context)
       const validTiles: IndustryType[] = []
-      
+
       // Validate each selected industry type
       for (const industryType of event.industryTypes) {
         const tilesOnMat = currentPlayer.industryTilesOnMat[industryType] || []
-        
+
         // Filter out pottery tiles with lightbulb icon (cannot be developed)
-        const developableTiles = tilesOnMat.filter(tile => 
-          industryType !== 'pottery' || !tile.hasLightbulbIcon
+        const developableTiles = tilesOnMat.filter(
+          (tile) => industryType !== 'pottery' || !tile.hasLightbulbIcon,
         )
-        
+
         if (developableTiles.length > 0) {
           validTiles.push(industryType)
         }
       }
-      
+
       // Limit to maximum 2 tiles per develop action
       const finalSelection = validTiles.slice(0, 2)
-      
+
       return {
         selectedTilesForDevelop: finalSelection,
       }
@@ -1644,6 +1662,12 @@ export const gameStore = setup({
         // Note: allPlayersHandsEmpty would need additional logic to check
       }
     }),
+    setDrawPile: assign(({ context, event }) => {
+      if (event.type !== 'TEST_SET_DRAW_PILE') return {}
+      return {
+        drawPile: event.drawPile,
+      }
+    }),
 
     trackMoneySpent: assign(({ context }, amount: number) => {
       const currentPlayer = getCurrentPlayer(context)
@@ -1691,7 +1715,7 @@ export const gameStore = setup({
         let industryVPs = 0
         const remainingIndustries = []
         let removedUnflippedCount = 0
-        
+
         for (const industry of player.industries) {
           if (industry.flipped) {
             industryVPs += industry.tile.victoryPoints
@@ -1700,7 +1724,7 @@ export const gameStore = setup({
             removedUnflippedCount++ // Count removed unflipped industries
           }
         }
-        
+
         const messages = []
         if (industryVPs > 0) {
           messages.push(
@@ -1713,7 +1737,7 @@ export const gameStore = setup({
           )
         }
         logMessages.push(...messages)
-        
+
         updatedPlayers[i] = {
           ...player,
           victoryPoints: player.victoryPoints + industryVPs,
@@ -1994,13 +2018,20 @@ export const gameStore = setup({
     hasSelectedTilesForDevelop: ({ context }) => {
       // Allow confirmation if tiles are selected OR for backward compatibility
       if (context.selectedTilesForDevelop.length > 0) return true
-      
+
       // For backward compatibility, check if there are any developable tiles
       const currentPlayer = getCurrentPlayer(context)
-      for (const industryType of ['coal', 'iron', 'cotton', 'pottery', 'manufacturer', 'brewery'] as IndustryType[]) {
+      for (const industryType of [
+        'coal',
+        'iron',
+        'cotton',
+        'pottery',
+        'manufacturer',
+        'brewery',
+      ] as IndustryType[]) {
         const tilesOnMat = currentPlayer.industryTilesOnMat[industryType] || []
-        const developableTiles = tilesOnMat.filter(tile => 
-          industryType !== 'pottery' || !tile.hasLightbulbIcon
+        const developableTiles = tilesOnMat.filter(
+          (tile) => industryType !== 'pottery' || !tile.hasLightbulbIcon,
         )
         if (developableTiles.length > 0) {
           return true
@@ -2079,6 +2110,9 @@ export const gameStore = setup({
         },
         TEST_SET_ERA_END_CONDITIONS: {
           actions: 'setEraEndConditions',
+        },
+        TEST_SET_DRAW_PILE: {
+          actions: 'setDrawPile',
         },
         TRIGGER_ERA_SCORING: {
           actions: 'triggerEraScoring',

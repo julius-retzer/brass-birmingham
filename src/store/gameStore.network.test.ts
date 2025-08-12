@@ -26,12 +26,20 @@ const setupGame = () => {
       name: 'Player 1',
       color: 'red' as const,
       character: 'Richard Arkwright' as const,
+      money: 17,
+      victoryPoints: 0,
+      income: 10,
+      industryTilesOnMat: {} as any,
     },
     {
       id: '2',
       name: 'Player 2',
       color: 'blue' as const,
       character: 'Eliza Tinsley' as const,
+      money: 17,
+      victoryPoints: 0,
+      income: 10,
+      industryTilesOnMat: {} as any,
     },
   ]
 
@@ -186,6 +194,15 @@ describe('Game Store - Network Actions', () => {
             incomeAdvancement: 2,
             victoryPoints: 1,
             cost: 5,
+            incomeSpaces: 1,
+            linkScoringIcons: 0,
+            coalRequired: 0,
+            ironRequired: 0,
+            beerRequired: 0,
+            beerProduced: 2,
+            coalProduced: 0,
+            ironProduced: 0,
+            hasLightbulbIcon: false,
           },
           coalCubesOnTile: 0,
           ironCubesOnTile: 0,
@@ -200,30 +217,39 @@ describe('Game Store - Network Actions', () => {
 
     const initialMoney = snapshot.context.players[currentPlayerId]!.money
     const initialCoalMarket = [...snapshot.context.coalMarket]
-    const initialBeerBarrels = snapshot.context.players[currentPlayerId]!.industries
-      .find(i => i.type === 'brewery')!.beerBarrelsOnTile
+    const initialBeerBarrels = snapshot.context.players[
+      currentPlayerId
+    ]!.industries.find((i) => i.type === 'brewery')!.beerBarrelsOnTile
 
     // Attempt to build 2 rail links in single network action (requires beer + coal)
     // NOTE: This test assumes the implementation supports double rail link building
     // If not implemented yet, this test will help define the expected behavior
-    
+
     actor.send({ type: 'NETWORK' })
     snapshot = actor.getSnapshot()
-    
+
     // Select card for network action
-    const card = snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
+    const card =
+      snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
     actor.send({ type: 'SELECT_CARD', cardId: card.id })
-    
+
     // Select first link (adjacent to existing network)
     actor.send({ type: 'SELECT_LINK', from: 'coventry', to: 'nuneaton' })
-    
+
     // If double link option is available, select second link and confirm
     // This would require implementation of double link selection UI
     if (snapshot.context.era === 'rail') {
       // Try to add second link (this may not be implemented yet)
       try {
-        actor.send({ type: 'SELECT_SECOND_LINK', from: 'nuneaton', to: 'leicester' })
-        actor.send({ type: 'CONFIRM_DOUBLE_NETWORK' })
+        // Use the proper state machine flow for double links
+        actor.send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })
+        snapshot = actor.getSnapshot()
+        actor.send({
+          type: 'SELECT_SECOND_LINK',
+          from: 'nuneaton',
+          to: 'tamworth',
+        })
+        actor.send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
       } catch {
         // If double link not implemented, just build single link
         actor.send({ type: 'CONFIRM' })
@@ -236,7 +262,8 @@ describe('Game Store - Network Actions', () => {
 
     // Verify coal consumption for rail links (2 coal for 2 links)
     const coalConsumed = initialCoalMarket.reduce(
-      (sum, level, i) => sum + (level.cubes - snapshot.context.coalMarket[i]!.cubes),
+      (sum, level, i) =>
+        sum + (level.cubes - snapshot.context.coalMarket[i]!.cubes),
       0,
     )
     // TODO: Implement double rail link building with beer consumption
@@ -244,33 +271,40 @@ describe('Game Store - Network Actions', () => {
     if (coalConsumed > 0) {
       expect(coalConsumed).toBeGreaterThan(0) // At least 1 coal consumed for 1+ rail links
     } else {
-      console.warn('Double rail link building not yet implemented - only single links supported')
+      console.warn(
+        'Double rail link building not yet implemented - only single links supported',
+      )
     }
 
     // Verify money spent (£5 for 1 link or £15 for 2 links)
-    const moneySpent = initialMoney - snapshot.context.players[currentPlayerId]!.money
+    const moneySpent =
+      initialMoney - snapshot.context.players[currentPlayerId]!.money
     // TODO: Implement proper network action cost handling
     if (moneySpent > 0) {
       expect(moneySpent).toBeGreaterThan(0)
     } else {
       console.warn('Network action cost handling not yet implemented')
     }
-    
+
     // If 2 links were built, verify beer consumption and higher cost
     const currentPlayerLinks = snapshot.context.players[currentPlayerId]!.links
     if (currentPlayerLinks.length >= 2) {
       expect(moneySpent).toBe(15) // £15 for double link
-      
+
       // Beer should be consumed from brewery
-      const currentBeerBarrels = snapshot.context.players[currentPlayerId]!.industries
-        .find(i => i.type === 'brewery')!.beerBarrelsOnTile
+      const currentBeerBarrels = snapshot.context.players[
+        currentPlayerId
+      ]!.industries.find((i) => i.type === 'brewery')!.beerBarrelsOnTile
       expect(currentBeerBarrels).toBe(initialBeerBarrels - 1)
     } else {
       // TODO: Implement single link cost handling
       if (moneySpent === 5) {
         expect(moneySpent).toBe(5) // £5 for single link
       } else {
-        console.warn('Single link cost not properly implemented - expected £5, got:', moneySpent)
+        console.warn(
+          'Single link cost not properly implemented - expected £5, got:',
+          moneySpent,
+        )
       }
     }
   })
@@ -286,8 +320,8 @@ describe('Game Store - Network Actions', () => {
     expect(snapshot.matches({ playing: { action: 'networking' } })).toBe(true)
 
     // Select card
-    const cardToUse = snapshot.context.players[0]!.hand[0]
-    actor.send({ type: 'SELECT_CARD', cardId: cardToUse?.id })
+    const cardToUse = snapshot.context.players[0]!.hand[0]!
+    actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
 
     snapshot = actor.getSnapshot()
     expect(snapshot.matches({ playing: { action: 'networking' } })).toBe(true)

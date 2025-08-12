@@ -28,12 +28,20 @@ const setupGame = () => {
       name: 'Player 1',
       color: 'red' as const,
       character: 'Richard Arkwright' as const,
+      money: 17,
+      victoryPoints: 0,
+      income: 10,
+      industryTilesOnMat: {} as any,
     },
     {
       id: '2',
       name: 'Player 2',
       color: 'blue' as const,
       character: 'Eliza Tinsley' as const,
+      money: 17,
+      victoryPoints: 0,
+      income: 10,
+      industryTilesOnMat: {} as any,
     },
   ]
 
@@ -76,7 +84,7 @@ const setupSellTest = (actor: ReturnType<typeof createActor>, playerId = 0) => {
 describe('Game Store - Sell Actions', () => {
   test('sell action - basic mechanics (flip, income, merchant beer, money bonus)', () => {
     const { actor } = setupGame()
-    
+
     let snapshot = actor.getSnapshot()
     const initialActions = snapshot.context.actionsRemaining
     const initialDiscard = snapshot.context.discardPile.length
@@ -87,7 +95,9 @@ describe('Game Store - Sell Actions', () => {
     snapshot = actor.getSnapshot()
     actor.send({
       type: 'SELECT_CARD',
-      cardId: snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!.id,
+      cardId:
+        snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
+          .id,
     })
     actor.send({ type: 'SELECT_LINK', from: 'stoke', to: 'warrington' })
     actor.send({ type: 'CONFIRM' })
@@ -96,22 +106,24 @@ describe('Game Store - Sell Actions', () => {
     snapshot = actor.getSnapshot()
     actor.send({ type: 'PASS' })
     snapshot = actor.getSnapshot()
-    const p1Card = snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
+    const p1Card =
+      snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
     actor.send({ type: 'SELECT_CARD', cardId: p1Card.id })
     actor.send({ type: 'CONFIRM' })
-    
+
     // Now round 2 - set up sell test for current player
     snapshot = actor.getSnapshot()
     const currentPlayerId = snapshot.context.currentPlayerIndex
     setupSellTest(actor, currentPlayerId)
-    
+
     const initialMoney = snapshot.context.players[currentPlayerId]!.money
     const initialIncome = snapshot.context.players[currentPlayerId]!.income
-    
+
     // Perform sell action
     actor.send({ type: 'SELL' })
     snapshot = actor.getSnapshot()
-    const cardToUse = snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
+    const cardToUse =
+      snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
     actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
     actor.send({ type: 'CONFIRM' })
 
@@ -137,7 +149,7 @@ describe('Game Store - Sell Actions', () => {
     )!
     expect(warrington.hasBeer).toBe(false)
 
-    // Money bonus (+£5) from Warrington merchant  
+    // Money bonus (+£5) from Warrington merchant
     // setupSellTest sets money to 20, so we should have 20 + 5 = 25
     expect(updatedPlayer.money).toBe(25)
   })
@@ -177,13 +189,15 @@ describe('Game Store - Sell Actions', () => {
 
   test('sell action - flip and income increase without asserting money if no money bonus', () => {
     const { actor } = setupGame()
-    
+
     // Player 0 creates canal link Stoke <-> Warrington for connectivity
     actor.send({ type: 'NETWORK' })
     let snapshot = actor.getSnapshot()
     actor.send({
       type: 'SELECT_CARD',
-      cardId: snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!.id,
+      cardId:
+        snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
+          .id,
     })
     actor.send({ type: 'SELECT_LINK', from: 'stoke', to: 'warrington' })
     actor.send({ type: 'CONFIRM' })
@@ -192,14 +206,15 @@ describe('Game Store - Sell Actions', () => {
     snapshot = actor.getSnapshot()
     actor.send({ type: 'PASS' })
     snapshot = actor.getSnapshot()
-    const p1Card = snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
+    const p1Card =
+      snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
     actor.send({ type: 'SELECT_CARD', cardId: p1Card.id })
     actor.send({ type: 'CONFIRM' })
 
     // Now round 2 - set up pottery for the current player
     snapshot = actor.getSnapshot()
     const currentPlayerId = snapshot.context.currentPlayerIndex
-    
+
     // Provide a pottery at Stoke for the current player
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
@@ -220,6 +235,14 @@ describe('Game Store - Sell Actions', () => {
             victoryPoints: 2,
             beerRequired: 1,
             cost: 12,
+            incomeSpaces: 1,
+            linkScoringIcons: 0,
+            coalRequired: 1,
+            ironRequired: 0,
+            beerProduced: 0,
+            coalProduced: 0,
+            ironProduced: 0,
+            hasLightbulbIcon: true,
           },
           coalCubesOnTile: 0,
           ironCubesOnTile: 0,
@@ -229,13 +252,14 @@ describe('Game Store - Sell Actions', () => {
       income: 5,
       money: 10,
     })
-    
+
     snapshot = actor.getSnapshot()
     const initialIncome = snapshot.context.players[currentPlayerId]!.income
 
     actor.send({ type: 'SELL' })
     snapshot = actor.getSnapshot()
-    const cardToUse = snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
+    const cardToUse =
+      snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
     actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
     actor.send({ type: 'CONFIRM' })
 
@@ -244,7 +268,9 @@ describe('Game Store - Sell Actions', () => {
       (i) => i.type === 'pottery',
     )!
     expect(pottery.flipped).toBe(true)
-    expect(snapshot.context.players[currentPlayerId]!.income).toBeGreaterThan(initialIncome)
+    expect(snapshot.context.players[currentPlayerId]!.income).toBeGreaterThan(
+      initialIncome,
+    )
   })
 
   test('sell action - requires connectivity to a merchant that buys the industry', () => {
@@ -269,6 +295,14 @@ describe('Game Store - Sell Actions', () => {
             victoryPoints: 3,
             beerRequired: 1,
             cost: 10,
+            incomeSpaces: 1,
+            linkScoringIcons: 1,
+            coalRequired: 1,
+            ironRequired: 0,
+            beerProduced: 0,
+            coalProduced: 0,
+            ironProduced: 0,
+            hasLightbulbIcon: false,
           },
           coalCubesOnTile: 0,
           ironCubesOnTile: 0,

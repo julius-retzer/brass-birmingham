@@ -1,7 +1,7 @@
 import type { CityId } from '../../data/board'
+import type { IndustryType } from '../../data/cards'
 import { GAME_CONSTANTS } from '../constants'
 import type { GameState, Player } from '../gameStore'
-import type { IndustryType } from '../../data/cards'
 import {
   calculateNetworkDistance,
   checkAndFlipIndustryTilesLogic,
@@ -45,13 +45,16 @@ export function consumeCoalFromSources(
         coalMine.coalCubesOnTile,
         coalRequired - coalConsumed,
       )
-      
+
       // Find the player who owns this coal mine and update it
       updatedPlayers = updatedPlayers.map((player) => ({
         ...player,
         industries: player.industries.map((industry) =>
           industry === coalMine
-            ? { ...industry, coalCubesOnTile: industry.coalCubesOnTile - cubesToConsume }
+            ? {
+                ...industry,
+                coalCubesOnTile: industry.coalCubesOnTile - cubesToConsume,
+              }
             : industry,
         ),
       }))
@@ -60,7 +63,9 @@ export function consumeCoalFromSources(
       if (cubesToConsume === 1) {
         logDetails.push(`1 coal from connected coal mine (free)`)
       } else {
-        logDetails.push(`${cubesToConsume} coal from connected coal mine (free)`)
+        logDetails.push(
+          `${cubesToConsume} coal from connected coal mine (free)`,
+        )
       }
     }
   }
@@ -99,14 +104,16 @@ export function consumeCoalFromSources(
 
   // Check for auto-flipping after coal consumption
   const contextAfterCoalConsumption = { ...context, players: updatedPlayers }
-  const autoFlipResult = checkAndFlipIndustryTilesLogic(contextAfterCoalConsumption)
-  
+  const autoFlipResult = checkAndFlipIndustryTilesLogic(
+    contextAfterCoalConsumption,
+  )
+
   if (autoFlipResult.players) {
     updatedPlayers = autoFlipResult.players
   }
-  
+
   if (autoFlipResult.logs) {
-    logDetails.push(...autoFlipResult.logs.map(log => log.message))
+    logDetails.push(...autoFlipResult.logs.map((log) => log.message))
   }
 
   return { updatedPlayers, updatedCoalMarket, coalCost, logDetails }
@@ -139,13 +146,16 @@ export function consumeIronFromSources(
         ironWorks.ironCubesOnTile,
         ironRequired - ironConsumed,
       )
-      
+
       // Find the player who owns this iron works and update it
       updatedPlayers = updatedPlayers.map((player) => ({
         ...player,
         industries: player.industries.map((industry) =>
           industry === ironWorks
-            ? { ...industry, ironCubesOnTile: industry.ironCubesOnTile - cubesToConsume }
+            ? {
+                ...industry,
+                ironCubesOnTile: industry.ironCubesOnTile - cubesToConsume,
+              }
             : industry,
         ),
       }))
@@ -193,14 +203,16 @@ export function consumeIronFromSources(
 
   // Check for auto-flipping after iron consumption
   const contextAfterIronConsumption = { ...context, players: updatedPlayers }
-  const autoFlipResult = checkAndFlipIndustryTilesLogic(contextAfterIronConsumption)
-  
+  const autoFlipResult = checkAndFlipIndustryTilesLogic(
+    contextAfterIronConsumption,
+  )
+
   if (autoFlipResult.players) {
     updatedPlayers = autoFlipResult.players
   }
-  
+
   if (autoFlipResult.logs) {
-    logDetails.push(...autoFlipResult.logs.map(log => log.message))
+    logDetails.push(...autoFlipResult.logs.map((log) => log.message))
   }
 
   return { updatedPlayers, updatedIronMarket, ironCost, logDetails }
@@ -211,17 +223,27 @@ export function isLocationConnectedToMerchant(
   context: GameState,
   location: CityId,
 ): { connected: boolean; connectedMerchants: CityId[] } {
-  const merchantLocations: CityId[] = ['warrington', 'gloucester', 'oxford', 'nottingham', 'shrewsbury']
-  
+  const merchantLocations: CityId[] = [
+    'warrington',
+    'gloucester',
+    'oxford',
+    'nottingham',
+    'shrewsbury',
+  ]
+
   const connectedMerchants: CityId[] = []
-  
+
   for (const merchantLocation of merchantLocations) {
-    const distance = calculateNetworkDistance(context, location, merchantLocation)
+    const distance = calculateNetworkDistance(
+      context,
+      location,
+      merchantLocation,
+    )
     if (distance !== Infinity) {
       connectedMerchants.push(merchantLocation)
     }
   }
-  
+
   return {
     connected: connectedMerchants.length > 0,
     connectedMerchants,
@@ -376,13 +398,16 @@ export function consumeBeerFromSources(
 
     if (brewery.beerBarrelsOnTile > 0) {
       // Find the player who owns this brewery and update it
-      updatedPlayers = updatedPlayers.map((player) => 
-        player.id === currentPlayer.id 
+      updatedPlayers = updatedPlayers.map((player) =>
+        player.id === currentPlayer.id
           ? {
               ...player,
               industries: player.industries.map((industry) =>
                 industry === brewery
-                  ? { ...industry, beerBarrelsOnTile: industry.beerBarrelsOnTile - 1 }
+                  ? {
+                      ...industry,
+                      beerBarrelsOnTile: industry.beerBarrelsOnTile - 1,
+                    }
                   : industry,
               ),
             }
@@ -412,7 +437,9 @@ export function consumeBeerFromSources(
       }))
 
       beerConsumed++
-      logDetails.push(`1 beer from connected opponent brewery at ${brewery.location} (free)`)
+      logDetails.push(
+        `1 beer from connected opponent brewery at ${brewery.location} (free)`,
+      )
 
       break // Only consume from one connected brewery at a time
     }
@@ -421,13 +448,17 @@ export function consumeBeerFromSources(
   // If still need beer and merchant beer is allowed, consume from merchants
   if (includeMerchantBeer && updatedMerchants && beerConsumed < beerRequired) {
     // Find merchants connected to this location with beer
-    
+
     let connectedMerchant = null
-    
+
     // Find first available connected merchant with beer
     for (const merchant of updatedMerchants) {
       if (merchant.hasBeer) {
-        const distance = calculateNetworkDistance(context, location, merchant.location)
+        const distance = calculateNetworkDistance(
+          context,
+          location,
+          merchant.location,
+        )
         if (distance !== Infinity) {
           connectedMerchant = merchant
           break
@@ -464,14 +495,16 @@ export function consumeBeerFromSources(
 
   // Check for auto-flipping after beer consumption
   const contextAfterBeerConsumption = { ...context, players: updatedPlayers }
-  const autoFlipResult = checkAndFlipIndustryTilesLogic(contextAfterBeerConsumption)
-  
+  const autoFlipResult = checkAndFlipIndustryTilesLogic(
+    contextAfterBeerConsumption,
+  )
+
   if (autoFlipResult.players) {
     updatedPlayers = autoFlipResult.players
   }
-  
+
   if (autoFlipResult.logs) {
-    logDetails.push(...autoFlipResult.logs.map(log => log.message))
+    logDetails.push(...autoFlipResult.logs.map((log) => log.message))
   }
 
   return {

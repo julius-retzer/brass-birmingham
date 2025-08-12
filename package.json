@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "next build",
-    "check": "next lint && tsc --noEmit",
+    "check": "biome check && tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
@@ -13,7 +13,6 @@
     "dev": "next dev --turbo",
     "lint": "biome lint",
     "lint:fix": "biome check --fix",
-    "lint:check": "biome check",
     "preview": "next build && next start",
     "start": "next start",
     "typecheck": "tsc --noEmit",

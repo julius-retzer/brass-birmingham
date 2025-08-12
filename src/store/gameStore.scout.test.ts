@@ -28,12 +28,20 @@ const setupGame = () => {
       name: 'Player 1',
       color: 'red' as const,
       character: 'Richard Arkwright' as const,
+      money: 17,
+      victoryPoints: 0,
+      income: 10,
+      industryTilesOnMat: {} as any,
     },
     {
       id: '2',
       name: 'Player 2',
       color: 'blue' as const,
       character: 'Eliza Tinsley' as const,
+      money: 17,
+      victoryPoints: 0,
+      income: 10,
+      industryTilesOnMat: {} as any,
     },
   ]
 

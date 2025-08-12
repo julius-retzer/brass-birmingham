@@ -26,12 +26,20 @@ const setupGame = () => {
       name: 'Player 1',
       color: 'red' as const,
       character: 'Richard Arkwright' as const,
+      money: 17,
+      victoryPoints: 0,
+      income: 10,
+      industryTilesOnMat: {} as any,
     },
     {
       id: '2',
       name: 'Player 2',
       color: 'blue' as const,
       character: 'Eliza Tinsley' as const,
+      money: 17,
+      victoryPoints: 0,
+      income: 10,
+      industryTilesOnMat: {} as any,
     },
   ]
 
@@ -47,7 +55,7 @@ const buildIndustryAction = (
   // Get current player index and set them up with suitable card and money
   const snapshot = actor.getSnapshot()
   const currentPlayerId = snapshot.context.currentPlayerIndex
-  
+
   actor.send({
     type: 'TEST_SET_PLAYER_HAND',
     playerId: currentPlayerId,
@@ -180,13 +188,14 @@ describe('Game Store - Build Actions', () => {
     snapshot = actor.getSnapshot()
     actor.send({ type: 'PASS' })
     snapshot = actor.getSnapshot()
-    const p1Card = snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
+    const p1Card =
+      snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
     actor.send({ type: 'SELECT_CARD', cardId: p1Card.id })
     actor.send({ type: 'CONFIRM' })
 
     // Now it's round 2, player 0's turn (2 actions available)
     snapshot = actor.getSnapshot()
-    
+
     // Debug: verify era and links
     expect(snapshot.context.era).toBe('canal')
     const player0Links = snapshot.context.players[0]!.links
@@ -194,24 +203,26 @@ describe('Game Store - Build Actions', () => {
     expect(player0Links[0]!.type).toBe('canal')
     expect(player0Links[0]!.from).toBe('stoke')
     expect(player0Links[0]!.to).toBe('warrington')
-    
+
     // Build coal mine at Stoke (should be connected to merchant via the link)
     buildIndustryAction(actor, 'coal', 'stoke')
     snapshot = actor.getSnapshot()
-    
+
     // The build was done by player 1, so check player 1's industries
-    const playerWhoBuilt = snapshot.context.players[1]!  // Player who built (was current player)
+    const playerWhoBuilt = snapshot.context.players[1]! // Player who built (was current player)
     const coalMine = playerWhoBuilt.industries.find((i) => i.type === 'coal')
-    
+
     // Verify we're back to normal action selection
-    expect(snapshot.matches({ playing: { action: 'selectingAction' } })).toBe(true)
-    
+    expect(snapshot.matches({ playing: { action: 'selectingAction' } })).toBe(
+      true,
+    )
+
     // First verify the coal mine was built
     expect(coalMine).toBeDefined()
     expect(coalMine!.location).toBe('stoke')
     console.log('[DEBUG] Coal mine built:', coalMine)
     console.log('[DEBUG] Coal cubes on tile:', coalMine!.coalCubesOnTile)
-    
+
     // Coal should be added to market (automatic selling)
     const totalMarketIncrease = snapshot.context.coalMarket.reduce(
       (sum, level, i) => sum + (level.cubes - initialCoalMarket[i]!.cubes),

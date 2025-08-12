@@ -26,12 +26,20 @@ const setupGame = () => {
       name: 'Player 1',
       color: 'red' as const,
       character: 'Richard Arkwright' as const,
+      money: 17,
+      victoryPoints: 0,
+      income: 10,
+      industryTilesOnMat: {} as any,
     },
     {
       id: '2',
       name: 'Player 2',
       color: 'blue' as const,
       character: 'Eliza Tinsley' as const,
+      money: 17,
+      victoryPoints: 0,
+      income: 10,
+      industryTilesOnMat: {} as any,
     },
   ]
 
@@ -102,8 +110,8 @@ describe('Game Store - Markets and Resources', () => {
 
     // Simulate coal consumption (would happen during develop action)
     actor.send({ type: 'DEVELOP' })
-    const cardToUse = snapshot.context.players[0]!.hand[0]
-    actor.send({ type: 'SELECT_CARD', cardId: cardToUse?.id })
+    const cardToUse = snapshot.context.players[0]!.hand[0]!
+    actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
     actor.send({ type: 'CONFIRM' })
 
     snapshot = actor.getSnapshot()
@@ -273,6 +281,15 @@ describe('Game Store - Markets and Resources', () => {
             incomeAdvancement: 0,
             victoryPoints: 0,
             cost: 5,
+            incomeSpaces: 0,
+            linkScoringIcons: 0,
+            coalRequired: 0,
+            ironRequired: 0,
+            beerRequired: 0,
+            beerProduced: 0,
+            coalProduced: 2,
+            ironProduced: 0,
+            hasLightbulbIcon: false,
           },
           coalCubesOnTile: 1,
           ironCubesOnTile: 0,

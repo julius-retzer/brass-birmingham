@@ -28,12 +28,20 @@ const setupGame = () => {
       name: 'Player 1',
       color: 'red' as const,
       character: 'Richard Arkwright' as const,
+      money: 17,
+      victoryPoints: 0,
+      income: 10,
+      industryTilesOnMat: {} as any,
     },
     {
       id: '2',
       name: 'Player 2',
       color: 'blue' as const,
       character: 'Eliza Tinsley' as const,
+      money: 17,
+      victoryPoints: 0,
+      income: 10,
+      industryTilesOnMat: {} as any,
     },
   ]
 
@@ -234,7 +242,7 @@ describe('Game Store - Develop Actions', () => {
 
   test('develop action - removes lowest level tiles from player mat', () => {
     const { actor } = setupGame()
-    
+
     // Set up player with industry tiles on mat
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
@@ -306,12 +314,14 @@ describe('Game Store - Develop Actions', () => {
     })
 
     let snapshot = actor.getSnapshot()
-    const initialCoalTiles = snapshot.context.players[0]!.industryTilesOnMat.coal.length
-    const initialCottonTiles = snapshot.context.players[0]!.industryTilesOnMat.cotton.length
+    const initialCoalTiles =
+      snapshot.context.players[0]!.industryTilesOnMat.coal.length
+    const initialCottonTiles =
+      snapshot.context.players[0]!.industryTilesOnMat.cotton.length
 
     // Perform develop action
     actor.send({ type: 'DEVELOP' })
-    
+
     // Select a card to pay for the develop action
     const card = actor.getSnapshot().context.players[0]!.hand[0]!
     actor.send({ type: 'SELECT_CARD', cardId: card.id })
@@ -319,38 +329,46 @@ describe('Game Store - Develop Actions', () => {
     // Select tiles to develop (this may require implementation of tile selection)
     // For now, assume the system automatically selects lowest level tiles
     // TODO: Add tile selection interface when implemented
-    
+
     actor.send({ type: 'CONFIRM' }) // Move to confirmingDevelop state
     actor.send({ type: 'CONFIRM' }) // Actually execute the develop action
     snapshot = actor.getSnapshot()
 
     // Should have removed tiles from player mat
-    const finalCoalTiles = snapshot.context.players[0]!.industryTilesOnMat.coal.length
-    const finalCottonTiles = snapshot.context.players[0]!.industryTilesOnMat.cotton.length
-    
+    const finalCoalTiles =
+      snapshot.context.players[0]!.industryTilesOnMat.coal.length
+    const finalCottonTiles =
+      snapshot.context.players[0]!.industryTilesOnMat.cotton.length
+
     // At least one tile should have been removed
-    const totalTilesRemoved = (initialCoalTiles - finalCoalTiles) + (initialCottonTiles - finalCottonTiles)
-    
+    const totalTilesRemoved =
+      initialCoalTiles -
+      finalCoalTiles +
+      (initialCottonTiles - finalCottonTiles)
+
     // TODO: Implement tile selection and removal from industryTilesOnMat
     // This test validates the expected behavior once tile selection is implemented
     if (totalTilesRemoved > 0) {
       expect(totalTilesRemoved).toBeLessThanOrEqual(2) // Can develop 1 or 2 tiles per action
     } else {
-      console.warn('Develop action tile removal from Player Mat not yet implemented')
+      console.warn(
+        'Develop action tile removal from Player Mat not yet implemented',
+      )
     }
-    
+
     // If coal tile was removed, it should be the level 1 (lowest)
     if (finalCoalTiles < initialCoalTiles) {
-      const remainingCoalTiles = snapshot.context.players[0]!.industryTilesOnMat.coal
+      const remainingCoalTiles =
+        snapshot.context.players[0]!.industryTilesOnMat.coal
       // Level 1 should be removed first, leaving level 2
-      expect(remainingCoalTiles.some(tile => tile.level === 1)).toBe(false)
-      expect(remainingCoalTiles.some(tile => tile.level === 2)).toBe(true)
+      expect(remainingCoalTiles.some((tile) => tile.level === 1)).toBe(false)
+      expect(remainingCoalTiles.some((tile) => tile.level === 2)).toBe(true)
     }
   })
 
   test('develop action - pottery with lightbulb icon cannot be developed', () => {
     const { actor } = setupGame()
-    
+
     // Set up player with pottery tile that has lightbulb icon
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
@@ -422,12 +440,14 @@ describe('Game Store - Develop Actions', () => {
     })
 
     let snapshot = actor.getSnapshot()
-    const initialPotteryTiles = snapshot.context.players[0]!.industryTilesOnMat.pottery.length
-    const initialCoalTiles = snapshot.context.players[0]!.industryTilesOnMat.coal.length
+    const initialPotteryTiles =
+      snapshot.context.players[0]!.industryTilesOnMat.pottery.length
+    const initialCoalTiles =
+      snapshot.context.players[0]!.industryTilesOnMat.coal.length
 
     // Perform develop action
     actor.send({ type: 'DEVELOP' })
-    
+
     // Select a card to pay for the develop action
     const card = actor.getSnapshot().context.players[0]!.hand[0]!
     actor.send({ type: 'SELECT_CARD', cardId: card.id })
@@ -437,23 +457,28 @@ describe('Game Store - Develop Actions', () => {
     actor.send({ type: 'CONFIRM' }) // Actually execute the develop action
     snapshot = actor.getSnapshot()
 
-    const finalPotteryTiles = snapshot.context.players[0]!.industryTilesOnMat.pottery.length
-    const finalCoalTiles = snapshot.context.players[0]!.industryTilesOnMat.coal.length
-    
+    const finalPotteryTiles =
+      snapshot.context.players[0]!.industryTilesOnMat.pottery.length
+    const finalCoalTiles =
+      snapshot.context.players[0]!.industryTilesOnMat.coal.length
+
     // If pottery tile was removed, it should NOT be the one with lightbulb
     if (finalPotteryTiles < initialPotteryTiles) {
-      const removedPotteryTiles = snapshot.context.players[0]!.industryTilesOnMat.pottery
+      const removedPotteryTiles =
+        snapshot.context.players[0]!.industryTilesOnMat.pottery
       // Lightbulb pottery should still be present
-      expect(removedPotteryTiles.some(tile => tile.hasLightbulbIcon === true)).toBe(true)
+      expect(
+        removedPotteryTiles.some((tile) => tile.hasLightbulbIcon === true),
+      ).toBe(true)
     }
-    
+
     // At minimum, coal tile should be developable
     expect(finalCoalTiles).toBeLessThanOrEqual(initialCoalTiles)
   })
 
   test('develop action - can develop 1 or 2 tiles consuming 1 iron each', () => {
     const { actor } = setupGame()
-    
+
     // Set up player with iron works for free iron and multiple developable tiles
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
@@ -527,14 +552,16 @@ describe('Game Store - Develop Actions', () => {
     })
 
     let snapshot = actor.getSnapshot()
-    const initialIronCubes = snapshot.context.players[0]!.industries
-      .find(i => i.type === 'iron')!.ironCubesOnTile
-    const initialTotalTiles = Object.values(snapshot.context.players[0]!.industryTilesOnMat)
-      .reduce((sum, tiles) => sum + tiles.length, 0)
+    const initialIronCubes = snapshot.context.players[0]!.industries.find(
+      (i) => i.type === 'iron',
+    )!.ironCubesOnTile
+    const initialTotalTiles = Object.values(
+      snapshot.context.players[0]!.industryTilesOnMat,
+    ).reduce((sum, tiles) => sum + tiles.length, 0)
 
     // Perform develop action to remove 2 tiles (should consume 2 iron)
     actor.send({ type: 'DEVELOP' })
-    
+
     const card = actor.getSnapshot().context.players[0]!.hand[0]!
     actor.send({ type: 'SELECT_CARD', cardId: card.id })
 
@@ -544,14 +571,16 @@ describe('Game Store - Develop Actions', () => {
     actor.send({ type: 'CONFIRM' }) // Actually execute the develop action
     snapshot = actor.getSnapshot()
 
-    const finalIronCubes = snapshot.context.players[0]!.industries
-      .find(i => i.type === 'iron')!.ironCubesOnTile
-    const finalTotalTiles = Object.values(snapshot.context.players[0]!.industryTilesOnMat)
-      .reduce((sum, tiles) => sum + tiles.length, 0)
-    
+    const finalIronCubes = snapshot.context.players[0]!.industries.find(
+      (i) => i.type === 'iron',
+    )!.ironCubesOnTile
+    const finalTotalTiles = Object.values(
+      snapshot.context.players[0]!.industryTilesOnMat,
+    ).reduce((sum, tiles) => sum + tiles.length, 0)
+
     const tilesRemoved = initialTotalTiles - finalTotalTiles
     const ironConsumed = initialIronCubes - finalIronCubes
-    
+
     // Should have removed 1 or 2 tiles and consumed equal amount of iron
     // TODO: Implement multiple tile development (1 or 2 tiles per action)
     if (tilesRemoved > 0) {

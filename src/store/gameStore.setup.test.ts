@@ -1,5 +1,5 @@
 // Basic Game Setup Tests - Lightweight and focused
-import { describe, expect, test, afterEach } from 'vitest'
+import { afterEach, describe, expect, test } from 'vitest'
 import { createActor } from 'xstate'
 import { gameStore } from './gameStore'
 
@@ -7,8 +7,10 @@ import { gameStore } from './gameStore'
 let activeActors: ReturnType<typeof createActor>[] = []
 
 afterEach(() => {
-  activeActors.forEach(actor => {
-    try { actor.stop() } catch {}
+  activeActors.forEach((actor) => {
+    try {
+      actor.stop()
+    } catch {}
   })
   activeActors = []
 })
@@ -17,26 +19,34 @@ afterEach(() => {
 const createTestPlayers = () => [
   {
     id: '1',
-    name: 'Player 1', 
+    name: 'Player 1',
     color: 'red' as const,
-    character: 'Richard Arkwright' as const
+    character: 'Richard Arkwright' as const,
+    money: 17,
+    victoryPoints: 0,
+    income: 10,
+    industryTilesOnMat: {} as any,
   },
   {
     id: '2',
     name: 'Player 2',
-    color: 'blue' as const, 
-    character: 'Eliza Tinsley' as const
-  }
+    color: 'blue' as const,
+    character: 'Eliza Tinsley' as const,
+    money: 17,
+    victoryPoints: 0,
+    income: 10,
+    industryTilesOnMat: {} as any,
+  },
 ]
 
 const setupGame = () => {
   const actor = createActor(gameStore)
   activeActors.push(actor)
   actor.start()
-  
+
   const players = createTestPlayers()
   actor.send({ type: 'START_GAME', players })
-  
+
   return { actor, players }
 }
 
@@ -51,7 +61,7 @@ describe('Game Store - Basic Setup', () => {
     const actor = createActor(gameStore)
     activeActors.push(actor)
     actor.start()
-    
+
     const snapshot = actor.getSnapshot()
     expect(snapshot.value).toBe('setup')
   })
@@ -59,8 +69,10 @@ describe('Game Store - Basic Setup', () => {
   test('transitions to playing state after START_GAME', () => {
     const { actor } = setupGame()
     const snapshot = actor.getSnapshot()
-    
-    expect(snapshot.matches({ playing: { action: 'selectingAction' } })).toBe(true)
+
+    expect(snapshot.matches({ playing: { action: 'selectingAction' } })).toBe(
+      true,
+    )
     expect(snapshot.context.players).toHaveLength(2)
     expect(snapshot.context.currentPlayerIndex).toBe(0)
     expect(snapshot.context.era).toBe('canal')
@@ -71,8 +83,8 @@ describe('Game Store - Basic Setup', () => {
   test('initializes players with correct starting values', () => {
     const { actor } = setupGame()
     const snapshot = actor.getSnapshot()
-    
-    snapshot.context.players.forEach(player => {
+
+    snapshot.context.players.forEach((player) => {
       expect(player.money).toBe(17)
       expect(player.income).toBe(10)
       expect(player.victoryPoints).toBe(0)
@@ -85,14 +97,14 @@ describe('Game Store - Basic Setup', () => {
   test('sets up markets correctly', () => {
     const { actor } = setupGame()
     const snapshot = actor.getSnapshot()
-    
+
     // Coal market
     expect(snapshot.context.coalMarket).toHaveLength(8)
     expect(snapshot.context.coalMarket[0]!.price).toBe(1)
     expect(snapshot.context.coalMarket[0]!.cubes).toBe(1)
     expect(snapshot.context.coalMarket[7]!.price).toBe(8)
     expect(snapshot.context.coalMarket[7]!.maxCubes).toBe(Infinity)
-    
+
     // Iron market
     expect(snapshot.context.ironMarket).toHaveLength(6)
     expect(snapshot.context.ironMarket[0]!.price).toBe(1)
@@ -104,7 +116,7 @@ describe('Game Store - Basic Setup', () => {
   test('initializes draw pile and wild cards', () => {
     const { actor } = setupGame()
     const snapshot = actor.getSnapshot()
-    
+
     expect(snapshot.context.drawPile.length).toBeGreaterThan(0)
     expect(snapshot.context.discardPile).toHaveLength(0)
     expect(snapshot.context.wildLocationPile.length).toBeGreaterThan(0)

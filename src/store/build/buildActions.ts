@@ -10,8 +10,11 @@ import {
   isLocationConnectedToMerchant
 } from '../market/marketActions'
 import { 
+  canCityAccommodateIndustryType,
   canOverbuildIndustry,
   getCardDescription,
+  getCurrentPlayer,
+  isLocationInPlayerNetwork,
   performOverbuild,
 } from '../shared/gameUtils'
 
@@ -22,6 +25,48 @@ export function validateBuildActionSelections(context: GameState): void {
   }
   if (!context.selectedLocation) {
     throw new Error('No location selected for build action')
+  }
+}
+
+export function validateNetworkRequirement(context: GameState): void {
+  const currentPlayer = getCurrentPlayer(context)
+  const card = context.selectedCard!
+  const location = context.selectedLocation!
+
+  // Location cards and wild location cards can build anywhere (game rules)
+  if (card.type === 'location' || card.type === 'wild_location') {
+    return
+  }
+
+  // Industry cards and wild industry cards must build in player's network
+  if (card.type === 'industry' || card.type === 'wild_industry') {
+    const isInNetwork = isLocationInPlayerNetwork(context, currentPlayer, location)
+    if (!isInNetwork) {
+      throw new Error(
+        `Industry cards must be built in your network. ${location} is not connected to your industries or links.`
+      )
+    }
+  }
+}
+
+export function validateIndustrySlotAvailability(context: GameState): void {
+  const location = context.selectedLocation!
+  const industryTile = context.selectedIndustryTile
+
+  if (!industryTile) {
+    throw new Error('No industry tile selected')
+  }
+
+  const canAccommodate = canCityAccommodateIndustryType(
+    context,
+    location,
+    industryTile.type
+  )
+
+  if (!canAccommodate) {
+    throw new Error(
+      `Cannot build ${industryTile.type} at ${location}. No available slots or slots are occupied.`
+    )
   }
 }
 

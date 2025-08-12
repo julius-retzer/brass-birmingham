@@ -20,7 +20,8 @@ import { Card } from '../ui/card'
 import '@xyflow/react/dist/style.css'
 import { useCallback, useEffect } from 'react'
 import { cn } from '../../lib/utils'
-import { type Player } from '../../store/gameStore'
+import { type Player, type GameState } from '../../store/gameStore'
+import { canCityAccommodateIndustryType } from '../../store/shared/gameUtils'
 import { SelectionFeedback } from '../game/SelectionFeedback'
 import { FloatingEdge } from './FloatingEdge'
 
@@ -36,6 +37,8 @@ interface BoardProps {
   players: Player[]
   currentPlayerIndex?: number
   selectedIndustryType?: string | null
+  selectedCard?: { id: string, type: 'location' | 'industry' | 'wild_location' | 'wild_industry', location?: CityId } | null
+  gameContext?: GameState
   showSelectionFeedback?: boolean
 }
 
@@ -150,6 +153,11 @@ function CityNode({ data }: CityNodeProps) {
           // Current player industries highlighting
           currentPlayerIndustries.length > 0 &&
             'ring-2 ring-green-400/50 ring-offset-1',
+          // Network restrictions - show cities outside network as faded
+          !data.isInCurrentPlayerNetwork &&
+            !isMerchant &&
+            data.isSelectable === false &&
+            'opacity-40 bg-gray-200 border-gray-300',
           // Enhanced feedback for invalid selections
           !data.isSelectable &&
             data.isSelected &&
@@ -161,7 +169,9 @@ function CityNode({ data }: CityNodeProps) {
           data.isSelectable
             ? `Click to select ${data.label}`
             : !isMerchant
-              ? `${data.label} - Not available for current action`
+              ? !data.isInCurrentPlayerNetwork
+                ? `${data.label} - Not in your network (need industry or link connection)`
+                : `${data.label} - Not available for current action`
               : data.label
         }
       >
@@ -457,6 +467,11 @@ function getCityNetworkInfo(
     return { isInNetwork: false, isConnected: false }
   }
 
+  // Exception: If player has no tiles on board, can build anywhere (game rules)
+  if (currentPlayer.industries.length === 0 && currentPlayer.links.length === 0) {
+    return { isInNetwork: true, isConnected: true }
+  }
+
   // A location is part of your network if:
   // 1. It contains one or more of your industry tiles
   const hasPlayerIndustry = currentPlayer.industries.some(
@@ -495,6 +510,8 @@ export function Board({
   players,
   currentPlayerIndex = 0,
   selectedIndustryType = null,
+  selectedCard = null,
+  gameContext,
   showSelectionFeedback = false,
 }: BoardProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
@@ -512,17 +529,38 @@ export function Board({
         // Determine if city is selectable for building
         let isSelectable = false
         if (isBuilding && node.data.type === 'city') {
-          if (selectedIndustryType) {
-            // If we have a selected industry type, only allow cities that can accommodate it
-            isSelectable = canCityAccommodateIndustry(
+          // First check if city can accommodate the industry type (if selected)
+          let canAccommodateIndustry = true
+          if (selectedIndustryType && gameContext) {
+            canAccommodateIndustry = canCityAccommodateIndustryType(
+              gameContext,
               node.id as CityId,
-              selectedIndustryType,
-              players,
+              selectedIndustryType as any
             )
-          } else {
-            // No specific industry type selected, allow all cities
-            isSelectable = true
+          } else if (selectedIndustryType) {
+            // Fallback to old function if no gameContext
+            canAccommodateIndustry = canCityAccommodateIndustry(node.id as CityId, selectedIndustryType, players)
           }
+
+          // Then check network restrictions based on card type
+          let isInValidNetwork = true
+          if (selectedCard) {
+            if (selectedCard.type === 'location') {
+              // Location cards can build anywhere, even outside network
+              isInValidNetwork = selectedCard.location === node.id
+            } else if (selectedCard.type === 'wild_location') {
+              // Wild location cards can build anywhere
+              isInValidNetwork = true
+            } else if (selectedCard.type === 'industry' || selectedCard.type === 'wild_industry') {
+              // Industry cards must build in player's network
+              isInValidNetwork = networkInfo.isInNetwork
+            }
+          } else {
+            // No card selected yet - show all valid cities in network
+            isInValidNetwork = networkInfo.isInNetwork
+          }
+
+          isSelectable = canAccommodateIndustry && isInValidNetwork
         }
 
         return {
@@ -544,6 +582,8 @@ export function Board({
     selectedCity,
     isBuilding,
     selectedIndustryType,
+    selectedCard,
+    gameContext,
     players,
     currentPlayerIndex,
     onCitySelect,

@@ -285,7 +285,7 @@ export function ActionProgress({
             label: 'Confirm Loan',
             description: 'Take £30 and reduce income by 3',
             completed: false,
-            current: subState === 'confirmingLoan',
+            current: subState === 'confirmingLoan' || subState === 'confirming',
             required: true,
             helpText: 'Gain £30 but lose £3 income per round',
           },
@@ -302,13 +302,24 @@ export function ActionProgress({
 
   if (steps.length === 0) return null
 
+  // Debug logging
+  console.log('ActionProgress Debug:', {
+    actionType,
+    subState,
+    currentStepIndex,
+    currentStep: currentStep?.label,
+    stepsCount: steps.length
+  })
+
   return (
-    <UICard className={`${actionColors.cardBorder} ${actionColors.cardBg}`}>
+    <UICard className="border-primary/20 bg-white">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Circle className={`h-5 w-5 ${actionColors.iconColor}`} />
-          {actionType.charAt(0).toUpperCase() + actionType.slice(1)} Action
-          <Badge variant="outline" className="ml-auto">
+          <Circle className="h-5 w-5 text-blue-600" />
+          <span className="text-black font-bold">
+            {actionType.charAt(0).toUpperCase() + actionType.slice(1)} Action
+          </span>
+          <Badge variant="outline" className="ml-auto bg-white border-gray-400 text-black font-bold">
             Step {currentStepIndex + 1} of {steps.length}
           </Badge>
         </CardTitle>
@@ -342,12 +353,12 @@ export function ActionProgress({
                 <div
                   className={`text-sm font-medium truncate ${
                     step.completed
-                      ? 'text-green-700'
+                      ? 'text-green-700 font-bold'
                       : step.current
-                        ? actionColors.stepCurrentText
+                        ? 'text-black font-bold'
                         : step.required
-                          ? 'text-gray-700'
-                          : 'text-gray-400'
+                          ? 'text-gray-800 font-medium'
+                          : 'text-gray-500'
                   }`}
                 >
                   {step.label}
@@ -363,28 +374,35 @@ export function ActionProgress({
         </div>
 
         {/* Current Step Help */}
-        {currentStep && (
-          <Alert
-            className={`${actionColors.alertBorder} ${actionColors.alertBg}`}
-          >
-            <HelpCircle className="h-4 w-4" />
-            <AlertDescription>
-              <div className="space-y-1">
-                <div className="font-medium">{currentStep.description}</div>
-                {currentStep.helpText && (
-                  <div className="text-sm text-muted-foreground">
-                    {currentStep.helpText}
+        <Alert className="border-gray-300 bg-gray-100">
+          <HelpCircle className="h-4 w-4 text-blue-600" />
+          <AlertDescription>
+            <div className="space-y-1">
+              {currentStep ? (
+                <>
+                  <div className="font-bold text-black">{currentStep.description}</div>
+                  {currentStep.helpText && (
+                    <div className="text-sm text-gray-800 font-medium">
+                      {currentStep.helpText}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="font-bold text-black">Complete your {actionType} action</div>
+                  <div className="text-sm text-gray-800 font-medium">
+                    Follow the steps above to complete this action.
                   </div>
-                )}
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
+                </>
+              )}
+            </div>
+          </AlertDescription>
+        </Alert>
 
         {/* Next Steps Preview */}
         {currentStepIndex < steps.length - 1 && (
-          <div className="text-xs text-muted-foreground">
-            <span className="font-medium">Next: </span>
+          <div className="text-xs text-gray-700 font-medium">
+            <span className="font-bold">Next: </span>
             {steps[currentStepIndex + 1]?.label} -{' '}
             {steps[currentStepIndex + 1]?.description}
           </div>

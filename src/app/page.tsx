@@ -455,6 +455,12 @@ export default function Home() {
               players={players}
               currentPlayerIndex={currentPlayerIndex}
               selectedIndustryType={selectedIndustryTile?.type || null}
+              selectedCard={selectedCard ? {
+                id: selectedCard.id,
+                type: selectedCard.type,
+                location: selectedCard.type === 'location' ? (selectedCard as any).location : undefined
+              } : null}
+              gameContext={snapshot.context}
               showSelectionFeedback={Boolean(
                 isInState('building', 'selectingLocation') ||
                   isInState('networking', 'selectingLink') ||

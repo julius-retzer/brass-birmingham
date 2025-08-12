@@ -20,6 +20,8 @@ import {
   validateCardIndustryMatching,
   validateCardLocationMatching,
   validateCardType,
+  validateIndustrySlotAvailability,
+  validateNetworkRequirement,
   validateTileEraCompatibility,
 } from './build/buildActions'
 import { GAME_CONSTANTS } from './constants'
@@ -500,6 +502,8 @@ export const gameStore = setup({
         context.selectedCard!,
         context.selectedIndustryTile,
       )
+      validateNetworkRequirement(context)
+      validateIndustrySlotAvailability(context)
 
       const updatedHand = removeCardFromHand(
         currentPlayer,

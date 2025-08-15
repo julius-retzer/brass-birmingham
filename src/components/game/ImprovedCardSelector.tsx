@@ -76,7 +76,7 @@ const getCardIcon = (card: Card) => {
     case 'wild_location':
       return '📍'
     case 'industry':
-      return getIndustryIcon((card as IndustryCard).industryType)
+      return getIndustryIcon((card as IndustryCard).industries[0])
     case 'wild_industry':
       return '🏭'
     default:
@@ -121,18 +121,21 @@ function CardPreview({ card }: { card: Card }) {
             {card.type === 'location' || card.type === 'wild_location' 
               ? (card as LocationCard).location 
               : card.type === 'industry'
-              ? (card as IndustryCard).industryType
+              ? (card as IndustryCard).industries.join(', ')
               : 'Wild Card'}
           </h4>
           <p className="text-xs text-muted-foreground">
-            {card.type.replace('_', ' ')} card
+            {card.type === 'industry' 
+              ? `${(card as IndustryCard).industries.join(', ')} industry card`
+              : `${card.type.replace('_', ' ')} card`
+            }
           </p>
         </div>
       </div>
       
       {card.type === 'industry' && (
         <div className="text-xs text-muted-foreground">
-          <p>Industry Type: {(card as IndustryCard).industryType}</p>
+          <p>Industry Type: {(card as IndustryCard).industries.join(', ')}</p>
         </div>
       )}
       
@@ -177,11 +180,14 @@ function CardItem({
             {card.type === 'location' || card.type === 'wild_location' 
               ? (card as LocationCard).location 
               : card.type === 'industry'
-              ? (card as IndustryCard).industryType
+              ? (card as IndustryCard).industries.join(', ')
               : 'Wild Card'}
           </h4>
           <p className="text-xs text-muted-foreground capitalize">
-            {card.type.replace('_', ' ')}
+            {card.type === 'industry' 
+              ? `${(card as IndustryCard).industries.join(', ')} industry`
+              : card.type.replace('_', ' ')
+            }
           </p>
         </div>
         {isMultiSelect && isSelected && (
@@ -239,7 +245,7 @@ export function ImprovedCardSelector({
         const cardName = card.type === 'location' || card.type === 'wild_location' 
           ? (card as LocationCard).location.toLowerCase()
           : card.type === 'industry'
-          ? (card as IndustryCard).industryType.toLowerCase()
+          ? (card as IndustryCard).industries[0].toLowerCase()
           : card.type.toLowerCase()
         
         if (!cardName.includes(searchLower)) return false

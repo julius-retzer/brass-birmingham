@@ -61,77 +61,38 @@ function ActionCard({
   const IconComponent = action.icon
 
   const cardContent = (
-    <Card 
+    <Button
+      variant="outline" 
       className={cn(
-        'transition-all duration-200 cursor-pointer border-2',
+        'h-auto p-3 transition-all duration-200 border-2 justify-start',
         action.isAvailable 
-          ? `hover:${action.hoverColor} hover:shadow-md` 
+          ? `hover:${action.hoverColor.replace('hover:', '')} hover:shadow-md` 
           : 'opacity-60 cursor-not-allowed border-gray-200',
-        action.isRecommended && action.isAvailable && 'ring-2 ring-green-400 ring-offset-2'
+        action.isRecommended && action.isAvailable && 'ring-2 ring-green-400 ring-offset-1'
       )}
       onClick={action.isAvailable ? onSelect : undefined}
+      disabled={!action.isAvailable}
     >
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-3 text-base">
-          <div className={cn(
-            'p-2 rounded-lg',
-            action.isAvailable ? action.color : 'bg-gray-100'
-          )}>
-            <IconComponent className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              {action.title}
-              {action.isRecommended && action.isAvailable && (
-                <Badge variant="default" className="bg-green-600 text-xs">
-                  Recommended
-                </Badge>
-              )}
-            </div>
-            {showCosts && action.cost && (
-              <div className="text-xs text-muted-foreground font-normal mt-1">
-                {action.cost}
-              </div>
-            )}
-          </div>
-          {action.isAvailable ? (
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          ) : (
-            <AlertCircle className="h-4 w-4 text-red-500" />
+      <div className="flex items-center gap-3 w-full">
+        <div className={cn(
+          'p-2 rounded-md flex-shrink-0',
+          action.isAvailable ? action.color : 'bg-gray-100'
+        )}>
+          <IconComponent className="h-4 w-4 text-white" />
+        </div>
+        <div className="flex-1 text-left">
+          <div className="font-medium text-sm">{action.title}</div>
+          {!action.isAvailable && action.disabledReason && (
+            <div className="text-xs text-muted-foreground mt-1">{action.disabledReason}</div>
           )}
-        </CardTitle>
-      </CardHeader>
-      
-      <CardContent className="pt-0">
-        <p className="text-sm text-muted-foreground mb-3">
-          {action.description}
-        </p>
-
-        {!action.isAvailable && action.disabledReason && (
-          <Alert className="mb-3">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-xs">
-              {action.disabledReason}
-            </AlertDescription>
-          </Alert>
+        </div>
+        {action.isRecommended && action.isAvailable && (
+          <Badge variant="default" className="bg-green-600 text-xs">
+            ⭐
+          </Badge>
         )}
-
-        {showRequirements && action.requirements && action.requirements.length > 0 && (
-          <div className="space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">Requirements:</div>
-            <div className="space-y-1">
-              {action.requirements.map((req, index) => (
-                <div key={index} className="flex items-center gap-2 text-xs">
-                  <div className="h-1.5 w-1.5 rounded-full bg-gray-400" />
-                  <span>{req}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-      </CardContent>
-    </Card>
+      </div>
+    </Button>
   )
 
   return (
@@ -365,7 +326,7 @@ export function ImprovedActionSelector({
           <CheckCircle className="h-4 w-4" />
           Available Actions ({availableActions.length})
         </h3>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {availableActions.map((action) => (
             <ActionCard
               key={action.id}
@@ -385,7 +346,7 @@ export function ImprovedActionSelector({
             <AlertCircle className="h-4 w-4" />
             Currently Unavailable ({unavailableActions.length})
           </h3>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {unavailableActions.map((action) => (
               <ActionCard
                 key={action.id}

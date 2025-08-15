@@ -137,27 +137,27 @@ function CityNode({ data }: CityNodeProps) {
         className={cn(
           'relative flex flex-col items-center justify-center rounded-md border-2 shadow-sm transition-all cursor-pointer',
           isMerchant
-            ? 'bg-secondary border-secondary/50'
-            : 'bg-primary border-primary/50',
+            ? 'bg-secondary border-secondary'
+            : 'bg-primary border-primary',
           data.isSelected && 'ring-2 ring-yellow-400 ring-offset-2',
           data.isSelectable &&
             'hover:scale-105 hover:shadow-md hover:ring-2 hover:ring-blue-300 hover:ring-offset-1',
-          !data.isSelectable && !isMerchant && 'opacity-70 cursor-not-allowed',
+          !data.isSelectable && !isMerchant && 'cursor-not-allowed',
           // Network highlighting
           data.isInCurrentPlayerNetwork &&
             !isMerchant &&
-            'ring-2 ring-blue-400/50 ring-offset-1',
+            'ring-2 ring-blue-400 ring-offset-1',
           data.isConnectedToCurrentPlayer &&
             !isMerchant &&
-            'border-blue-400 bg-blue-50',
+            'border-blue-400 bg-blue-100',
           // Current player industries highlighting
           currentPlayerIndustries.length > 0 &&
-            'ring-2 ring-green-400/50 ring-offset-1',
+            'ring-2 ring-green-400 ring-offset-1',
           // Network restrictions - show cities outside network as faded
           !data.isInCurrentPlayerNetwork &&
             !isMerchant &&
             data.isSelectable === false &&
-            'opacity-40 bg-gray-200 border-gray-300',
+            'bg-gray-300 border-gray-400',
           // Enhanced feedback for invalid selections
           !data.isSelectable &&
             data.isSelected &&
@@ -214,7 +214,7 @@ function CityNode({ data }: CityNodeProps) {
                   {occupiedIndustry ? (
                     // Slot is occupied - show the built industry
                     <div
-                      className="w-8 h-6 rounded-sm border-2 border-solid flex items-center justify-center shadow-lg"
+                      className="w-9 h-7 rounded-sm border-2 border-solid flex items-center justify-center shadow-lg"
                       style={{
                         borderColor: occupiedIndustry.playerColor,
                         backgroundColor: getIndustryColor(
@@ -223,7 +223,7 @@ function CityNode({ data }: CityNodeProps) {
                       }}
                       title={`${occupiedIndustry.type} Level ${occupiedIndustry.level} ${occupiedIndustry.flipped ? '(Flipped)' : ''}`}
                     >
-                      <span className="text-[8px] font-bold text-white drop-shadow-sm">
+                      <span className="text-[10px] font-bold text-white drop-shadow-md">
                         {occupiedIndustry.level}
                       </span>
                     </div>
@@ -232,16 +232,20 @@ function CityNode({ data }: CityNodeProps) {
                     // Single industry option
                     <div
                       className={cn(
-                        'w-8 h-6 rounded-sm border-2 border-dashed flex items-center justify-center shadow-sm',
-                        data.isSelectable ? 'opacity-60' : 'opacity-40',
+                        'w-9 h-7 rounded-sm border-2 flex items-center justify-center shadow-sm bg-white',
+                        data.isSelectable ? 'border-solid' : 'border-dashed opacity-75',
                       )}
                       style={{
                         borderColor: getIndustryColor(slotOptions[0]),
-                        backgroundColor: `${getIndustryColor(slotOptions[0])}${data.isSelectable ? '40' : '20'}`,
                       }}
                       title={`Available ${slotOptions[0]} slot`}
                     >
-                      <span className="text-[7px] font-bold text-white drop-shadow-sm">
+                      <span 
+                        className="text-[9px] font-bold drop-shadow-sm"
+                        style={{
+                          color: getIndustryColor(slotOptions[0]),
+                        }}
+                      >
                         {slotOptions[0] === 'manufacturer'
                           ? 'MFG'
                           : slotOptions[0] === 'brewery'
@@ -257,20 +261,22 @@ function CityNode({ data }: CityNodeProps) {
                     // Multiple industry options - split the slot visually
                     <div
                       className={cn(
-                        'w-8 h-6 rounded-sm border-2 border-dashed border-gray-400 flex shadow-sm overflow-hidden',
-                        data.isSelectable ? 'opacity-60' : 'opacity-40',
+                        'w-9 h-7 rounded-sm border-2 border-gray-500 flex shadow-sm overflow-hidden bg-white',
+                        data.isSelectable ? 'border-solid' : 'border-dashed opacity-75',
                       )}
                       title={`Available slot: ${slotOptions.join(' or ')}`}
                     >
                       {slotOptions.map((industryType, optionIndex) => (
                         <div
                           key={`${industryType}-${optionIndex}`}
-                          className="flex-1 flex items-center justify-center"
-                          style={{
-                            backgroundColor: `${getIndustryColor(industryType)}${data.isSelectable ? '40' : '20'}`,
-                          }}
+                          className="flex-1 flex items-center justify-center border-r last:border-r-0 border-gray-300"
                         >
-                          <span className="text-[6px] font-bold text-white drop-shadow-sm">
+                          <span 
+                            className="text-[7px] font-bold drop-shadow-sm"
+                            style={{
+                              color: getIndustryColor(industryType),
+                            }}
+                          >
                             {industryType === 'manufacturer'
                               ? 'M'
                               : industryType === 'brewery'

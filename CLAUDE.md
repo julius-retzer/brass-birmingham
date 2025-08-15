@@ -21,7 +21,7 @@ Digital implementation of the Brass Birmingham board game using Next.js 15, Type
 - `pnpm preview` - Build and start production server
 
 **Testing:**
-- `pnpm test` - Run tests for claudeMachine (Vitest)
+- `pnpm test` - Run tests (Vitest)
 - `pnpm test:watch` - Run tests in watch mode
 
 **Code Quality:**

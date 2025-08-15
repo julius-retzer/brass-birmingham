@@ -108,7 +108,7 @@ export function ImprovedActionWizard({
       if (!card) return null
       
       if (card.type === 'location') return card.location
-      if (card.type === 'industry') return card.industryType
+      if (card.type === 'industry') return card.industries.join(', ')
       if (card.type === 'wild_location') return 'Wild Location'
       if (card.type === 'wild_industry') return 'Wild Industry'
       return card.type

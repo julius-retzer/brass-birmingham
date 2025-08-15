@@ -8,7 +8,6 @@ import { GameLog } from '../components/GameLog'
 import { IndustryTilesDisplay } from '../components/IndustryTilesDisplay'
 import { EraTransition } from '../components/game/EraTransition'
 import { ErrorDisplay } from '../components/game/ErrorDisplay'
-import { GameHeader } from '../components/game/GameHeader'
 import { MerchantDisplay } from '../components/game/MerchantDisplay'
 import { QuickStatusBar } from '../components/game/QuickStatusBar'
 import { ResourceMarkets } from '../components/game/ResourceMarkets'
@@ -136,17 +135,6 @@ export default function Home() {
       />
 
       <div className="mt-4 space-y-4">
-        {/* Detailed Game Header - Collapsible on smaller screens */}
-        <div className="hidden lg:block">
-          <GameHeader
-            era={era}
-            round={round}
-            actionsRemaining={actionsRemaining}
-            currentPlayerName={currentPlayer?.name ?? ''}
-            spentMoney={spentMoney}
-            onStartInspector={() => inspector.start()}
-          />
-        </div>
 
         {/* Turn Order Tracker - Collapsible */}
         <div className="hidden xl:block">
@@ -174,9 +162,9 @@ export default function Home() {
           </div>
         )}
 
-        <div className="grid xl:grid-cols-5 lg:grid-cols-3 md:grid-cols-2 gap-8 lg:gap-10 xl:gap-12">
+        <div className="grid 2xl:grid-cols-5 gap-8 lg:gap-10 2xl:gap-12">
           {/* Column 1: Game Board */}
-          <div className="xl:col-span-3 lg:col-span-2 space-y-6">
+          <div className="2xl:col-span-3 space-y-6">
             <Board
               isNetworking={snapshot.matches({ playing: { action: { networking: 'selectingLink' } } })}
               isBuilding={snapshot.matches({ playing: { action: { building: 'selectingLocation' } } })}
@@ -200,41 +188,46 @@ export default function Home() {
             />
           </div>
 
-          {/* Column 2: Game Interface */}
-          <div className="space-y-8">
-            <ImprovedGameInterface
-              snapshot={snapshot}
-              send={send}
-              onCitySelect={handleCitySelect}
-              onIndustryTypeSelect={handleIndustryTypeSelect}
-            />
-          </div>
-
-          {/* Column 3: Game State & Resources */}
-          <div className="space-y-8">
-            <ResourcesDisplay resources={resources} />
-
-            <ResourceMarkets coalMarket={coalMarket} ironMarket={ironMarket} />
-
-            {/* Merchants */}
-            <MerchantDisplay merchants={merchants} />
-
-            {/* Industry Tiles */}
-            {currentPlayer && (
-              <IndustryTilesDisplay
-                industryTiles={currentPlayer.industryTilesOnMat}
-                selectedTile={null}
-                onTileSelect={() => {
-                  // Manual tile selection no longer needed - tiles are auto-selected
-                }}
-                era={era}
-                playerName={currentPlayer.name}
-                isSelecting={false}
+          {/* Sidebar: Game Interface + Resources (stacked on small screens, columns 2+3 on 2xl+) */}
+          <div className="2xl:col-span-2 space-y-10">
+            {/* Game Interface */}
+            <div>
+              <ImprovedGameInterface
+                snapshot={snapshot}
+                send={send}
+                onCitySelect={handleCitySelect}
+                onIndustryTypeSelect={handleIndustryTypeSelect}
               />
-            )}
+            </div>
 
-            {/* Game Log */}
-            <GameLog logs={logs} />
+            {/* Resources Section */}
+            <div className="grid gap-8 lg:grid-cols-2 2xl:grid-cols-1">
+              <div className="space-y-8">
+                <ResourceMarkets coalMarket={coalMarket} ironMarket={ironMarket} />
+              </div>
+              
+              <div className="space-y-8">
+                {/* Merchants */}
+                <MerchantDisplay merchants={merchants} />
+
+                {/* Industry Tiles */}
+                {currentPlayer && (
+                  <IndustryTilesDisplay
+                    industryTiles={currentPlayer.industryTilesOnMat}
+                    selectedTile={null}
+                    onTileSelect={() => {
+                      // Manual tile selection no longer needed - tiles are auto-selected
+                    }}
+                    era={era}
+                    playerName={currentPlayer.name}
+                    isSelecting={false}
+                  />
+                )}
+
+                {/* Game Log */}
+                <GameLog logs={logs} />
+              </div>
+            </div>
           </div>
         </div>
       </div>

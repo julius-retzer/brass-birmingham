@@ -7,7 +7,6 @@ import { type CityId } from '~/data/board'
 import { ImprovedActionSelector } from './ImprovedActionSelector'
 import { ImprovedActionWizard, useActionWizard, type ActionWizardStep } from './ImprovedActionWizard'
 import { ImprovedCardSelector } from './ImprovedCardSelector'
-import { ImprovedResourceDashboard } from './ImprovedResourceDashboard'
 import { IndustryTypeSelector } from './IndustryTypeSelector'
 import { DevelopInterface } from './DevelopInterface'
 import { useGameKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
@@ -84,6 +83,13 @@ export function ImprovedGameInterface({
 
   const closeWizard = () => {
     console.log('Closing wizard and resetting state')
+    
+    // Always send CANCEL if we have an active wizard action
+    if (wizardState.actionType) {
+      console.log('Sending CANCEL to game store for action:', wizardState.actionType)
+      send({ type: 'CANCEL' })
+    }
+    
     setWizardState({
       isOpen: false,
       actionType: null,
@@ -92,11 +98,6 @@ export function ImprovedGameInterface({
     })
     // Reset wizard hook state
     reset()
-    // Cancel any ongoing action in the game store if still in progress
-    if (!isActionSelection) {
-      console.log('Sending CANCEL to game store')
-      send({ type: 'CANCEL' })
-    }
   }
 
   const toggleMinimize = () => {
@@ -134,7 +135,19 @@ export function ImprovedGameInterface({
             selectedCard={wizardState.data.selectedCard}
             onCardSelect={(card) => {
               console.log('Card selected in build wizard:', card)
-              updateWizardData({ selectedCard: card })
+              let updates: any = { selectedCard: card }
+              
+              // Auto-select industry type for industry cards
+              if (card.type === 'industry') {
+                const industryCard = card as any
+                if (industryCard.industries && industryCard.industries.length === 1) {
+                  // If only one industry type, auto-select it
+                  updates.selectedIndustryType = industryCard.industries[0]
+                  onIndustryTypeSelect(industryCard.industries[0])
+                }
+              }
+              
+              updateWizardData(updates)
               send({ type: 'SELECT_CARD', cardId: card.id })
             }}
             actionType="build"
@@ -145,10 +158,18 @@ export function ImprovedGameInterface({
       }
     ]
 
-    // Add industry type selection step if needed
-    if (wizardState.data.selectedCard?.type === 'industry' || 
-        wizardState.data.selectedCard?.type === 'location' ||
-        wizardState.data.selectedCard?.type === 'wild_location') {
+    // Add industry type selection step only if needed:
+    // - For location cards or wild location cards (need to pick which industry to build)
+    // - For industry cards with multiple industry types (rare but possible)
+    // - Skip for industry cards with single industry type (already auto-selected)
+    const needsIndustrySelection = (
+      wizardState.data.selectedCard?.type === 'location' ||
+      wizardState.data.selectedCard?.type === 'wild_location' ||
+      (wizardState.data.selectedCard?.type === 'industry' && 
+       !wizardState.data.selectedIndustryType) // Only if not already auto-selected
+    )
+    
+    if (needsIndustrySelection) {
       steps.push({
         id: 'select-industry-type',
         title: 'Select Industry',
@@ -173,6 +194,7 @@ export function ImprovedGameInterface({
     }
 
     // Add location selection step only for industry cards and wild cards (not location cards)
+    // Location cards already have a location specified
     if (wizardState.data.selectedCard?.type === 'industry' || 
         wizardState.data.selectedCard?.type === 'wild_location' ||
         wizardState.data.selectedCard?.type === 'wild_industry') {
@@ -531,19 +553,13 @@ export function ImprovedGameInterface({
   // Show action selector when in action selection mode
   if (isActionSelection && !wizardState.isOpen) {
     return (
-      <div className="space-y-4">
-        <ImprovedActionSelector
-          snapshot={snapshot}
-          onActionSelect={handleActionSelect}
-          showRecommendations={true}
-          showCosts={true}
-          showRequirements={true}
-        />
-        <ImprovedResourceDashboard
-          snapshot={snapshot}
-          currentPlayer={currentPlayer!}
-        />
-      </div>
+      <ImprovedActionSelector
+        snapshot={snapshot}
+        onActionSelect={handleActionSelect}
+        showRecommendations={true}
+        showCosts={true}
+        showRequirements={true}
+      />
     )
   }
 

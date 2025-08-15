@@ -62,9 +62,9 @@ export function IndustryFlipNotification({
   }
 
   return (
-    <Card className={`border-blue-300 bg-blue-50 ${className}`}>
+    <Card className={`border-blue-300 bg-blue-50 dark:bg-blue-950 dark:border-blue-700 ${className}`}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-blue-800">
+        <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
           <RotateCcw className="h-5 w-5" />
           Industry Tiles Flipped ({flippedIndustries.length})
         </CardTitle>

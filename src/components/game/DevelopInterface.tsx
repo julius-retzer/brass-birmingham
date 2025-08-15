@@ -24,12 +24,16 @@ interface DevelopableIndustry {
 
 function DevelopableIndustryCard({
   industry,
-  isSelected,
-  onToggle,
+  selectedCount,
+  canSelectMore,
+  onAdd,
+  onRemove,
 }: {
   industry: DevelopableIndustry
-  isSelected: boolean
-  onToggle: () => void
+  selectedCount: number
+  canSelectMore: boolean
+  onAdd: () => void
+  onRemove: () => void
 }) {
   const getIndustryColor = (type: IndustryType) => {
     const colors = {
@@ -56,16 +60,13 @@ function DevelopableIndustryCard({
   }
 
   return (
-    <Button
-      variant="outline"
+    <div
       className={cn(
-        'h-auto p-4 justify-start',
+        'p-4 border rounded-lg',
         getIndustryColor(industry.type),
-        isSelected && 'ring-2 ring-primary',
-        !industry.canDevelop && 'opacity-50 cursor-not-allowed',
+        selectedCount > 0 && 'ring-2 ring-primary',
+        !industry.canDevelop && 'opacity-50',
       )}
-      onClick={industry.canDevelop ? onToggle : undefined}
-      disabled={!industry.canDevelop}
     >
       <div className="flex items-center gap-3 w-full">
         <div className="text-2xl">{getIndustryIcon(industry.type)}</div>
@@ -89,13 +90,37 @@ function DevelopableIndustryCard({
             <div className="text-xs text-red-600 mt-1">{industry.reason}</div>
           )}
         </div>
-        {isSelected && (
-          <div className="text-primary">
-            <Trash2 className="h-4 w-4" />
+        {industry.canDevelop && (
+          <div className="flex items-center gap-2">
+            {selectedCount > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm font-medium">
+                  {selectedCount}
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onRemove}
+                  className="h-8 w-8 p-0"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            {canSelectMore && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={onAdd}
+                className="h-8 w-8 p-0"
+              >
+                +
+              </Button>
+            )}
           </div>
         )}
       </div>
-    </Button>
+    </div>
   )
 }
 
@@ -105,8 +130,8 @@ export function DevelopInterface({
   onCancel,
 }: DevelopInterfaceProps) {
   const [selectedIndustries, setSelectedIndustries] = React.useState<
-    Set<IndustryType>
-  >(new Set())
+    IndustryType[]
+  >([])
 
   // Get developable industries
   const developableIndustries: DevelopableIndustry[] = Object.entries(
@@ -146,22 +171,37 @@ export function DevelopInterface({
   const availableIndustries = developableIndustries.filter(
     (ind) => ind.canDevelop,
   )
-  const selectedCount = selectedIndustries.size
+  const selectedCount = selectedIndustries.length
   const maxSelectable = 2 // Can develop up to 2 industries per action
 
-  const toggleIndustry = (industryType: IndustryType) => {
-    const newSelected = new Set(selectedIndustries)
-    if (newSelected.has(industryType)) {
-      newSelected.delete(industryType)
-    } else if (newSelected.size < maxSelectable) {
-      newSelected.add(industryType)
+  const addIndustry = (industryType: IndustryType) => {
+    if (selectedCount < maxSelectable) {
+      setSelectedIndustries([...selectedIndustries, industryType])
     }
-    setSelectedIndustries(newSelected)
+  }
+
+  const removeIndustry = (industryType: IndustryType) => {
+    const indexToRemove = selectedIndustries.findIndex(t => t === industryType)
+    if (indexToRemove !== -1) {
+      const newSelected = [...selectedIndustries]
+      newSelected.splice(indexToRemove, 1)
+      setSelectedIndustries(newSelected)
+    }
+  }
+
+  const getSelectedCountForType = (industryType: IndustryType) => {
+    return selectedIndustries.filter(t => t === industryType).length
+  }
+
+  const canSelectMore = (industryType: IndustryType) => {
+    const currentSelectedOfType = getSelectedCountForType(industryType)
+    const availableOfType = availableIndustries.find(ind => ind.type === industryType)?.lowestTile.quantityAvailable || 0
+    return selectedCount < maxSelectable && currentSelectedOfType < availableOfType
   }
 
   const handleConfirm = () => {
     if (selectedCount > 0) {
-      onSelectDevelopment(Array.from(selectedIndustries))
+      onSelectDevelopment(selectedIndustries)
     }
   }
 
@@ -203,8 +243,10 @@ export function DevelopInterface({
                 <DevelopableIndustryCard
                   key={industry.type}
                   industry={industry}
-                  isSelected={selectedIndustries.has(industry.type)}
-                  onToggle={() => toggleIndustry(industry.type)}
+                  selectedCount={getSelectedCountForType(industry.type)}
+                  canSelectMore={canSelectMore(industry.type)}
+                  onAdd={() => addIndustry(industry.type)}
+                  onRemove={() => removeIndustry(industry.type)}
                 />
               ))}
             </div>

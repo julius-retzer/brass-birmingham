@@ -58,6 +58,10 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
     }) ||
     snapshot.matches({ playing: { action: { networking: 'selectingCard' } } })
 
+  const isSelectingTiles = snapshot.matches({
+    playing: { action: { developing: 'selectingTiles' } },
+  })
+
   const isSelectingCardsForScout = snapshot.matches({
     playing: { action: { scouting: 'selectingCards' } },
   })
@@ -165,7 +169,9 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
             </Button>
           </div>
         )}
-        {(isSelectingCard || isSelectingCardsForScout || isSelectingLink) && (
+        
+        {/* Show cancel and confirmation buttons for any active action */}
+        {(isSelectingCard || isSelectingCardsForScout || isSelectingLink || isSelectingTiles || isConfirmingAction) && (
           <div className="flex flex-col gap-2">
             {isSelectingCardsForScout && (
                 <Button

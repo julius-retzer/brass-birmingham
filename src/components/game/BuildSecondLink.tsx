@@ -54,10 +54,10 @@ export function BuildSecondLink({
   const hasBeerAccess = hasBreweries // Simplified for UI feedback
 
   return (
-    <Card className="border-orange-300 bg-orange-50">
+    <Card className="border-orange-300 bg-orange-50 dark:bg-orange-950 dark:border-orange-700">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Route className="h-5 w-5 text-orange-600" />
+          <Route className="h-5 w-5 text-orange-600 dark:text-orange-400" />
           Build Second Link
         </CardTitle>
       </CardHeader>

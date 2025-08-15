@@ -53,9 +53,9 @@ export function MerchantDisplay({
   }
 
   return (
-    <Card className={cn('border-amber-200 bg-amber-50', className)}>
+    <Card className={className}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-amber-800">
+        <CardTitle className="flex items-center gap-2">
           <Factory className="h-5 w-5" />
           Merchants ({merchants.length})
         </CardTitle>
@@ -64,7 +64,7 @@ export function MerchantDisplay({
         {merchants.map((merchant, index) => (
           <div
             key={`${merchant.location}-${index}`}
-            className="p-3 bg-white border border-amber-200 rounded-lg space-y-2"
+            className="p-3 bg-card border border-border rounded-lg space-y-2"
           >
             {/* Location */}
             <div className="flex items-center justify-between">

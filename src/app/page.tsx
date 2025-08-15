@@ -151,6 +151,13 @@ export default function Home() {
     }
     if (
       snapshot.matches({
+        playing: { action: { developing: 'selectingTiles' } },
+      })
+    ) {
+      return { action: 'developing', subState: 'selectingTiles' }
+    }
+    if (
+      snapshot.matches({
         playing: { action: { developing: 'confirmingDevelop' } },
       })
     ) {
@@ -343,10 +350,9 @@ export default function Home() {
     send({ type: 'CONFIRM' })
   }
 
-  const handleDevelopSelection = () => {
-    // For now, just confirm the develop action
-    // In a full implementation, this would store the selection and enhance the game store
-    send({ type: 'CONFIRM' })
+  const handleDevelopSelection = (industryTypes: IndustryType[]) => {
+    // Send the selected industry types to the game store
+    send({ type: 'SELECT_TILES_FOR_DEVELOP', industryTypes })
   }
 
   const handleErrorDismiss = () => {
@@ -558,7 +564,7 @@ export default function Home() {
               />
             )}
 
-            {isInState('developing', 'confirming') && currentPlayer && (
+            {(isInState('developing', 'confirming') || isInState('developing', 'selectingTiles')) && currentPlayer && (
               <DevelopInterface
                 player={currentPlayer}
                 onSelectDevelopment={handleDevelopSelection}

@@ -39,7 +39,7 @@ describe('Minimal XState Test', () => {
   })
 
   test('can create test players', async () => {
-    const { getInitialPlayerIndustryTiles } = await import(
+    const { getInitialPlayerIndustryTilesWithQuantities } = await import(
       '../data/industryTiles'
     )
 
@@ -56,7 +56,7 @@ describe('Minimal XState Test', () => {
         industries: [],
         links: [],
         hand: [], // Empty hand to start
-        industryTilesOnMat: getInitialPlayerIndustryTiles(),
+        industryTilesOnMat: getInitialPlayerIndustryTilesWithQuantities(),
       },
       {
         id: '2',
@@ -69,7 +69,7 @@ describe('Minimal XState Test', () => {
         industries: [],
         links: [],
         hand: [], // Empty hand to start
-        industryTilesOnMat: getInitialPlayerIndustryTiles(),
+        industryTilesOnMat: getInitialPlayerIndustryTilesWithQuantities(),
       },
     ]
 
@@ -78,7 +78,7 @@ describe('Minimal XState Test', () => {
 
   test('can send START_GAME with minimal players', async () => {
     const { gameStore } = await import('./gameStore')
-    const { getInitialPlayerIndustryTiles } = await import(
+    const { getInitialPlayerIndustryTilesWithQuantities } = await import(
       '../data/industryTiles'
     )
 
@@ -95,7 +95,7 @@ describe('Minimal XState Test', () => {
         industries: [],
         links: [],
         hand: [], // Empty hand to start
-        industryTilesOnMat: getInitialPlayerIndustryTiles(),
+        industryTilesOnMat: getInitialPlayerIndustryTilesWithQuantities(),
       },
       {
         id: '2',
@@ -108,7 +108,7 @@ describe('Minimal XState Test', () => {
         industries: [],
         links: [],
         hand: [], // Empty hand to start
-        industryTilesOnMat: getInitialPlayerIndustryTiles(),
+        industryTilesOnMat: getInitialPlayerIndustryTilesWithQuantities(),
       },
     ]
 

@@ -55,14 +55,14 @@ const setupTwoPlayerGame = (actor: ReturnType<typeof createActor>) => {
   console.log(
     `🎴 Alice's dealt hand:`,
     snapshot.context.players[0]!.hand.map(
-      (c) =>
+      (c: any) =>
         `${c.id}: ${c.type} ${c.type === 'industry' ? c.industries.join(',') : c.location || ''}`,
     ),
   )
   console.log(
     `🎴 Bob's dealt hand:`,
     snapshot.context.players[1]!.hand.map(
-      (c) =>
+      (c: any) =>
         `${c.id}: ${c.type} ${c.type === 'industry' ? c.industries.join(',') : c.location || ''}`,
     ),
   )
@@ -117,14 +117,14 @@ const setupScriptedCards = (actor: ReturnType<typeof createActor>) => {
   console.log(
     `🎴 Alice's hand:`,
     verifySnapshot.context.players[0]!.hand.map(
-      (c) =>
+      (c: any) =>
         `${c.id}: ${c.type} ${c.type === 'industry' ? c.industries.join(',') : c.location || ''}`,
     ),
   )
   console.log(
     `🎴 Bob's hand:`,
     verifySnapshot.context.players[1]!.hand.map(
-      (c) =>
+      (c: any) =>
         `${c.id}: ${c.type} ${c.type === 'industry' ? c.industries.join(',') : c.location || ''}`,
     ),
   )
@@ -407,7 +407,7 @@ const buildIndustry = (
   console.log(
     `📋 Available cards:`,
     currentPlayer!.hand.map(
-      (c) =>
+      (c: any) =>
         `${c.id}: ${c.type} ${c.type === 'industry' ? c.industries.join(',') : c.location || ''}`,
     ),
   )
@@ -442,7 +442,7 @@ const buildIndustry = (
     console.log(
       `📋 Available cards:`,
       currentPlayer!.hand.map(
-        (c) =>
+        (c: any) =>
           `${c.id}: ${c.type} ${c.type === 'industry' ? c.industries.join(',') : c.location || ''}`,
       ),
     )
@@ -510,8 +510,8 @@ const buildIndustry = (
   if (expectSuccess) {
     const { snapshot } = getCurrentPlayerInfo(actor)
     const builtIndustry = snapshot.context.players
-      .flatMap((p) => p.industries)
-      .find((i) => i.type === industryType && i.location === location)
+      .flatMap((p: any) => p.industries)
+      .find((i: any) => i.type === industryType && i.location === location)
 
     console.log(`🔍 Looking for built industry: ${industryType} at ${location}`)
     console.log(
@@ -876,10 +876,10 @@ const getNextPlannedAction = (gameInfo: any) => {
     const plannedAction = gameScript[scriptIndex]
 
     // Actions are already using Alice and Bob names
-    if (plannedAction.player === currentPlayerName) {
+    if (plannedAction?.player === currentPlayerName) {
       scriptIndex++
       console.log(
-        `📋 Action ${scriptIndex}: ${currentPlayerName} - ${plannedAction.action} - ${plannedAction.reason}`,
+        `📋 Action ${scriptIndex}: ${currentPlayerName} - ${plannedAction!.action} - ${plannedAction!.reason}`,
       )
       return plannedAction
     } else {

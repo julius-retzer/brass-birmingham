@@ -1,7 +1,7 @@
 import { Coins, Factory, Trash2, Zap } from 'lucide-react'
 import React from 'react'
 import { type IndustryType } from '~/data/cards'
-import { type IndustryTile } from '~/data/industryTiles'
+import { type IndustryTile, type IndustryTileWithQuantity } from '~/data/industryTiles'
 import { cn } from '~/lib/utils'
 import { type Player } from '~/store/gameStore'
 import { Badge } from '../ui/badge'
@@ -17,7 +17,7 @@ interface DevelopInterfaceProps {
 
 interface DevelopableIndustry {
   type: IndustryType
-  lowestTile: IndustryTile
+  lowestTile: IndustryTileWithQuantity
   canDevelop: boolean
   reason: string | undefined
 }
@@ -73,17 +73,17 @@ function DevelopableIndustryCard({
           <div className="font-semibold capitalize flex items-center gap-2">
             {industry.type}
             <Badge variant="secondary" className="text-xs">
-              L{industry.lowestTile.level}
+              L{industry.lowestTile.tile.level}
             </Badge>
-            {industry.lowestTile.hasLightbulbIcon && (
+            {industry.lowestTile.tile.hasLightbulbIcon && (
               <Zap className="h-3 w-3 text-yellow-500" />
             )}
           </div>
           <div className="text-xs text-muted-foreground flex items-center gap-4">
             <span className="flex items-center gap-1">
-              <Coins className="h-3 w-3" />£{industry.lowestTile.cost}
+              <Coins className="h-3 w-3" />£{industry.lowestTile.tile.cost}
             </span>
-            <span>{industry.lowestTile.victoryPoints} VP</span>
+            <span>{industry.lowestTile.tile.victoryPoints} VP</span>
           </div>
           {!industry.canDevelop && industry.reason && (
             <div className="text-xs text-red-600 mt-1">{industry.reason}</div>
@@ -129,7 +129,7 @@ export function DevelopInterface({
       let reason: string | undefined = undefined
 
       // Pottery tiles with lightbulb icon cannot be developed
-      if (industryType === 'pottery' && lowestTile.hasLightbulbIcon) {
+      if (industryType === 'pottery' && lowestTile.tile.hasLightbulbIcon) {
         canDevelop = false
         reason = 'Pottery with lightbulb icon cannot be developed'
       }

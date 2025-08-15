@@ -206,9 +206,18 @@ describe('Game Store - Income Collection', () => {
         canBuildInCanalEra: true,
         canBuildInRailEra: false,
         cost: 18,
-        coalCubes: 2,
+        coalProduced: 2,
         victoryPoints: 1,
         incomeAdvancement: 2,
+        incomeSpaces: 2,
+        linkScoringIcons: 1,
+        coalRequired: 0,
+        ironRequired: 0,
+        beerRequired: 0,
+        beerProduced: 0,
+        ironProduced: 0,
+        hasLightbulbIcon: false,
+        quantity: 1,
       }
 
       actor.send({
@@ -342,8 +351,9 @@ describe('Game Store - Income Collection', () => {
       actor.send({
         type: 'TEST_SET_PLAYER_STATE',
         playerId: 0,
-        victoryPoints: 10,
       })
+      
+      // Note: victoryPoints not supported by TEST_SET_PLAYER_STATE
 
       advanceRound(actor)
 
@@ -511,8 +521,9 @@ describe('Game Store - Income Collection', () => {
       actor.send({
         type: 'TEST_SET_PLAYER_STATE',
         playerId: 0,
-        victoryPoints: 5,
       })
+      
+      // Note: victoryPoints not supported by TEST_SET_PLAYER_STATE
 
       advanceRound(actor)
 

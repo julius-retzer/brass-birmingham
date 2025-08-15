@@ -88,7 +88,9 @@ const createTestGameState = (industries: Array<{
     selectedLocation: null,
     selectedIndustryTile: null,
     selectedTilesForDevelop: [],
-    merchants: []
+    merchants: [],
+    lastError: null,
+    errorContext: null
   } as GameState
 }
 

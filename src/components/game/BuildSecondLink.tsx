@@ -1,6 +1,7 @@
 import { AlertTriangle, Beer, Route } from 'lucide-react'
 import { type CityId } from '~/data/board'
-import { type Player } from '~/store/gameStore'
+import { type Player, type GameStoreSnapshot } from '~/store/gameStore'
+import { getGameCapabilities } from '~/hooks/useGameState'
 import { Alert, AlertDescription } from '../ui/alert'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
@@ -19,6 +20,7 @@ interface BuildSecondLinkProps {
   onLinkSelect: (from: CityId, to: CityId) => void
   onConfirm: () => void
   onCancel: () => void
+  snapshot: GameStoreSnapshot  // Add snapshot to use state.can()
 }
 
 export function BuildSecondLink({
@@ -29,6 +31,7 @@ export function BuildSecondLink({
   onLinkSelect,
   onConfirm,
   onCancel,
+  snapshot,
 }: BuildSecondLinkProps) {
   const isRailEra = era === 'rail'
   const linkCost = isRailEra ? 5 : 3
@@ -37,15 +40,18 @@ export function BuildSecondLink({
 
   const totalCost = linkCost + coalCost // Beer consumption is separate
 
+  // Use state.can() to check if the double network action is allowed
+  // This replaces all the local validation logic
+  const { canExecuteDoubleNetwork } = getGameCapabilities(snapshot)
+
+  // Keep affordability check for display purposes
   const canAfford = player.money >= totalCost
 
-  // Check if player has beer sources (simplified check)
+  // Check if player has beer sources (for display feedback)
   const hasBreweries = player.industries.some(
     (industry) => industry.type === 'brewery',
   )
-  const hasBeerAccess = hasBreweries // In full implementation, check merchant beer too
-
-  const canBuildSecondLink = canAfford && hasBeerAccess && selectedLink
+  const hasBeerAccess = hasBreweries // Simplified for UI feedback
 
   return (
     <Card className="border-orange-300 bg-orange-50">
@@ -144,7 +150,7 @@ export function BuildSecondLink({
         <div className="flex gap-3 pt-2">
           <Button
             onClick={onConfirm}
-            disabled={!canBuildSecondLink}
+            disabled={!canExecuteDoubleNetwork}
             className="flex-1"
           >
             Build Second Link

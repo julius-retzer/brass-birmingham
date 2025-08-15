@@ -526,7 +526,7 @@ export function canCityAccommodateIndustryType(
       }
       
       const slotOptions = availableSlots[slotIndex]
-      if (slotOptions && slotOptions.includes(industry.type)) {
+      if (slotOptions?.includes(industry.type)) {
         occupiedSlots.add(slotIndex)
         break
       }
@@ -540,7 +540,7 @@ export function canCityAccommodateIndustryType(
     }
     
     const slotOptions = availableSlots[slotIndex]
-    if (slotOptions && slotOptions.includes(industryType)) {
+    if (slotOptions?.includes(industryType)) {
       return true // Found an available compatible slot
     }
   }

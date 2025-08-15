@@ -1,6 +1,7 @@
 import { createActor } from 'xstate'
 import { describe, expect, test } from 'vitest'
 import { gameStore } from './gameStore'
+import { getInitialPlayerIndustryTilesWithQuantities } from '../data/industryTiles'
 
 const setupGame = () => {
   const actor = createActor(gameStore)
@@ -18,6 +19,7 @@ const setupGame = () => {
         income: 10,
         color: 'red' as const,
         character: 'Richard Arkwright' as const,
+        industryTilesOnMat: getInitialPlayerIndustryTilesWithQuantities(),
       },
       {
         id: '2',
@@ -27,6 +29,7 @@ const setupGame = () => {
         income: 10,
         color: 'green' as const,
         character: 'Eliza Tinsley' as const,
+        industryTilesOnMat: getInitialPlayerIndustryTilesWithQuantities(),
       },
     ],
   })
@@ -112,6 +115,7 @@ describe('Game Store - Card Selection Auto-behavior', () => {
           id: 'stoke_test',
           type: 'location',
           location: 'stoke',
+          color: 'blue',
         },
       ],
     })
@@ -175,7 +179,6 @@ describe('Game Store - Card Selection Auto-behavior', () => {
         {
           id: 'wild_test',
           type: 'wild_industry',
-          industries: [], // Wild cards have empty industries array
         },
       ],
     })

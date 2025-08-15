@@ -50,7 +50,9 @@ const createTestContext = (overrides: Partial<GameState> = {}): GameState => {
     selectedLocation: null,
     selectedIndustryTile: null,
     selectedTilesForDevelop: [],
-    merchants: []
+    merchants: [],
+    lastError: null,
+    errorContext: null
   } as GameState
 
   return { ...baseContext, ...overrides }
@@ -234,15 +236,24 @@ describe('validateIndustrySlotAvailability', () => {
     const context = createTestContext({
       selectedLocation: 'birmingham',
       selectedIndustryTile: {
+        id: 'cotton_1',
         type: 'cotton',
         level: 1,
         cost: 12,
-        coalCost: 0,
-        ironCost: 0,
-        vpValue: 5,
-        incomeIncrease: 2,
-        beerOutput: 0,
-        era: 'canal'
+        coalRequired: 0,
+        ironRequired: 0,
+        beerRequired: 0,
+        victoryPoints: 5,
+        incomeAdvancement: 2,
+        beerProduced: 0,
+        coalProduced: 0,
+        ironProduced: 0,
+        canBuildInCanalEra: true,
+        canBuildInRailEra: true,
+        incomeSpaces: 2,
+        linkScoringIcons: 1,
+        hasLightbulbIcon: false,
+        quantity: 1
       }
     })
 
@@ -253,15 +264,24 @@ describe('validateIndustrySlotAvailability', () => {
     const context = createTestContext({
       selectedLocation: 'birmingham',
       selectedIndustryTile: {
+        id: 'coal_1',
         type: 'coal', // Birmingham doesn't have coal slots
         level: 1,
         cost: 10,
-        coalCost: 0,
-        ironCost: 0,
-        vpValue: 3,
-        incomeIncrease: 1,
-        beerOutput: 0,
-        era: 'canal'
+        coalRequired: 0,
+        ironRequired: 0,
+        beerRequired: 0,
+        victoryPoints: 3,
+        incomeAdvancement: 1,
+        beerProduced: 0,
+        coalProduced: 2,
+        ironProduced: 0,
+        canBuildInCanalEra: true,
+        canBuildInRailEra: false,
+        incomeSpaces: 1,
+        linkScoringIcons: 1,
+        hasLightbulbIcon: false,
+        quantity: 1
       }
     })
 
@@ -272,15 +292,24 @@ describe('validateIndustrySlotAvailability', () => {
     const context = createTestContext({
       selectedLocation: 'warrington', // Merchant city, no industry slots
       selectedIndustryTile: {
+        id: 'cotton_1',
         type: 'cotton',
         level: 1,
         cost: 12,
-        coalCost: 0,
-        ironCost: 0,
-        vpValue: 5,
-        incomeIncrease: 2,
-        beerOutput: 0,
-        era: 'canal'
+        coalRequired: 0,
+        ironRequired: 0,
+        beerRequired: 0,
+        victoryPoints: 5,
+        incomeAdvancement: 2,
+        beerProduced: 0,
+        coalProduced: 0,
+        ironProduced: 0,
+        canBuildInCanalEra: true,
+        canBuildInRailEra: true,
+        incomeSpaces: 2,
+        linkScoringIcons: 1,
+        hasLightbulbIcon: false,
+        quantity: 1
       }
     })
 
@@ -291,15 +320,24 @@ describe('validateIndustrySlotAvailability', () => {
     const context = createTestContext({
       selectedLocation: 'stoke', // Has ['coal'], ['pottery']
       selectedIndustryTile: {
+        id: 'coal_1',
         type: 'coal',
         level: 1,
         cost: 10,
-        coalCost: 0,
-        ironCost: 0,
-        vpValue: 3,
-        incomeIncrease: 1,
-        beerOutput: 0,
-        era: 'canal'
+        coalRequired: 0,
+        ironRequired: 0,
+        beerRequired: 0,
+        victoryPoints: 3,
+        incomeAdvancement: 1,
+        beerProduced: 0,
+        coalProduced: 2,
+        ironProduced: 0,
+        canBuildInCanalEra: true,
+        canBuildInRailEra: false,
+        incomeSpaces: 1,
+        linkScoringIcons: 1,
+        hasLightbulbIcon: false,
+        quantity: 1
       },
       players: [{
         ...createTestContext().players[0]!,
@@ -323,15 +361,24 @@ describe('validateIndustrySlotAvailability', () => {
     const context = createTestContext({
       selectedLocation: 'birmingham', // Has multiple cotton-compatible slots
       selectedIndustryTile: {
+        id: 'cotton_1',
         type: 'cotton',
         level: 1,
         cost: 12,
-        coalCost: 0,
-        ironCost: 0,
-        vpValue: 5,
-        incomeIncrease: 2,
-        beerOutput: 0,
-        era: 'canal'
+        coalRequired: 0,
+        ironRequired: 0,
+        beerRequired: 0,
+        victoryPoints: 5,
+        incomeAdvancement: 2,
+        beerProduced: 0,
+        coalProduced: 0,
+        ironProduced: 0,
+        canBuildInCanalEra: true,
+        canBuildInRailEra: true,
+        incomeSpaces: 2,
+        linkScoringIcons: 1,
+        hasLightbulbIcon: false,
+        quantity: 1
       },
       players: [{
         ...createTestContext().players[0]!,
@@ -356,15 +403,24 @@ describe('validateIndustrySlotAvailability', () => {
     const context = createTestContext({
       selectedLocation: 'birmingham', // Slot 1: ['cotton', 'iron']
       selectedIndustryTile: {
+        id: 'iron_1',
         type: 'iron',
         level: 1,
         cost: 12,
-        coalCost: 0,
-        ironCost: 0,
-        vpValue: 3,
-        incomeIncrease: 1,
-        beerOutput: 0,
-        era: 'canal'
+        coalRequired: 1,
+        ironRequired: 0,
+        beerRequired: 0,
+        victoryPoints: 3,
+        incomeAdvancement: 1,
+        beerProduced: 0,
+        coalProduced: 0,
+        ironProduced: 4,
+        canBuildInCanalEra: true,
+        canBuildInRailEra: true,
+        incomeSpaces: 1,
+        linkScoringIcons: 1,
+        hasLightbulbIcon: false,
+        quantity: 1
       },
       players: [{
         ...createTestContext().players[0]!,

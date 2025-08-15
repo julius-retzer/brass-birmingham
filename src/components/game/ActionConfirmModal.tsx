@@ -38,6 +38,7 @@ interface ActionConfirmModalProps {
   era?: 'canal' | 'rail'
   onChooseDoubleLink?: () => void
   canBuildSecondLink?: boolean
+  canConfirm?: boolean
 }
 
 export function ActionConfirmModal({
@@ -52,6 +53,7 @@ export function ActionConfirmModal({
   era = 'canal',
   onChooseDoubleLink,
   canBuildSecondLink = false,
+  canConfirm = true,
 }: ActionConfirmModalProps) {
   const getActionTitle = () => {
     switch (action) {
@@ -298,7 +300,7 @@ export function ActionConfirmModal({
             )}
           <Button
             onClick={onConfirm}
-            disabled={!canAfford}
+            disabled={!canConfirm}
             className="min-w-[100px]"
           >
             Confirm

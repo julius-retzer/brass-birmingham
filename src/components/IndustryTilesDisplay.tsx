@@ -1,6 +1,6 @@
 import { Coins, Factory, Trophy, Zap } from 'lucide-react'
 import { type IndustryType } from '../data/cards'
-import { type IndustryTile } from '../data/industryTiles'
+import { type IndustryTile, type IndustryTileWithQuantity } from '../data/industryTiles'
 import { cn } from '../lib/utils'
 import { Badge } from './ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
@@ -12,7 +12,7 @@ import {
 } from './ui/tooltip'
 
 interface IndustryTilesDisplayProps {
-  industryTiles: Record<IndustryType, IndustryTile[]>
+  industryTiles: Record<IndustryType, IndustryTileWithQuantity[]>
   selectedTile?: IndustryTile | null
   onTileSelect?: (tile: IndustryTile) => void
   era: 'canal' | 'rail'
@@ -21,7 +21,7 @@ interface IndustryTilesDisplayProps {
 }
 
 interface IndustryTileCardProps {
-  tile: IndustryTile
+  tileWithQuantity: IndustryTileWithQuantity
   isSelected: boolean
   isSelectable: boolean
   onClick?: () => void
@@ -29,14 +29,16 @@ interface IndustryTileCardProps {
 }
 
 function IndustryTileCard({
-  tile,
+  tileWithQuantity,
   isSelected,
   isSelectable,
   onClick,
   era,
 }: IndustryTileCardProps) {
+  const tile = tileWithQuantity.tile
   const canBuildInCurrentEra =
     era === 'canal' ? tile.canBuildInCanalEra : tile.canBuildInRailEra
+  const isAvailable = tileWithQuantity.quantityAvailable > 0
 
   const getIndustryColor = (type: IndustryType) => {
     const colors = {
@@ -91,6 +93,7 @@ function IndustryTileCard({
         <div>Cost: £{tile.cost}</div>
         <div>Victory Points: {tile.victoryPoints}</div>
         <div>Income Spaces: {tile.incomeSpaces}</div>
+        <div>Quantity Available: {tileWithQuantity.quantityAvailable}</div>
         {resources.length > 0 && <div>Requires: {resources.join(', ')}</div>}
         {production.length > 0 && <div>{production.join(', ')}</div>}
         {!canBuildInCurrentEra && (
@@ -111,11 +114,11 @@ function IndustryTileCard({
             'transition-all cursor-pointer relative',
             getIndustryColor(tile.type),
             isSelected && 'ring-2 ring-primary ring-offset-2',
-            isSelectable && canBuildInCurrentEra && 'hover:scale-105',
-            !canBuildInCurrentEra && 'opacity-50',
+            isSelectable && canBuildInCurrentEra && isAvailable && 'hover:scale-105',
+            (!canBuildInCurrentEra || !isAvailable) && 'opacity-50',
             !isSelectable && 'cursor-not-allowed opacity-70',
           )}
-          onClick={isSelectable && canBuildInCurrentEra ? onClick : undefined}
+          onClick={isSelectable && canBuildInCurrentEra && isAvailable ? onClick : undefined}
         >
           <CardContent className="p-3">
             <div className="space-y-2">
@@ -127,9 +130,14 @@ function IndustryTileCard({
                     {tile.type.charAt(0).toUpperCase() + tile.type.slice(1)}
                   </span>
                 </div>
-                <Badge variant="secondary" className="text-xs">
-                  L{tile.level}
-                </Badge>
+                <div className="flex items-center gap-1">
+                  <Badge variant="secondary" className="text-xs">
+                    L{tile.level}
+                  </Badge>
+                  <Badge variant={isAvailable ? "default" : "destructive"} className="text-xs">
+                    {tileWithQuantity.quantityAvailable}
+                  </Badge>
+                </div>
               </div>
 
               {/* Cost and VP */}
@@ -227,16 +235,16 @@ export function IndustryTilesDisplay({
                 <div key={type} className="space-y-2">
                   <h4 className="text-sm font-medium capitalize flex items-center gap-2">
                     <Factory className="h-4 w-4" />
-                    {type} ({tiles.length} available)
+                    {type} ({tiles.reduce((sum, t) => sum + t.quantityAvailable, 0)} available)
                   </h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                    {tiles.map((tile) => (
+                    {tiles.map((tileWithQuantity) => (
                       <IndustryTileCard
-                        key={tile.id}
-                        tile={tile}
-                        isSelected={selectedTile?.id === tile.id}
+                        key={tileWithQuantity.tile.id}
+                        tileWithQuantity={tileWithQuantity}
+                        isSelected={selectedTile?.id === tileWithQuantity.tile.id}
                         isSelectable={isSelecting}
-                        onClick={() => onTileSelect?.(tile)}
+                        onClick={() => onTileSelect?.(tileWithQuantity.tile)}
                         era={era}
                       />
                     ))}

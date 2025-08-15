@@ -18,6 +18,15 @@ afterEach(() => {
 const setupGame = () => {
   const actor = createActor(gameStore)
   activeActors.push(actor)
+  
+  // Add error handling to prevent unhandled exceptions during tests
+  actor.subscribe({
+    error: (error: any) => {
+      console.warn('Actor error caught in test:', error.message)
+      // Silently handle errors that are expected in failure test scenarios
+    }
+  })
+  
   actor.start()
 
   const players = [

@@ -1,5 +1,6 @@
 import { cn } from '~/lib/utils'
 import { type GameStoreSend, type GameStoreSnapshot } from '~/store/gameStore'
+import { getGameCapabilities } from '~/hooks/useGameState'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { ActionConfirmModal } from './ActionConfirmModal'
@@ -13,6 +14,20 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
   const isSelectingAction = snapshot.matches({
     playing: { action: 'selectingAction' },
   })
+
+  // Use state.can() to check if actions are allowed - centralized via utility function
+  const {
+    canBuild,
+    canDevelop,
+    canSell,
+    canTakeLoan,
+    canScout,
+    canNetwork,
+    canPass,
+    canConfirm,
+    canChooseDoubleLink,
+    canExecuteDoubleNetwork,
+  } = getGameCapabilities(snapshot)
 
   // Check for confirming states
   const isConfirmingBuild = snapshot.matches({
@@ -94,7 +109,7 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
           <div className="grid grid-cols-1 gap-2">
             <Button
               onClick={() => send({ type: 'BUILD' })}
-              disabled={actionsRemaining <= 0}
+              disabled={!canBuild}
               variant="secondary"
               className="w-full"
             >
@@ -102,7 +117,7 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
             </Button>
             <Button
               onClick={() => send({ type: 'DEVELOP' })}
-              disabled={actionsRemaining <= 0}
+              disabled={!canDevelop}
               variant="secondary"
               className="w-full"
             >
@@ -110,7 +125,7 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
             </Button>
             <Button
               onClick={() => send({ type: 'SELL' })}
-              disabled={actionsRemaining <= 0}
+              disabled={!canSell}
               variant="secondary"
               className="w-full"
             >
@@ -118,7 +133,7 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
             </Button>
             <Button
               onClick={() => send({ type: 'TAKE_LOAN' })}
-              disabled={actionsRemaining <= 0}
+              disabled={!canTakeLoan}
               variant="secondary"
               className="w-full"
             >
@@ -126,7 +141,7 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
             </Button>
             <Button
               onClick={() => send({ type: 'SCOUT' })}
-              disabled={actionsRemaining <= 0}
+              disabled={!canScout}
               variant="secondary"
               className="w-full"
             >
@@ -134,7 +149,7 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
             </Button>
             <Button
               onClick={() => send({ type: 'NETWORK' })}
-              disabled={actionsRemaining <= 0}
+              disabled={!canNetwork}
               variant="secondary"
               className="w-full"
             >
@@ -142,6 +157,7 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
             </Button>
             <Button
               onClick={() => send({ type: 'PASS' })}
+              disabled={!canPass}
               variant="outline"
               className="w-full mt-2"
             >
@@ -151,14 +167,14 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
         )}
         {(isSelectingCard || isSelectingCardsForScout || isSelectingLink) && (
           <div className="flex flex-col gap-2">
-            {isSelectingCardsForScout &&
-              snapshot.context.selectedCardsForScout.length === 3 && (
+            {isSelectingCardsForScout && (
                 <Button
                   onClick={() => send({ type: 'CONFIRM' })}
+                  disabled={!canConfirm}
                   variant="default"
                   className="w-full"
                 >
-                  Confirm Scout
+                  Confirm Scout ({snapshot.context.selectedCardsForScout.length}/3)
                 </Button>
               )}
             <Button
@@ -186,9 +202,8 @@ export function ActionButtons({ snapshot, send }: ActionButtonsProps) {
             onChooseDoubleLink={() =>
               send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })
             }
-            canBuildSecondLink={
-              isConfirmingLink && snapshot.context.era === 'rail'
-            }
+            canBuildSecondLink={canChooseDoubleLink}
+            canConfirm={canConfirm}
           />
         )}
       </CardContent>

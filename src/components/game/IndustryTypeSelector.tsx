@@ -97,9 +97,9 @@ export function IndustryTypeSelector({
 }: IndustryTypeSelectorProps) {
   const getAvailableTiles = (industryType: IndustryType) => {
     const tilesOfType = player.industryTilesOnMat[industryType] || []
-    return tilesOfType.filter((tile) => {
-      if (era === 'canal') return tile.canBuildInCanalEra
-      if (era === 'rail') return tile.canBuildInRailEra
+    return tilesOfType.filter((tileWithQuantity) => {
+      if (era === 'canal') return tileWithQuantity.tile.canBuildInCanalEra
+      if (era === 'rail') return tileWithQuantity.tile.canBuildInRailEra
       return false
     })
   }

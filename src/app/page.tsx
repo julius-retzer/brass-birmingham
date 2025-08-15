@@ -28,7 +28,7 @@ import {
   type IndustryType,
   type LocationCard,
 } from '../data/cards'
-import { getInitialPlayerIndustryTiles } from '../data/industryTiles'
+import { getInitialPlayerIndustryTilesWithQuantities } from '../data/industryTiles'
 import { gameStore } from '../store/gameStore'
 
 const inspector = createBrowserInspector({
@@ -80,7 +80,7 @@ export default function Home() {
           income: 10,
           color: 'red' as const,
           character: 'Richard Arkwright' as const,
-          industryTilesOnMat: getInitialPlayerIndustryTiles(),
+          industryTilesOnMat: getInitialPlayerIndustryTilesWithQuantities(),
         },
         {
           id: '2',
@@ -90,7 +90,7 @@ export default function Home() {
           income: 10,
           color: 'green' as const,
           character: 'Eliza Tinsley' as const,
-          industryTilesOnMat: getInitialPlayerIndustryTiles(),
+          industryTilesOnMat: getInitialPlayerIndustryTilesWithQuantities(),
         },
       ]
       send({ type: 'START_GAME', players: initialPlayers })
@@ -399,7 +399,7 @@ export default function Home() {
       )}
 
       {/* Error Display - Show validation errors prominently */}
-      <ErrorDisplay 
+      <ErrorDisplay
         error={lastError}
         errorContext={errorContext}
         onDismiss={handleErrorDismiss}
@@ -472,7 +472,7 @@ export default function Home() {
               selectedCard={selectedCard ? {
                 id: selectedCard.id,
                 type: selectedCard.type,
-                location: selectedCard.type === 'location' ? (selectedCard as any).location : undefined
+                location: selectedCard.type === 'location' ? (selectedCard as LocationCard).location : undefined
               } : null}
               gameContext={snapshot.context}
               showSelectionFeedback={Boolean(
@@ -579,6 +579,7 @@ export default function Home() {
                     send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
                   }
                   onCancel={() => send({ type: 'CANCEL' })}
+                  snapshot={snapshot}
                 />
               )}
 

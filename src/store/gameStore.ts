@@ -2038,12 +2038,33 @@ export const gameStore = setup({
           context.selectedCard !== null && context.selectedLocation !== null
         )
       }
-      // For industry cards, need card, tile, and location
-      return (
-        context.selectedCard !== null &&
-        context.selectedIndustryTile !== null &&
-        context.selectedLocation !== null
-      )
+      
+      // For industry cards, need card, tile, location AND sufficient resources
+      if (
+        context.selectedCard === null ||
+        context.selectedIndustryTile === null ||
+        context.selectedLocation === null
+      ) {
+        return false
+      }
+      
+      const tile = context.selectedIndustryTile
+      
+      // Check coal availability if required
+      if (tile.coalRequired > 0) {
+        const coalResult = consumeCoalFromSources(
+          context,
+          context.selectedLocation,
+          tile.coalRequired,
+        )
+        if (!coalResult.success) {
+          return false
+        }
+      }
+      
+      // Iron is always available from market with fallback pricing, so no check needed
+      
+      return true
     },
     canScout: ({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
@@ -2054,13 +2075,32 @@ export const gameStore = setup({
       )
       return context.selectedCardsForScout.length === 3 && !hasWildCard
     },
-    hasSelectedLink: ({ context }) => context.selectedLink !== null,
+    hasSelectedLink: ({ context }) => {
+      if (context.selectedLink === null) {
+        return false
+      }
+      
+      // Check coal availability for rail era links
+      if (context.era === 'rail') {
+        const coalResult = consumeCoalFromSources(
+          context,
+          context.selectedLink.from,
+          1,
+        )
+        if (!coalResult.success) {
+          return false
+        }
+      }
+      
+      return true
+    },
     canBuildLink: ({ context, event }) => {
-      console.log('canBuildLink called with event:', event.type, event.from, event.to)
       if (event.type !== 'SELECT_LINK' && event.type !== 'SELECT_SECOND_LINK') {
         console.log('canBuildLink: wrong event type', event.type)
         return false
       }
+      
+      console.log('canBuildLink called with event:', event.type, event.from, event.to)
 
       // Check if any player already has a link on this connection
       const existingLink = context.players.some((player) =>
@@ -2246,12 +2286,24 @@ export const gameStore = setup({
     },
 
     canCompleteDoubleLink: ({ context }) => {
-      return (
-        context.selectedCard !== null &&
-        context.selectedLink !== null &&
-        context.selectedSecondLink !== null &&
-        context.era === 'rail'
+      if (
+        context.selectedCard === null ||
+        context.selectedLink === null ||
+        context.selectedSecondLink === null ||
+        context.era !== 'rail'
+      ) {
+        return false
+      }
+      
+      // Check if beer is available for double rail link
+      const beerCheckResult = consumeBeerFromSources(
+        context,
+        context.selectedSecondLink.to,
+        1,
+        false, // No merchant beer for Network actions
       )
+      
+      return beerCheckResult.success
     },
   },
 }).createMachine({

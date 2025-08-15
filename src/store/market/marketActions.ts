@@ -16,10 +16,12 @@ export function consumeCoalFromSources(
   location: CityId,
   coalRequired: number,
 ): {
+  success: boolean
   updatedPlayers: Player[]
   updatedCoalMarket: Array<{ price: number; cubes: number; maxCubes: number }>
   coalCost: number
   logDetails: string[]
+  errorMessage?: string
 } {
   let coalConsumed = 0
   let coalCost = 0
@@ -35,7 +37,6 @@ export function consumeCoalFromSources(
     location,
     currentPlayer,
   )
-
   for (const coalMine of connectedCoalMines) {
     if (coalConsumed >= coalRequired) break
 
@@ -71,34 +72,66 @@ export function consumeCoalFromSources(
   }
 
   // If still need coal, consume from coal market (cheapest first)
-  while (coalConsumed < coalRequired) {
-    let foundCoal = false
+  // RULE: All coal market access requires connection to merchant locations
+  const { connected: isConnectedToMarket } = isLocationConnectedToMerchant(context, location)
+  
+  if (isConnectedToMarket) {
+    while (coalConsumed < coalRequired) {
+      let foundCoal = false
 
-    // Find cheapest available coal (price levels in order)
-    for (const level of updatedCoalMarket) {
-      if (level.cubes > 0) {
-        level.cubes--
-        coalCost += level.price
-        coalConsumed++
-        logDetails.push(`consumed 1 coal from market for £${level.price}`)
-        foundCoal = true
+      // Find cheapest available coal (price levels in order)
+      for (const level of updatedCoalMarket) {
+        if (level.cubes > 0) {
+          level.cubes--
+          coalCost += level.price
+          coalConsumed++
+          logDetails.push(`consumed 1 coal from connected market for £${level.price}`)
+          foundCoal = true
+          break
+        }
+      }
+
+      // If market is empty, use fallback price (still requires market connection)
+      if (!foundCoal) {
+        const fallbackLevel = updatedCoalMarket.find(
+          (l) => l.price === GAME_CONSTANTS.COAL_FALLBACK_PRICE,
+        )
+        if (fallbackLevel) {
+          // Don't decrement cubes for infinite capacity level
+          coalCost += GAME_CONSTANTS.COAL_FALLBACK_PRICE
+          coalConsumed++
+          logDetails.push(
+            `consumed 1 coal from connected market for £${GAME_CONSTANTS.COAL_FALLBACK_PRICE}`,
+          )
+          foundCoal = true
+        }
+      }
+      
+      // If no coal found in market, exit loop
+      if (!foundCoal) {
         break
       }
     }
+  }
 
-    // If market is empty, still buy at fallback price (infinite capacity fallback)
-    if (!foundCoal) {
-      const fallbackLevel = updatedCoalMarket.find(
-        (l) => l.price === GAME_CONSTANTS.COAL_FALLBACK_PRICE,
-      )
-      if (fallbackLevel) {
-        // Don't decrement cubes for infinite capacity level
-        coalCost += GAME_CONSTANTS.COAL_FALLBACK_PRICE
-        coalConsumed++
-        logDetails.push(
-          `consumed 1 coal from general supply for £${GAME_CONSTANTS.COAL_FALLBACK_PRICE}`,
-        )
-      }
+  // If still insufficient coal after all sources, the action should fail
+  if (coalConsumed < coalRequired) {
+    const shortfall = coalRequired - coalConsumed
+    const availableSources = []
+    
+    if (connectedCoalMines.length > 0) {
+      availableSources.push('connected coal mines (exhausted)')
+    }
+    
+    const { connected: isConnectedToMarket } = isLocationConnectedToMerchant(context, location)
+    if (isConnectedToMarket) {
+      availableSources.push('coal markets')
+    }
+    
+    if (availableSources.length === 0) {
+      logDetails.push(`Coal consumption failed: need ${shortfall} more coal. No coal mines or market connection available from ${location}.`)
+    } else {
+      logDetails.push(`Coal consumption failed: need ${shortfall} more coal. Available sources: ${availableSources.join(', ')} but insufficient supply.`)
     }
   }
 
@@ -116,7 +149,18 @@ export function consumeCoalFromSources(
     logDetails.push(...autoFlipResult.logs.map((log) => log.message))
   }
 
-  return { updatedPlayers, updatedCoalMarket, coalCost, logDetails }
+  // Determine if coal consumption was successful
+  const success = coalConsumed >= coalRequired
+  const errorMessage = success ? undefined : `Insufficient coal available. Required: ${coalRequired}, available: ${coalConsumed}. Need connection to coal mines or markets.`
+
+  return { 
+    success, 
+    updatedPlayers: success ? updatedPlayers : context.players, // Return original state on failure
+    updatedCoalMarket: success ? updatedCoalMarket : context.coalMarket, // Return original state on failure
+    coalCost: success ? coalCost : 0, // No cost on failure
+    logDetails, 
+    errorMessage 
+  }
 }
 
 export function consumeIronFromSources(

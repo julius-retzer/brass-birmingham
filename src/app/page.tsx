@@ -12,6 +12,7 @@ import { ActionProgress } from '../components/game/ActionProgress'
 import { BuildSecondLink } from '../components/game/BuildSecondLink'
 import { DevelopInterface } from '../components/game/DevelopInterface'
 import { EraTransition } from '../components/game/EraTransition'
+import { ErrorDisplay } from '../components/game/ErrorDisplay'
 import { GameHeader } from '../components/game/GameHeader'
 import { IndustryTypeSelector } from '../components/game/IndustryTypeSelector'
 import { MerchantDisplay } from '../components/game/MerchantDisplay'
@@ -60,6 +61,8 @@ export default function Home() {
     selectedLocation,
     selectedIndustryTile,
     merchants,
+    lastError,
+    errorContext,
   } = snapshot.context
 
   console.log('snapshot.context', snapshot.context)
@@ -346,6 +349,10 @@ export default function Home() {
     send({ type: 'CONFIRM' })
   }
 
+  const handleErrorDismiss = () => {
+    send({ type: 'CLEAR_ERROR' })
+  }
+
   const isSelectingCards = () => {
     const current = getCurrentAction()
     if (!current) return false
@@ -391,6 +398,13 @@ export default function Home() {
         />
       )}
 
+      {/* Error Display - Show validation errors prominently */}
+      <ErrorDisplay 
+        error={lastError}
+        errorContext={errorContext}
+        onDismiss={handleErrorDismiss}
+      />
+
       <div className="mt-4 space-y-4">
         {/* Detailed Game Header - Collapsible on smaller screens */}
         <div className="hidden lg:block">
@@ -433,7 +447,7 @@ export default function Home() {
         <div className="grid xl:grid-cols-4 lg:grid-cols-3 gap-6">
           {/* Column 1: Game Board & Network */}
           <div className="xl:col-span-2 lg:col-span-2 space-y-6">
-            <Board
+<Board
               isNetworking={
                 isInState('networking', 'selectingLink') ||
                 isInState('networking', 'selectingSecondLink')

@@ -183,22 +183,30 @@ function CityNode({ data }: CityNodeProps) {
         {availableSlots.length > 0 && (
           <div className="grid grid-cols-2 gap-1.5 justify-items-center mb-2 px-1 max-w-[100px]">
             {availableSlots.map((slotOptions, slotIndex) => {
-              // Find if this slot is occupied by matching industry type
-              // We'll assign industries to slots in order of building, matching compatible types
+              // Find if this slot is occupied using the same logic as canCityAccommodateIndustryType
               const occupiedIndustry = (() => {
-                const compatibleIndustries = industriesInCity.filter(
-                  (industry) => slotOptions.includes(industry.type as any),
-                )
-
-                // If we have compatible industries, assign by order
-                // For now, simple approach: first compatible industry for first slot of that type
-                const slotsOfSameType = availableSlots
-                  .slice(0, slotIndex + 1)
-                  .filter((slot) =>
-                    slot.some((option) => slotOptions.includes(option)),
-                  ).length
-
-                return compatibleIndustries[slotsOfSameType - 1] || null
+                // Create a mapping of which slot each industry occupies
+                // We assign industries to slots in the order they were built,
+                // choosing the first compatible available slot
+                const slotAssignments = new Map<number, typeof industriesInCity[0]>()
+                
+                for (const industry of industriesInCity) {
+                  // Find the first available slot that can accommodate this industry
+                  for (let i = 0; i < availableSlots.length; i++) {
+                    if (slotAssignments.has(i)) {
+                      continue // This slot is already occupied
+                    }
+                    
+                    const options = availableSlots[i]
+                    if (options && options.includes(industry.type as any)) {
+                      slotAssignments.set(i, industry)
+                      break
+                    }
+                  }
+                }
+                
+                // Return the industry assigned to this specific slot
+                return slotAssignments.get(slotIndex) || null
               })()
 
               return (
@@ -416,40 +424,39 @@ function canCityAccommodateIndustry(
     player.industries.filter((industry) => industry.location === cityId),
   )
 
-  // Check each slot to see if it can accommodate the industry type and is available
-  for (let slotIndex = 0; slotIndex < availableSlots.length; slotIndex++) {
-    const slotOptions = availableSlots[slotIndex]
-
-    // Skip if slot options is undefined
-    if (!slotOptions) {
-      continue
-    }
-
-    // Check if this slot type can accommodate the industry
-    if (!slotOptions.includes(industryType)) {
-      continue
-    }
-
-    // Check if this slot is already occupied
-    // We'll use a simple assignment: industries are assigned to compatible slots in order
-    const compatibleIndustries = industriesInCity.filter((industry) =>
-      slotOptions.includes(industry.type as any),
-    )
-
-    // Count how many slots of this type come before this slot
-    const slotsOfSameType = availableSlots
-      .slice(0, slotIndex + 1)
-      .filter(
-        (slot) => slot && slot.some((option) => slotOptions.includes(option)),
-      ).length
-
-    // If there are fewer compatible industries than slots of this type, this slot is available
-    if (compatibleIndustries.length < slotsOfSameType) {
-      return true
+  // Create a mapping of which slot each industry occupies
+  // We assign industries to slots in the order they were built, 
+  // choosing the first compatible available slot
+  const occupiedSlots = new Set<number>()
+  
+  for (const industry of industriesInCity) {
+    // Find the first available slot that can accommodate this industry
+    for (let slotIndex = 0; slotIndex < availableSlots.length; slotIndex++) {
+      if (occupiedSlots.has(slotIndex)) {
+        continue // This slot is already occupied
+      }
+      
+      const slotOptions = availableSlots[slotIndex]
+      if (slotOptions && slotOptions.includes(industry.type as any)) {
+        occupiedSlots.add(slotIndex)
+        break
+      }
     }
   }
-
-  return false
+  
+  // Now check if the requested industry type can find an available slot
+  for (let slotIndex = 0; slotIndex < availableSlots.length; slotIndex++) {
+    if (occupiedSlots.has(slotIndex)) {
+      continue // This slot is already occupied
+    }
+    
+    const slotOptions = availableSlots[slotIndex]
+    if (slotOptions && slotOptions.includes(industryType)) {
+      return true // Found an available compatible slot
+    }
+  }
+  
+  return false // No available slots can accommodate this industry type
 }
 
 // Helper function to determine if a city is in the current player's network

@@ -172,15 +172,15 @@ describe('canCityAccommodateIndustryType', () => {
       { location: 'birmingham', type: 'brewery', level: 1, playerId: '1' }
     ])
     
-    // Cotton: slot 1 occupied, but slot 4 also occupied by manufacturer
-    expect(canCityAccommodateIndustryType(gameState, 'birmingham', 'cotton')).toBe(false)
+    // Cotton: slot 1 occupied by cotton, but slot 4 is still available  
+    expect(canCityAccommodateIndustryType(gameState, 'birmingham', 'cotton')).toBe(true)
     // Iron: only slot 1 available, but occupied by cotton
     expect(canCityAccommodateIndustryType(gameState, 'birmingham', 'iron')).toBe(false)
-    // Manufacturer: slot 2 and slot 4, slot 2 available but slot 4 already has manufacturer
-    expect(canCityAccommodateIndustryType(gameState, 'birmingham', 'manufacturer')).toBe(false)
-    // Pottery: can use slot 2, which is available
-    expect(canCityAccommodateIndustryType(gameState, 'birmingham', 'pottery')).toBe(true)
-    // Brewery: slot 3 occupied
+    // Manufacturer: slot 2 occupied by manufacturer, but slot 4 is still available
+    expect(canCityAccommodateIndustryType(gameState, 'birmingham', 'manufacturer')).toBe(true)
+    // Pottery: can use slot 2, but it's occupied by manufacturer
+    expect(canCityAccommodateIndustryType(gameState, 'birmingham', 'pottery')).toBe(false)
+    // Brewery: slot 3 occupied by brewery
     expect(canCityAccommodateIndustryType(gameState, 'birmingham', 'brewery')).toBe(false)
   })
 
@@ -190,10 +190,10 @@ describe('canCityAccommodateIndustryType', () => {
       { location: 'birmingham', type: 'manufacturer', level: 2, playerId: '2' }
     ])
     
-    // Both players have industries, slots should be occupied regardless of owner
-    expect(canCityAccommodateIndustryType(gameState, 'birmingham', 'cotton')).toBe(false) // both cotton slots occupied
-    expect(canCityAccommodateIndustryType(gameState, 'birmingham', 'manufacturer')).toBe(false) // both manufacturer slots occupied
-    expect(canCityAccommodateIndustryType(gameState, 'birmingham', 'pottery')).toBe(true) // slot 2 still available for pottery
+    // Both players have industries, first-fit algorithm assigns cotton to slot 1, manufacturer to slot 2
+    expect(canCityAccommodateIndustryType(gameState, 'birmingham', 'cotton')).toBe(true) // slot 4 still available for cotton
+    expect(canCityAccommodateIndustryType(gameState, 'birmingham', 'manufacturer')).toBe(true) // slot 4 still available for manufacturer  
+    expect(canCityAccommodateIndustryType(gameState, 'birmingham', 'pottery')).toBe(false) // slot 2 occupied by manufacturer
   })
 
   test('handles all slots filled scenario', () => {
@@ -237,16 +237,18 @@ describe('canCityAccommodateIndustryType', () => {
     
     // Test various cities with their specific slot configurations
     
-    // Dudley: ['iron', 'coal'], ['manufacturer']
-    expect(canCityAccommodateIndustryType(gameState, 'dudley', 'iron')).toBe(true)
+    // Dudley: ['coal'], ['iron'], ['brewery']
     expect(canCityAccommodateIndustryType(gameState, 'dudley', 'coal')).toBe(true)
-    expect(canCityAccommodateIndustryType(gameState, 'dudley', 'manufacturer')).toBe(true)
+    expect(canCityAccommodateIndustryType(gameState, 'dudley', 'iron')).toBe(true)
+    expect(canCityAccommodateIndustryType(gameState, 'dudley', 'brewery')).toBe(true)
+    expect(canCityAccommodateIndustryType(gameState, 'dudley', 'manufacturer')).toBe(false)
     expect(canCityAccommodateIndustryType(gameState, 'dudley', 'cotton')).toBe(false)
     
-    // Wolverhampton: ['manufacturer'], ['brewery']
+    // Wolverhampton: ['coal'], ['iron'], ['manufacturer']
+    expect(canCityAccommodateIndustryType(gameState, 'wolverhampton', 'coal')).toBe(true)
+    expect(canCityAccommodateIndustryType(gameState, 'wolverhampton', 'iron')).toBe(true)
     expect(canCityAccommodateIndustryType(gameState, 'wolverhampton', 'manufacturer')).toBe(true)
-    expect(canCityAccommodateIndustryType(gameState, 'wolverhampton', 'brewery')).toBe(true)
-    expect(canCityAccommodateIndustryType(gameState, 'wolverhampton', 'coal')).toBe(false)
+    expect(canCityAccommodateIndustryType(gameState, 'wolverhampton', 'brewery')).toBe(false)
     
     // Burton: ['brewery'], ['brewery']
     expect(canCityAccommodateIndustryType(gameState, 'burton', 'brewery')).toBe(true)

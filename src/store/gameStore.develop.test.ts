@@ -50,7 +50,8 @@ const setupGame = () => {
 }
 
 const setupDevelopTest = (actor: ReturnType<typeof createActor>) => {
-  // Minimal board industries; no iron works so market iron will be used; add tiles to develop
+  // Setup for develop action: no iron works on board so market iron will be used
+  // Add tiles with quantities to player mat for development
   actor.send({
     type: 'TEST_SET_PLAYER_STATE',
     playerId: 0,
@@ -67,6 +68,18 @@ const setupDevelopTest = (actor: ReturnType<typeof createActor>) => {
           canBuildInCanalEra: true,
           canBuildInRailEra: true,
           cost: 5,
+          victoryPoints: 1,
+          incomeSpaces: 4,
+          linkScoringIcons: 1,
+          coalRequired: 0,
+          ironRequired: 0,
+          beerRequired: 0,
+          beerProduced: 0,
+          coalProduced: 2,
+          ironProduced: 0,
+          hasLightbulbIcon: false,
+          incomeAdvancement: 4,
+          quantity: 2,
         },
         coalCubesOnTile: 2,
         ironCubesOnTile: 0,
@@ -77,30 +90,42 @@ const setupDevelopTest = (actor: ReturnType<typeof createActor>) => {
     industryTilesOnMat: {
       coal: [
         {
-          id: 'coal_mat_1',
-          type: 'coal',
-          level: 1,
-          cost: 5,
-          victoryPoints: 1,
-          incomeSpaces: 1,
-          linkScoringIcons: 1,
-          coalRequired: 0,
-          ironRequired: 0,
-          beerRequired: 0,
-          beerProduced: 0,
-          coalProduced: 2,
-          ironProduced: 0,
-          canBuildInCanalEra: true,
-          canBuildInRailEra: false,
-          hasLightbulbIcon: false,
-          incomeAdvancement: 2,
+          tile: {
+            id: 'coal_mat_1',
+            type: 'coal',
+            level: 1,
+            cost: 5,
+            victoryPoints: 1,
+            incomeSpaces: 4,
+            linkScoringIcons: 1,
+            coalRequired: 0,
+            ironRequired: 0,
+            beerRequired: 0,
+            beerProduced: 0,
+            coalProduced: 2,
+            ironProduced: 0,
+            canBuildInCanalEra: true,
+            canBuildInRailEra: false,
+            hasLightbulbIcon: false,
+            incomeAdvancement: 4,
+            quantity: 2,
+          },
+          quantityAvailable: 2,
         },
       ],
+      cotton: [],
+      iron: [],
+      manufacturer: [],
+      pottery: [],
+      brewery: [],
     },
   })
 }
 
 describe('Game Store - Develop Actions', () => {
+  // RULES: Develop action removes 1 or 2 industry tiles from Player Mat (lowest level tiles)
+  // Each tile removed consumes 1 iron (from iron works first, then market)
+  // Pottery tiles with lightbulb icon cannot be developed (must be built to remove)
   test('develop action - basic mechanics', () => {
     const { actor } = setupGame()
     setupDevelopTest(actor)
@@ -132,10 +157,10 @@ describe('Game Store - Develop Actions', () => {
         snapshot.matches({ playing: { action: 'action' } }),
     ).toBe(true)
 
-    // Discard pile increased by 1
+    // Discard pile increased by 1 (for the card used)
     expect(snapshot.context.discardPile.length).toBe(initialDiscard + 1)
 
-    // Money decreased due to iron purchased from market
+    // Money decreased due to iron purchased from market (1 iron per tile developed)
     expect(snapshot.context.players[0]!.money).toBeLessThan(initialMoney)
 
     // Turn likely advanced after action completes

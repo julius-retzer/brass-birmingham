@@ -1,6 +1,7 @@
 import type { GameState, Player } from '../gameStore'
 import type { Card, IndustryCard, LocationCard } from '../../data/cards'
 import type { IndustryTile } from '../../data/industryTiles'
+import { decrementTileQuantity } from '../../data/industryTiles'
 import type { CityId } from '../../data/board'
 import { 
   consumeCoalFromSources, 
@@ -17,6 +18,13 @@ import {
   isLocationInPlayerNetwork,
   performOverbuild,
 } from '../shared/gameUtils'
+
+// Validation result types for recoverable error handling
+export interface ValidationResult {
+  isValid: boolean
+  errorMessage?: string
+  errorContext?: 'build' | 'network' | 'develop' | 'sell' | 'scout'
+}
 
 // Build validation functions
 export function validateBuildActionSelections(context: GameState): void {
@@ -68,6 +76,79 @@ export function validateIndustrySlotAvailability(context: GameState): void {
       `Cannot build ${industryTile.type} at ${location}. No available slots or slots are occupied.`
     )
   }
+}
+
+// Non-throwing validation functions for recoverable error handling
+export function validateIndustrySlotAvailabilityResult(context: GameState): ValidationResult {
+  const location = context.selectedLocation!
+  const industryTile = context.selectedIndustryTile
+
+  if (!industryTile) {
+    return {
+      isValid: false,
+      errorMessage: 'No industry tile selected',
+      errorContext: 'build'
+    }
+  }
+
+  const canAccommodate = canCityAccommodateIndustryType(
+    context,
+    location,
+    industryTile.type
+  )
+
+  if (!canAccommodate) {
+    return {
+      isValid: false,
+      errorMessage: `Cannot build ${industryTile.type} at ${location}. No available slots or slots are occupied.`,
+      errorContext: 'build'
+    }
+  }
+
+  return { isValid: true }
+}
+
+export function validateNetworkRequirementResult(context: GameState): ValidationResult {
+  const currentPlayer = getCurrentPlayer(context)
+  const card = context.selectedCard!
+  const location = context.selectedLocation!
+
+  // Location cards and wild location cards can build anywhere (game rules)
+  if (card.type === 'location' || card.type === 'wild_location') {
+    return { isValid: true }
+  }
+
+  // Industry cards and wild industry cards must build in player's network
+  if (card.type === 'industry' || card.type === 'wild_industry') {
+    const isInNetwork = isLocationInPlayerNetwork(context, currentPlayer, location)
+    if (!isInNetwork) {
+      return {
+        isValid: false,
+        errorMessage: `Industry cards must be built in your network. ${location} is not connected to your industries or links.`,
+        errorContext: 'build'
+      }
+    }
+  }
+
+  return { isValid: true }
+}
+
+export function validateBuildActionSelectionsResult(context: GameState): ValidationResult {
+  if (!context.selectedCard) {
+    return {
+      isValid: false,
+      errorMessage: 'No card selected for build action',
+      errorContext: 'build'
+    }
+  }
+  if (!context.selectedLocation) {
+    return {
+      isValid: false,
+      errorMessage: 'No location selected for build action',
+      errorContext: 'build'
+    }
+  }
+  return { isValid: true }
 }
 
 export function validateCardType(card: Card): void {
@@ -160,6 +241,11 @@ export function buildIndustryTile(
       context.selectedLocation!,
       tile.coalRequired,
     )
+    
+    if (!coalResult.success) {
+      throw new Error(coalResult.errorMessage || 'Coal consumption failed')
+    }
+    
     coalCost = coalResult.coalCost
     updatedPlayersFromResources = coalResult.updatedPlayers
     updatedCoalMarket = coalResult.updatedCoalMarket
@@ -241,11 +327,11 @@ export function buildIndustryTile(
     }
   }
 
-  // Remove tile from player's mat
+  // Decrement tile quantity from player's mat
   const updatedTilesOnMat = { ...currentPlayer.industryTilesOnMat }
   const tileType = tile.type
   if (updatedTilesOnMat[tileType]) {
-    updatedTilesOnMat[tileType] = updatedTilesOnMat[tileType].filter((t) => t.id !== tile.id)
+    updatedTilesOnMat[tileType] = decrementTileQuantity(updatedTilesOnMat[tileType], tile)
   }
 
   // Handle overbuilding if necessary

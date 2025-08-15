@@ -1,30 +1,13 @@
-// // Example model schema from the Drizzle docs
-// // https://orm.drizzle.team/docs/sql-schema-declaration
+import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
-// import { sql } from 'drizzle-orm'
-// import { index, int, sqliteTableCreator, text } from 'drizzle-orm/sqlite-core'
-
-// /**
-//  * This is an example of how to use the multi-project schema feature of Drizzle ORM. Use the same
-//  * database instance for multiple projects.
-//  *
-//  * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
-//  */
-// export const createTable = sqliteTableCreator((name) => `brass_${name}`)
-
-// export const posts = createTable(
-//   'post',
-//   {
-//     id: int('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
-//     name: text('name', { length: 256 }),
-//     createdAt: int('created_at', { mode: 'timestamp' })
-//       .default(sql`(unixepoch())`)
-//       .notNull(),
-//     updatedAt: int('updated_at', { mode: 'timestamp' }).$onUpdate(
-//       () => new Date(),
-//     ),
-//   },
-//   (example) => ({
-//     nameIndex: index('name_idx').on(example.name),
-//   }),
-// )
+export const games = pgTable('games', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  state: text('state').notNull(), // JSON serialized XState snapshot
+  player1Name: text('player1_name'),
+  player2Name: text('player2_name'),
+  status: text('status', { 
+    enum: ['waiting_for_player2', 'in_progress', 'completed'] 
+  }).notNull().default('waiting_for_player2'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})

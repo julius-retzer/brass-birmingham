@@ -5,7 +5,17 @@
       "Bash(timeout 30s pnpm test)",
       "Bash(gtimeout:*)",
       "Bash(pnmp test:*)",
-      "mcp__shadcn-ui__list_components"
+      "mcp__shadcn-ui__list_components",
+      "Bash(curl:*)",
+      "WebFetch(domain:orm.drizzle.team)",
+      "WebFetch(domain:neon.com)",
+      "WebFetch(domain:localhost)",
+      "mcp__chrome-mcp-server__chrome_navigate",
+      "mcp__chrome-mcp-server__chrome_get_web_content",
+      "mcp__chrome-mcp-server__chrome_fill_or_select",
+      "mcp__chrome-mcp-server__chrome_click_element",
+      "mcp__chrome-mcp-server__chrome_console",
+      "WebFetch(domain:stately.ai)"
     ],
     "deny": []
   }

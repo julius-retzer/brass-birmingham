@@ -19,7 +19,6 @@
 // export const db = drizzle(client, { schema })
 
 import { neon } from '@neondatabase/serverless'
-// src/db.ts
 import { drizzle } from 'drizzle-orm/neon-http'
 import { env } from '~/env'
 import * as schema from './schema'

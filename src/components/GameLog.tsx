@@ -30,7 +30,14 @@ export function GameLog({ logs }: GameLogProps) {
             )}
           >
             <span className="text-xs text-muted-foreground block mb-1">
-              {log.timestamp.toLocaleTimeString()}
+              {(() => {
+                try {
+                  const date = log.timestamp instanceof Date ? log.timestamp : new Date(log.timestamp)
+                  return date.toLocaleTimeString()
+                } catch (error) {
+                  return new Date().toLocaleTimeString()
+                }
+              })()}
             </span>
             {log.message}
           </div>

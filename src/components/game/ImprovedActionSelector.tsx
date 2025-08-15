@@ -43,6 +43,7 @@ interface ImprovedActionSelectorProps {
   onActionSelect: (actionType: string) => void
   showCosts?: boolean
   showRequirements?: boolean
+  disabled?: boolean
 }
 
 function ActionCard({
@@ -145,7 +146,8 @@ export function ImprovedActionSelector({
   snapshot,
   onActionSelect,
   showCosts = true,
-  showRequirements = true
+  showRequirements = true,
+  disabled = false
 }: ImprovedActionSelectorProps) {
   const currentPlayer = snapshot.context.players[snapshot.context.currentPlayerIndex]
   const actionsRemaining = snapshot.context.actionsRemaining
@@ -297,8 +299,8 @@ export function ImprovedActionSelector({
           {availableActions.map((action) => (
             <ActionCard
               key={action.id}
-              action={action}
-              onSelect={() => onActionSelect(action.id)}
+              action={{...action, isAvailable: action.isAvailable && !disabled}}
+              onSelect={disabled ? () => {} : () => onActionSelect(action.id)}
               showCosts={showCosts}
               showRequirements={showRequirements}
             />

@@ -18,8 +18,10 @@ import { Separator } from '../ui/separator'
 interface ImprovedGameInterfaceProps {
   snapshot: GameStoreSnapshot
   send: GameStoreSend
-  onCitySelect: (cityId: CityId) => void
-  onIndustryTypeSelect: (industryType: IndustryType) => void
+  onCitySelect?: (cityId: CityId) => void
+  onIndustryTypeSelect?: (industryType: IndustryType) => void
+  loading?: boolean
+  disabled?: boolean
 }
 
 type WizardActionType = 'build' | 'develop' | 'sell' | 'network' | 'scout' | 'loan'
@@ -42,7 +44,9 @@ export function ImprovedGameInterface({
   snapshot,
   send,
   onCitySelect,
-  onIndustryTypeSelect
+  onIndustryTypeSelect,
+  loading = false,
+  disabled = false
 }: ImprovedGameInterfaceProps) {
   const [wizardState, setWizardState] = React.useState<ActionWizardState>({
     isOpen: false,
@@ -52,14 +56,22 @@ export function ImprovedGameInterface({
   })
 
   const currentPlayer = snapshot.context.players[snapshot.context.currentPlayerIndex]
-  const isActionSelection = snapshot.matches({ playing: 'action' })
+  const isActionSelection = snapshot.matches({ playing: { action: 'selectingAction' } })
   
   console.log('Current game state:', snapshot.value)
   console.log('Is action selection?', isActionSelection)
+  console.log('Current player:', currentPlayer)
+  console.log('Current player index:', snapshot.context.currentPlayerIndex)
+  console.log('Players array length:', snapshot.context.players?.length)
   console.log('Wizard state:', wizardState)
 
   // Handle action selection from the improved selector
   const handleActionSelect = (actionType: string) => {
+    // Don't allow actions if disabled or loading
+    if (disabled || loading) {
+      return
+    }
+    
     const action = actionType.toUpperCase()
     
     // For simple actions that don't need wizards, execute directly
@@ -552,12 +564,22 @@ export function ImprovedGameInterface({
 
   // Show action selector when in action selection mode
   if (isActionSelection && !wizardState.isOpen) {
+    if (!currentPlayer) {
+      console.error('Current player is undefined!', { 
+        currentPlayerIndex: snapshot.context.currentPlayerIndex,
+        playersLength: snapshot.context.players?.length,
+        players: snapshot.context.players
+      })
+      return <div>Error: Current player not found</div>
+    }
+    
     return (
       <ImprovedActionSelector
         snapshot={snapshot}
         onActionSelect={handleActionSelect}
         showCosts={true}
         showRequirements={true}
+        disabled={disabled || loading}
       />
     )
   }

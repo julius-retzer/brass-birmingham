@@ -165,6 +165,10 @@ type GameEvent =
       players: Array<Omit<Player, 'hand' | 'links' | 'industries'>>
     }
   | {
+      type: 'JOIN_GAME'
+      player2Name: string
+    }
+  | {
       type: 'BUILD'
     }
   | {
@@ -280,6 +284,7 @@ export type GameStore = typeof gameStore
 export type GameStoreSnapshot = StateFrom<typeof gameStore>
 export type GameStoreSend = Actor<typeof gameStore>['send']
 export type GameStoreActor = Actor<typeof gameStore>
+export type { GameEvent }
 
 // Helper function to create merchants based on player count
 const createMerchantsForPlayerCount = (playerCount: number): Merchant[] => {
@@ -501,6 +506,20 @@ export const gameStore = setup({
           from: event.from,
           to: event.to,
         },
+      }
+    }),
+
+    updatePlayer2Name: assign(({ context, event }) => {
+      if (event.type !== 'JOIN_GAME') return {}
+      debugLog('updatePlayer2Name', context, event)
+      
+      // Update player 2 name in the players array
+      const updatedPlayers = context.players.map((player, index) => 
+        index === 1 ? { ...player, name: event.player2Name } : player
+      )
+      
+      return {
+        players: updatedPlayers
       }
     }),
 
@@ -2379,6 +2398,9 @@ export const gameStore = setup({
             event.type === 'START_GAME' &&
             event.players.length >= 2 &&
             event.players.length <= 4,
+        },
+        JOIN_GAME: {
+          actions: 'updatePlayer2Name',
         },
       },
     },

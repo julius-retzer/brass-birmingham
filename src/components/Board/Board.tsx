@@ -21,6 +21,7 @@ import '@xyflow/react/dist/style.css'
 import { useCallback, useEffect } from 'react'
 import { cn } from '../../lib/utils'
 import { type Player, type GameState } from '../../store/gameStore'
+import { type IndustryType } from '../../data/cards'
 import { canCityAccommodateIndustryType } from '../../store/shared/gameUtils'
 import { SelectionFeedback } from '../game/SelectionFeedback'
 import { FloatingEdge } from './FloatingEdge'
@@ -36,7 +37,7 @@ interface BoardProps {
   selectedCity?: CityId | null
   players: Player[]
   currentPlayerIndex?: number
-  selectedIndustryType?: string | null
+  selectedIndustryType?: IndustryType | null
   selectedCard?: { id: string, type: 'location' | 'industry' | 'wild_location' | 'wild_industry', location?: CityId } | null
   gameContext?: GameState
   showSelectionFeedback?: boolean
@@ -198,7 +199,7 @@ function CityNode({ data }: CityNodeProps) {
                     }
                     
                     const options = availableSlots[i]
-                    if (options && options.includes(industry.type as any)) {
+                    if (options && options.includes(industry.type as IndustryType)) {
                       slotAssignments.set(i, industry)
                       break
                     }
@@ -443,7 +444,7 @@ function canCityAccommodateIndustry(
       }
       
       const slotOptions = availableSlots[slotIndex]
-      if (slotOptions && slotOptions.includes(industry.type as any)) {
+      if (slotOptions && slotOptions.includes(industry.type as IndustryType)) {
         occupiedSlots.add(slotIndex)
         break
       }
@@ -548,7 +549,7 @@ export function Board({
             canAccommodateIndustry = canCityAccommodateIndustryType(
               gameContext,
               node.id as CityId,
-              selectedIndustryType as any
+              selectedIndustryType
             )
           } else if (selectedIndustryType) {
             // Fallback to old function if no gameContext
@@ -615,7 +616,6 @@ export function Board({
         }),
         {} as Record<string, { x: number; y: number }>,
       )
-      console.log('New positions:', JSON.stringify(newPositions, null, 2))
     }
   }, [nodes])
 

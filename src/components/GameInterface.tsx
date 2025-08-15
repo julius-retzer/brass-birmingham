@@ -2,6 +2,7 @@
 
 import { useTransition, useMemo, useState, useEffect } from 'react'
 import { sendEventAction } from '~/app/actions'
+import { useGamePolling } from '~/hooks/useGamePolling'
 import { ImprovedGameInterface } from './game/ImprovedGameInterface'
 import type { GameStoreSnapshot, GameEvent } from '~/store/gameStore'
 import { gameStore } from '~/store/gameStore'
@@ -41,29 +42,30 @@ export function GameInterface({ gameState, gameId, playerIndex, playerName }: Ga
   // Local state for city selection (matching home page)
   const [selectedCity, setSelectedCity] = useState<CityId | null>(null)
   
+  // Set up polling for game updates (checks every 3 seconds)
+  useGamePolling({
+    gameId,
+    playerIndex,
+    enabled: true,
+    intervalMs: 3000 // Check every 3 seconds
+  })
+  
   // Recreate XState actor from persisted snapshot for full compatibility
   const liveSnapshot = useMemo(() => {
     try {
-      console.log('🔄 Attempting to recreate actor from persisted snapshot:', gameState)
-      
       // Create a new actor and restore it from the persisted snapshot
       const actor = createActor(gameStore, {
         snapshot: gameState
       })
-      console.log('✅ Actor created successfully')
       
       actor.start()
-      console.log('✅ Actor started successfully')
       
       // Get the current snapshot from the restored actor
       const liveSnapshot = actor.getSnapshot()
-      console.log('✅ Live snapshot obtained:', liveSnapshot.value)
-      console.log('✅ Live snapshot context keys:', Object.keys(liveSnapshot.context || {}))
       
       return liveSnapshot
     } catch (error) {
-      console.error('❌ Error creating live actor from persisted snapshot:', error)
-      console.error('❌ Persisted snapshot structure:', JSON.stringify(gameState, null, 2))
+      console.error('Error creating live actor from persisted snapshot:', error)
       
       // Fallback to mock if restoration fails
       const fallback = {
@@ -74,7 +76,6 @@ export function GameInterface({ gameState, gameId, playerIndex, playerName }: Ga
         toStrings: () => ['unknown']
       } as GameStoreSnapshot
       
-      console.warn('⚠️ Using fallback mock snapshot')
       return fallback
     }
   }, [gameState])
@@ -82,8 +83,8 @@ export function GameInterface({ gameState, gameId, playerIndex, playerName }: Ga
   const handleEvent = (event: GameEvent) => {
     startTransition(async () => {
       const result = await sendEventAction(gameId, playerIndex, event)
+      
       if (!result.success && result.error) {
-        // Show error message - for now just log it
         console.error('Game action failed:', result.error)
         // TODO: Show toast notification or error state
       }
@@ -114,7 +115,10 @@ export function GameInterface({ gameState, gameId, playerIndex, playerName }: Ga
   }, [liveSnapshot?.context?.selectedLocation])
   
   // Access context safely since gameState is a persisted snapshot  
-  const context = (gameState as PersistedGameSnapshot)?.context as any
+  const context = (gameState as PersistedGameSnapshot)?.context as {
+    currentPlayerIndex: number
+    players: { name: string }[]
+  }
   const isMyTurn = context?.currentPlayerIndex === playerIndex - 1
   
   // Don't render if liveSnapshot failed to create
@@ -171,6 +175,13 @@ export function GameInterface({ gameState, gameId, playerIndex, playerName }: Ga
             <Badge variant={isMyTurn ? "default" : "secondary"}>
               {isMyTurn ? "Your Turn" : "Waiting for opponent"}
             </Badge>
+            {/* Live Updates Indicator */}
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs text-muted-foreground">
+                Live Updates
+              </span>
+            </div>
           </div>
           <div className="text-right">
             <p className="text-sm text-muted-foreground">You are</p>

@@ -1,8 +1,8 @@
 'use client'
 
 import React from 'react'
-import { type GameStoreSnapshot, type GameStoreSend } from '~/store/gameStore'
-import { type Card, type IndustryType } from '~/data/cards'
+import { type GameStoreSnapshot, type GameStoreSend, type GameEvent } from '~/store/gameStore'
+import { type Card, type IndustryCard, type LocationCard, type IndustryType } from '~/data/cards'
 import { type CityId } from '~/data/board'
 import { ImprovedActionSelector } from './ImprovedActionSelector'
 import { ImprovedActionWizard, useActionWizard, type ActionWizardStep } from './ImprovedActionWizard'
@@ -57,13 +57,6 @@ export function ImprovedGameInterface({
 
   const currentPlayer = snapshot.context.players[snapshot.context.currentPlayerIndex]
   const isActionSelection = snapshot.matches({ playing: { action: 'selectingAction' } })
-  
-  console.log('Current game state:', snapshot.value)
-  console.log('Is action selection?', isActionSelection)
-  console.log('Current player:', currentPlayer)
-  console.log('Current player index:', snapshot.context.currentPlayerIndex)
-  console.log('Players array length:', snapshot.context.players?.length)
-  console.log('Wizard state:', wizardState)
 
   // Handle action selection from the improved selector
   const handleActionSelect = (actionType: string) => {
@@ -72,7 +65,18 @@ export function ImprovedGameInterface({
       return
     }
     
-    const action = actionType.toUpperCase()
+    // Map action types to correct XState event names
+    const actionMap: { [key: string]: string } = {
+      'build': 'BUILD',
+      'develop': 'DEVELOP',
+      'sell': 'SELL',
+      'scout': 'SCOUT',
+      'loan': 'TAKE_LOAN',  // Map 'loan' to 'TAKE_LOAN'
+      'network': 'NETWORK',
+      'pass': 'PASS'
+    }
+    
+    const eventType = actionMap[actionType] || actionType.toUpperCase()
     
     // For simple actions that don't need wizards, execute directly
     if (actionType === 'pass') {
@@ -81,8 +85,7 @@ export function ImprovedGameInterface({
     }
 
     // For complex actions, start the action in the state machine first
-    console.log(`Starting ${action} action`)
-    send({ type: action as any })
+    send({ type: eventType } as GameEvent)
 
     // Then open the wizard
     setWizardState({
@@ -93,12 +96,9 @@ export function ImprovedGameInterface({
     })
   }
 
-  const closeWizard = () => {
-    console.log('Closing wizard and resetting state')
-    
-    // Always send CANCEL if we have an active wizard action
-    if (wizardState.actionType) {
-      console.log('Sending CANCEL to game store for action:', wizardState.actionType)
+  const closeWizard = (sendCancel = true) => {
+    // Only send CANCEL if explicitly requested (for user cancellation, not completion)
+    if (sendCancel && wizardState.actionType) {
       send({ type: 'CANCEL' })
     }
     
@@ -120,22 +120,16 @@ export function ImprovedGameInterface({
   }
 
   const updateWizardData = (updates: Partial<ActionWizardState['data']>) => {
-    console.log('Updating wizard data:', updates)
-    setWizardState(prev => {
-      const newState = {
-        ...prev,
-        data: { ...prev.data, ...updates }
-      }
-      console.log('New wizard state:', newState)
-      return newState
-    })
+    setWizardState(prev => ({
+      ...prev,
+      data: { ...prev.data, ...updates }
+    }))
   }
 
   // Build wizard steps
   const buildSteps: ActionWizardStep[] = React.useMemo(() => {
     if (!wizardState.actionType || wizardState.actionType !== 'build') return []
 
-    console.log('Building steps, wizard data:', wizardState.data)
     const steps: ActionWizardStep[] = [
       {
         id: 'select-card',
@@ -146,16 +140,18 @@ export function ImprovedGameInterface({
             cards={currentPlayer?.hand || []}
             selectedCard={wizardState.data.selectedCard}
             onCardSelect={(card) => {
-              console.log('Card selected in build wizard:', card)
-              let updates: any = { selectedCard: card }
+              const updates: Partial<ActionWizardState['data']> = { selectedCard: card }
               
               // Auto-select industry type for industry cards
               if (card.type === 'industry') {
-                const industryCard = card as any
+                const industryCard = card as IndustryCard
                 if (industryCard.industries && industryCard.industries.length === 1) {
                   // If only one industry type, auto-select it
-                  updates.selectedIndustryType = industryCard.industries[0]
-                  onIndustryTypeSelect(industryCard.industries[0])
+                  const industryType = industryCard.industries[0]
+                  updates.selectedIndustryType = industryType
+                  if (industryType) {
+                    onIndustryTypeSelect?.(industryType)
+                  }
                 }
               }
               
@@ -195,7 +191,7 @@ export function ImprovedGameInterface({
             era={snapshot.context.era}
             onSelectIndustryType={(industryType) => {
               updateWizardData({ selectedIndustryType: industryType })
-              onIndustryTypeSelect(industryType)
+              onIndustryTypeSelect?.(industryType)
             }}
             onCancel={closeWizard}
           />
@@ -301,7 +297,6 @@ export function ImprovedGameInterface({
           <DevelopInterface
             player={currentPlayer!}
             onSelectDevelopment={(industryTypes) => {
-              console.log('Selected industries for development:', industryTypes)
               updateWizardData({ selectedIndustries: industryTypes })
               // Send the selection to the game store
               send({ type: 'SELECT_TILES_FOR_DEVELOP', industryTypes })
@@ -329,7 +324,7 @@ export function ImprovedGameInterface({
           <ImprovedCardSelector
             cards={currentPlayer?.hand || []}
             selectedCards={wizardState.data.selectedCards || []}
-            onCardSelect={(card) => {}} // Required prop, but not used for multi-select
+            onCardSelect={() => undefined} // Required prop, but not used for multi-select
             onCardToggle={(card) => {
               const currentCards = wizardState.data.selectedCards || []
               const isSelected = currentCards.some(c => c.id === card.id)
@@ -478,62 +473,53 @@ export function ImprovedGameInterface({
   const { currentStepIndex, canGoNext, canGoPrevious, canComplete, goNext, goPrevious, reset } = useActionWizard(steps)
 
   const handleWizardComplete = () => {
-    console.log('Completing wizard with data:', wizardState.data)
-    
     // Execute the final action based on type and collected data
     switch (wizardState.actionType) {
       case 'develop':
         // For develop, the industries should already be selected via SELECT_TILES_FOR_DEVELOP
         // Just send the final CONFIRM to complete the action
-        console.log('Sending final CONFIRM for develop')
         send({ type: 'CONFIRM' })
         break
         
       case 'scout':
         // For scout, send the selected cards first, then confirm
         if (wizardState.data.selectedCards && wizardState.data.selectedCards.length === 3) {
-          console.log('Sending selected cards for scout:', wizardState.data.selectedCards)
           // Send each selected card using SELECT_CARD
           wizardState.data.selectedCards.forEach(card => {
             send({ type: 'SELECT_CARD', cardId: card.id })
           })
           // Then confirm the scout action
-          console.log('Sending final CONFIRM for scout')
           send({ type: 'CONFIRM' })
-        } else {
-          console.error('Scout action incomplete - not exactly 3 cards selected')
         }
         break
         
       case 'network':
         // For network, the link should already be selected via SELECT_LINK
         // Just send the final CONFIRM to complete the action
-        console.log('Sending final CONFIRM for network')
         send({ type: 'CONFIRM' })
         break
         
       default:
         // For other actions, just send the final CONFIRM
-        console.log('Sending final CONFIRM')
         send({ type: 'CONFIRM' })
         break
     }
     
-    // Close wizard immediately after confirming
-    closeWizard()
+    // Close wizard immediately after confirming (don't send CANCEL since we just confirmed)
+    closeWizard(false)
   }
 
   // Initialize keyboard shortcuts
   useGameKeyboardShortcuts(
     (actionType: string) => handleActionSelect(actionType),
-    () => {}, // Toggle UI handled in parent
+    () => undefined, // Toggle UI handled in parent
     { can: snapshot.can, send }
   )
 
   // Auto-set location for location cards (only for build action)
   React.useEffect(() => {
     if (wizardState.actionType === 'build' && wizardState.data.selectedCard?.type === 'location') {
-      const locationCard = wizardState.data.selectedCard as any
+      const locationCard = wizardState.data.selectedCard as LocationCard
       if (locationCard?.location && !wizardState.data.selectedLocation) {
         updateWizardData({ selectedLocation: locationCard.location })
       }
@@ -565,11 +551,6 @@ export function ImprovedGameInterface({
   // Show action selector when in action selection mode
   if (isActionSelection && !wizardState.isOpen) {
     if (!currentPlayer) {
-      console.error('Current player is undefined!', { 
-        currentPlayerIndex: snapshot.context.currentPlayerIndex,
-        playersLength: snapshot.context.players?.length,
-        players: snapshot.context.players
-      })
       return <div>Error: Current player not found</div>
     }
     
@@ -585,7 +566,7 @@ export function ImprovedGameInterface({
   }
 
   // Show wizard when action is selected OR when we're in an active action
-  const shouldShowWizard = wizardState.isOpen && wizardState.actionType && steps.length > 0
+  const shouldShowWizard = wizardState.isOpen && wizardState.actionType !== null && steps.length > 0
   const isInActiveAction = !isActionSelection && (
     snapshot.matches({ playing: { action: 'building' } }) ||
     snapshot.matches({ playing: { action: 'developing' } }) ||
@@ -595,7 +576,7 @@ export function ImprovedGameInterface({
     snapshot.matches({ playing: { action: 'takingLoan' } })
   )
   
-  if (shouldShowWizard) {
+  if (shouldShowWizard && wizardState.actionType) {
     return (
       <ImprovedActionWizard
         isOpen={wizardState.isOpen}
@@ -609,33 +590,60 @@ export function ImprovedGameInterface({
         canComplete={canComplete()}
         isMinimized={wizardState.isMinimized}
         onToggleMinimize={toggleMinimize}
-        wizardData={wizardState.data}
+        wizardData={{
+          selectedCard: wizardState.data.selectedCard,
+          selectedIndustryType: wizardState.data.selectedIndustryType || undefined,
+          selectedLocation: wizardState.data.selectedLocation || undefined
+        }}
       />
     )
   }
   
   // If we're in an active action but wizard is closed, reopen it
   if (isInActiveAction && !wizardState.isOpen) {
-    console.log('Reopening wizard for active action')
-    const actionTypeMap: { [key: string]: WizardActionType } = {
-      building: 'build',
-      developing: 'develop', 
-      networking: 'network',
-      selling: 'sell',
-      scouting: 'scout',
-      takingLoan: 'loan'
-    }
-    
-    for (const [stateName, actionType] of Object.entries(actionTypeMap)) {
-      if (snapshot.matches({ playing: { action: stateName } })) {
-        setWizardState({
-          isOpen: true,
-          actionType,
-          isMinimized: false, // Always open full wizard when reopening
-          data: wizardState.data // Preserve existing data
-        })
-        break
-      }
+    // Check each possible action state individually to avoid type issues
+    if (snapshot.matches({ playing: { action: 'building' } })) {
+      setWizardState({
+        isOpen: true,
+        actionType: 'build',
+        isMinimized: false,
+        data: wizardState.data
+      })
+    } else if (snapshot.matches({ playing: { action: 'developing' } })) {
+      setWizardState({
+        isOpen: true,
+        actionType: 'develop',
+        isMinimized: false,
+        data: wizardState.data
+      })
+    } else if (snapshot.matches({ playing: { action: 'networking' } })) {
+      setWizardState({
+        isOpen: true,
+        actionType: 'network',
+        isMinimized: false,
+        data: wizardState.data
+      })
+    } else if (snapshot.matches({ playing: { action: 'selling' } })) {
+      setWizardState({
+        isOpen: true,
+        actionType: 'sell',
+        isMinimized: false,
+        data: wizardState.data
+      })
+    } else if (snapshot.matches({ playing: { action: 'scouting' } })) {
+      setWizardState({
+        isOpen: true,
+        actionType: 'scout',
+        isMinimized: false,
+        data: wizardState.data
+      })
+    } else if (snapshot.matches({ playing: { action: 'takingLoan' } })) {
+      setWizardState({
+        isOpen: true,
+        actionType: 'loan',
+        isMinimized: false,
+        data: wizardState.data
+      })
     }
   }
 

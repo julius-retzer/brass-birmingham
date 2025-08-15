@@ -388,7 +388,7 @@ export function useActionWizard(steps: ActionWizardStep[]) {
   // React.useEffect(() => {
   //   if (canGoNext() && currentStepIndex < steps.length - 1) {
   //     const timer = setTimeout(() => {
-  //       console.log('Auto-advancing from step', currentStepIndex, 'to step', currentStepIndex + 1)
+  //       // Auto-advancing to next step
   //       setCurrentStepIndex(prev => prev + 1)
   //     }, 800) // Slightly longer delay to let user see the selection
   //     

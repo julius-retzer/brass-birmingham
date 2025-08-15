@@ -2116,11 +2116,9 @@ export const gameStore = setup({
     },
     canBuildLink: ({ context, event }) => {
       if (event.type !== 'SELECT_LINK' && event.type !== 'SELECT_SECOND_LINK') {
-        console.log('canBuildLink: wrong event type', event.type)
         return false
       }
       
-      console.log('canBuildLink called with event:', event.type, event.from, event.to)
 
       // Check if any player already has a link on this connection
       const existingLink = context.players.some((player) =>
@@ -2132,7 +2130,6 @@ export const gameStore = setup({
       )
 
       if (existingLink) {
-        console.log('canBuildLink: existing link found', event.from, event.to)
         return false
       }
 
@@ -2143,20 +2140,17 @@ export const gameStore = setup({
         currentPlayer.industries.length === 0 &&
         currentPlayer.links.length === 0
       if (hasNoTilesOnBoard) {
-        console.log('canBuildLink: no tiles on board, allowing')
         return true
       }
 
       // Special handling for second link in double link building
       if (event.type === 'SELECT_SECOND_LINK') {
         if (!context.selectedLink) {
-          console.log('canBuildLink: no first link selected for second link')
           return false
         }
         
         // Second link follows same network adjacency rules as regular links
         // (No special adjacency requirement between the two links)
-        console.log('canBuildLink: second link - checking network adjacency')
         // Continue to regular network adjacency check below
       }
 

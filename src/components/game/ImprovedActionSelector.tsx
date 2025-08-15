@@ -22,7 +22,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '../ui/hover-card'
 import { Alert, AlertDescription } from '../ui/alert'
 import { Separator } from '../ui/separator'
 import { cn } from '~/lib/utils'
-import { type GameStoreSnapshot } from '~/store/gameStore'
+import { type GameStoreSnapshot, type GameEvent } from '~/store/gameStore'
 import { ContextualHelp } from './ContextualHelp'
 
 interface ActionInfo {
@@ -155,7 +155,7 @@ export function ImprovedActionSelector({
   // Helper function to check action availability
   const checkActionAvailability = (actionType: string) => {
     try {
-      return snapshot.can({ type: actionType.toUpperCase() as any })
+      return snapshot.can({ type: actionType.toUpperCase() } as GameEvent)
     } catch (e) {
       return false
     }
@@ -300,7 +300,7 @@ export function ImprovedActionSelector({
             <ActionCard
               key={action.id}
               action={{...action, isAvailable: action.isAvailable && !disabled}}
-              onSelect={disabled ? () => {} : () => onActionSelect(action.id)}
+              onSelect={disabled ? () => undefined : () => onActionSelect(action.id)}
               showCosts={showCosts}
               showRequirements={showRequirements}
             />
@@ -320,7 +320,7 @@ export function ImprovedActionSelector({
               <ActionCard
                 key={action.id}
                 action={action}
-                onSelect={() => {}} // Disabled
+                onSelect={() => undefined} // Disabled
                 showCosts={showCosts}
                 showRequirements={showRequirements}
               />

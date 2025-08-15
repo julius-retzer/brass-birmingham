@@ -17,14 +17,10 @@ export class GameManager {
   
   async createGame(player1Name: string): Promise<string> {
     try {
-      console.log('Creating game for player:', player1Name)
-      
       // Create initial XState snapshot for 2 players
       const actor = createActor(gameStore)
       actor.start()
-      console.log('Actor created and started')
       
-      console.log('Creating proper initial players with full industry tiles...')
       // Create proper player data with full industry tiles
       const player1IndustryTiles = getInitialPlayerIndustryTilesWithQuantities()
       const player2IndustryTiles = getInitialPlayerIndustryTilesWithQuantities()
@@ -51,47 +47,27 @@ export class GameManager {
           industryTilesOnMat: player2IndustryTiles,
         }
       ]
-      console.log('Initial players created')
       
-      console.log('About to send START_GAME event with players:', initialPlayers.length)
-      try {
-        actor.send({ type: 'START_GAME', players: initialPlayers })
-        console.log('START_GAME event sent successfully')
-      } catch (xstateError) {
-        console.error('XState error:', xstateError)
-        throw xstateError
-      }
+      actor.send({ type: 'START_GAME', players: initialPlayers })
+      const persistedSnapshot = actor.getPersistedSnapshot()
       
-      console.log('Getting persisted snapshot...')
-      let persistedSnapshot: unknown
-      try {
-        persistedSnapshot = actor.getPersistedSnapshot()
-        console.log('Persisted snapshot obtained successfully')
-      } catch (snapshotError) {
-        console.error('Snapshot error:', snapshotError)
-        throw snapshotError
-      }
-      
-      // Save to database - no need to keep actor in memory
-      console.log('Attempting database insert...')
+      // Save to database
       const [game] = await db.insert(games).values({
         state: JSON.stringify(persistedSnapshot),
         player1Name,
         status: 'waiting_for_player2'
       }).returning()
-      console.log('Database insert successful:', game?.id)
       
       if (!game) {
         throw new Error('Failed to create game record')
       }
       
-      // Stop actor after saving - we'll recreate it when needed for events
+      // Stop actor after saving
       actor.stop()
-      console.log('Actor stopped after saving to database')
       
       return game.id
     } catch (error) {
-      console.error('Error in createGame:', error)
+      console.error('Error creating game:', error)
       throw error
     }
   }

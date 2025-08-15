@@ -91,7 +91,7 @@ function showShortcutHelp(shortcuts: KeyboardShortcut[]) {
 export function useGameKeyboardShortcuts(
   onActionSelect: (action: string) => void,
   onToggleUI: () => void,
-  gameState: any
+  gameState: { can: (event: any) => boolean; send: (event: any) => void }
 ) {
   const shortcuts: KeyboardShortcut[] = React.useMemo(() => [
     {

@@ -113,6 +113,12 @@ export const cityIndustrySlots: Record<CityId, string[][]> = {
     ['brewery'], // Slot 3: Brewery only
     ['cotton', 'manufacturer'], // Slot 4: Cotton or Manufacturer
   ],
+  // birmingham: [
+  //   ['cotton', 'manufacturer'],
+  //   ['manufacturer'],
+  //   ['iron'],
+  //   ['manufacturer'],
+  // ],
   coventry: [
     ['cotton', 'manufacturer'], // Slot 1: Cotton or Manufacturer
     ['pottery'], // Slot 2: Pottery only

@@ -7,7 +7,8 @@ import {
 } from '~/data/cards'
 import { type IndustryCard } from '~/data/cards'
 import { cn } from '~/lib/utils'
-import { type Player } from '~/store/gameStore'
+import { type GameState, type Player } from '~/store/gameStore'
+import { canCityAccommodateIndustryType } from '~/store/shared/gameUtils'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
@@ -16,6 +17,7 @@ interface IndustryTypeSelectorProps {
   industryCard?: IndustryCard
   locationCard?: LocationCard | WildLocationCard
   player: Player
+  gameState: GameState
   era: 'canal' | 'rail'
   onSelectIndustryType: (industryType: IndustryType) => void
   onCancel: () => void
@@ -91,6 +93,7 @@ export function IndustryTypeSelector({
   industryCard,
   locationCard,
   player,
+  gameState,
   era,
   onSelectIndustryType,
   onCancel,
@@ -133,10 +136,22 @@ export function IndustryTypeSelector({
 
   const industryOptions = availableIndustryTypes.map((industryType) => {
     const availableTiles = getAvailableTiles(industryType)
+    const hasTiles = availableTiles.length > 0
+
+    // Check if this industry can be accommodated at the selected location
+    let canAccommodate = true
+    if (locationCard && locationCard.type !== 'wild_location') {
+      canAccommodate = canCityAccommodateIndustryType(
+        gameState,
+        locationCard.location as CityId,
+        industryType,
+      )
+    }
+
     return {
       industryType,
       availableTiles: availableTiles.length,
-      isAvailable: availableTiles.length > 0,
+      isAvailable: hasTiles && canAccommodate,
     }
   })
 

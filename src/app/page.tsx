@@ -543,6 +543,7 @@ export default function Home() {
                       : undefined
                   }
                   player={currentPlayer}
+                  gameState={snapshot.context}
                   era={era}
                   onSelectIndustryType={handleIndustryTypeSelect}
                   onCancel={() => send({ type: 'CANCEL' })}

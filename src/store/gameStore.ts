@@ -55,6 +55,7 @@ import {
   shuffleArray,
   updatePlayerInList,
   validateIndustryBuildLocation,
+  canCityAccommodateIndustryType,
 } from './shared/gameUtils'
 
 export type LogEntryType = 'system' | 'action' | 'info' | 'error'
@@ -2175,13 +2176,22 @@ export const gameStore = setup({
         event.cityId,
       )
 
+      if (!isValidBuild) {
+        return false
+      }
+
       // Additional location card validation
       if (context.selectedCard.type === 'location') {
         const locationCard = context.selectedCard as LocationCard
-        return locationCard.location === event.cityId && isValidBuild
+        return locationCard.location === event.cityId
       }
 
-      return isValidBuild
+      // For industry cards, check if the location can accommodate the selected industry type
+      if ((context.selectedCard.type === 'industry' || context.selectedCard.type === 'wild_industry') && context.selectedIndustryTile) {
+        return canCityAccommodateIndustryType(context, event.cityId, context.selectedIndustryTile.type)
+      }
+
+      return true
     },
     canSelectIndustryType: ({ context, event }) => {
       if (event.type !== 'SELECT_INDUSTRY_TYPE') return false
@@ -2199,7 +2209,23 @@ export const gameStore = setup({
           return false
         })
 
-      return availableTiles.length > 0
+      if (availableTiles.length === 0) {
+        return false
+      }
+
+      // For location cards, check if the location can accommodate this industry type
+      if (context.selectedCard.type === 'location') {
+        const locationCard = context.selectedCard as LocationCard
+        return canCityAccommodateIndustryType(context, locationCard.location as CityId, event.industryType)
+      }
+
+      // For wild location cards, can build anywhere (no slot restriction)
+      if (context.selectedCard.type === 'wild_location') {
+        return true
+      }
+
+      // For industry cards, location validation happens later when location is selected
+      return true
     },
     isLocationCardSelected: ({ context }) => {
       return (

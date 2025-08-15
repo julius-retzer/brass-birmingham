@@ -4,7 +4,8 @@
       "Bash(timeout 20 pnpm test)",
       "Bash(timeout 30s pnpm test)",
       "Bash(gtimeout:*)",
-      "Bash(pnmp test:*)"
+      "Bash(pnmp test:*)",
+      "mcp__shadcn-ui__list_components"
     ],
     "deny": []
   }

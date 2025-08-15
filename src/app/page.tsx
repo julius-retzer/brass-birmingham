@@ -30,6 +30,10 @@ import {
 } from '../data/cards'
 import { getInitialPlayerIndustryTilesWithQuantities } from '../data/industryTiles'
 import { gameStore } from '../store/gameStore'
+import { ImprovedGameInterface } from '../components/game/ImprovedGameInterface'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
+import { Toaster } from '../components/ui/sonner'
 
 const inspector = createBrowserInspector({
   autoStart: false,
@@ -42,6 +46,9 @@ export default function Home() {
 
   // Local state for city selection
   const [selectedCity, setSelectedCity] = useState<CityId | null>(null)
+  
+  // Feature flag for improved UI
+  const [useImprovedUI, setUseImprovedUI] = useState(true)
 
   const {
     players,
@@ -392,17 +399,36 @@ export default function Home() {
   }, [selectedLocation])
 
   return (
-    <main className="min-h-screen p-4 bg-background text-foreground">
-      {/* Quick Status Bar - Always Visible */}
-      {currentPlayer && (
-        <QuickStatusBar
-          currentPlayer={currentPlayer}
-          actionsRemaining={actionsRemaining}
-          era={era}
-          round={round}
-          spentMoney={spentMoney}
-        />
-      )}
+    <main className="min-h-screen p-6 lg:p-8 bg-background text-foreground">
+      {/* UI Toggle & Quick Status Bar - Always Visible */}
+      <div className="flex items-center justify-between mb-4">
+        {currentPlayer && (
+          <QuickStatusBar
+            currentPlayer={currentPlayer}
+            actionsRemaining={actionsRemaining}
+            era={era}
+            round={round}
+            spentMoney={spentMoney}
+          />
+        )}
+        
+        {/* UI Toggle */}
+        <div className="flex items-center gap-3">
+          <Button
+            variant={useImprovedUI ? "default" : "outline"}
+            size="sm"
+            onClick={() => setUseImprovedUI(!useImprovedUI)}
+            className="flex items-center gap-2"
+          >
+            {useImprovedUI ? '✨ New UI' : '🔄 Classic UI'}
+          </Button>
+          {useImprovedUI && (
+            <Badge variant="secondary" className="text-xs">
+              Default
+            </Badge>
+          )}
+        </div>
+      </div>
 
       {/* Error Display - Show validation errors prominently */}
       <ErrorDisplay
@@ -450,9 +476,9 @@ export default function Home() {
           </div>
         )}
 
-        <div className="grid xl:grid-cols-4 lg:grid-cols-3 gap-6">
+        <div className="grid xl:grid-cols-5 lg:grid-cols-3 md:grid-cols-2 gap-8 lg:gap-10 xl:gap-12">
           {/* Column 1: Game Board & Network */}
-          <div className="xl:col-span-2 lg:col-span-2 space-y-6">
+          <div className="xl:col-span-3 lg:col-span-2 space-y-6">
 <Board
               isNetworking={
                 isInState('networking', 'selectingLink') ||
@@ -490,7 +516,7 @@ export default function Home() {
           </div>
 
           {/* Column 2: Player Actions & Hand */}
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* Action Progress Indicator */}
             <ActionProgress
               actionType={getCurrentAction()?.action || null}
@@ -590,30 +616,43 @@ export default function Home() {
                 />
               )}
 
-            {/* Actions */}
-            {snapshot.matches('playing') && (
-              <ActionButtons snapshot={snapshot} send={send} />
-            )}
-
-            {/* Current Player's Hand */}
-            {currentPlayer && (
-              <PlayerHand
-                player={currentPlayer}
-                selectedCard={selectedCard}
-                selectedCards={
-                  isInState('scouting', 'selectingCards')
-                    ? selectedCardsForScout
-                    : undefined
-                }
-                onCardSelect={isSelectingCards() ? handleCardSelect : undefined}
-                currentAction={getCurrentAction()?.action}
-                currentSubState={getCurrentAction()?.subState}
+            {/* Actions - Conditional UI */}
+            {useImprovedUI ? (
+              /* New Improved UI */
+              <ImprovedGameInterface
+                snapshot={snapshot}
+                send={send}
+                onCitySelect={handleCitySelect}
+                onIndustryTypeSelect={handleIndustryTypeSelect}
               />
+            ) : (
+              /* Original UI */
+              <>
+                {snapshot.matches('playing') && (
+                  <ActionButtons snapshot={snapshot} send={send} />
+                )}
+
+                {/* Current Player's Hand */}
+                {currentPlayer && (
+                  <PlayerHand
+                    player={currentPlayer}
+                    selectedCard={selectedCard}
+                    selectedCards={
+                      isInState('scouting', 'selectingCards')
+                        ? selectedCardsForScout
+                        : undefined
+                    }
+                    onCardSelect={isSelectingCards() ? handleCardSelect : undefined}
+                    currentAction={getCurrentAction()?.action}
+                    currentSubState={getCurrentAction()?.subState}
+                  />
+                )}
+              </>
             )}
           </div>
 
           {/* Column 3: Game State & Resources */}
-          <div className="space-y-6">
+          <div className="space-y-8">
             <ResourcesDisplay resources={resources} />
 
             <ResourceMarkets coalMarket={coalMarket} ironMarket={ironMarket} />
@@ -640,6 +679,9 @@ export default function Home() {
           </div>
         </div>
       </div>
+      
+      {/* Toast Notifications */}
+      <Toaster />
     </main>
   )
 }

@@ -35,14 +35,12 @@ interface ActionInfo {
   cost?: string
   requirements?: string[]
   isAvailable: boolean
-  isRecommended?: boolean
   disabledReason?: string
 }
 
 interface ImprovedActionSelectorProps {
   snapshot: GameStoreSnapshot
   onActionSelect: (actionType: string) => void
-  showRecommendations?: boolean
   showCosts?: boolean
   showRequirements?: boolean
 }
@@ -68,7 +66,6 @@ function ActionCard({
         action.isAvailable 
           ? `hover:${action.hoverColor.replace('hover:', '')} hover:shadow-md` 
           : 'opacity-60 cursor-not-allowed border-gray-200',
-        action.isRecommended && action.isAvailable && 'ring-2 ring-green-400 ring-offset-1'
       )}
       onClick={action.isAvailable ? onSelect : undefined}
       disabled={!action.isAvailable}
@@ -86,11 +83,6 @@ function ActionCard({
             <div className="text-xs text-muted-foreground mt-1">{action.disabledReason}</div>
           )}
         </div>
-        {action.isRecommended && action.isAvailable && (
-          <Badge variant="default" className="bg-green-600 text-xs">
-            ⭐
-          </Badge>
-        )}
       </div>
     </Button>
   )
@@ -152,7 +144,6 @@ function ActionCard({
 export function ImprovedActionSelector({
   snapshot,
   onActionSelect,
-  showRecommendations = true,
   showCosts = true,
   showRequirements = true
 }: ImprovedActionSelectorProps) {
@@ -183,7 +174,6 @@ export function ImprovedActionSelector({
         'Available industry tiles on player mat'
       ],
       isAvailable: checkActionAvailability('BUILD'),
-      isRecommended: (currentPlayer?.money || 0) > 20 && (currentPlayer?.hand?.length || 0) > 0,
       disabledReason: !checkActionAvailability('BUILD') ? 'No valid cards or insufficient resources' : undefined
     },
     {
@@ -231,7 +221,6 @@ export function ImprovedActionSelector({
         'Income must be positive after reduction'
       ],
       isAvailable: checkActionAvailability('TAKE_LOAN'),
-      isRecommended: (currentPlayer?.money || 0) < 10 && (currentPlayer?.income || 0) > 5,
       disabledReason: !checkActionAvailability('TAKE_LOAN') ? 'No cards to discard or income too low' : undefined
     },
     {
@@ -281,7 +270,6 @@ export function ImprovedActionSelector({
 
   const availableActions = actions.filter(a => a.isAvailable)
   const unavailableActions = actions.filter(a => !a.isAvailable)
-  const recommendedActions = actions.filter(a => a.isRecommended && a.isAvailable)
 
   return (
     <div className="space-y-6">
@@ -298,27 +286,6 @@ export function ImprovedActionSelector({
           Select an action to continue your turn. Hover over actions for detailed information.
         </p>
       </div>
-
-      {/* Recommended Actions */}
-      {showRecommendations && recommendedActions.length > 0 && (
-        <div>
-          <h3 className="font-semibold text-green-600 dark:text-green-400 mb-3 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Recommended Actions
-          </h3>
-          <div className="space-y-3">
-            {recommendedActions.map((action) => (
-              <ActionCard
-                key={action.id}
-                action={action}
-                onSelect={() => onActionSelect(action.id)}
-                showCosts={showCosts}
-                showRequirements={showRequirements}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Available Actions */}
       <div>

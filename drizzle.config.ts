@@ -1,12 +1,11 @@
-// import { type Config } from 'drizzle-kit'
+import type { Config } from 'drizzle-kit'
+import { env } from '~/env'
 
-// import { env } from '~/env'
-
-// export default {
-//   schema: './src/server/db/schema.ts',
-//   dialect: 'sqlite',
-//   dbCredentials: {
-//     url: env.DATABASE_URL,
-//   },
-//   tablesFilter: ['brass_*'],
-// } satisfies Config
+export default {
+  schema: './lib/db/schema.ts',
+  out: './drizzle',
+  dialect: 'postgresql',
+  dbCredentials: {
+    url: env.DATABASE_URL,
+  },
+} satisfies Config

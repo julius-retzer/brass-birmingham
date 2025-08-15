@@ -17,3 +17,12 @@
 // if (env.NODE_ENV !== 'production') globalForDb.client = client
 
 // export const db = drizzle(client, { schema })
+
+import { neon } from '@neondatabase/serverless'
+// src/db.ts
+import { drizzle } from 'drizzle-orm/neon-http'
+import { env } from '~/env'
+import * as schema from './schema'
+
+const sql = neon(env.DATABASE_URL)
+export const db = drizzle(sql, { schema })

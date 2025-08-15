@@ -556,7 +556,6 @@ export function ImprovedGameInterface({
       <ImprovedActionSelector
         snapshot={snapshot}
         onActionSelect={handleActionSelect}
-        showRecommendations={true}
         showCosts={true}
         showRequirements={true}
       />

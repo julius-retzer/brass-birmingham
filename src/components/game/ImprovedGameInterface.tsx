@@ -28,6 +28,7 @@ type WizardActionType = 'build' | 'develop' | 'sell' | 'network' | 'scout' | 'lo
 interface ActionWizardState {
   isOpen: boolean
   actionType: WizardActionType | null
+  isMinimized: boolean
   data: {
     selectedCard?: Card | null
     selectedCards?: Card[]
@@ -47,6 +48,7 @@ export function ImprovedGameInterface({
   const [wizardState, setWizardState] = React.useState<ActionWizardState>({
     isOpen: false,
     actionType: null,
+    isMinimized: false,
     data: {}
   })
 
@@ -75,6 +77,7 @@ export function ImprovedGameInterface({
     setWizardState({
       isOpen: true,
       actionType: actionType as WizardActionType,
+      isMinimized: false,
       data: {}
     })
   }
@@ -84,6 +87,7 @@ export function ImprovedGameInterface({
     setWizardState({
       isOpen: false,
       actionType: null,
+      isMinimized: false,
       data: {}
     })
     // Reset wizard hook state
@@ -93,6 +97,13 @@ export function ImprovedGameInterface({
       console.log('Sending CANCEL to game store')
       send({ type: 'CANCEL' })
     }
+  }
+
+  const toggleMinimize = () => {
+    setWizardState(prev => ({
+      ...prev,
+      isMinimized: !prev.isMinimized
+    }))
   }
 
   const updateWizardData = (updates: Partial<ActionWizardState['data']>) => {
@@ -233,7 +244,7 @@ export function ImprovedGameInterface({
       {
         id: 'select-card',
         title: 'Select Card',
-        description: 'Choose an industry card to develop',
+        description: 'Choose any card to discard for development',
         component: (
           <ImprovedCardSelector
             cards={currentPlayer?.hand || []}
@@ -249,56 +260,24 @@ export function ImprovedGameInterface({
         validationMessage: !wizardState.data.selectedCard ? 'Please select a card to discard' : undefined
       },
       {
-        id: 'select-industries',
-        title: 'Select Industries',
-        description: 'Choose which industries to develop (up to 2)',
+        id: 'develop-industries',
+        title: 'Develop Industries',
+        description: 'Choose industries to develop and confirm the action',
         component: (
-          <div className="space-y-4">
-            <DevelopInterface
-              player={currentPlayer!}
-              onSelectDevelopment={(industryTypes) => {
-                console.log('Selected industries for development:', industryTypes)
-                updateWizardData({ selectedIndustries: industryTypes })
-                // Send the selection to the game store
-                send({ type: 'SELECT_TILES_FOR_DEVELOP', industryTypes })
-              }}
-              onCancel={closeWizard}
-            />
-          </div>
+          <DevelopInterface
+            player={currentPlayer!}
+            onSelectDevelopment={(industryTypes) => {
+              console.log('Selected industries for development:', industryTypes)
+              updateWizardData({ selectedIndustries: industryTypes })
+              // Send the selection to the game store
+              send({ type: 'SELECT_TILES_FOR_DEVELOP', industryTypes })
+              // Let the wizard complete normally
+            }}
+            onCancel={closeWizard}
+          />
         ),
         canProceed: !!(wizardState.data.selectedIndustries && wizardState.data.selectedIndustries.length > 0),
         validationMessage: !(wizardState.data.selectedIndustries && wizardState.data.selectedIndustries.length > 0) ? 'Please select at least one industry to develop' : undefined
-      },
-      {
-        id: 'confirm',
-        title: 'Confirm Development',
-        description: 'Review and confirm your development action',
-        component: (
-          <div className="space-y-4">
-            <div className="p-4 bg-muted rounded-lg">
-              <h4 className="font-semibold mb-2">Development Summary</h4>
-              <div className="space-y-2 text-sm">
-                <div>Card: {wizardState.data.selectedCard?.type.replace('_', ' ')}</div>
-                {wizardState.data.selectedIndustries && wizardState.data.selectedIndustries.length > 0 && (
-                  <div>
-                    <div className="font-medium">Industries to develop:</div>
-                    <ul className="list-disc list-inside ml-2">
-                      {wizardState.data.selectedIndustries.map((industry, index) => (
-                        <li key={index}>{industry}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                <div className="mt-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded">
-                  <p className="text-xs text-orange-700 dark:text-orange-300">
-                    Cost: {wizardState.data.selectedIndustries?.length || 0} iron
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        ),
-        canProceed: true
       }
     ]
   }, [wizardState, currentPlayer, send])
@@ -341,6 +320,88 @@ export function ImprovedGameInterface({
     ]
   }, [wizardState, currentPlayer])
 
+  // Network wizard steps
+  const networkSteps: ActionWizardStep[] = React.useMemo(() => {
+    if (!wizardState.actionType || wizardState.actionType !== 'network') return []
+
+    return [
+      {
+        id: 'select-card',
+        title: 'Select Card',
+        description: 'Choose a card to discard for networking',
+        component: (
+          <ImprovedCardSelector
+            cards={currentPlayer?.hand || []}
+            selectedCard={wizardState.data.selectedCard}
+            onCardSelect={(card) => {
+              updateWizardData({ selectedCard: card })
+              send({ type: 'SELECT_CARD', cardId: card.id })
+            }}
+            actionType="network"
+          />
+        ),
+        canProceed: !!wizardState.data.selectedCard,
+        validationMessage: !wizardState.data.selectedCard ? 'Please select a card to discard' : undefined
+      },
+      {
+        id: 'select-link',
+        title: 'Select Connection',
+        description: 'Click on the board to select a connection to build',
+        component: (
+          <div className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <h4 className="font-semibold mb-2">Select Connection on Board</h4>
+              <p className="text-sm text-muted-foreground">
+                Click on the board to select a {snapshot.context.era} connection to build.
+              </p>
+              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded text-sm">
+                <div className="font-medium text-blue-900 dark:text-blue-100">
+                  {snapshot.context.era === 'canal' ? 'Canal Era' : 'Rail Era'} Connection
+                </div>
+                <div className="text-blue-700 dark:text-blue-300 mt-1">
+                  Cost: {snapshot.context.era === 'canal' ? '£3' : '£5 + 1 coal'}
+                </div>
+              </div>
+              {wizardState.data.selectedLocation && (
+                <div className="mt-3 p-2 bg-green-50 dark:bg-green-900/20 rounded">
+                  <div className="text-green-700 dark:text-green-300 text-sm font-medium">
+                    ✓ Connection selected: {wizardState.data.selectedLocation}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ),
+        canProceed: !!wizardState.data.selectedLocation,
+        validationMessage: !wizardState.data.selectedLocation ? 'Please select a connection on the board' : undefined
+      },
+      {
+        id: 'confirm',
+        title: 'Confirm Network',
+        description: 'Review and confirm your network action',
+        component: (
+          <div className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <h4 className="font-semibold mb-2">Network Summary</h4>
+              <div className="space-y-2 text-sm">
+                <div>Card: {wizardState.data.selectedCard?.type.replace('_', ' ')}</div>
+                {wizardState.data.selectedLocation && (
+                  <div>Connection: {wizardState.data.selectedLocation}</div>
+                )}
+                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    Cost: {snapshot.context.era === 'canal' ? '£3' : '£5 + 1 coal'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ),
+        canProceed: true
+      }
+    ]
+  }, [wizardState, currentPlayer, send, snapshot.context.era])
+
   // Get current steps based on action type
   const getCurrentSteps = (): ActionWizardStep[] => {
     switch (wizardState.actionType) {
@@ -350,8 +411,9 @@ export function ImprovedGameInterface({
         return developSteps
       case 'scout':
         return scoutSteps
-      case 'sell':
       case 'network':
+        return networkSteps
+      case 'sell':
       case 'loan':
         return [
           {
@@ -393,6 +455,29 @@ export function ImprovedGameInterface({
         send({ type: 'CONFIRM' })
         break
         
+      case 'scout':
+        // For scout, send the selected cards first, then confirm
+        if (wizardState.data.selectedCards && wizardState.data.selectedCards.length === 3) {
+          console.log('Sending selected cards for scout:', wizardState.data.selectedCards)
+          // Send each selected card using SELECT_CARD
+          wizardState.data.selectedCards.forEach(card => {
+            send({ type: 'SELECT_CARD', cardId: card.id })
+          })
+          // Then confirm the scout action
+          console.log('Sending final CONFIRM for scout')
+          send({ type: 'CONFIRM' })
+        } else {
+          console.error('Scout action incomplete - not exactly 3 cards selected')
+        }
+        break
+        
+      case 'network':
+        // For network, the link should already be selected via SELECT_LINK
+        // Just send the final CONFIRM to complete the action
+        console.log('Sending final CONFIRM for network')
+        send({ type: 'CONFIRM' })
+        break
+        
       default:
         // For other actions, just send the final CONFIRM
         console.log('Sending final CONFIRM')
@@ -411,15 +496,15 @@ export function ImprovedGameInterface({
     { can: snapshot.can, send }
   )
 
-  // Auto-set location for location cards
+  // Auto-set location for location cards (only for build action)
   React.useEffect(() => {
-    if (wizardState.data.selectedCard?.type === 'location') {
+    if (wizardState.actionType === 'build' && wizardState.data.selectedCard?.type === 'location') {
       const locationCard = wizardState.data.selectedCard as any
       if (locationCard?.location && !wizardState.data.selectedLocation) {
         updateWizardData({ selectedLocation: locationCard.location })
       }
     }
-  }, [wizardState.data.selectedCard])
+  }, [wizardState.data.selectedCard, wizardState.actionType])
 
   // TODO: Re-implement auto-close when action completes successfully
   // For now, wizard closes manually when user confirms or cancels
@@ -430,6 +515,18 @@ export function ImprovedGameInterface({
       updateWizardData({ selectedLocation: snapshot.context.selectedLocation })
     }
   }, [snapshot.context.selectedLocation])
+
+  // Update wizard data when a network link is selected
+  React.useEffect(() => {
+    if (wizardState.actionType === 'network' && snapshot.context.selectedLink) {
+      const linkName = `${snapshot.context.selectedLink.from} → ${snapshot.context.selectedLink.to}`
+      updateWizardData({ selectedLocation: linkName })
+      // Make sure wizard stays open and advances to next step when link is selected
+      if (!wizardState.isOpen) {
+        setWizardState(prev => ({ ...prev, isOpen: true }))
+      }
+    }
+  }, [snapshot.context.selectedLink, wizardState.actionType, wizardState.isOpen])
 
   // Show action selector when in action selection mode
   if (isActionSelection && !wizardState.isOpen) {
@@ -450,8 +547,18 @@ export function ImprovedGameInterface({
     )
   }
 
-  // Show wizard when action is selected
-  if (wizardState.isOpen && wizardState.actionType && steps.length > 0) {
+  // Show wizard when action is selected OR when we're in an active action
+  const shouldShowWizard = wizardState.isOpen && wizardState.actionType && steps.length > 0
+  const isInActiveAction = !isActionSelection && (
+    snapshot.matches({ playing: { action: 'building' } }) ||
+    snapshot.matches({ playing: { action: 'developing' } }) ||
+    snapshot.matches({ playing: { action: 'networking' } }) ||
+    snapshot.matches({ playing: { action: 'selling' } }) ||
+    snapshot.matches({ playing: { action: 'scouting' } }) ||
+    snapshot.matches({ playing: { action: 'takingLoan' } })
+  )
+  
+  if (shouldShowWizard) {
     return (
       <ImprovedActionWizard
         isOpen={wizardState.isOpen}
@@ -463,8 +570,36 @@ export function ImprovedGameInterface({
         onPrevious={goPrevious}
         onComplete={handleWizardComplete}
         canComplete={canComplete()}
+        isMinimized={wizardState.isMinimized}
+        onToggleMinimize={toggleMinimize}
+        wizardData={wizardState.data}
       />
     )
+  }
+  
+  // If we're in an active action but wizard is closed, reopen it
+  if (isInActiveAction && !wizardState.isOpen) {
+    console.log('Reopening wizard for active action')
+    const actionTypeMap: { [key: string]: WizardActionType } = {
+      building: 'build',
+      developing: 'develop', 
+      networking: 'network',
+      selling: 'sell',
+      scouting: 'scout',
+      takingLoan: 'loan'
+    }
+    
+    for (const [stateName, actionType] of Object.entries(actionTypeMap)) {
+      if (snapshot.matches({ playing: { action: stateName } })) {
+        setWizardState({
+          isOpen: true,
+          actionType,
+          isMinimized: false, // Always open full wizard when reopening
+          data: wizardState.data // Preserve existing data
+        })
+        break
+      }
+    }
   }
 
   // Fallback: show nothing or loading state

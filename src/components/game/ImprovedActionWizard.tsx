@@ -31,6 +31,13 @@ interface ActionWizardProps {
   onComplete: () => void
   canComplete?: boolean
   completionMessage?: string
+  isMinimized?: boolean
+  onToggleMinimize?: () => void
+  wizardData?: {
+    selectedCard?: any
+    selectedIndustryType?: string
+    selectedLocation?: string
+  }
 }
 
 const actionConfig = {
@@ -82,7 +89,10 @@ export function ImprovedActionWizard({
   onPrevious,
   onComplete,
   canComplete = false,
-  completionMessage
+  completionMessage,
+  isMinimized = false,
+  onToggleMinimize,
+  wizardData
 }: ActionWizardProps) {
   const config = actionConfig[actionType]
   const currentStep = steps[currentStepIndex]
@@ -90,8 +100,124 @@ export function ImprovedActionWizard({
   const isLastStep = currentStepIndex === steps.length - 1
   const isFirstStep = currentStepIndex === 0
 
+  // Minimized view for board interaction steps
+  if (isMinimized) {
+    // Get specific details about selected items
+    const getCardInfo = () => {
+      const card = wizardData?.selectedCard
+      if (!card) return null
+      
+      if (card.type === 'location') return card.location
+      if (card.type === 'industry') return card.industryType
+      if (card.type === 'wild_location') return 'Wild Location'
+      if (card.type === 'wild_industry') return 'Wild Industry'
+      return card.type
+    }
+    
+    const getIndustryInfo = () => {
+      return wizardData?.selectedIndustryType
+    }
+    
+    const getLocationInfo = () => {
+      return wizardData?.selectedLocation
+    }
+
+    return (
+      <div className="fixed bottom-4 right-4 z-50 max-w-sm">
+        <div className={cn(
+          'p-3 rounded-lg border shadow-lg bg-background',
+          config.color
+        )}>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="text-lg">{config.icon}</div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-sm truncate">{config.title}</h4>
+                <p className="text-xs text-muted-foreground">
+                  Step {currentStepIndex + 1} of {steps.length}: {currentStep?.title}
+                </p>
+              </div>
+            </div>
+            
+            {/* Show specific progress details */}
+            <div className="text-xs space-y-1">
+              {getCardInfo() && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Card:</span>
+                  <span className="font-medium">{getCardInfo()}</span>
+                </div>
+              )}
+              {getIndustryInfo() && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Industry:</span>
+                  <span className="font-medium capitalize">{getIndustryInfo()}</span>
+                </div>
+              )}
+              {getLocationInfo() && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Location:</span>
+                  <span className="font-medium">{getLocationInfo()}</span>
+                </div>
+              )}
+            </div>
+            
+            <p className="text-xs text-muted-foreground font-medium">
+              {actionType === 'network' 
+                ? 'Click on the board to select a connection'
+                : actionType === 'build'
+                ? `Click on the board to select a location${getIndustryInfo() ? ` for your ${getIndustryInfo()}` : ''}`
+                : 'Click on the board to make a selection'
+              }
+            </p>
+            
+            <div className="flex items-center justify-end gap-2 pt-1">
+              {onToggleMinimize && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onToggleMinimize}
+                  className="h-7 px-2 text-xs"
+                >
+                  <ArrowLeft className="h-3 w-3 mr-1" />
+                  Expand
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onClose}
+                className="h-7 w-7 p-0"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Handle click away - minimize for board interaction steps, close for others
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      // If trying to close the sheet
+      const shouldMinimize = onToggleMinimize && (
+        (actionType === 'network' && currentStep?.id === 'select-link') ||
+        (actionType === 'build' && currentStep?.id === 'select-location')
+      )
+      
+      if (shouldMinimize) {
+        // Minimize instead of close for board interaction steps
+        onToggleMinimize()
+      } else {
+        // Normal close behavior for other cases
+        onClose()
+      }
+    }
+  }
+
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
+    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetContent 
         side="right" 
         className="w-full sm:w-[600px] lg:w-[700px] flex flex-col h-full max-h-screen"
@@ -183,26 +309,41 @@ export function ImprovedActionWizard({
 
         {/* Footer Actions - Always visible */}
         <div className="flex-shrink-0 pt-4 mt-4 border-t bg-background">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             {/* Back Button */}
             <Button
               variant="outline"
               onClick={onPrevious}
               disabled={isFirstStep}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 order-2 sm:order-1"
             >
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 order-1 sm:order-2">
+              {/* Minimize Button - For board interaction steps */}
+              {onToggleMinimize && (
+                (actionType === 'network' && currentStep?.id === 'select-link') ||
+                (actionType === 'build' && currentStep?.id === 'select-location')
+              ) && (
+                <Button
+                  variant="outline"
+                  onClick={onToggleMinimize}
+                  className="flex items-center gap-1 text-xs px-2 h-8"
+                >
+                  <ArrowRight className="h-3 w-3" />
+                  Minimize
+                </Button>
+              )}
+              
               {/* Cancel Button */}
               <Button
                 variant="ghost"
                 onClick={onClose}
-                className="flex items-center gap-2"
+                className="flex items-center gap-1 text-xs px-2 h-8"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3 w-3" />
                 Cancel
               </Button>
 
@@ -211,19 +352,19 @@ export function ImprovedActionWizard({
                 <Button
                   onClick={onComplete}
                   disabled={!canComplete}
-                  className={cn('flex items-center gap-2', config.primaryColor)}
+                  className={cn('flex items-center gap-1 text-xs px-2 h-8', config.primaryColor)}
                 >
-                  <Check className="h-4 w-4" />
-                  {completionMessage || 'Complete Action'}
+                  <Check className="h-3 w-3" />
+                  Complete
                 </Button>
               ) : (
                 <Button
                   onClick={onNext}
                   disabled={!currentStep?.canProceed}
-                  className={cn('flex items-center gap-2', config.primaryColor)}
+                  className={cn('flex items-center gap-1 text-xs px-2 h-8', config.primaryColor)}
                 >
                   Next
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-3 w-3" />
                 </Button>
               )}
             </div>

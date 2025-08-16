@@ -23,7 +23,7 @@ export interface ActionWizardStep {
 interface ActionWizardProps {
   isOpen: boolean
   onClose: () => void
-  actionType: 'build' | 'develop' | 'sell' | 'network' | 'scout' | 'loan'
+  actionType: 'build' | 'develop' | 'sell' | 'network' | 'scout' | 'loan' | 'pass'
   steps: ActionWizardStep[]
   currentStepIndex: number
   onNext: () => void
@@ -76,6 +76,12 @@ const actionConfig = {
     icon: '🏦',
     color: 'bg-red-50 border-red-200 text-red-900',
     primaryColor: 'bg-red-600 hover:bg-red-700'
+  },
+  pass: {
+    title: 'Pass Turn',
+    icon: '⏭️',
+    color: 'bg-gray-50 border-gray-200 text-gray-900',
+    primaryColor: 'bg-gray-600 hover:bg-gray-700'
   }
 }
 

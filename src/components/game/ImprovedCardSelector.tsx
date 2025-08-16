@@ -18,7 +18,7 @@ interface ImprovedCardSelectorProps {
   selectedCards?: Card[] // For multi-select (scout action)
   onCardSelect: (card: Card) => void
   onCardToggle?: (card: Card) => void // For multi-select
-  actionType: 'build' | 'develop' | 'sell' | 'network' | 'scout' | 'loan'
+  actionType: 'build' | 'develop' | 'sell' | 'network' | 'scout' | 'loan' | 'pass'
   maxSelections?: number
   searchEnabled?: boolean
   filterEnabled?: boolean
@@ -65,6 +65,12 @@ const actionConfig = {
   loan: {
     title: 'Select Card for Loan',
     description: 'Choose a card to discard for a loan',
+    allowedTypes: ['location', 'industry', 'wild_location', 'wild_industry'],
+    icon: Factory
+  },
+  pass: {
+    title: 'Select Card to Discard',
+    description: 'Choose any card to discard for the pass action',
     allowedTypes: ['location', 'industry', 'wild_location', 'wild_industry'],
     icon: Factory
   }

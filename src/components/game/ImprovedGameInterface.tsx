@@ -24,7 +24,7 @@ interface ImprovedGameInterfaceProps {
   disabled?: boolean
 }
 
-type WizardActionType = 'build' | 'develop' | 'sell' | 'network' | 'scout' | 'loan'
+type WizardActionType = 'build' | 'develop' | 'sell' | 'network' | 'scout' | 'loan' | 'pass'
 
 interface ActionWizardState {
   isOpen: boolean
@@ -78,11 +78,8 @@ export function ImprovedGameInterface({
     
     const eventType = actionMap[actionType] || actionType.toUpperCase()
     
-    // For simple actions that don't need wizards, execute directly
-    if (actionType === 'pass') {
-      send({ type: 'PASS' })
-      return
-    }
+    // Pass action now requires card selection through wizard
+    // All actions go through the wizard flow
 
     // For complex actions, start the action in the state machine first
     send({ type: eventType } as GameEvent)
@@ -464,6 +461,27 @@ export function ImprovedGameInterface({
             validationMessage: !wizardState.data.selectedCard ? 'Please select a card' : undefined
           }
         ]
+      case 'pass':
+        return [
+          {
+            id: 'select-card',
+            title: 'Select Card to Discard',
+            description: 'Choose a card to discard for the pass action',
+            component: (
+              <ImprovedCardSelector
+                cards={currentPlayer?.hand || []}
+                selectedCard={wizardState.data.selectedCard}
+                onCardSelect={(card) => {
+                  updateWizardData({ selectedCard: card })
+                  send({ type: 'SELECT_CARD', cardId: card.id })
+                }}
+                actionType="pass"
+              />
+            ),
+            canProceed: !!wizardState.data.selectedCard,
+            validationMessage: !wizardState.data.selectedCard ? 'Please select a card to discard' : undefined
+          }
+        ]
       default:
         return []
     }
@@ -495,6 +513,12 @@ export function ImprovedGameInterface({
         
       case 'network':
         // For network, the link should already be selected via SELECT_LINK
+        // Just send the final CONFIRM to complete the action
+        send({ type: 'CONFIRM' })
+        break
+        
+      case 'pass':
+        // For pass, the card should already be selected via SELECT_CARD
         // Just send the final CONFIRM to complete the action
         send({ type: 'CONFIRM' })
         break

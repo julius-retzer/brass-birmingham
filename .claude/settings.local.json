@@ -16,7 +16,9 @@
       "mcp__chrome-mcp-server__chrome_click_element",
       "mcp__chrome-mcp-server__chrome_console",
       "WebFetch(domain:stately.ai)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "mcp__Ref__ref_search_documentation",
+      "mcp__Ref__ref_read_url"
     ],
     "deny": []
   }

@@ -1479,19 +1479,27 @@ export const gameStore = setup({
 
     executePassAction: assign(({ context }) => {
       const currentPlayer = getCurrentPlayer(context)
-
-      // For Claude: We actually need to let user selet a card to discard
-      // For pass action, we need to discard a card but don't need to select it
-      // Let's discard the first card in hand
-      const cardToDiscard = currentPlayer.hand[0]
-      if (!cardToDiscard) {
-        throw new Error('No cards in hand to discard for pass action')
+      if (!context.selectedCard) {
+        throw new Error('No card selected for pass action')
       }
 
-      const updatedHand = removeCardFromHand(currentPlayer, cardToDiscard.id)
+      const updatedHand = removeCardFromHand(currentPlayer, context.selectedCard.id)
       const updatedPlayer = {
         ...currentPlayer,
         hand: updatedHand,
+      }
+
+      // Handle wild cards - they go back to their respective piles
+      let updatedDiscardPile = [...context.discardPile]
+      let updatedWildLocationPile = [...context.wildLocationPile]
+      let updatedWildIndustryPile = [...context.wildIndustryPile]
+
+      if (context.selectedCard.type === 'wild_location') {
+        updatedWildLocationPile = [...context.wildLocationPile, context.selectedCard]
+      } else if (context.selectedCard.type === 'wild_industry') {
+        updatedWildIndustryPile = [...context.wildIndustryPile, context.selectedCard]
+      } else {
+        updatedDiscardPile = [...context.discardPile, context.selectedCard]
       }
 
       debugLog('executePassAction', context)
@@ -1501,12 +1509,15 @@ export const gameStore = setup({
           context.currentPlayerIndex,
           updatedPlayer,
         ),
-        discardPile: [...context.discardPile, cardToDiscard],
+        discardPile: updatedDiscardPile,
+        wildLocationPile: updatedWildLocationPile,
+        wildIndustryPile: updatedWildIndustryPile,
+        selectedCard: null,
         actionsRemaining: context.actionsRemaining - 1,
         logs: [
           ...context.logs,
           createLogEntry(
-            `${currentPlayer.name} passed (discarded ${getCardDescription(cardToDiscard)})`,
+            `${currentPlayer.name} passed (discarded ${getCardDescription(context.selectedCard)})`,
             'action',
           ),
         ],
@@ -2720,9 +2731,33 @@ export const gameStore = setup({
               },
             },
             passing: {
-              entry: 'executePassAction',
-              always: {
-                target: '#brassGame.playing.actionComplete',
+              initial: 'selectingCard',
+              states: {
+                selectingCard: {
+                  on: {
+                    SELECT_CARD: {
+                      target: 'confirmingPass',
+                      actions: 'selectCard',
+                    },
+                    CANCEL: {
+                      target: '#brassGame.playing.action.selectingAction',
+                      actions: 'clearSelections',
+                    },
+                  },
+                },
+                confirmingPass: {
+                  on: {
+                    CONFIRM: {
+                      target: '#brassGame.playing.actionComplete',
+                      actions: 'executePassAction',
+                      guard: 'hasSelectedCard',
+                    },
+                    CANCEL: {
+                      target: 'selectingCard',
+                      actions: 'clearCard',
+                    },
+                  },
+                },
               },
             },
           },

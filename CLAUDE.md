@@ -8,6 +8,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Always apply TDD for the gameStore.ts First write test and then the implementation. The gameStore should have 100% unit test coverage.
 
+Use ref tool to read Xstate docs
+Use ref tool to read Vitest docs
+
+When I write command "init" you will:
+- Read ai-docs folder
+- Use ref tool to read Xstate docs
+- Use ref tool to read Vitest docs
+- Read gameStore.ts and its tests
+
 ## Project Overview
 
 Digital implementation of the Brass Birmingham board game using Next.js 15, TypeScript, XState for game state management, and Tailwind CSS with Shadcn UI components.

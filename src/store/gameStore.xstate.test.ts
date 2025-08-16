@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest'
 import { createActor } from 'xstate'
 
-describe('Minimal XState Test', () => {
-  test('can create simple xstate machine', () => {
+describe('Game Store - Basic XState Integration', () => {
+  test('can create and start simple XState machine', () => {
     const { setup } = require('xstate')
     const simpleMachine = setup({}).createMachine({
       id: 'simple',
@@ -18,19 +18,19 @@ describe('Minimal XState Test', () => {
     expect(snapshot.value).toBe('idle')
   })
 
-  test('can import gameStore', async () => {
+  test('can import gameStore module successfully', async () => {
     // Just try importing the gameStore
     const { gameStore } = await import('./gameStore')
     expect(gameStore).toBeDefined()
   })
 
-  test('can create actor from gameStore', async () => {
+  test('can create actor from gameStore machine', async () => {
     const { gameStore } = await import('./gameStore')
     const actor = createActor(gameStore)
     expect(actor).toBeDefined()
   })
 
-  test('can start gameStore actor', async () => {
+  test('gameStore actor starts in setup state', async () => {
     const { gameStore } = await import('./gameStore')
     const actor = createActor(gameStore)
     actor.start()
@@ -38,7 +38,7 @@ describe('Minimal XState Test', () => {
     expect(snapshot.value).toBe('setup')
   })
 
-  test('can create test players', async () => {
+  test('can create test players with industry tiles', async () => {
     const { getInitialPlayerIndustryTilesWithQuantities } = await import(
       '../data/industryTiles'
     )
@@ -76,7 +76,7 @@ describe('Minimal XState Test', () => {
     expect(testPlayers).toHaveLength(2)
   })
 
-  test('can send START_GAME with minimal players', async () => {
+  test('can initialize game with START_GAME event', async () => {
     const { gameStore } = await import('./gameStore')
     const { getInitialPlayerIndustryTilesWithQuantities } = await import(
       '../data/industryTiles'
@@ -122,7 +122,7 @@ describe('Minimal XState Test', () => {
     expect(snapshot.context.players).toHaveLength(2)
   })
 
-  test('can call getInitialCards directly', async () => {
+  test('can generate initial cards for player count', async () => {
     const { getInitialCards } = await import('../data/cards')
 
     // This might be where the infinite loop is
@@ -132,7 +132,7 @@ describe('Minimal XState Test', () => {
     expect(cardDecks.regularCards).toBeDefined()
   })
 
-  test('can import card data structures', async () => {
+  test('can import card data module without errors', async () => {
     // Test importing the data structures used by getInitialCards
     const cardsModule = await import('../data/cards')
 
@@ -140,7 +140,7 @@ describe('Minimal XState Test', () => {
     // Just check that we can access the module without calling the problematic function
   })
 
-  test('can test location cards creation logic step by step', async () => {
+  test('location cards creation logic works correctly', async () => {
     // Let's manually test the logic piece by piece
     const cardsModule = await import('../data/cards')
 
@@ -189,7 +189,7 @@ describe('Minimal XState Test', () => {
     expect(regularCards).toHaveLength(2)
   })
 
-  test('can access locations data directly', async () => {
+  test('cards data file is valid and accessible', async () => {
     // Try to access the actual locations data that's causing the issue
     const fs = await import('fs')
     const path = await import('path')

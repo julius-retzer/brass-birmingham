@@ -101,46 +101,46 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ENGINE-01 | — | Pending |
-| ENGINE-02 | — | Pending |
-| ENGINE-03 | — | Pending |
-| ENGINE-04 | — | Pending |
-| ENGINE-05 | — | Pending |
-| ENGINE-06 | — | Pending |
-| ENGINE-07 | — | Pending |
-| ENGINE-08 | — | Pending |
-| ENGINE-09 | — | Pending |
-| ENGINE-10 | — | Pending |
-| BOARD-01 | — | Pending |
-| BOARD-02 | — | Pending |
-| BOARD-03 | — | Pending |
-| BOARD-04 | — | Pending |
-| BOARD-05 | — | Pending |
-| BOARD-06 | — | Pending |
-| BOARD-07 | — | Pending |
-| ACTN-01 | — | Pending |
-| ACTN-02 | — | Pending |
-| ACTN-03 | — | Pending |
-| ACTN-04 | — | Pending |
-| ACTN-05 | — | Pending |
-| ACTN-06 | — | Pending |
-| ACTN-07 | — | Pending |
-| STATE-01 | — | Pending |
-| STATE-02 | — | Pending |
-| STATE-03 | — | Pending |
-| STATE-04 | — | Pending |
-| STATE-05 | — | Pending |
-| STATE-06 | — | Pending |
-| STATE-07 | — | Pending |
-| STATE-08 | — | Pending |
-| LOBBY-01 | — | Pending |
-| LOBBY-02 | — | Pending |
+| ENGINE-01 | Phase 1 | Pending |
+| ENGINE-02 | Phase 1 | Pending |
+| ENGINE-03 | Phase 1 | Pending |
+| ENGINE-04 | Phase 1 | Pending |
+| ENGINE-05 | Phase 1 | Pending |
+| ENGINE-06 | Phase 1 | Pending |
+| ENGINE-07 | Phase 1 | Pending |
+| ENGINE-08 | Phase 1 | Pending |
+| ENGINE-09 | Phase 1 | Pending |
+| ENGINE-10 | Phase 1 | Pending |
+| BOARD-01 | Phase 2 | Pending |
+| BOARD-02 | Phase 2 | Pending |
+| BOARD-03 | Phase 2 | Pending |
+| BOARD-04 | Phase 2 | Pending |
+| BOARD-05 | Phase 2 | Pending |
+| BOARD-06 | Phase 2 | Pending |
+| BOARD-07 | Phase 2 | Pending |
+| ACTN-01 | Phase 3 | Pending |
+| ACTN-02 | Phase 3 | Pending |
+| ACTN-03 | Phase 3 | Pending |
+| ACTN-04 | Phase 3 | Pending |
+| ACTN-05 | Phase 3 | Pending |
+| ACTN-06 | Phase 3 | Pending |
+| ACTN-07 | Phase 3 | Pending |
+| STATE-01 | Phase 2 | Pending |
+| STATE-02 | Phase 2 | Pending |
+| STATE-03 | Phase 2 | Pending |
+| STATE-04 | Phase 2 | Pending |
+| STATE-05 | Phase 2 | Pending |
+| STATE-06 | Phase 3 | Pending |
+| STATE-07 | Phase 3 | Pending |
+| STATE-08 | Phase 2 | Pending |
+| LOBBY-01 | Phase 3 | Pending |
+| LOBBY-02 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 34 total
-- Mapped to phases: 0
-- Unmapped: 34 ⚠️
+- Mapped to phases: 34
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-21*
-*Last updated: 2026-03-21 after initial definition*
+*Last updated: 2026-03-21 after roadmap creation*

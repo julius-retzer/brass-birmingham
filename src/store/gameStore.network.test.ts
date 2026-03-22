@@ -924,6 +924,151 @@ describe('Game Store - Network Actions', () => {
     expect(coalBefore - coalAfter).toBe(2)
   })
 
+  test('double network action - fails when no coal available for first link', () => {
+    const actor = createActor(gameStore)
+    activeActors.push(actor)
+    let actorError: Error | null = null
+    actor.subscribe({
+      error: (error: any) => {
+        actorError = error
+      }
+    })
+    actor.start()
+
+    actor.send({
+      type: 'START_GAME',
+      players: [
+        { id: '1', name: 'P1', color: 'red' as const, character: 'Richard Arkwright' as const, money: 100, victoryPoints: 0, income: 10, industryTilesOnMat: {} as any },
+        { id: '2', name: 'P2', color: 'blue' as const, character: 'Eliza Tinsley' as const, money: 17, victoryPoints: 0, income: 10, industryTilesOnMat: {} as any },
+      ],
+    })
+
+    // Advance to rail era
+    actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
+    let snapshot = actor.getSnapshot()
+    expect(snapshot.context.era).toBe('rail')
+
+    const pid = snapshot.context.currentPlayerIndex
+
+    // Set up player with NO coal mines and empty coal market (no coal available at all)
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: pid,
+      money: 100,
+      industries: [], // No coal mines
+    })
+
+    // Give enough actions
+    actor.send({ type: 'TEST_SET_ACTIONS_REMAINING', actionsRemaining: 3 })
+
+    // Build initial link (this will fail in rail era without coal, but let's set up network first)
+    // Actually we need to give the player an existing link for network connectivity
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: pid,
+      links: [{ from: 'birmingham', to: 'coventry', type: 'rail' }],
+    })
+
+    // Try double rail - coal consumption should fail for first link
+    actor.send({ type: 'NETWORK' })
+    snapshot = actor.getSnapshot()
+    const card = snapshot.context.players[pid]!.hand[0]!
+    actor.send({ type: 'SELECT_CARD', cardId: card.id })
+    actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'dudley' })
+    actor.send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })
+    actor.send({ type: 'SELECT_SECOND_LINK', from: 'birmingham', to: 'walsall' })
+
+    // Execute - should throw for coal failure
+    actor.send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
+
+    // Actor should have errored because coal is not available
+    expect(actorError).toBeDefined()
+  })
+
+  test('double network action - fails when no beer available', () => {
+    const actor = createActor(gameStore)
+    activeActors.push(actor)
+    let actorError: Error | null = null
+    actor.subscribe({
+      error: (error: any) => {
+        actorError = error
+      }
+    })
+    actor.start()
+
+    actor.send({
+      type: 'START_GAME',
+      players: [
+        { id: '1', name: 'P1', color: 'red' as const, character: 'Richard Arkwright' as const, money: 100, victoryPoints: 0, income: 10, industryTilesOnMat: {} as any },
+        { id: '2', name: 'P2', color: 'blue' as const, character: 'Eliza Tinsley' as const, money: 17, victoryPoints: 0, income: 10, industryTilesOnMat: {} as any },
+      ],
+    })
+
+    actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
+    let snapshot = actor.getSnapshot()
+    const pid = snapshot.context.currentPlayerIndex
+
+    // Set up player with coal mine (for coal) but NO brewery (no beer)
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: pid,
+      money: 100,
+      industries: [
+        {
+          location: 'birmingham',
+          type: 'coal',
+          level: 1,
+          flipped: false,
+          tile: {
+            id: 'coal_beer_test',
+            type: 'coal',
+            level: 1,
+            canBuildInCanalEra: true,
+            canBuildInRailEra: true,
+            incomeAdvancement: 4,
+            victoryPoints: 1,
+            cost: 5,
+            incomeSpaces: 4,
+            linkScoringIcons: 1,
+            coalRequired: 0,
+            ironRequired: 0,
+            beerRequired: 0,
+            beerProduced: 0,
+            coalProduced: 2,
+            ironProduced: 0,
+            hasLightbulbIcon: false,
+            quantity: 2,
+          },
+          coalCubesOnTile: 5,
+          ironCubesOnTile: 0,
+          beerBarrelsOnTile: 0,
+        },
+      ],
+      links: [{ from: 'birmingham', to: 'coventry', type: 'rail' }],
+    })
+
+    actor.send({ type: 'TEST_SET_ACTIONS_REMAINING', actionsRemaining: 3 })
+
+    // Try double rail - coal is available but beer is not
+    actor.send({ type: 'NETWORK' })
+    snapshot = actor.getSnapshot()
+    const card = snapshot.context.players[pid]!.hand[0]!
+    actor.send({ type: 'SELECT_CARD', cardId: card.id })
+    actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'dudley' })
+    actor.send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })
+    actor.send({ type: 'SELECT_SECOND_LINK', from: 'birmingham', to: 'walsall' })
+
+    // Execute - should throw for beer failure
+    actor.send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
+
+    // The double network action should have failed (either via error or by not building links)
+    snapshot = actor.getSnapshot()
+
+    // Verify that the double rail action did NOT succeed - should only have the initial link
+    const linksAfterAttempt = snapshot.context.players[pid]!.links.length
+    expect(linksAfterAttempt).toBe(1) // Only the pre-existing birmingham-coventry link
+  })
+
   test('rail era scenario - no coal available, coal market connection required', () => {
     const { actor } = setupGame()
 

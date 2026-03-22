@@ -58,6 +58,7 @@ Two to four players can play a complete game of Brass Birmingham online in real-
 
 ## Context
 
+- Phase 01.1 audit complete: 258 rules audited — 154 PASS (59.7%), 20 FAIL, 84 MISSING test evidence. Full audit report at `.planning/phases/01.1-engine-rule-audit-and-correctness-verification/audit-report/00-summary.md`
 - Existing codebase has solid game logic in XState state machine with extensive test coverage
 - Board data, cards, industry tiles, and merchants are fully modeled as static data
 - Server architecture uses Next.js server actions + API routes with Drizzle ORM on Neon PostgreSQL
@@ -86,4 +87,4 @@ Two to four players can play a complete game of Brass Birmingham online in real-
 | Functional UI over polished | Ship playable game faster, polish later | — Pending |
 
 ---
-*Last updated: 2026-03-21 after initialization*
+*Last updated: 2026-03-22 after Phase 01.1 completion*

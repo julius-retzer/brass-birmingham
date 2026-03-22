@@ -2383,6 +2383,8 @@ export const gameStore = setup({
       )
     },
 
+    isCanalEra: ({ context }) => context.era === 'canal',
+
     isEraEnd: ({ context }) => {
       // Era ends when draw deck is exhausted AND all players' hands are empty
       const drawDeckEmpty = context.drawPile.length === 0
@@ -2908,9 +2910,37 @@ export const gameStore = setup({
         },
         nextPlayer: {
           entry: 'nextPlayer',
+          always: [
+            {
+              guard: 'isEraEnd',
+              target: 'eraScoring',
+            },
+            {
+              target: 'action',
+            },
+          ],
+        },
+        eraScoring: {
+          entry: 'triggerEraScoring',
+          always: [
+            {
+              guard: 'isCanalEra',
+              target: 'eraTransition',
+            },
+            {
+              target: 'gameOver',
+            },
+          ],
+        },
+        eraTransition: {
+          entry: 'triggerCanalEraEnd',
           always: {
             target: 'action',
           },
+        },
+        gameOver: {
+          entry: 'triggerRailEraEnd',
+          type: 'final',
         },
       },
     },

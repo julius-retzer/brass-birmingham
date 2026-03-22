@@ -101,6 +101,6 @@ Phases execute in numeric order: 1 -> 01.1 -> 2 -> 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Game Engine | 8/9 | Gap closure | - |
-| 01.1. Engine Rule Audit | 5/5 | Complete   | 2026-03-22 |
+| 01.1. Engine Rule Audit | 5/5 | Complete    | 2026-03-22 |
 | 2. Board and State Display | 0/0 | Not started | - |
 | 3. Playable Game | 0/0 | Not started | - |

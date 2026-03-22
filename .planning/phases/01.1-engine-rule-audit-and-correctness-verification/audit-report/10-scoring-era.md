@@ -38,8 +38,8 @@
 
 | Metric | Count |
 |--------|-------|
-| Total Rules | 22 |
-| PASS | 20 |
+| Total Rules | 23 |
+| PASS | 21 |
 | FAIL | 1 |
 | MISSING | 1 |
 

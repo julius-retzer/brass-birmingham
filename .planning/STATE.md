@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 Phase: 1 of 3 (Game Engine)
 Plan: 4 of 5 in current phase (completed)
 Status: Executing
-Last activity: 2026-03-22 -- Completed 01-04 Edge Cases and Turn Management
+Last activity: 2026-03-22 -- Completed 01-03 Action Validation Fixes (network, build, develop, sell)
 
 Progress: [████████░░] 80%
 
@@ -66,6 +66,9 @@ Recent decisions affecting current work:
 - [01-02]: Income is NOT converted to VP per official rules -- only used as tiebreaker
 - [01-02]: gameResult structure includes per-player score breakdown (linkVP, industryVP, finalIncome, finalMoney)
 - [01-02]: TRIGGER_ events kept for backward compatibility alongside automatic XState transitions
+- [01-03]: canBuildLink guard now validates connection existence and era compatibility
+- [01-03]: TEST_SET_ACTIONS_REMAINING added for test setup flexibility
+- [01-03]: TEST_SET_PLAYER_STATE extended with industryTilesOnMat and links support
 - [01-04]: Bankruptcy tile sale deducts debt from proceeds (player keeps only excess, not full sale value)
 - [01-04]: Skipped error test rewritten as simpler SET_ERROR/CLEAR_ERROR flow
 
@@ -80,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T10:14:31Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-03-22T10:29:00Z
+Stopped at: Completed 01-03-PLAN.md (01-04 already done previously)
 Resume file: .planning/phases/01-game-engine/01-05-PLAN.md

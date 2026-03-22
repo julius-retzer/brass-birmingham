@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Scoring produces correct VP totals for both canal and rail eras (verified against hand-calculated reference games)
   4. Turn order, action count per turn, and first-round single-action rules work correctly across both eras
   5. Edge cases (bankruptcy, empty markets, no valid moves, last card) are tested and handled
-**Plans:** 2/5 plans executed
+**Plans:** 3/5 plans executed
 
 Plans:
 - [ ] 01-01-PLAN.md -- Fix game data (board slots, connections, farm breweries, industry tiles, merchants)
@@ -76,6 +76,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Game Engine | 2/5 | In Progress|  |
+| 1. Game Engine | 3/5 | In Progress|  |
 | 2. Board and State Display | 0/0 | Not started | - |
 | 3. Playable Game | 0/0 | Not started | - |

@@ -10,8 +10,8 @@ progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 5
-  completed_plans: 2
-  percent: 40
+  completed_plans: 4
+  percent: 80
 ---
 
 # Project State
@@ -26,28 +26,28 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 ## Current Position
 
 Phase: 1 of 3 (Game Engine)
-Plan: 2 of 5 in current phase (completed)
+Plan: 4 of 5 in current phase (completed)
 Status: Executing
-Last activity: 2026-03-22 -- Completed 01-02 Correct Scoring and Automatic Era Transitions
+Last activity: 2026-03-22 -- Completed 01-04 Edge Cases and Turn Management
 
-Progress: [████░░░░░░] 40%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 5min
-- Total execution time: 0.17 hours
+- Total plans completed: 4
+- Average duration: 7min
+- Total execution time: 0.47 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-game-engine | 2/5 | 10min | 5min |
+| 01-game-engine | 4/5 | 28min | 7min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01(5min), 01-02(5min)
-- Trend: Steady
+- Last 5 plans: 01-01(5min), 01-02(5min), 01-03(~5min), 01-04(14min)
+- Trend: Steady (01-04 longer due to bug fixes)
 
 *Updated after each plan completion*
 
@@ -66,6 +66,8 @@ Recent decisions affecting current work:
 - [01-02]: Income is NOT converted to VP per official rules -- only used as tiebreaker
 - [01-02]: gameResult structure includes per-player score breakdown (linkVP, industryVP, finalIncome, finalMoney)
 - [01-02]: TRIGGER_ events kept for backward compatibility alongside automatic XState transitions
+- [01-04]: Bankruptcy tile sale deducts debt from proceeds (player keeps only excess, not full sale value)
+- [01-04]: Skipped error test rewritten as simpler SET_ERROR/CLEAR_ERROR flow
 
 ### Pending Todos
 
@@ -78,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T09:57:40Z
-Stopped at: Completed 01-02-PLAN.md
-Resume file: .planning/phases/01-game-engine/01-03-PLAN.md
+Last session: 2026-03-22T10:14:31Z
+Stopped at: Completed 01-04-PLAN.md
+Resume file: .planning/phases/01-game-engine/01-05-PLAN.md

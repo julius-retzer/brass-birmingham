@@ -14,7 +14,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **ENGINE-03**: Rail era scoring calculates link points and industry points correctly
 - [x] **ENGINE-04**: Era transition correctly removes canal-only links/tiles, re-deals cards, sets turn order
 - [x] **ENGINE-05**: All 7 action types have complete rule enforcement with correct resource/money handling
-- [ ] **ENGINE-06**: Game machine has 100% unit test coverage for all actions and state transitions
+- [x] **ENGINE-06**: Game machine has 100% unit test coverage for all actions and state transitions
 - [x] **ENGINE-07**: Edge cases tested: bankruptcy, empty markets, no valid moves, last card scenarios
 - [x] **ENGINE-08**: Turn order correctly determined each round (lowest spend goes first)
 - [x] **ENGINE-09**: Current player switches correctly after each action (2 actions per turn)
@@ -106,7 +106,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ENGINE-03 | Phase 1 | Complete |
 | ENGINE-04 | Phase 1 | Complete |
 | ENGINE-05 | Phase 1 | Complete |
-| ENGINE-06 | Phase 1 | Pending |
+| ENGINE-06 | Phase 1 | Complete |
 | ENGINE-07 | Phase 1 | Complete |
 | ENGINE-08 | Phase 1 | Complete |
 | ENGINE-09 | Phase 1 | Complete |

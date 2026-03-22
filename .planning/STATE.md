@@ -10,8 +10,8 @@ progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -26,28 +26,28 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 ## Current Position
 
 Phase: 1 of 3 (Game Engine)
-Plan: 4 of 5 in current phase (completed)
+Plan: 5 of 5 in current phase (completed)
 Status: Executing
-Last activity: 2026-03-22 -- Completed 01-03 Action Validation Fixes (network, build, develop, sell)
+Last activity: 2026-03-22 -- Completed 01-05 Full Game Integration Test and Coverage
 
-Progress: [████████░░] 80%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: 7min
-- Total execution time: 0.47 hours
+- Total plans completed: 5
+- Average duration: 8min
+- Total execution time: 0.63 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-game-engine | 4/5 | 28min | 7min |
+| 01-game-engine | 5/5 | 38min | 8min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01(5min), 01-02(5min), 01-03(~5min), 01-04(14min)
-- Trend: Steady (01-04 longer due to bug fixes)
+- Last 5 plans: 01-01(5min), 01-02(5min), 01-03(~5min), 01-04(14min), 01-05(10min)
+- Trend: Steady
 
 *Updated after each plan completion*
 
@@ -71,6 +71,9 @@ Recent decisions affecting current work:
 - [01-03]: TEST_SET_PLAYER_STATE extended with industryTilesOnMat and links support
 - [01-04]: Bankruptcy tile sale deducts debt from proceeds (player keeps only excess, not full sale value)
 - [01-04]: Skipped error test rewritten as simpler SET_ERROR/CLEAR_ERROR flow
+- [01-05]: Integration tests use TEST_ events for deterministic state setup instead of complex game scripts
+- [01-05]: Canal links invisible in rail era (calculateNetworkDistance filters by era type)
+- [01-05]: Coal consumption check runs before link construction -- tests need pre-existing rail links to merchants
 
 ### Pending Todos
 
@@ -83,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T10:29:00Z
-Stopped at: Completed 01-03-PLAN.md (01-04 already done previously)
-Resume file: .planning/phases/01-game-engine/01-05-PLAN.md
+Last session: 2026-03-22T10:42:30Z
+Stopped at: Completed 01-05-PLAN.md (Phase 01 Game Engine complete)
+Resume file: Phase 2 planning needed

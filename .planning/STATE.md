@@ -2,16 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 01-09-PLAN.md
-last_updated: "2026-03-22T12:58:04.863Z"
-last_activity: 2026-03-22 -- Completed 01-09 Final Coverage Gap Closure
+status: unknown
+stopped_at: Completed 01.1-02-PLAN.md
+last_updated: "2026-03-22T13:48:00.528Z"
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 1
-  total_plans: 9
-  completed_plans: 9
-  percent: 100
+  total_plans: 14
+  completed_plans: 10
 ---
 
 # Project State
@@ -21,20 +19,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Two players can play a complete game of Brass Birmingham online in real-time, with the game correctly enforcing all rules.
-**Current focus:** Phase 1: Game Engine
+**Current focus:** Phase 01.1 — engine-rule-audit-and-correctness-verification
 
 ## Current Position
 
-Phase: 1 of 3 (Game Engine)
-Plan: 9 of 9 in current phase (completed)
-Status: Executing
-Last activity: 2026-03-22 -- Completed 01-09 Final Coverage Gap Closure
-
-Progress: [██████████] 100% (Phase 01)
+Phase: 01.1 (engine-rule-audit-and-correctness-verification) — EXECUTING
+Plan: 2 of 5
 
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 6
 - Average duration: 8min
 - Total execution time: 0.75 hours
@@ -46,6 +41,7 @@ Progress: [██████████] 100% (Phase 01)
 | 01-game-engine | 9/9 | 70min | 8min |
 
 **Recent Trend:**
+
 - Last 5 plans: 01-01(5min), 01-02(5min), 01-03(~5min), 01-04(14min), 01-05(10min)
 - Trend: Steady
 
@@ -54,6 +50,7 @@ Progress: [██████████] 100% (Phase 01)
 | Phase 01 P06 | 9min | 2 tasks | 2 files |
 | Phase 01 P08 | 11min | 2 tasks | 4 files |
 | Phase 01 P09 | 25min | 2 tasks | 2 files |
+| Phase 01.1 P02 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -85,10 +82,16 @@ Recent decisions affecting current work:
 - [Phase 01]: Guard tests verify state transitions rather than calling guards directly (XState guards are internal)
 - [Phase 01]: Market action tests use mock GameState for direct function testing
 - [Phase 01-09]: v8 coverage provider does not support inline ignore comments; 91.8% is practical maximum for gameStore.ts
+- [Phase 01.1]: TURN-02 tiebreak uses array index not previous turn order -- FAIL
+- [Phase 01.1]: INC-18 loan guard does not block loans near minimum income -- MISSING
 
 ### Pending Todos
 
 None yet.
+
+### Roadmap Evolution
+
+- Phase 01.1 inserted after Phase 01: Engine rule audit and correctness verification (URGENT)
 
 ### Blockers/Concerns
 
@@ -97,6 +100,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T12:36:41Z
-Stopped at: Completed 01-09-PLAN.md
+Last session: 2026-03-22T13:48:00.525Z
+Stopped at: Completed 01.1-02-PLAN.md
 Resume file: None

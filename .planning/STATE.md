@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 01.1-02-PLAN.md
-last_updated: "2026-03-22T13:48:00.528Z"
+stopped_at: Completed 01.1-03-PLAN.md
+last_updated: "2026-03-22T13:48:33.715Z"
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 14
-  completed_plans: 10
+  completed_plans: 13
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 ## Current Position
 
 Phase: 01.1 (engine-rule-audit-and-correctness-verification) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Plan: 2 of 5
 | Phase 01 P08 | 11min | 2 tasks | 4 files |
 | Phase 01 P09 | 25min | 2 tasks | 2 files |
 | Phase 01.1 P02 | 8min | 2 tasks | 2 files |
+| Phase 01.1 P03 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,9 @@ Recent decisions affecting current work:
 - [Phase 01-09]: v8 coverage provider does not support inline ignore comments; 91.8% is practical maximum for gameStore.ts
 - [Phase 01.1]: TURN-02 tiebreak uses array index not previous turn order -- FAIL
 - [Phase 01.1]: INC-18 loan guard does not block loans near minimum income -- MISSING
+- [Phase 01.1]: Farm brewery card restrictions not enforced (BUILD-03/23) - wild location cards incorrectly allowed at farm breweries
+- [Phase 01.1]: Canal era per-player-per-location limit (BUILD-07) is completely missing from implementation
+- [Phase 01.1]: Farm brewery connections modeled as explicit graph nodes instead of implicit (NET-17) - needs architectural fix
 
 ### Pending Todos
 
@@ -100,6 +104,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T13:48:00.525Z
-Stopped at: Completed 01.1-02-PLAN.md
+Last session: 2026-03-22T13:48:33.712Z
+Stopped at: Completed 01.1-03-PLAN.md
 Resume file: None

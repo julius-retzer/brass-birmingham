@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 01.1-03-PLAN.md
-last_updated: "2026-03-22T13:48:33.715Z"
+stopped_at: Completed 01.1-04-PLAN.md
+last_updated: "2026-03-22T13:49:07.119Z"
 progress:
   total_phases: 4
   completed_phases: 1
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 ## Current Position
 
 Phase: 01.1 (engine-rule-audit-and-correctness-verification) — EXECUTING
-Plan: 3 of 5
+Plan: 5 of 5
 
 ## Performance Metrics
 
@@ -52,6 +52,8 @@ Plan: 3 of 5
 | Phase 01 P09 | 25min | 2 tasks | 2 files |
 | Phase 01.1 P02 | 8min | 2 tasks | 2 files |
 | Phase 01.1 P03 | 4min | 2 tasks | 2 files |
+| Phase 01.1 P01 | 5min | 2 tasks | 2 files |
+| Phase 01.1 P04 | 4min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -88,6 +90,10 @@ Recent decisions affecting current work:
 - [Phase 01.1]: Farm brewery card restrictions not enforced (BUILD-03/23) - wild location cards incorrectly allowed at farm breweries
 - [Phase 01.1]: Canal era per-player-per-location limit (BUILD-07) is completely missing from implementation
 - [Phase 01.1]: Farm brewery connections modeled as explicit graph nodes instead of implicit (NET-17) - needs architectural fix
+- [Phase 01.1]: industryTiles.ts is primary tile definition; availableIndustryTiles.ts has conflicting data
+- [Phase 01.1]: 15 FAIL verdicts found: merchant setup, tile conflicts, board connections, missing cotton card, discard pile model
+- [Phase 01.1]: SELL-07 multi-tile sell flagged FAIL: implementation only sells first tile, rulebook allows repeating
+- [Phase 01.1]: LOAN-03 income clamping to -10 via Math.max accepted as equivalent to blocking loan
 
 ### Pending Todos
 
@@ -104,6 +110,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T13:48:33.712Z
-Stopped at: Completed 01.1-03-PLAN.md
+Last session: 2026-03-22T13:49:07.116Z
+Stopped at: Completed 01.1-04-PLAN.md
 Resume file: None

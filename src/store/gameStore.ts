@@ -1,5 +1,5 @@
 import { type Actor, StateFrom, assign, setup } from 'xstate'
-import { type CityId } from '../data/board'
+import { type CityId, connections } from '../data/board'
 import {
   type Card,
   type IndustryCard,
@@ -261,7 +261,14 @@ type GameEvent =
       playerId: number
       money?: number
       income?: number
+      victoryPoints?: number
       industries?: Player['industries']
+      industryTilesOnMat?: Player['industryTilesOnMat']
+      links?: Player['links']
+    }
+  | {
+      type: 'TEST_SET_ACTIONS_REMAINING'
+      actionsRemaining: number
     }
   | {
       type: 'TEST_SET_FINAL_ROUND'
@@ -1662,12 +1669,23 @@ export const gameStore = setup({
                 }
 
                 // Remove sold industries (in reverse order to maintain indices)
-                industriesToRemove.reverse().forEach((index) => {
-                  updatedPlayer.industries.splice(index, 1)
+                const removedIndustries = [...updatedPlayer.industries]
+                industriesToRemove.sort((a, b) => b - a).forEach((index) => {
+                  removedIndustries.splice(index, 1)
                 })
+                updatedPlayer.industries = removedIndustries
 
-                // If still short, lose VP
-                if (remainingShortfall > 0) {
+                // Deduct remaining shortfall from tile sale proceeds
+                // updatedPlayer.money has the tile sale proceeds, remainingShortfall
+                // may be negative (overpaid) or positive (still owe)
+                if (remainingShortfall <= 0) {
+                  // Tile sales covered the debt; keep only the excess
+                  updatedPlayer.money = Math.abs(remainingShortfall)
+                } else {
+                  // Still short after selling all tiles
+                  updatedPlayer.money = 0
+
+                  // Lose 1 VP per pound of remaining shortfall
                   updatedPlayer.victoryPoints = Math.max(
                     0,
                     updatedPlayer.victoryPoints - remainingShortfall,
@@ -1854,11 +1872,21 @@ export const gameStore = setup({
         ...currentPlayer,
         ...(event.money !== undefined && { money: event.money }),
         ...(event.income !== undefined && { income: event.income }),
+        ...(event.victoryPoints !== undefined && { victoryPoints: event.victoryPoints }),
         ...(event.industries !== undefined && { industries: event.industries }),
+        ...(event.industryTilesOnMat !== undefined && { industryTilesOnMat: event.industryTilesOnMat }),
+        ...(event.links !== undefined && { links: event.links }),
       }
 
       return {
         players: updatedPlayers,
+      }
+    }),
+
+    setActionsRemaining: assign(({ context, event }) => {
+      if (event.type !== 'TEST_SET_ACTIONS_REMAINING') return {}
+      return {
+        actionsRemaining: event.actionsRemaining,
       }
     }),
 
@@ -2254,7 +2282,17 @@ export const gameStore = setup({
       if (event.type !== 'SELECT_LINK' && event.type !== 'SELECT_SECOND_LINK') {
         return false
       }
-      
+
+      // Validate that this connection exists in the board data and supports the current era
+      const validConnection = connections.find(
+        (conn) =>
+          ((conn.from === event.from && conn.to === event.to) ||
+           (conn.from === event.to && conn.to === event.from)) &&
+          conn.types.includes(context.era)
+      )
+      if (!validConnection) {
+        return false
+      }
 
       // Check if any player already has a link on this connection
       const existingLink = context.players.some((player) =>
@@ -2549,6 +2587,9 @@ export const gameStore = setup({
         },
         TEST_SET_PLAYER_STATE: {
           actions: 'setPlayerState',
+        },
+        TEST_SET_ACTIONS_REMAINING: {
+          actions: 'setActionsRemaining',
         },
         TEST_SET_FINAL_ROUND: {
           actions: 'setFinalRound',

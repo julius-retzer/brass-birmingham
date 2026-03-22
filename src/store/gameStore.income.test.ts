@@ -247,10 +247,10 @@ describe('Game Store - Income Collection', () => {
       // Player should have sold the industry tile
       expect(player.industries.length).toBe(0)
 
-      // Player should have money from selling
-      // They paid £5 initially (all they had), then sold for £9
-      // Final money is £9 (not £4, because they already paid the £5)
-      expect(player.money).toBe(9)
+      // Player should have money from selling minus debt
+      // They owed £10, paid £5 initially (all they had), shortfall £5
+      // Sold tile for £9, covers £5 shortfall, excess £4
+      expect(player.money).toBe(4)
 
       // Check logs
       expect(
@@ -314,8 +314,9 @@ describe('Game Store - Income Collection', () => {
       // Need £15 (shortfall after paying £5), industries give £5 + £7 + £4 = £16 total
       expect(player.industries.length).toBe(0) // All sold
 
-      // Player should have £16 (they already paid the £5 they had initially)
-      expect(player.money).toBe(16)
+      // Player owed £20, paid £5 from money, shortfall £15
+      // Sold tiles for £5 + £7 + £4 = £16, covers £15, excess £1
+      expect(player.money).toBe(1)
 
       // Check that multiple sales are logged
       const saleLogs = snapshot.context.logs.filter(
@@ -475,7 +476,8 @@ describe('Game Store - Income Collection', () => {
 
       // Should have sold only the first industry (£10 covers the £8 shortfall)
       expect(player.industries.length).toBe(2) // Two industries remain
-      expect(player.money).toBe(10) // £10 from sale (they already paid £0 initially since money was 0)
+      // Owed £8, sold tile for £10, excess £2
+      expect(player.money).toBe(2)
 
       // Verify the remaining industries are the expected ones
       expect(player.industries.some((i) => i.type === 'cotton')).toBe(true)

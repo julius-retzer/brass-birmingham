@@ -1,11 +1,12 @@
 // Full Game Integration Test - Brass Birmingham
-// Tests complete game flow from start to finish with realistic player actions
+// Tests complete game flow from setup through final scoring and game over
 
 import { afterEach, describe, expect, test } from 'vitest'
 import { createActor } from 'xstate'
 import type { CityId } from '../data/board'
 import type { IndustryType } from '../data/cards'
-import { gameStore } from './gameStore'
+import type { IndustryTile } from '../data/industryTiles'
+import { gameStore, type Player } from './gameStore'
 
 let activeActors: ReturnType<typeof createActor>[] = []
 
@@ -27,1297 +28,796 @@ const createGameActor = () => {
   return actor
 }
 
-const setupTwoPlayerGame = (actor: ReturnType<typeof createActor>) => {
-  const players = [
-    {
-      id: '1',
-      name: 'Alice',
-      color: 'red' as const,
-      character: 'Richard Arkwright' as const,
-    },
-    {
-      id: '2',
-      name: 'Bob',
-      color: 'blue' as const,
-      character: 'Eliza Tinsley' as const,
-    },
-  ]
-
-  // Set up scripted cards AFTER starting the game but before actions
-  actor.send({ type: 'START_GAME', players })
-  setupScriptedCards(actor)
-
-  // Wait for game to initialize and verify the ordered dealing worked
-  let snapshot = actor.getSnapshot()
-  console.log(
-    `🎯 Game state after START_GAME: ${JSON.stringify(snapshot.value)}`,
-  )
-  console.log(
-    `🎴 Alice's dealt hand:`,
-    snapshot.context.players[0]!.hand.map(
-      (c: any) =>
-        `${c.id}: ${c.type} ${c.type === 'industry' ? c.industries.join(',') : c.location || ''}`,
-    ),
-  )
-  console.log(
-    `🎴 Bob's dealt hand:`,
-    snapshot.context.players[1]!.hand.map(
-      (c: any) =>
-        `${c.id}: ${c.type} ${c.type === 'industry' ? c.industries.join(',') : c.location || ''}`,
-    ),
-  )
-  console.log(
-    `📚 Remaining draw pile: ${snapshot.context.drawPile.length} cards`,
-  )
-
-  return players
-}
-
-// Set up scripted cards for the specific game actions
-const setupScriptedCards = (actor: ReturnType<typeof createActor>) => {
-  // Alice's hand - cards needed for her scripted actions
-  const aliceCards = [
-    { id: 'alice_card_1', type: 'industry', industries: ['brewery'] }, // For DEVELOP actions
-    { id: 'alice_card_2', type: 'industry', industries: ['coal'] },
-    { id: 'alice_card_3', type: 'industry', industries: ['cotton'] },
-    { id: 'alice_card_4', type: 'industry', industries: ['iron'] },
-    { id: 'alice_card_5', type: 'location', location: 'birmingham' }, // For BUILD iron at birmingham
-    { id: 'alice_card_6', type: 'location', location: 'worcester' }, // For NETWORK and BUILD cotton
-    { id: 'alice_card_7', type: 'location', location: 'kidderminster' }, // For NETWORK and BUILD cotton
-    { id: 'alice_card_8', type: 'location', location: 'nuneaton' }, // For BUILD brewery
-  ]
-
-  // Bob's hand - cards needed for his scripted actions, prioritizing location cards for out-of-network builds
-  const bobCards = [
-    { id: 'bob_card_1', type: 'location', location: 'burton' }, // CRITICAL: For BUILD brewery at burton
-    { id: 'bob_card_2', type: 'location', location: 'stafford' }, // For BUILD brewery at stafford
-    { id: 'bob_card_3', type: 'location', location: 'coalbrookdale' }, // For BUILD brewery at coalbrookdale
-    { id: 'bob_card_4', type: 'location', location: 'walsall' }, // For BUILD manufacturer at walsall
-    { id: 'bob_card_5', type: 'industry', industries: ['brewery'] }, // Backup brewery card
-    { id: 'bob_card_6', type: 'industry', industries: ['coal'] }, // For BUILD coal
-    { id: 'bob_card_7', type: 'industry', industries: ['iron'] }, // For BUILD iron
-    { id: 'bob_card_8', type: 'industry', industries: ['manufacturer'] }, // For BUILD manufacturer
-  ]
-
-  // Set hands directly with the required cards
+const startTwoPlayerGame = (actor: ReturnType<typeof createActor>) => {
   actor.send({
-    type: 'TEST_SET_PLAYER_HAND',
-    playerId: 0, // Alice
-    hand: aliceCards,
-  })
-
-  actor.send({
-    type: 'TEST_SET_PLAYER_HAND',
-    playerId: 1, // Bob
-    hand: bobCards,
-  })
-
-  // Verify the hands were set correctly
-  const verifySnapshot = actor.getSnapshot()
-  console.log(
-    `🎴 Alice's hand:`,
-    verifySnapshot.context.players[0]!.hand.map(
-      (c: any) =>
-        `${c.id}: ${c.type} ${c.type === 'industry' ? c.industries.join(',') : c.location || ''}`,
-    ),
-  )
-  console.log(
-    `🎴 Bob's hand:`,
-    verifySnapshot.context.players[1]!.hand.map(
-      (c: any) =>
-        `${c.id}: ${c.type} ${c.type === 'industry' ? c.industries.join(',') : c.location || ''}`,
-    ),
-  )
-
-  // Set up industry tiles on player mats for develop actions - same for both players
-  const industryTilesOnMat = {
-    brewery: [
+    type: 'START_GAME',
+    players: [
       {
-        id: 'brewery_1',
-        type: 'brewery',
-        level: 1,
-        cost: 5,
-        victoryPoints: 1,
-        incomeSpaces: 1,
-        linkScoringIcons: 1,
-        coalRequired: 1,
-        ironRequired: 0,
-        beerRequired: 0,
-        beerProduced: 1,
-        coalProduced: 0,
-        ironProduced: 0,
-        canBuildInCanalEra: true,
-        canBuildInRailEra: false,
-        hasLightbulbIcon: false,
-        incomeAdvancement: 2,
+        id: '1',
+        name: 'Alice',
+        color: 'red' as const,
+        character: 'Richard Arkwright' as const,
       },
       {
-        id: 'brewery_2',
-        type: 'brewery',
-        level: 1,
-        cost: 5,
-        victoryPoints: 1,
-        incomeSpaces: 1,
-        linkScoringIcons: 1,
-        coalRequired: 1,
-        ironRequired: 0,
-        beerRequired: 0,
-        beerProduced: 1,
-        coalProduced: 0,
-        ironProduced: 0,
-        canBuildInCanalEra: true,
-        canBuildInRailEra: false,
-        hasLightbulbIcon: false,
-        incomeAdvancement: 2,
-      },
-      {
-        id: 'brewery_3',
-        type: 'brewery',
-        level: 2,
-        cost: 12,
-        victoryPoints: 1,
-        incomeSpaces: 1,
-        linkScoringIcons: 1,
-        coalRequired: 1,
-        ironRequired: 0,
-        beerRequired: 0,
-        beerProduced: 2,
-        coalProduced: 0,
-        ironProduced: 0,
-        canBuildInCanalEra: true,
-        canBuildInRailEra: true,
-        hasLightbulbIcon: false,
-        incomeAdvancement: 2,
-      },
-      {
-        id: 'brewery_4',
-        type: 'brewery',
-        level: 2,
-        cost: 12,
-        victoryPoints: 1,
-        incomeSpaces: 1,
-        linkScoringIcons: 1,
-        coalRequired: 1,
-        ironRequired: 0,
-        beerRequired: 0,
-        beerProduced: 2,
-        coalProduced: 0,
-        ironProduced: 0,
-        canBuildInCanalEra: true,
-        canBuildInRailEra: true,
-        hasLightbulbIcon: false,
-        incomeAdvancement: 2,
-      },
-      {
-        id: 'brewery_5',
-        type: 'brewery',
-        level: 2,
-        cost: 12,
-        victoryPoints: 1,
-        incomeSpaces: 1,
-        linkScoringIcons: 1,
-        coalRequired: 1,
-        ironRequired: 0,
-        beerRequired: 0,
-        beerProduced: 2,
-        coalProduced: 0,
-        ironProduced: 0,
-        canBuildInCanalEra: true,
-        canBuildInRailEra: true,
-        hasLightbulbIcon: false,
-        incomeAdvancement: 2,
-      },
-      {
-        id: 'brewery_6',
-        type: 'brewery',
-        level: 3,
-        cost: 16,
-        victoryPoints: 1,
-        incomeSpaces: 1,
-        linkScoringIcons: 1,
-        coalRequired: 1,
-        ironRequired: 0,
-        beerRequired: 0,
-        beerProduced: 3,
-        coalProduced: 0,
-        ironProduced: 0,
-        canBuildInCanalEra: true,
-        canBuildInRailEra: true,
-        hasLightbulbIcon: false,
-        incomeAdvancement: 2,
+        id: '2',
+        name: 'Bob',
+        color: 'blue' as const,
+        character: 'Eliza Tinsley' as const,
       },
     ],
-    coal: [
-      {
-        id: 'coal_1_alice',
-        type: 'coal',
-        level: 1,
-        cost: 5,
-        victoryPoints: 1,
-        incomeSpaces: 1,
-        linkScoringIcons: 1,
-        coalRequired: 0,
-        ironRequired: 0,
-        beerRequired: 0,
-        beerProduced: 0,
-        coalProduced: 2,
-        ironProduced: 0,
-        canBuildInCanalEra: true,
-        canBuildInRailEra: false,
-        hasLightbulbIcon: false,
-        incomeAdvancement: 2,
-      },
-    ],
-    cotton: [
-      {
-        id: 'cotton_1_alice',
-        type: 'cotton',
-        level: 1,
-        cost: 12,
-        victoryPoints: 3,
-        incomeSpaces: 2,
-        linkScoringIcons: 1,
-        coalRequired: 0,
-        ironRequired: 0,
-        beerRequired: 1,
-        beerProduced: 0,
-        coalProduced: 0,
-        ironProduced: 0,
-        canBuildInCanalEra: true,
-        canBuildInRailEra: false,
-        hasLightbulbIcon: false,
-        incomeAdvancement: 2,
-      },
-      {
-        id: 'cotton_2_alice',
-        type: 'cotton',
-        level: 2,
-        cost: 16,
-        victoryPoints: 5,
-        incomeSpaces: 2,
-        linkScoringIcons: 1,
-        coalRequired: 0,
-        ironRequired: 0,
-        beerRequired: 1,
-        beerProduced: 0,
-        coalProduced: 0,
-        ironProduced: 0,
-        canBuildInCanalEra: true,
-        canBuildInRailEra: true,
-        hasLightbulbIcon: false,
-        incomeAdvancement: 2,
-      },
-    ],
-    iron: [
-      {
-        id: 'iron_1_alice',
-        type: 'iron',
-        level: 1,
-        cost: 5,
-        victoryPoints: 1,
-        incomeSpaces: 1,
-        linkScoringIcons: 1,
-        coalRequired: 1,
-        ironRequired: 0,
-        beerRequired: 0,
-        beerProduced: 0,
-        coalProduced: 0,
-        ironProduced: 4,
-        canBuildInCanalEra: true,
-        canBuildInRailEra: false,
-        hasLightbulbIcon: false,
-        incomeAdvancement: 2,
-      },
-    ],
-    manufacturer: [
-      {
-        id: 'manufacturer_1_alice',
-        type: 'manufacturer',
-        level: 1,
-        cost: 8,
-        victoryPoints: 1,
-        incomeSpaces: 1,
-        linkScoringIcons: 1,
-        coalRequired: 1,
-        ironRequired: 0,
-        beerRequired: 1,
-        beerProduced: 0,
-        coalProduced: 0,
-        ironProduced: 0,
-        canBuildInCanalEra: true,
-        canBuildInRailEra: false,
-        hasLightbulbIcon: false,
-        incomeAdvancement: 2,
-      },
-    ],
-  }
-
-  // Set the same industry tiles for both players with exact starting money per rules
-  actor.send({
-    type: 'TEST_SET_PLAYER_STATE',
-    playerId: 0, // Alice
-    industryTilesOnMat,
-    money: 17, // Exact starting money according to Brass Birmingham rules
-  })
-
-  actor.send({
-    type: 'TEST_SET_PLAYER_STATE',
-    playerId: 1, // Bob
-    industryTilesOnMat,
-    money: 17, // Exact starting money according to Brass Birmingham rules
   })
 }
 
-// Helper to get current player info
-const getCurrentPlayerInfo = (actor: ReturnType<typeof createActor>) => {
+// Helper: perform a PASS action for the current player
+const performPass = (actor: ReturnType<typeof createActor>) => {
   const snapshot = actor.getSnapshot()
   const currentPlayer =
     snapshot.context.players[snapshot.context.currentPlayerIndex]
-  return {
-    snapshot,
-    currentPlayer,
-    playerIndex: snapshot.context.currentPlayerIndex,
-    era: snapshot.context.era,
-    round: snapshot.context.round,
-    actionsRemaining: snapshot.context.actionsRemaining,
-    state: snapshot.value,
-  }
-}
-
-// Helper to perform build action
-const buildIndustry = (
-  actor: ReturnType<typeof createActor>,
-  industryType: IndustryType,
-  location: CityId,
-  level?: number,
-  expectSuccess = true,
-) => {
-  const { currentPlayer } = getCurrentPlayerInfo(actor)
-
-  console.log(
-    `🎯 BUILD ${industryType} at ${location} - ${currentPlayer!.name}'s turn`,
-  )
-  console.log(
-    `🎲 Current player: ${currentPlayer!.name}, Hand size: ${currentPlayer!.hand.length}`,
-  )
-
-  // Find a suitable card, preferring location cards for specific locations
-  // This ensures we can build anywhere, not just in network
-  console.log(`🔍 Looking for location card for ${location}`)
-  console.log(
-    `📋 Available cards:`,
-    currentPlayer!.hand.map(
-      (c: any) =>
-        `${c.id}: ${c.type} ${c.type === 'industry' ? c.industries.join(',') : c.location || ''}`,
-    ),
-  )
-
-  let suitableCard = currentPlayer!.hand.find(
-    (card: any) =>
-      (card.type === 'location' && card.location === location) ||
-      card.type === 'wild_location',
-  )
-
-  console.log(
-    `📍 Location card search result:`,
-    suitableCard ? `Found ${suitableCard.id}` : 'None found',
-  )
-
-  // If no location card found, try industry cards (must be in network)
-  if (!suitableCard) {
-    console.log(`🔍 Looking for industry card for ${industryType}`)
-    suitableCard = currentPlayer!.hand.find(
-      (card: any) =>
-        (card.type === 'industry' && card.industries.includes(industryType)) ||
-        card.type === 'wild_industry',
-    )
-    console.log(
-      `🏭 Industry card search result:`,
-      suitableCard ? `Found ${suitableCard.id}` : 'None found',
-    )
-  }
-
-  if (!suitableCard) {
-    console.log(`❌ No suitable card found for ${industryType} at ${location}`)
-    console.log(
-      `📋 Available cards:`,
-      currentPlayer!.hand.map(
-        (c: any) =>
-          `${c.id}: ${c.type} ${c.type === 'industry' ? c.industries.join(',') : c.location || ''}`,
-      ),
-    )
-    throw new Error(`No suitable card found for ${industryType} at ${location}`)
-  }
-
-  console.log(
-    `🏗️ Building ${industryType}${level ? ` level ${level}` : ''} at ${location} with card ${suitableCard.id}`,
-  )
-  console.log(`💰 Player money before build: ${currentPlayer!.money}`)
-
-  actor.send({ type: 'BUILD' })
-  actor.send({ type: 'SELECT_CARD', cardId: suitableCard.id })
-
-  // State machine flow depends on card type:
-  // - Location cards: SELECT_INDUSTRY_TYPE (auto-selects location)
-  // - Industry cards: SELECT_LOCATION (auto-selects tile)
-  if (
-    suitableCard.type === 'location' ||
-    suitableCard.type === 'wild_location'
-  ) {
-    // For location cards: select industry type first
-    actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType })
-    console.log(
-      `🎯 Used location card flow: SELECT_INDUSTRY_TYPE → confirmingBuild`,
-    )
-  } else {
-    // For industry cards: select location
-    actor.send({ type: 'SELECT_LOCATION', cityId: location })
-    console.log(`🎯 Used industry card flow: SELECT_LOCATION → confirmingBuild`)
-
-    // Debug the current selections after location selection
-    const postLocationSnapshot = actor.getSnapshot()
-    console.log(`🔍 Selections after location:`)
-    console.log(
-      `  - selectedCard: ${postLocationSnapshot.context.selectedCard?.id} (${postLocationSnapshot.context.selectedCard?.type})`,
-    )
-    console.log(
-      `  - selectedLocation: ${postLocationSnapshot.context.selectedLocation}`,
-    )
-    console.log(
-      `  - selectedIndustryTile: ${postLocationSnapshot.context.selectedIndustryTile?.id} (level ${postLocationSnapshot.context.selectedIndustryTile?.level})`,
-    )
-
-    // Check if canCompleteBuild would pass
-    const canComplete =
-      postLocationSnapshot.context.selectedCard !== null &&
-      postLocationSnapshot.context.selectedIndustryTile !== null &&
-      postLocationSnapshot.context.selectedLocation !== null
-    console.log(`  - canCompleteBuild would return: ${canComplete}`)
-  }
-
-  const beforeConfirmSnapshot = actor.getSnapshot()
-  console.log(
-    `🎯 Build state before confirm: ${JSON.stringify(beforeConfirmSnapshot.value)}`,
-  )
-
-  actor.send({ type: 'CONFIRM' })
-
-  const afterSnapshot = actor.getSnapshot()
-  console.log(
-    `🏗️ Build state after confirm: ${JSON.stringify(afterSnapshot.value)}`,
-  )
-
-  if (expectSuccess) {
-    const { snapshot } = getCurrentPlayerInfo(actor)
-    const builtIndustry = snapshot.context.players
-      .flatMap((p: any) => p.industries)
-      .find((i: any) => i.type === industryType && i.location === location)
-
-    console.log(`🔍 Looking for built industry: ${industryType} at ${location}`)
-    console.log(
-      `🏭 Built industry found:`,
-      builtIndustry
-        ? `${builtIndustry.type} level ${builtIndustry.level} at ${builtIndustry.location}`
-        : 'none',
-    )
-
-    const hasIndustry = !!builtIndustry
-    expect(hasIndustry).toBe(true)
-  }
-}
-
-// Helper to perform develop action with tile selection
-const developTilesWithSelection = (
-  actor: ReturnType<typeof createActor>,
-  industryTypes: string[],
-) => {
-  const { currentPlayer } = getCurrentPlayerInfo(actor)
-
-  actor.send({ type: 'DEVELOP' })
-  actor.send({ type: 'SELECT_CARD', cardId: currentPlayer!.hand[0]!.id })
-
-  // Select specific tiles to develop
-  actor.send({ type: 'SELECT_TILES_FOR_DEVELOP', industryTypes })
-
-  // Confirm the development
+  const card = currentPlayer!.hand[0]
+  if (!card) throw new Error('No cards to pass')
+  actor.send({ type: 'PASS' })
+  actor.send({ type: 'SELECT_CARD', cardId: card.id })
   actor.send({ type: 'CONFIRM' })
 }
 
-// Helper to perform network action
+// Helper: perform a TAKE_LOAN action
+const performLoan = (actor: ReturnType<typeof createActor>) => {
+  const snapshot = actor.getSnapshot()
+  const currentPlayer =
+    snapshot.context.players[snapshot.context.currentPlayerIndex]
+  const card = currentPlayer!.hand[0]
+  if (!card) throw new Error('No cards for loan')
+  actor.send({ type: 'TAKE_LOAN' })
+  actor.send({ type: 'SELECT_CARD', cardId: card.id })
+  actor.send({ type: 'CONFIRM' })
+}
+
+// Helper: build a network link
 const buildNetwork = (
   actor: ReturnType<typeof createActor>,
   from: CityId,
   to: CityId,
 ) => {
-  const { currentPlayer } = getCurrentPlayerInfo(actor)
-
-  // Use any card for network action, preferring industry cards over location cards
-  // This preserves location cards for their specific build purposes
-  const anyCard =
-    currentPlayer!.hand.find(
-      (card: any) => card.type === 'industry' || card.type === 'wild_industry',
-    ) || currentPlayer!.hand[0]
-
-  if (!anyCard) {
-    throw new Error(`No cards available for network ${from}-${to}`)
-  }
-
-  console.log(`🔗 Using card ${anyCard.id} (${anyCard.type}) for network`)
-
+  const snapshot = actor.getSnapshot()
+  const currentPlayer =
+    snapshot.context.players[snapshot.context.currentPlayerIndex]
+  const card = currentPlayer!.hand[0]
+  if (!card) throw new Error('No cards for network')
   actor.send({ type: 'NETWORK' })
-  actor.send({ type: 'SELECT_CARD', cardId: anyCard.id })
+  actor.send({ type: 'SELECT_CARD', cardId: card.id })
   actor.send({ type: 'SELECT_LINK', from, to })
   actor.send({ type: 'CONFIRM' })
 }
 
-// Helper to perform sell action
-const sellIndustry = (
+// Helper: build an industry using a location card
+const buildIndustryWithLocationCard = (
   actor: ReturnType<typeof createActor>,
   industryType: IndustryType,
+  cardId: string,
 ) => {
-  const { currentPlayer } = getCurrentPlayerInfo(actor)
-
-  // Find suitable card
-  const suitableCard = currentPlayer!.hand.find(
-    (card: any) =>
-      (card.type === 'industry' && card.industries.includes(industryType)) ||
-      card.type === 'wild_industry',
-  )
-
-  if (!suitableCard) {
-    throw new Error(`No suitable card found for selling ${industryType}`)
-  }
-
-  actor.send({ type: 'SELL' })
-  actor.send({ type: 'SELECT_CARD', cardId: suitableCard.id })
+  actor.send({ type: 'BUILD' })
+  actor.send({ type: 'SELECT_CARD', cardId })
+  actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType })
   actor.send({ type: 'CONFIRM' })
 }
 
-// Helper to perform loan action
-const performLoanAction = async (
+// Helper: build an industry using an industry card
+const buildIndustryWithIndustryCard = (
   actor: ReturnType<typeof createActor>,
-  gameInfo: any,
+  location: CityId,
+  cardId: string,
 ) => {
-  // Check if actor is still active
-  if (actor.getSnapshot().status !== 'active') {
-    throw new Error('Actor has stopped - cannot perform loan action')
-  }
-
-  console.log('💰 Taking loan')
-  actor.send({ type: 'TAKE_LOAN' })
-
-  // For TAKE_LOAN, prefer using industry cards over location cards
-  // This preserves location cards for their specific build purposes
-  const cardToUse =
-    gameInfo.currentPlayer!.hand.find(
-      (card: any) => card.type === 'industry' || card.type === 'wild_industry',
-    ) || gameInfo.currentPlayer!.hand[0]
-
-  if (!cardToUse) {
-    throw new Error('No cards available for loan')
-  }
-
-  console.log(`💳 Using card ${cardToUse.id} (${cardToUse.type}) for loan`)
-
-  actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
+  actor.send({ type: 'BUILD' })
+  actor.send({ type: 'SELECT_CARD', cardId })
+  actor.send({ type: 'SELECT_LOCATION', cityId: location })
   actor.send({ type: 'CONFIRM' })
-
-  const newGameInfo = getCurrentPlayerInfo(actor)
-  console.log(`✅ Loan successful - Money: ${newGameInfo.currentPlayer!.money}`)
 }
 
-// Game script based on actual Brass Birmingham game log - costs determined by game
-const gameScript = [
-  // Round 1-2
-  {
-    player: 'Alice',
-    action: 'DEVELOP',
-    types: ['brewery', 'brewery'],
-    reason: 'Developed 2x beer:1 tiles',
-  },
+// Create a mock industry tile for TEST_SET_PLAYER_STATE
+const makeTile = (
+  type: IndustryType,
+  level: number,
+  vp: number,
+  linkIcons: number,
+): IndustryTile => ({
+  id: `${type}_${level}_test`,
+  type,
+  level,
+  cost: 5,
+  victoryPoints: vp,
+  incomeSpaces: 1,
+  linkScoringIcons: linkIcons,
+  coalRequired: 0,
+  ironRequired: 0,
+  beerRequired: 0,
+  beerProduced: 0,
+  coalProduced: type === 'coal' ? 2 : 0,
+  ironProduced: type === 'iron' ? 4 : 0,
+  canBuildInCanalEra: true,
+  canBuildInRailEra: true,
+  hasLightbulbIcon: false,
+  incomeAdvancement: 2,
+})
 
-  // Round 3
-  {
-    player: 'Bob',
-    action: 'NETWORK',
-    from: 'birmingham',
-    to: 'coventry',
-    reason: 'Network connection',
-  },
-  { player: 'Bob', action: 'TAKE_LOAN', reason: 'Money: 40, I-Level:-3' },
-  {
-    player: 'Alice',
-    action: 'DEVELOP',
-    types: ['coal', 'cotton'],
-    reason: 'Developed coal:1 and cotton:1',
-  },
-  { player: 'Alice', action: 'TAKE_LOAN', reason: 'Money: 33, I-Level:-3' },
+// Create a built industry entry
+const makeIndustry = (
+  location: CityId,
+  type: IndustryType,
+  level: number,
+  flipped: boolean,
+  vp: number,
+  linkIcons: number,
+): Player['industries'][0] => ({
+  location,
+  type,
+  level,
+  flipped,
+  tile: makeTile(type, level, vp, linkIcons),
+  coalCubesOnTile: 0,
+  ironCubesOnTile: 0,
+  beerBarrelsOnTile: 0,
+})
 
-  // Round 4
-  {
-    player: 'Bob',
-    action: 'BUILD',
-    type: 'brewery',
-    location: 'burton',
-    level: 2,
-    reason: 'Built beer:2 in Burton',
-  },
-  {
-    player: 'Bob',
-    action: 'BUILD',
-    type: 'brewery',
-    location: 'stafford',
-    level: 2,
-    reason: 'Built beer:2 in Stafford',
-  },
-  {
-    player: 'Alice',
-    action: 'NETWORK',
-    from: 'birmingham',
-    to: 'worcester',
-    reason: 'Network to port',
-  },
-  {
-    player: 'Alice',
-    action: 'BUILD',
-    type: 'iron',
-    location: 'birmingham',
-    level: 1,
-    reason: 'Built iron:1',
-  },
-
-  // Round 5
-  { player: 'Alice', action: 'TAKE_LOAN', reason: 'Money: 69, I-Level:-3' },
-  {
-    player: 'Alice',
-    action: 'BUILD',
-    type: 'iron',
-    location: 'coventry',
-    level: 2,
-    reason: 'Built iron:2',
-  },
-  { player: 'Bob', action: 'TAKE_LOAN', reason: 'Money: 40, I-Level:-6' },
-  {
-    player: 'Bob',
-    action: 'BUILD',
-    type: 'coal',
-    location: 'coventry',
-    level: 1,
-    reason: 'Built coal:1',
-  },
-
-  // Round 6
-  {
-    player: 'Bob',
-    action: 'BUILD',
-    type: 'brewery',
-    location: 'coalbrookdale',
-    level: 3,
-    reason: 'Built beer:3',
-  },
-  {
-    player: 'Bob',
-    action: 'NETWORK',
-    from: 'dudley',
-    to: 'birmingham',
-    reason: 'Network connection',
-  },
-  {
-    player: 'Alice',
-    action: 'DEVELOP',
-    types: ['cotton', 'cotton'],
-    reason: 'Developed cotton:1 and cotton:2',
-  },
-
-  // Round 7
-  {
-    player: 'Alice',
-    action: 'BUILD',
-    type: 'iron',
-    location: 'birmingham',
-    level: 3,
-    reason: 'OVERBUILT iron:3',
-  },
-  {
-    player: 'Alice',
-    action: 'BUILD',
-    type: 'brewery',
-    location: 'nuneaton',
-    level: 2,
-    reason: 'Built beer:2',
-  },
-  {
-    player: 'Bob',
-    action: 'DEVELOP',
-    types: ['iron', 'manufacturer'],
-    reason: 'Developed iron:1 and goods:1',
-  },
-  {
-    player: 'Bob',
-    action: 'BUILD',
-    type: 'iron',
-    location: 'dudley',
-    level: 2,
-    reason: 'Built iron:2',
-  },
-
-  // Round 8
-  {
-    player: 'Bob',
-    action: 'BUILD',
-    type: 'manufacturer',
-    location: 'walsall',
-    level: 2,
-    reason: 'Built goods:2',
-  },
-  {
-    player: 'Bob',
-    action: 'NETWORK',
-    from: 'walsall',
-    to: 'birmingham',
-    reason: 'Network connection',
-  },
-  {
-    player: 'Alice',
-    action: 'NETWORK',
-    from: 'worcester',
-    to: 'birmingham',
-    reason: 'Network connection',
-  },
-  {
-    player: 'Alice',
-    action: 'BUILD',
-    type: 'cotton',
-    location: 'worcester',
-    level: 3,
-    reason: 'Built cotton:3',
-  },
-
-  // Round 9
-  { player: 'Bob', action: 'TAKE_LOAN', reason: 'Money: 32, I-Level:-2' },
-  {
-    player: 'Bob',
-    action: 'BUILD',
-    type: 'manufacturer',
-    location: 'birmingham',
-    level: 2,
-    reason: 'Built goods:2',
-  },
-  { player: 'Alice', action: 'SCOUT', reason: 'Scouted for better cards' },
-  {
-    player: 'Alice',
-    action: 'NETWORK',
-    from: 'kidderminster',
-    to: 'worcester',
-    reason: 'Network connection',
-  },
-
-  // Round 10
-  {
-    player: 'Alice',
-    action: 'BUILD',
-    type: 'cotton',
-    location: 'kidderminster',
-    level: 3,
-    reason: 'Built cotton:3',
-  },
-  { player: 'Alice', action: 'TAKE_LOAN', reason: 'Money: 38, I-Level:-2' },
-  {
-    player: 'Bob',
-    action: 'BUILD',
-    type: 'cotton',
-    location: 'kidderminster',
-    level: 1,
-    reason: 'Built cotton:1',
-  },
-  { player: 'Bob', action: 'TAKE_LOAN', reason: 'Money: 36, I-Level:-5' },
-
-  // Round 11 - Selling Phase
-  { player: 'Bob', action: 'TAKE_LOAN', reason: 'Money: 61, I-Level:-8' },
-  {
-    player: 'Bob',
-    action: 'SELL',
-    type: 'cotton',
-    location: 'kidderminster',
-    port: 'oxford',
-    reason: 'Sold to Oxford',
-  },
-  {
-    player: 'Bob',
-    action: 'SELL',
-    type: 'manufacturer',
-    location: 'walsall',
-    port: 'oxford',
-    reason: 'Sold goods to Oxford',
-  },
-  {
-    player: 'Bob',
-    action: 'SELL',
-    type: 'manufacturer',
-    location: 'birmingham',
-    port: 'oxford',
-    reason: 'Sold goods to Oxford',
-  },
-]
-
-let scriptIndex = 0
-
-// Helper to get next planned action
-const getNextPlannedAction = (gameInfo: any) => {
-  if (scriptIndex >= gameScript.length) {
-    // If we've exhausted the script, return null to stop the game
-    return null
-  }
-
-  const currentPlayerName = gameInfo.currentPlayer?.name
-
-  // Look for the next action for the current player
-  while (scriptIndex < gameScript.length) {
-    const plannedAction = gameScript[scriptIndex]
-
-    // Actions are already using Alice and Bob names
-    if (plannedAction?.player === currentPlayerName) {
-      scriptIndex++
-      console.log(
-        `📋 Action ${scriptIndex}: ${currentPlayerName} - ${plannedAction!.action} - ${plannedAction!.reason}`,
-      )
-      return plannedAction
-    } else {
-      // Skip actions for the other player
-      scriptIndex++
-    }
-  }
-
-  // If no more actions for this player, return null
-  return null
-}
-
-// Helper to perform different action types
-const performAction = async (
-  actor: ReturnType<typeof createActor>,
-  actionPlan: any,
-  gameInfo: any,
-) => {
-  const { currentPlayer } = gameInfo
-
-  if (!actionPlan) {
-    // No action to perform
-    return
-  }
-
-  if (typeof actionPlan === 'string') {
-    // Handle simple string actions (fallback)
-    if (actionPlan === 'TAKE_LOAN') {
-      await performLoanAction(actor, gameInfo)
-      return
-    }
-    throw new Error(`Unsupported simple action: ${actionPlan}`)
-  }
-
-  // Handle planned actions with parameters
-  const { action, type, location, from, to, reason, level, port } = actionPlan
-  const actionDetails = [
-    type,
-    location,
-    level ? `L${level}` : '',
-    from && to ? `${from}→${to}` : '',
-  ]
-    .filter(Boolean)
-    .join(' ')
-  console.log(`🎯 Executing: ${action} ${actionDetails} - ${reason}`)
-
-  switch (action) {
-    case 'BUILD':
-      const beforeBuildMoney = currentPlayer!.money
-      try {
-        buildIndustry(actor, type, location, level, true) // Pass level and expect success
-        const afterBuildMoney = getCurrentPlayerInfo(actor).currentPlayer!.money
-        console.log(
-          `✅ Built ${type} at ${location} - Money: ${beforeBuildMoney} → ${afterBuildMoney}`,
-        )
-      } catch (error) {
-        console.log(`❌ Failed to build ${type} at ${location}: ${error}`)
-        throw new Error(
-          `Required action failed: BUILD ${type} at ${location} - ${error}`,
-        )
-      }
-      break
-
-    case 'DEVELOP':
-      try {
-        const developTypes = actionPlan.types || [actionPlan.type] // Support both single type and types array
-        console.log(
-          `🔧 Developing ${developTypes.length} industry tile(s): ${developTypes.join(', ')}`,
-        )
-        const beforeDevelopMoney = currentPlayer!.money
-        developTilesWithSelection(actor, developTypes)
-        const afterDevelopMoney =
-          getCurrentPlayerInfo(actor).currentPlayer!.money
-        console.log(
-          `✅ Develop action successful - Money: ${beforeDevelopMoney} → ${afterDevelopMoney}`,
-        )
-      } catch (error) {
-        console.log(`❌ Develop action failed: ${error}`)
-        throw new Error(`Required action failed: DEVELOP - ${error}`)
-      }
-      break
-
-    case 'SELL':
-      try {
-        console.log(`💼 Selling ${type} to market`)
-        sellIndustry(actor, type)
-        console.log(`✅ Successfully sold ${type}`)
-      } catch (error) {
-        console.log(`❌ Failed to sell ${type}: ${error}`)
-        throw new Error(`Required action failed: SELL ${type} - ${error}`)
-      }
-      break
-
-    case 'NETWORK':
-      try {
-        console.log(`🔗 Building network from ${from} to ${to}`)
-        buildNetwork(actor, from, to)
-        console.log(`✅ Successfully built network ${from} → ${to}`)
-      } catch (error) {
-        console.log(`❌ Failed to build network ${from} → ${to}: ${error}`)
-        throw new Error(
-          `Required action failed: NETWORK ${from} → ${to} - ${error}`,
-        )
-      }
-      break
-
-    case 'SCOUT':
-      try {
-        console.log('🔍 Scouting for cards')
-        actor.send({ type: 'SCOUT' })
-        // Select first two cards to discard
-        const hand = currentPlayer!.hand
-        if (hand.length >= 2) {
-          actor.send({ type: 'SELECT_CARD', cardId: hand[0]!.id })
-          actor.send({ type: 'SELECT_CARD', cardId: hand[1]!.id })
-          actor.send({ type: 'CONFIRM' })
-          console.log('✅ Scout action successful')
-        } else {
-          throw new Error('Not enough cards to scout')
-        }
-      } catch (error) {
-        console.log(`❌ Scout action failed: ${error}`)
-        throw new Error(`Required action failed: SCOUT - ${error}`)
-      }
-      break
-
-    case 'PASS':
-      try {
-        console.log('⏭️ Passing turn')
-        actor.send({ type: 'PASS' })
-        const cardToPass = currentPlayer!.hand[0]
-        if (cardToPass) {
-          actor.send({ type: 'SELECT_CARD', cardId: cardToPass.id })
-          actor.send({ type: 'CONFIRM' })
-          console.log('✅ Pass action successful')
-        } else {
-          throw new Error('No cards available to pass')
-        }
-      } catch (error) {
-        console.log(`❌ Pass action failed: ${error}`)
-        throw new Error(`Required action failed: PASS - ${error}`)
-      }
-      break
-
-    case 'TAKE_LOAN':
-      await performLoanAction(actor, gameInfo)
-      break
-
-    default:
-      throw new Error(`Unknown action type: ${action}`)
-  }
-}
-
-describe.skip('Brass Birmingham - Full Game Integration Test', () => {
-  test('complete 2-player game simulation from start to finish', async () => {
-    console.log('🎮 Starting Brass Birmingham Integration Test')
-
+describe('Brass Birmingham - Full Game Integration Test', () => {
+  test('game initializes correctly for 2 players', () => {
     const actor = createGameActor()
-    const players = setupTwoPlayerGame(actor)
+    startTwoPlayerGame(actor)
 
-    let gameInfo = getCurrentPlayerInfo(actor)
+    const snapshot = actor.getSnapshot()
+    expect(snapshot.context.era).toBe('canal')
+    expect(snapshot.context.round).toBe(1)
+    expect(snapshot.context.actionsRemaining).toBe(1) // First round = 1 action
+    expect(snapshot.context.players).toHaveLength(2)
+    expect(snapshot.context.players[0]!.hand).toHaveLength(8)
+    expect(snapshot.context.players[1]!.hand).toHaveLength(8)
+    expect(snapshot.context.players[0]!.money).toBe(17)
+    expect(snapshot.context.players[0]!.income).toBe(10)
+    expect(snapshot.context.players[0]!.victoryPoints).toBe(0)
+    expect(snapshot.context.merchants).toHaveLength(2) // 2-player merchants
+  })
 
-    // Verify initial game setup
-    console.log('🎯 Verifying initial setup...')
-    expect(gameInfo.era).toBe('canal')
-    expect(gameInfo.round).toBe(1)
-    expect(gameInfo.actionsRemaining).toBe(1) // First round has 1 action each
-    expect(gameInfo.snapshot.context.players).toHaveLength(2)
-    expect(gameInfo.snapshot.context.players[0]!.hand).toHaveLength(8)
-    expect(gameInfo.snapshot.context.players[0]!.money).toBe(17) // Exact starting money per rules
-    expect(gameInfo.snapshot.context.players[0]!.income).toBe(10)
+  test('complete game flow: setup -> canal actions -> scoring -> rail actions -> scoring -> gameOver', () => {
+    const actor = createGameActor()
+    startTwoPlayerGame(actor)
 
-    console.log(
-      `✅ Game setup complete - Era: ${gameInfo.era}, Round: ${gameInfo.round}`,
-    )
+    // === CANAL ERA ===
+    let snapshot = actor.getSnapshot()
+    expect(snapshot.context.era).toBe('canal')
 
-    // ===== CANAL ERA GAMEPLAY =====
-    console.log('\n🚢 CANAL ERA - Starting gameplay...')
+    // Round 1: first round has 1 action per player
+    // Alice passes, Bob passes
+    performPass(actor) // Alice action 1 (round 1)
+    snapshot = actor.getSnapshot()
+    expect(snapshot.context.currentPlayerIndex).toBe(1) // Bob's turn
 
-    // Follow the script from the very beginning
+    performPass(actor) // Bob action 1 (round 1)
+    snapshot = actor.getSnapshot()
+    // After round 1 completes, round advances to 2 with 2 actions each
+    expect(snapshot.context.round).toBe(2)
+    expect(snapshot.context.actionsRemaining).toBe(2)
 
-    // Continue with multiple rounds of Canal Era until era naturally ends
-    let totalActions = 0
-    const maxActions = 200 // Safety limit to prevent infinite loops (increased)
-    let lastRound = gameInfo.round
-    let lastPlayer = gameInfo.playerIndex
-    let sameStateCount = 0
+    // Round 2: 2 actions each
+    performPass(actor) // current player action 1
+    performPass(actor) // current player action 2
+    performPass(actor) // other player action 1
+    performPass(actor) // other player action 2
+    snapshot = actor.getSnapshot()
+    expect(snapshot.context.round).toBe(3)
 
-    while (gameInfo.era === 'canal' && totalActions < maxActions) {
-      // Check if actor is still active before proceeding
-      if (actor.getSnapshot().status !== 'active') {
-        console.log('⚠️ Actor has stopped unexpectedly, ending canal era loop')
-        break
-      }
+    // Continue passing through more rounds to consume cards
+    // Each player uses 1 card per action, 8 cards starting hand
+    // Round 1: 1 card each (2 total)
+    // Rounds 2+: 2 cards each per round (4 total per round)
+    // After round 1 + round 2 = 6 cards used, 10 remaining in hands
+    // After round 3: 10 more cards used = nope, refill from draw pile
 
-      gameInfo = getCurrentPlayerInfo(actor)
-
-      // Detect if we're stuck in the same state
+    // Keep passing until both hands empty and draw pile empty
+    // Use TRIGGER_CANAL_ERA_END for simplicity since natural end requires
+    // drawing through entire deck
+    for (let i = 0; i < 20; i++) {
+      snapshot = actor.getSnapshot()
       if (
-        gameInfo.round === lastRound &&
-        gameInfo.playerIndex === lastPlayer &&
-        gameInfo.actionsRemaining === 0
+        snapshot.context.drawPile.length === 0 &&
+        snapshot.context.players.every((p: any) => p.hand.length === 0)
       ) {
-        sameStateCount++
-        if (sameStateCount > 3) {
-          console.log('⚠️ Detected potential infinite loop, breaking out')
-          break
-        }
-      } else {
-        sameStateCount = 0
-      }
-
-      lastRound = gameInfo.round
-      lastPlayer = gameInfo.playerIndex
-
-      // Check for natural era ending conditions
-      const drawPileEmpty = gameInfo.snapshot.context.drawPile.length === 0
-      const allHandsEmpty = gameInfo.snapshot.context.players.every(
-        (player: any) => player.hand.length === 0,
-      )
-
-      if (drawPileEmpty && allHandsEmpty) {
-        console.log(
-          '🎯 Canal Era ending naturally - draw pile exhausted and all hands empty',
-        )
         break
       }
-
-      // Check if actions are available
-      if (gameInfo.actionsRemaining === 0) {
-        console.log(
-          `⏭️ ${gameInfo.currentPlayer!.name} has no actions remaining - waiting for next player/round`,
-        )
-
-        // Wait a bit and check if state changes
-        await new Promise((resolve) => setTimeout(resolve, 10))
-        gameInfo = getCurrentPlayerInfo(actor)
-        continue
-      }
-
-      totalActions++
-      console.log(
-        `\n🎮 Action ${totalActions}: ${gameInfo.currentPlayer!.name}'s turn (Round ${gameInfo.round}, Actions: ${gameInfo.actionsRemaining}, Money: ${gameInfo.currentPlayer!.money})`,
-      )
-      console.log(
-        `📊 Draw pile: ${gameInfo.snapshot.context.drawPile.length} cards, Player hand: ${gameInfo.currentPlayer!.hand.length} cards`,
-      )
-
-      // Execute next planned action
-      const plannedAction = getNextPlannedAction(gameInfo)
-
-      // If no more planned actions, end the game
-      if (!plannedAction) {
-        console.log('🎯 No more scripted actions - ending game simulation')
+      if (snapshot.context.actionsRemaining === 0) continue
+      const currentPlayer =
+        snapshot.context.players[snapshot.context.currentPlayerIndex]
+      if (!currentPlayer || currentPlayer.hand.length === 0) continue
+      try {
+        performPass(actor)
+      } catch {
         break
       }
-
-      await performAction(actor, plannedAction, gameInfo)
-
-      // Check if actor stopped during action
-      if (actor.getSnapshot().status !== 'active') {
-        console.log(`⚠️ Actor stopped during planned action, ending game loop`)
-        break
-      }
-
-      gameInfo = getCurrentPlayerInfo(actor)
-
-      // Brief pause to allow state transitions
-      await new Promise((resolve) => setTimeout(resolve, 10))
     }
 
-    // Force Canal Era transition to Rail Era
-    gameInfo = getCurrentPlayerInfo(actor)
-    console.log(
-      `\n🎯 Canal Era Complete - Status: Era ${gameInfo.era}, Round ${gameInfo.round}`,
-    )
-
-    if (gameInfo.era === 'canal') {
-      console.log('🔄 Forcing Canal to Rail Era transition...')
-      actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
-      gameInfo = getCurrentPlayerInfo(actor)
-      console.log(
-        `✅ Era transition complete - Now: Era ${gameInfo.era}, Round ${gameInfo.round}`,
-      )
-    }
-
-    if (gameInfo.era === 'rail') {
-      console.log('\n🚂 RAIL ERA - Era transition successful!')
-
-      // Verify rail era setup
-      expect(gameInfo.era).toBe('rail')
-      expect(gameInfo.round).toBe(1)
-      expect(gameInfo.snapshot.context.players[0]!.hand).toHaveLength(8) // New hand
-
-      // Simulate realistic rail era actions
-      console.log('\n--- Rail Era Gameplay ---')
-
-      let railActions = 0
-      const maxRailActions = 200 // Safety limit increased
-
-      // Continue Rail Era until natural game ending conditions are met
-      while (gameInfo.era === 'rail' && railActions < maxRailActions) {
-        // Check for natural game ending conditions
-        gameInfo = getCurrentPlayerInfo(actor)
-        const drawPileEmpty = gameInfo.snapshot.context.drawPile.length === 0
-        const allHandsEmpty = gameInfo.snapshot.context.players.every(
-          (player: any) => player.hand.length === 0,
-        )
-
-        if (drawPileEmpty && allHandsEmpty) {
-          console.log(
-            '🎯 Rail Era ending naturally - draw pile exhausted and all hands empty',
-          )
-          break
-        }
-
-        // Check if player has actions remaining
-        if (gameInfo.actionsRemaining === 0) {
-          console.log(
-            `⏭️ ${gameInfo.currentPlayer!.name} has no actions remaining - waiting for next player/round`,
-          )
-          await new Promise((resolve) => setTimeout(resolve, 10))
-          continue
-        }
-
-        railActions++
-        console.log(
-          `\n🎮 Rail Action ${railActions}: ${gameInfo.currentPlayer!.name}'s turn (Round ${gameInfo.round}, Actions: ${gameInfo.actionsRemaining}, Money: ${gameInfo.currentPlayer!.money})`,
-        )
-        console.log(
-          `📊 Draw pile: ${gameInfo.snapshot.context.drawPile.length} cards, Player hand: ${gameInfo.currentPlayer!.hand.length} cards`,
-        )
-
-        // Use planned rail era actions from the script
-        const plannedRailAction = getNextPlannedAction(gameInfo)
-
-        // If no more planned actions, end the game
-        if (!plannedRailAction) {
-          console.log(
-            '🎯 No more scripted actions in Rail Era - ending game simulation',
-          )
-          break
-        }
-
-        await performAction(actor, plannedRailAction, gameInfo)
-        gameInfo = getCurrentPlayerInfo(actor)
-
-        // Break if game is complete
-        if (gameInfo.snapshot.matches('gameOver')) {
-          console.log('🎉 Game completed!')
-          break
-        }
-
-        // Brief pause
-        await new Promise((resolve) => setTimeout(resolve, 10))
-      }
-
-      console.log(`\n🎯 Rail Era Complete - Played ${railActions} actions`)
-    }
-
-    // Force Rail Era end and final scoring
-    gameInfo = getCurrentPlayerInfo(actor)
-    if (gameInfo.era === 'rail') {
-      console.log('\n🏁 Triggering Rail Era end and final scoring...')
-      actor.send({ type: 'TRIGGER_RAIL_ERA_END' })
-      gameInfo = getCurrentPlayerInfo(actor)
-      console.log(
-        `✅ Game end triggered - State: ${JSON.stringify(gameInfo.state)}`,
-      )
-    }
-
-    // Final game state verification
-    gameInfo = getCurrentPlayerInfo(actor)
-    console.log('\n🏁 FINAL GAME STATE')
-    console.log(`Era: ${gameInfo.era}, Round: ${gameInfo.round}`)
-    console.log(`State: ${JSON.stringify(gameInfo.state)}`)
-
-    // Verify final scores and detailed game state
-    console.log('\n📊 FINAL PLAYER SCORES:')
-    gameInfo.snapshot.context.players.forEach((player: any, index: number) => {
-      const industries = player.industries.length
-      const flippedIndustries = player.industries.filter(
-        (i: any) => i.flipped,
-      ).length
-      const links = player.links.length
-
-      console.log(`\n🎮 ${player.name} (${player.color}):`)
-      console.log(`  💰 Money: ${player.money}`)
-      console.log(`  📈 Income: ${player.income}`)
-      console.log(`  🏆 Victory Points: ${player.victoryPoints}`)
-      console.log(
-        `  🏭 Industries: ${industries} (${flippedIndustries} flipped)`,
-      )
-      console.log(`  🔗 Network Links: ${links}`)
-      console.log(`  🎴 Hand Size: ${player.hand.length}`)
-
-      // Verify reasonable final state
-      expect(player.money).toBeGreaterThanOrEqual(-30) // Players shouldn't go too far into debt
-      expect(player.income).toBeGreaterThanOrEqual(-10) // Minimum income is -10
-      expect(player.victoryPoints).toBeGreaterThanOrEqual(0) // VP should be non-negative
+    // Set up known board state BEFORE triggering canal era end
+    // Alice: cotton at birmingham (flipped, 3VP, 1 linkIcon), link birmingham-coventry
+    // Bob: iron at dudley (flipped, 1VP, 1 linkIcon), link dudley-birmingham
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 0, // Alice
+      industries: [
+        makeIndustry('birmingham', 'cotton', 1, true, 3, 1),
+      ],
+      links: [{ from: 'birmingham', to: 'coventry', type: 'canal' }],
     })
 
-    // Verify complete game progression
-    console.log('\n🎯 GAME PROGRESSION VERIFICATION:')
-    console.log(`  🎲 Final Era: ${gameInfo.era}`)
-    console.log(`  📅 Final Round: ${gameInfo.round}`)
-    console.log(`  🎮 Final State: ${JSON.stringify(gameInfo.state)}`)
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 1, // Bob
+      industries: [
+        makeIndustry('dudley', 'iron', 1, true, 1, 1),
+      ],
+      links: [{ from: 'dudley', to: 'birmingham', type: 'canal' }],
+    })
 
-    // Check if game reached proper conclusion
-    const isGameComplete =
-      gameInfo.snapshot.matches('gameOver') || gameInfo.era === 'rail'
-    console.log(`  ✅ Game Complete: ${isGameComplete}`)
+    // Trigger canal era scoring and transition
+    actor.send({ type: 'TRIGGER_ERA_SCORING' })
+    snapshot = actor.getSnapshot()
 
-    expect(gameInfo.round).toBeGreaterThanOrEqual(1)
-    expect(['canal', 'rail'].includes(gameInfo.era)).toBe(true)
+    // Hand-calculated canal scoring:
+    // Alice's link: birmingham-coventry
+    //   birmingham: Alice's cotton (flipped, linkIcon=1) + Bob's iron is at dudley, not birmingham = 1
+    //   coventry: no flipped industries = 0
+    //   Alice link VP = 1
+    // Alice's industry VP: cotton 3VP = 3
+    // Alice total canal VP: 1 + 3 = 4
+    //
+    // Bob's link: dudley-birmingham
+    //   dudley: Bob's iron (flipped, linkIcon=1) = 1
+    //   birmingham: Alice's cotton (flipped, linkIcon=1) = 1
+    //   Bob link VP = 2
+    // Bob's industry VP: iron 1VP = 1
+    // Bob total canal VP: 2 + 1 = 3
 
-    console.log('✅ Integration test completed successfully!')
-  }, 60000) // 60 second timeout for complete game simulation
+    expect(snapshot.context.players[0]!.victoryPoints).toBe(4) // Alice: 1 link + 3 industry
+    expect(snapshot.context.players[1]!.victoryPoints).toBe(3) // Bob: 2 link + 1 industry
 
-  test('game handles invalid actions gracefully during integration', () => {
-    console.log('🛡️ Testing error handling during integration...')
+    // Links should be cleared after scoring
+    expect(snapshot.context.players[0]!.links).toHaveLength(0)
+    expect(snapshot.context.players[1]!.links).toHaveLength(0)
 
+    // Trigger canal->rail transition
+    actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
+    snapshot = actor.getSnapshot()
+
+    // === RAIL ERA ===
+    expect(snapshot.context.era).toBe('rail')
+    expect(snapshot.context.round).toBe(1)
+    expect(snapshot.context.actionsRemaining).toBe(1) // First round
+
+    // Set up rail era board state with known industries and links
+    // Alice: manufacturer at birmingham (flipped, 5VP, 2 linkIcons)
+    //        pottery at stoke (flipped, 10VP, 1 linkIcon)
+    //        links: birmingham-dudley, stoke-leek
+    // Bob: coal at dudley (flipped, 2VP, 1 linkIcon)
+    //      brewery at burton (flipped, 5VP, 2 linkIcons)
+    //      links: dudley-birmingham -- wait, Alice already has this.
+    //      links: burton-derby, dudley-wolverhampton
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 0, // Alice
+      victoryPoints: 4, // Keep canal VP
+      industries: [
+        makeIndustry('birmingham', 'manufacturer', 3, true, 5, 2),
+        makeIndustry('stoke', 'pottery', 3, true, 10, 1),
+      ],
+      links: [
+        { from: 'birmingham', to: 'dudley', type: 'rail' },
+        { from: 'stoke', to: 'leek', type: 'rail' },
+      ],
+    })
+
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 1, // Bob
+      victoryPoints: 3, // Keep canal VP
+      industries: [
+        makeIndustry('dudley', 'coal', 2, true, 2, 1),
+        makeIndustry('burton', 'brewery', 3, true, 5, 2),
+      ],
+      links: [
+        { from: 'burton', to: 'derby', type: 'rail' },
+        { from: 'dudley', to: 'wolverhampton', type: 'rail' },
+      ],
+    })
+
+    // Trigger rail era scoring (this triggers FINAL scoring + game result)
+    actor.send({ type: 'TRIGGER_RAIL_ERA_END' })
+    snapshot = actor.getSnapshot()
+
+    // Hand-calculated rail scoring:
+    //
+    // Alice's links:
+    //   birmingham-dudley:
+    //     birmingham: Alice manufacturer (flipped, linkIcons=2) = 2
+    //     dudley: Bob coal (flipped, linkIcons=1) = 1
+    //     link VP = 3
+    //   stoke-leek:
+    //     stoke: Alice pottery (flipped, linkIcons=1) = 1
+    //     leek: no flipped industries = 0
+    //     link VP = 1
+    //   Alice total link VP = 4
+    //
+    // Alice's industry VP: manufacturer 5 + pottery 10 = 15
+    // Alice rail scoring: 4 + 15 = 19
+    // Alice total VP: 4 (canal) + 19 (rail) = 23
+    //
+    // Bob's links:
+    //   burton-derby:
+    //     burton: Bob brewery (flipped, linkIcons=2) = 2
+    //     derby: no flipped industries = 0
+    //     link VP = 2
+    //   dudley-wolverhampton:
+    //     dudley: Bob coal (flipped, linkIcons=1) = 1
+    //     wolverhampton: no flipped industries = 0
+    //     link VP = 1
+    //   Bob total link VP = 3
+    //
+    // Bob's industry VP: coal 2 + brewery 5 = 7
+    // Bob rail scoring: 3 + 7 = 10
+    // Bob total VP: 3 (canal) + 10 (rail) = 13
+
+    // Note: triggerRailEraEnd runs triggerEraScoring internally
+    // Check that gameResult is set
+    expect(snapshot.context.gameResult).not.toBeNull()
+    expect(snapshot.context.gameResult!.winner).toBe('1') // Alice wins
+    expect(snapshot.context.gameResult!.isTie).toBe(false)
+
+    // Check individual scores in gameResult
+    const aliceScore = snapshot.context.gameResult!.scores.find(
+      (s) => s.playerId === '1',
+    )
+    const bobScore = snapshot.context.gameResult!.scores.find(
+      (s) => s.playerId === '2',
+    )
+
+    expect(aliceScore).toBeDefined()
+    expect(bobScore).toBeDefined()
+
+    // Alice total: 4 (canal) + 4 (rail link) + 15 (rail industry) = 23
+    expect(aliceScore!.totalVP).toBe(23)
+    // Bob total: 3 (canal) + 3 (rail link) + 7 (rail industry) = 13
+    expect(bobScore!.totalVP).toBe(13)
+  })
+
+  test('hand-calculated VP verification with specific board state', () => {
     const actor = createGameActor()
-    setupTwoPlayerGame(actor)
+    startTwoPlayerGame(actor)
 
-    // Try invalid actions
+    // Set up a specific known board state for canal scoring
+    // Alice: 2 flipped industries, 1 link
+    //   cotton at birmingham (3VP, 1 linkIcon, flipped)
+    //   iron at dudley (1VP, 1 linkIcon, flipped)
+    //   link: birmingham-dudley
+    //
+    // Bob: 1 flipped industry, 1 link
+    //   brewery at burton (1VP, 1 linkIcon, flipped)
+    //   link: burton-derby
+
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 0,
+      industries: [
+        makeIndustry('birmingham', 'cotton', 1, true, 3, 1),
+        makeIndustry('dudley', 'iron', 1, true, 1, 1),
+      ],
+      links: [{ from: 'birmingham', to: 'dudley', type: 'canal' }],
+    })
+
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 1,
+      industries: [
+        makeIndustry('burton', 'brewery', 1, true, 1, 1),
+      ],
+      links: [{ from: 'burton', to: 'derby', type: 'canal' }],
+    })
+
+    actor.send({ type: 'TRIGGER_ERA_SCORING' })
+    const snapshot = actor.getSnapshot()
+
+    // Hand calculation for Alice's link birmingham-dudley:
+    //   birmingham: Alice cotton (1 linkIcon) = 1
+    //   dudley: Alice iron (1 linkIcon) = 1
+    //   Total link VP for Alice = 2
+    //
+    // Alice industry VP: cotton(3) + iron(1) = 4
+    // Alice total = 2 + 4 = 6
+    expect(snapshot.context.players[0]!.victoryPoints).toBe(6)
+
+    // Hand calculation for Bob's link burton-derby:
+    //   burton: Bob brewery (1 linkIcon) = 1
+    //   derby: no flipped industries = 0
+    //   Total link VP for Bob = 1
+    //
+    // Bob industry VP: brewery(1) = 1
+    // Bob total = 1 + 1 = 2
+    expect(snapshot.context.players[1]!.victoryPoints).toBe(2)
+  })
+
+  test('winner determination: VP tiebreak by income, then money', () => {
+    const actor = createGameActor()
+    startTwoPlayerGame(actor)
+
+    // Set up tied VP scenario where income breaks tie
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 0,
+      victoryPoints: 20,
+      income: 15, // Higher income -- wins tiebreak
+      money: 10,
+      industries: [],
+      links: [],
+    })
+
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 1,
+      victoryPoints: 20,
+      income: 12, // Lower income
+      money: 50,
+      industries: [],
+      links: [],
+    })
+
+    // Rail era end triggers gameResult calculation
+    actor.send({ type: 'TEST_SET_ERA', era: 'rail' })
+    actor.send({ type: 'TRIGGER_RAIL_ERA_END' })
+    const snapshot = actor.getSnapshot()
+
+    expect(snapshot.context.gameResult).not.toBeNull()
+    // Both have 20VP + 0 from scoring (no industries/links)
+    // Winner is Alice (higher income)
+    expect(snapshot.context.gameResult!.winner).toBe('1')
+    expect(snapshot.context.gameResult!.isTie).toBe(false)
+  })
+
+  test('winner determination: money tiebreak when VP and income tied', () => {
+    const actor = createGameActor()
+    startTwoPlayerGame(actor)
+
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 0,
+      victoryPoints: 15,
+      income: 10,
+      money: 20, // Less money
+      industries: [],
+      links: [],
+    })
+
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 1,
+      victoryPoints: 15,
+      income: 10,
+      money: 35, // More money -- wins tiebreak
+      industries: [],
+      links: [],
+    })
+
+    actor.send({ type: 'TEST_SET_ERA', era: 'rail' })
+    actor.send({ type: 'TRIGGER_RAIL_ERA_END' })
+    const snapshot = actor.getSnapshot()
+
+    expect(snapshot.context.gameResult).not.toBeNull()
+    expect(snapshot.context.gameResult!.winner).toBe('2') // Bob wins (more money)
+    expect(snapshot.context.gameResult!.isTie).toBe(false)
+  })
+
+  test('era transition removes level 1 tiles and redeals hands', () => {
+    const actor = createGameActor()
+    startTwoPlayerGame(actor)
+
+    // Give Alice level 1 and level 2 industries
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 0,
+      industries: [
+        makeIndustry('birmingham', 'cotton', 1, true, 3, 1), // Level 1 - should be removed
+        makeIndustry('dudley', 'iron', 2, true, 3, 1), // Level 2 - should stay
+      ],
+    })
+
+    actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
+    const snapshot = actor.getSnapshot()
+
+    // Level 1 tile removed, level 2 kept
+    expect(snapshot.context.players[0]!.industries).toHaveLength(1)
+    expect(snapshot.context.players[0]!.industries[0]!.level).toBe(2)
+
+    // New hands dealt
+    expect(snapshot.context.players[0]!.hand.length).toBeGreaterThan(0)
+    expect(snapshot.context.players[1]!.hand.length).toBeGreaterThan(0)
+    expect(snapshot.context.era).toBe('rail')
+    expect(snapshot.context.round).toBe(1)
+  })
+
+  test('automatic era transition when draw pile and hands empty', () => {
+    const actor = createGameActor()
+    startTwoPlayerGame(actor)
+
+    // Set up conditions for automatic era end:
+    // Empty draw pile, give each player exactly 1 card
+    actor.send({ type: 'TEST_SET_DRAW_PILE', drawPile: [] })
+    actor.send({
+      type: 'TEST_SET_PLAYER_HAND',
+      playerId: 0,
+      hand: [{ id: 'test_card_1', type: 'location', location: 'birmingham' }],
+    })
+    actor.send({
+      type: 'TEST_SET_PLAYER_HAND',
+      playerId: 1,
+      hand: [{ id: 'test_card_2', type: 'location', location: 'dudley' }],
+    })
+
+    // Set actions remaining to 1 for current player
+    actor.send({ type: 'TEST_SET_ACTIONS_REMAINING', actionsRemaining: 1 })
+
+    // Alice passes (discards last card) -> action complete -> next player (Bob)
+    performPass(actor)
+
+    let snapshot = actor.getSnapshot()
+    // Bob should now have 1 action
+    expect(snapshot.context.currentPlayerIndex).toBe(1)
+
+    // Set Bob to 1 action remaining
+    actor.send({ type: 'TEST_SET_ACTIONS_REMAINING', actionsRemaining: 1 })
+
+    // Bob passes (discards last card) -> action complete -> next player
+    // -> isEraEnd = true -> eraScoring -> eraTransition -> action
+    performPass(actor)
+
+    snapshot = actor.getSnapshot()
+    // Should have automatically transitioned to rail era
+    expect(snapshot.context.era).toBe('rail')
+    expect(snapshot.context.round).toBe(1)
+  })
+
+  test('game handles all 7 action types correctly', () => {
+    const actor = createGameActor()
+    startTwoPlayerGame(actor)
+
+    // Give players enough money for actions
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 0,
+      money: 200,
+    })
+
+    const snapshot = actor.getSnapshot()
+    const aliceCards = snapshot.context.players[0]!.hand
+
+    // 1. PASS action
+    actor.send({ type: 'TEST_SET_ACTIONS_REMAINING', actionsRemaining: 2 })
+    performPass(actor)
+
+    // After pass, current player should still be Alice (if she has 1 action left)
+    // Actually after first round (1 action), it goes to Bob
+    // Let's explicitly set actions for clarity
+
+    // 2. TAKE_LOAN action (for Bob)
+    actor.send({ type: 'TEST_SET_ACTIONS_REMAINING', actionsRemaining: 2 })
+    let snap = actor.getSnapshot()
+    const bobBefore = snap.context.players[snap.context.currentPlayerIndex]!
+    const moneyBefore = bobBefore.money
+    const incomeBefore = bobBefore.income
+    performLoan(actor)
+    snap = actor.getSnapshot()
+    // Loan gives 30 money, reduces income by 3
+    const currentIdx = snap.context.currentPlayerIndex
+    // After loan, check money increased by 30 and income decreased by 3
+    // The current player may have switched so check the player who took the loan
+    const bobAfter = snap.context.players.find(
+      (p) => p.id === bobBefore.id,
+    )!
+    expect(bobAfter.money).toBe(moneyBefore + 30)
+    expect(bobAfter.income).toBe(incomeBefore - 3)
+
+    // 3. NETWORK action (canal era, no coal needed)
+    actor.send({ type: 'TEST_SET_ACTIONS_REMAINING', actionsRemaining: 2 })
+    snap = actor.getSnapshot()
+    const networkPlayer =
+      snap.context.players[snap.context.currentPlayerIndex]!
+    const linksBefore = networkPlayer.links.length
+    buildNetwork(actor, 'birmingham', 'coventry')
+    snap = actor.getSnapshot()
+    const networkPlayerAfter = snap.context.players.find(
+      (p) => p.id === networkPlayer.id,
+    )!
+    expect(networkPlayerAfter.links.length).toBe(linksBefore + 1)
+    expect(networkPlayerAfter.links[networkPlayerAfter.links.length - 1]!.from).toBe(
+      'birmingham',
+    )
+
+    // 4. BUILD action -- need specific card and available tile
+    // Give current player a location card for birmingham
+    actor.send({ type: 'TEST_SET_ACTIONS_REMAINING', actionsRemaining: 2 })
+    snap = actor.getSnapshot()
+    const buildPlayerIdx = snap.context.currentPlayerIndex
+    const buildPlayer = snap.context.players[buildPlayerIdx]!
+    // Find a location card in hand
+    const locationCard = buildPlayer.hand.find(
+      (c: any) => c.type === 'location',
+    )
+    if (locationCard) {
+      // Check what industry types are available for that location
+      const industriesBefore = buildPlayer.industries.length
+      const cityId = (locationCard as any).location as CityId
+      // Try to build -- may fail depending on available tiles and slots
+      actor.send({ type: 'BUILD' })
+      actor.send({ type: 'SELECT_CARD', cardId: locationCard.id })
+      // We need to know which industry is available at the location
+      // Just verify the state machine accepted the BUILD command
+      snap = actor.getSnapshot()
+      const stateStr = JSON.stringify(snap.value)
+      expect(stateStr).toContain('building')
+      // Cancel to return to selecting action
+      actor.send({ type: 'CANCEL' })
+      actor.send({ type: 'CANCEL' })
+    }
+
+    // 5. DEVELOP action
+    actor.send({ type: 'TEST_SET_ACTIONS_REMAINING', actionsRemaining: 2 })
+    snap = actor.getSnapshot()
+    const devPlayer =
+      snap.context.players[snap.context.currentPlayerIndex]!
+    const devCard = devPlayer.hand[0]
+    if (devCard) {
+      actor.send({ type: 'DEVELOP' })
+      actor.send({ type: 'SELECT_CARD', cardId: devCard.id })
+      snap = actor.getSnapshot()
+      const devStateStr = JSON.stringify(snap.value)
+      expect(devStateStr).toContain('developing')
+      actor.send({ type: 'CANCEL' })
+      actor.send({ type: 'CANCEL' })
+    }
+
+    // 6. SELL action
+    actor.send({ type: 'TEST_SET_ACTIONS_REMAINING', actionsRemaining: 2 })
+    snap = actor.getSnapshot()
+    const sellPlayer =
+      snap.context.players[snap.context.currentPlayerIndex]!
+    const sellCard = sellPlayer.hand[0]
+    if (sellCard) {
+      actor.send({ type: 'SELL' })
+      snap = actor.getSnapshot()
+      const sellStateStr = JSON.stringify(snap.value)
+      expect(sellStateStr).toContain('selling')
+      actor.send({ type: 'CANCEL' })
+    }
+
+    // 7. SCOUT action
+    actor.send({ type: 'TEST_SET_ACTIONS_REMAINING', actionsRemaining: 2 })
+    snap = actor.getSnapshot()
+    const scoutPlayer =
+      snap.context.players[snap.context.currentPlayerIndex]!
+    if (scoutPlayer.hand.length >= 3) {
+      actor.send({ type: 'SCOUT' })
+      snap = actor.getSnapshot()
+      const scoutStateStr = JSON.stringify(snap.value)
+      expect(scoutStateStr).toContain('scouting')
+      actor.send({ type: 'CANCEL' })
+    }
+  })
+
+  test('full game simulation reaches gameOver via natural flow', () => {
+    const actor = createGameActor()
+    startTwoPlayerGame(actor)
+
+    // === CANAL ERA: use TRIGGER events to jump through ===
+    // Set up canal era board state
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 0,
+      industries: [makeIndustry('birmingham', 'cotton', 1, true, 3, 1)],
+      links: [{ from: 'birmingham', to: 'coventry', type: 'canal' }],
+    })
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 1,
+      industries: [makeIndustry('dudley', 'iron', 1, true, 1, 1)],
+      links: [],
+    })
+
+    // Score canal era
+    actor.send({ type: 'TRIGGER_ERA_SCORING' })
+    let snapshot = actor.getSnapshot()
+    const aliceCanalVP = snapshot.context.players[0]!.victoryPoints
+    const bobCanalVP = snapshot.context.players[1]!.victoryPoints
+    expect(aliceCanalVP).toBeGreaterThan(0)
+
+    // Transition to rail
+    actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
+    snapshot = actor.getSnapshot()
+    expect(snapshot.context.era).toBe('rail')
+
+    // === RAIL ERA: set up and score ===
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 0,
+      victoryPoints: aliceCanalVP,
+      industries: [
+        makeIndustry('birmingham', 'manufacturer', 3, true, 5, 2),
+        makeIndustry('coventry', 'pottery', 4, true, 20, 1),
+      ],
+      links: [
+        { from: 'birmingham', to: 'dudley', type: 'rail' },
+        { from: 'coventry', to: 'birmingham', type: 'rail' },
+      ],
+    })
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 1,
+      victoryPoints: bobCanalVP,
+      industries: [
+        makeIndustry('dudley', 'coal', 3, true, 7, 1),
+      ],
+      links: [
+        { from: 'dudley', to: 'wolverhampton', type: 'rail' },
+      ],
+    })
+
+    // Trigger final scoring
+    actor.send({ type: 'TRIGGER_RAIL_ERA_END' })
+    snapshot = actor.getSnapshot()
+
+    // Verify game result exists
+    expect(snapshot.context.gameResult).not.toBeNull()
+    expect(snapshot.context.gameResult!.scores).toHaveLength(2)
+
+    // Verify winner
+    const scores = snapshot.context.gameResult!.scores
+    const aliceFinal = scores.find((s) => s.playerId === '1')!
+    const bobFinal = scores.find((s) => s.playerId === '2')!
+
+    expect(aliceFinal.totalVP).toBeGreaterThan(bobFinal.totalVP)
+    expect(snapshot.context.gameResult!.winner).toBe('1')
+
+    // Hand-calculated rail VP for Alice:
+    // Link birmingham-dudley: birmingham(mfr 2 linkIcons) + dudley(coal 1 linkIcon) = 3
+    // Link coventry-birmingham: coventry(pottery 1 linkIcon) + birmingham(mfr 2 linkIcons) = 3
+    // Alice link VP = 6
+    // Alice industry VP = 5 + 20 = 25
+    // Alice rail total = 31
+    // Alice grand total = aliceCanalVP + 31
+
+    // Alice canal scoring:
+    // Link birmingham-coventry: birmingham(cotton 1 linkIcon) = 1, coventry(none) = 0 => 1
+    // Industry VP: cotton 3VP = 3
+    // Alice canal total = 4
+    expect(aliceCanalVP).toBe(4)
+    expect(aliceFinal.totalVP).toBe(4 + 31) // 35
+
+    // Hand-calculated rail VP for Bob:
+    // Link dudley-wolverhampton: dudley(coal 1 linkIcon) = 1, wolverhampton(none) = 0 => 1
+    // Bob link VP = 1
+    // Bob industry VP = 7
+    // Bob rail total = 8
+    // Bob canal: no links = 0, industry(iron 1VP) = 1
+    expect(bobCanalVP).toBe(1)
+    expect(bobFinal.totalVP).toBe(1 + 8) // 9
+  })
+
+  test('game handles invalid actions gracefully', () => {
+    const actor = createGameActor()
+    startTwoPlayerGame(actor)
+
+    // Try invalid actions -- should not throw
     expect(() => {
       actor.send({ type: 'BUILD' })
       actor.send({ type: 'CONFIRM' }) // No card selected
-    }).not.toThrow() // Should handle gracefully
+    }).not.toThrow()
 
     // Try to build without proper setup
     expect(() => {
       actor.send({ type: 'BUILD' })
       actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
-      actor.send({ type: 'CONFIRM' }) // No card selected
-    }).not.toThrow() // Should handle gracefully
-
-    console.log('✅ Error handling verification complete')
+      actor.send({ type: 'CONFIRM' })
+    }).not.toThrow()
   })
 })

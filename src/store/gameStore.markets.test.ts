@@ -1,7 +1,8 @@
 // Market and Resource Tests - Coal, iron, beer markets and resource consumption
 import { afterEach, describe, expect, test } from 'vitest'
 import { createActor } from 'xstate'
-import { gameStore } from './gameStore'
+import { gameStore, type GameState } from './gameStore'
+import { consumeCoalFromSources, consumeIronFromSources } from './market/marketActions'
 
 // Track actors for cleanup
 let activeActors: ReturnType<typeof createActor>[] = []
@@ -371,5 +372,116 @@ describe('Game Store - Markets and Resources', () => {
 
     // Coal should have been consumed from connected mine (free) rather than market
     // This test validates that connected coal mines are prioritized over market access
+  })
+})
+
+describe('Empty Market Fallback Prices', () => {
+  test('coal market empty: coal costs 8 pounds per piece from fallback', () => {
+    const { actor } = setupGame()
+    const snapshot = actor.getSnapshot()
+
+    // Create a context with completely empty coal market (except fallback level)
+    const emptyCoalMarket = snapshot.context.coalMarket.map((level) => ({
+      ...level,
+      cubes: level.price === 8 ? 0 : 0, // All levels empty
+    }))
+
+    // Build a fake context for direct function testing
+    const testContext: GameState = {
+      ...snapshot.context,
+      coalMarket: emptyCoalMarket,
+      // Give player a link to a merchant for market access
+      players: snapshot.context.players.map((p, i) =>
+        i === 0
+          ? {
+              ...p,
+              links: [{ from: 'stoke' as any, to: 'warrington' as any, type: 'canal' as const }],
+              industries: [],
+            }
+          : p,
+      ),
+    }
+
+    // Consume coal from empty market - should use fallback price of 8
+    const result = consumeCoalFromSources(testContext, 'stoke' as any, 2)
+
+    // Should succeed using fallback price
+    expect(result.success).toBe(true)
+    // Cost should be 8 per piece = 16 for 2 pieces
+    expect(result.coalCost).toBe(16)
+    // Log should mention the fallback price
+    expect(result.logDetails.some((l) => l.includes('8'))).toBe(true)
+  })
+
+  test('iron market empty: iron costs 6 pounds per piece from fallback', () => {
+    const { actor } = setupGame()
+    const snapshot = actor.getSnapshot()
+
+    // Create a context with completely empty iron market (except fallback level)
+    const emptyIronMarket = snapshot.context.ironMarket.map((level) => ({
+      ...level,
+      cubes: 0, // All levels empty
+    }))
+
+    const testContext: GameState = {
+      ...snapshot.context,
+      ironMarket: emptyIronMarket,
+      // No connection needed for iron (iron works are global)
+      players: snapshot.context.players.map((p) => ({
+        ...p,
+        industries: [],
+      })),
+    }
+
+    // Consume iron from empty market - should use fallback price of 6
+    const result = consumeIronFromSources(testContext, 3)
+
+    // Cost should be 6 per piece = 18 for 3 pieces
+    expect(result.ironCost).toBe(18)
+    // Log should mention the fallback price
+    expect(result.logDetails.some((l) => l.includes('6'))).toBe(true)
+  })
+
+  test('coal market requires connection to merchant space for market purchase', () => {
+    const { actor } = setupGame()
+    const snapshot = actor.getSnapshot()
+
+    // Create a context with coal in market but NO connection to merchants
+    const testContext: GameState = {
+      ...snapshot.context,
+      players: snapshot.context.players.map((p) => ({
+        ...p,
+        links: [], // No links = no merchant connection
+        industries: [], // No coal mines either
+      })),
+    }
+
+    // Try to consume coal without merchant connection
+    const result = consumeCoalFromSources(testContext, 'birmingham' as any, 1)
+
+    // Should fail because no connected coal mine and no merchant connection
+    expect(result.success).toBe(false)
+    expect(result.coalCost).toBe(0)
+  })
+
+  test('iron does NOT require merchant connection (global supply)', () => {
+    const { actor } = setupGame()
+    const snapshot = actor.getSnapshot()
+
+    // Create a context with no merchant connection but iron in market
+    const testContext: GameState = {
+      ...snapshot.context,
+      players: snapshot.context.players.map((p) => ({
+        ...p,
+        links: [], // No links
+        industries: [], // No iron works
+      })),
+    }
+
+    // Iron should still be purchasable from market without merchant connection
+    const result = consumeIronFromSources(testContext, 1)
+
+    // Should succeed - iron market is always accessible
+    expect(result.ironCost).toBeGreaterThan(0)
   })
 })

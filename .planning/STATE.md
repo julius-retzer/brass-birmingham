@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 01.1-04-PLAN.md
-last_updated: "2026-03-22T13:49:07.119Z"
+stopped_at: Completed 01.1-05-PLAN.md
+last_updated: "2026-03-22T13:57:11.498Z"
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 14
-  completed_plans: 13
+  completed_plans: 14
 ---
 
 # Project State
@@ -54,6 +54,7 @@ Plan: 5 of 5
 | Phase 01.1 P03 | 4min | 2 tasks | 2 files |
 | Phase 01.1 P01 | 5min | 2 tasks | 2 files |
 | Phase 01.1 P04 | 4min | 2 tasks | 4 files |
+| Phase 01.1 P05 | 6min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,8 @@ Recent decisions affecting current work:
 - [Phase 01.1]: 15 FAIL verdicts found: merchant setup, tile conflicts, board connections, missing cotton card, discard pile model
 - [Phase 01.1]: SELL-07 multi-tile sell flagged FAIL: implementation only sells first tile, rulebook allows repeating
 - [Phase 01.1]: LOAN-03 income clamping to -10 via Math.max accepted as equivalent to blocking loan
+- [Phase 01.1]: ERA-02 FAIL: triggerEraScoring incorrectly removes ALL unflipped tiles during canal scoring
+- [Phase 01.1]: Audit complete: 258 rules, 154 PASS (59.7%), 20 FAIL, 84 MISSING
 
 ### Pending Todos
 
@@ -110,6 +113,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T13:49:07.116Z
-Stopped at: Completed 01.1-04-PLAN.md
+Last session: 2026-03-22T13:57:11.494Z
+Stopped at: Completed 01.1-05-PLAN.md
 Resume file: None

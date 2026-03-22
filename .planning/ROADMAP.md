@@ -52,14 +52,14 @@ Plans:
   3. All 7 action types are audited for rule compliance
   4. Scoring, era transitions, and income rules are audited
   5. Summary report aggregates all findings with accurate totals
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 01.1-01-PLAN.md -- Audit data layer (industry tiles, board, cards, merchants) and game setup
 - [x] 01.1-02-PLAN.md -- Audit turn flow, round progression, income, and bankruptcy
 - [x] 01.1-03-PLAN.md -- Audit Build action and Network action
 - [x] 01.1-04-PLAN.md -- Audit Sell, Develop, Loan, Scout, Pass actions and resource consumption
-- [ ] 01.1-05-PLAN.md -- Audit scoring, era transitions, and generate summary report
+- [x] 01.1-05-PLAN.md -- Audit scoring, era transitions, and generate summary report
 
 ### Phase 2: Board and State Display
 **Goal**: Players can see the complete game state -- board, markets, hands, resources, and opponent public info
@@ -101,6 +101,6 @@ Phases execute in numeric order: 1 -> 01.1 -> 2 -> 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Game Engine | 8/9 | Gap closure | - |
-| 01.1. Engine Rule Audit | 4/5 | In Progress|  |
+| 01.1. Engine Rule Audit | 5/5 | Complete   | 2026-03-22 |
 | 2. Board and State Display | 0/0 | Not started | - |
 | 3. Playable Game | 0/0 | Not started | - |

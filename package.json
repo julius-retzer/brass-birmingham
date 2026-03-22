@@ -18,9 +18,9 @@
     "typecheck": "tsc --noEmit",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
-    "test": "vitest run --dir src/store",
+    "test": "vitest run src/store src/data",
     "test:v2": "vitest run src/store/v2/*.*.test.ts",
-    "test:watch": "vitest --dir src/store",
+    "test:watch": "vitest src/store src/data",
     "test:all": "vitest run",
     "test:coverage": "vitest run --coverage"
   },

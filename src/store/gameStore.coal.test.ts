@@ -157,21 +157,22 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
       
       const currentPlayerId = snapshot.context.currentPlayerIndex
       
-      // Set up: player has industry at warrington (merchant location)
+      // Set up: player has industry at stoke AND existing link to warrington merchant
+      // The existing link gives merchant/market access; new link tests coal consumption
       actor.send({
         type: 'TEST_SET_PLAYER_STATE',
         playerId: currentPlayerId,
         money: 100,
         industries: [
           {
-            location: 'warrington', // Merchant location
+            location: 'stoke',
             type: 'pottery',
-            level: 1,
+            level: 2,
             flipped: false,
             tile: {
-              id: 'pottery_1',
+              id: 'pottery_2',
               type: 'pottery',
-              level: 1,
+              level: 2,
               canBuildInCanalEra: true,
               canBuildInRailEra: true,
               incomeAdvancement: 3,
@@ -193,21 +194,24 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
             beerBarrelsOnTile: 0,
           }
         ],
+        links: [
+          { from: 'stoke', to: 'warrington', type: 'rail' }, // Pre-existing rail link to merchant
+        ],
       })
-      
+
       // Get fresh snapshot after setting player state
       snapshot = actor.getSnapshot()
       const initialMoney = snapshot.context.players[currentPlayerId]!.money
       const initialCoalMarket = [...snapshot.context.coalMarket]
-      
-      // Build rail link from warrington (should use coal market)
-      buildNetworkAction(actor, 'warrington', 'birmingham')
+
+      // Build rail link from stoke to leek (valid connection, coal from market via warrington merchant)
+      buildNetworkAction(actor, 'stoke', 'leek')
       snapshot = actor.getSnapshot()
-      
-      // Verify link was built
+
+      // Verify link was built (pre-existing canal link + new rail link)
       const links = snapshot.context.players[currentPlayerId]!.links
-      expect(links.length).toBe(1)
-      expect(links[0]!.type).toBe('rail')
+      expect(links.length).toBe(2)
+      expect(links[1]!.type).toBe('rail')
       
       // Verify coal was consumed from market
       const coalConsumed = initialCoalMarket.reduce(
@@ -230,21 +234,21 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
       
       const currentPlayerId = snapshot.context.currentPlayerIndex
       
-      // Set up: player at merchant location, empty coal market
+      // Set up: player at worcester with existing link to gloucester merchant
       actor.send({
         type: 'TEST_SET_PLAYER_STATE',
         playerId: currentPlayerId,
         money: 100,
         industries: [
           {
-            location: 'gloucester', // Merchant location
+            location: 'worcester',
             type: 'pottery',
-            level: 1,
+            level: 2,
             flipped: false,
             tile: {
-              id: 'pottery_1',
+              id: 'pottery_2',
               type: 'pottery',
-              level: 1,
+              level: 2,
               canBuildInCanalEra: true,
               canBuildInRailEra: true,
               incomeAdvancement: 3,
@@ -266,29 +270,32 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
             beerBarrelsOnTile: 0,
           }
         ],
+        links: [
+          { from: 'worcester', to: 'gloucester', type: 'rail' }, // Pre-existing rail link to merchant
+        ],
       })
-      
+
       // Empty the coal market to force fallback pricing
       snapshot = actor.getSnapshot()
       const emptyMarket = snapshot.context.coalMarket.map(level => ({
         ...level,
         cubes: 0
       }))
-      
+
       // Manually set empty market (this would need a test action in real implementation)
       const initialMoney = snapshot.context.players[currentPlayerId]!.money
-      
+
       // For this test, we'll validate that the fallback logic exists
-      // In practice, the £8 fallback would be used when market is empty
-      
-      // Build rail link from gloucester (merchant location)
-      buildNetworkAction(actor, 'gloucester', 'birmingham')
+      // In practice, the 8 fallback would be used when market is empty
+
+      // Build rail link from worcester to kidderminster (valid connection, coal from market via gloucester)
+      buildNetworkAction(actor, 'worcester', 'kidderminster')
       snapshot = actor.getSnapshot()
-      
-      // Verify link was built (would use fallback price if market empty)
+
+      // Verify link was built (pre-existing canal link + new rail link)
       const links = snapshot.context.players[currentPlayerId]!.links
-      expect(links.length).toBe(1)
-      expect(links[0]!.type).toBe('rail')
+      expect(links.length).toBe(2)
+      expect(links[1]!.type).toBe('rail')
     })
   })
   

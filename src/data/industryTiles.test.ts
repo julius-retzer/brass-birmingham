@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { industryTileDefinitions } from './industryTiles'
+import {
+  industryTileDefinitions,
+  getInitialPlayerIndustryTiles,
+  getLowestAvailableTile,
+  canBuildTileInEra,
+  canDevelopTile,
+  type IndustryTileWithQuantity,
+} from './industryTiles'
 
 function getTile(industry: string, level: number) {
   const tiles = industryTileDefinitions[industry]
@@ -322,6 +329,99 @@ describe('industry tile definitions', () => {
         0
       )
       expect(total).toBe(7)
+    })
+  })
+
+  describe('utility functions', () => {
+    describe('getInitialPlayerIndustryTiles', () => {
+      it('returns all 6 industry types with arrays', () => {
+        const tiles = getInitialPlayerIndustryTiles()
+        expect(tiles.cotton).toBeDefined()
+        expect(Array.isArray(tiles.cotton)).toBe(true)
+        expect(tiles.coal).toBeDefined()
+        expect(tiles.iron).toBeDefined()
+        expect(tiles.manufacturer).toBeDefined()
+        expect(tiles.pottery).toBeDefined()
+        expect(tiles.brewery).toBeDefined()
+      })
+
+      it('cotton tiles match definitions', () => {
+        const tiles = getInitialPlayerIndustryTiles()
+        expect(tiles.cotton.length).toBe(industryTileDefinitions.cotton!.length)
+      })
+    })
+
+    describe('getLowestAvailableTile', () => {
+      it('returns null for empty array', () => {
+        const result = getLowestAvailableTile([])
+        expect(result).toBeNull()
+      })
+
+      it('returns null when all tiles have 0 quantity', () => {
+        const tiles: IndustryTileWithQuantity[] = [
+          {
+            tile: { id: 'test_1', type: 'cotton', level: 1 } as any,
+            quantityAvailable: 0,
+          },
+          {
+            tile: { id: 'test_2', type: 'cotton', level: 2 } as any,
+            quantityAvailable: 0,
+          },
+        ]
+        const result = getLowestAvailableTile(tiles)
+        expect(result).toBeNull()
+      })
+
+      it('returns lowest level tile with quantity > 0', () => {
+        const tiles: IndustryTileWithQuantity[] = [
+          {
+            tile: { id: 'test_1', type: 'cotton', level: 1 } as any,
+            quantityAvailable: 0,
+          },
+          {
+            tile: { id: 'test_2', type: 'cotton', level: 2 } as any,
+            quantityAvailable: 3,
+          },
+          {
+            tile: { id: 'test_3', type: 'cotton', level: 3 } as any,
+            quantityAvailable: 2,
+          },
+        ]
+        const result = getLowestAvailableTile(tiles)
+        expect(result).not.toBeNull()
+        expect(result!.level).toBe(2)
+      })
+    })
+
+    describe('canBuildTileInEra', () => {
+      it('returns canBuildInCanalEra for canal era', () => {
+        const tile = { canBuildInCanalEra: true, canBuildInRailEra: false } as any
+        expect(canBuildTileInEra(tile, 'canal')).toBe(true)
+        expect(canBuildTileInEra(tile, 'rail')).toBe(false)
+      })
+
+      it('returns canBuildInRailEra for rail era', () => {
+        const tile = { canBuildInCanalEra: false, canBuildInRailEra: true } as any
+        expect(canBuildTileInEra(tile, 'canal')).toBe(false)
+        expect(canBuildTileInEra(tile, 'rail')).toBe(true)
+      })
+    })
+
+    describe('canDevelopTile', () => {
+      it('returns false when hasLightbulbIcon is true', () => {
+        const tile = { hasLightbulbIcon: true } as any
+        expect(canDevelopTile(tile)).toBe(false)
+      })
+
+      it('returns true when hasLightbulbIcon is false', () => {
+        const tile = { hasLightbulbIcon: false } as any
+        expect(canDevelopTile(tile)).toBe(true)
+      })
+
+      it('returns true when hasLightbulbIcon is undefined', () => {
+        const tile = {} as any
+        expect(canDevelopTile(tile)).toBe(true)
+      })
     })
   })
 })

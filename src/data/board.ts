@@ -21,6 +21,8 @@ export const cities = {
   burton: { name: 'Burton upon Trent', type: 'city' },
   derby: { name: 'Derby', type: 'city' },
   belper: { name: 'Belper', type: 'city' },
+  farmBreweryNorth: { name: 'Farm Brewery (North)', type: 'city' },
+  farmBrewerySouth: { name: 'Farm Brewery (South)', type: 'city' },
 
   // External Markets (Merchants)
   warrington: { name: 'Warrington', type: 'merchant' },
@@ -34,19 +36,18 @@ export const cities = {
 // Each connection can be either 'canal' (Canal Era) or 'rail' (Rail Era) or both
 export const connections = [
   // Birmingham Area
-  { from: 'birmingham', to: 'redditch', types: ['canal', 'rail'] },
+  { from: 'birmingham', to: 'redditch', types: ['rail'] },
   { from: 'birmingham', to: 'dudley', types: ['canal', 'rail'] },
   { from: 'birmingham', to: 'walsall', types: ['canal', 'rail'] },
   { from: 'birmingham', to: 'tamworth', types: ['canal', 'rail'] },
   { from: 'birmingham', to: 'coventry', types: ['canal', 'rail'] },
   { from: 'birmingham', to: 'worcester', types: ['canal', 'rail'] },
-  { from: 'birmingham', to: 'nuneaton', types: ['canal', 'rail'] },
+  { from: 'birmingham', to: 'nuneaton', types: ['rail'] },
   { from: 'birmingham', to: 'oxford', types: ['canal', 'rail'] },
   { from: 'dudley', to: 'wolverhampton', types: ['canal', 'rail'] },
   { from: 'dudley', to: 'kidderminster', types: ['canal', 'rail'] },
   { from: 'wolverhampton', to: 'walsall', types: ['canal', 'rail'] },
   { from: 'wolverhampton', to: 'cannock', types: ['canal', 'rail'] },
-  { from: 'wolverhampton', to: 'dudley', types: ['canal', 'rail'] },
   { from: 'wolverhampton', to: 'coalbrookdale', types: ['canal', 'rail'] },
 
   // Northern Area
@@ -58,19 +59,18 @@ export const connections = [
   { from: 'uttoxeter', to: 'derby', types: ['rail'] },
   { from: 'burton', to: 'derby', types: ['canal', 'rail'] },
   { from: 'burton', to: 'stone', types: ['canal', 'rail'] },
-  { from: 'burton', to: 'cannock', types: ['canal', 'rail'] },
+  { from: 'burton', to: 'cannock', types: ['rail'] },
   { from: 'derby', to: 'belper', types: ['canal', 'rail'] },
 
   // Eastern Area
   { from: 'tamworth', to: 'burton', types: ['canal', 'rail'] },
-  { from: 'tamworth', to: 'nuneaton', types: ['rail'] },
-  { from: 'coventry', to: 'nuneaton', types: ['canal', 'rail'] },
-  { from: 'walsall', to: 'tamworth', types: ['canal', 'rail'] },
-  { from: 'walsall', to: 'cannock', types: ['canal', 'rail'] },
-  { from: 'walsall', to: 'burton', types: ['canal', 'rail'] },
+  { from: 'tamworth', to: 'nuneaton', types: ['canal', 'rail'] },
+  { from: 'tamworth', to: 'walsall', types: ['rail'] },
+  { from: 'coventry', to: 'nuneaton', types: ['rail'] },
+  { from: 'burton', to: 'walsall', types: ['canal'] },
+  { from: 'cannock', to: 'walsall', types: ['canal', 'rail'] },
 
   // Southern Area
-  { from: 'redditch', to: 'worcester', types: ['rail'] },
   { from: 'worcester', to: 'kidderminster', types: ['canal', 'rail'] },
   { from: 'kidderminster', to: 'dudley', types: ['canal', 'rail'] },
   { from: 'kidderminster', to: 'coalbrookdale', types: ['canal', 'rail'] },
@@ -79,11 +79,15 @@ export const connections = [
   { from: 'coalbrookdale', to: 'shrewsbury', types: ['canal', 'rail'] },
   { from: 'stoke', to: 'warrington', types: ['canal', 'rail'] },
   { from: 'worcester', to: 'gloucester', types: ['canal', 'rail'] },
-  { from: 'coventry', to: 'oxford', types: ['canal', 'rail'] },
-  { from: 'belper', to: 'nottingham', types: ['rail'] },
+  { from: 'belper', to: 'nottingham', types: ['canal', 'rail'] },
   { from: 'gloucester', to: 'redditch', types: ['canal', 'rail'] },
-  { from: 'gloucester', to: 'oxford', types: ['canal', 'rail'] },
   { from: 'redditch', to: 'oxford', types: ['canal', 'rail'] },
+
+  // Farm Brewery Connections
+  { from: 'farmBreweryNorth', to: 'cannock', types: ['canal', 'rail'] },
+  { from: 'farmBreweryNorth', to: 'walsall', types: ['canal', 'rail'] },
+  { from: 'farmBrewerySouth', to: 'kidderminster', types: ['canal', 'rail'] },
+  { from: 'farmBrewerySouth', to: 'worcester', types: ['canal', 'rail'] },
 ] as const
 
 // Types for type safety
@@ -108,93 +112,103 @@ export interface Connection {
 export const cityIndustrySlots: Record<CityId, string[][]> = {
   // Central Industrial Cities
   birmingham: [
-    ['cotton', 'iron'], // Slot 1: Cotton or Iron
-    ['manufacturer', 'pottery'], // Slot 2: Manufacturer or Pottery
-    ['brewery'], // Slot 3: Brewery only
-    ['cotton', 'manufacturer'], // Slot 4: Cotton or Manufacturer
+    ['cotton', 'manufacturer'],
+    ['manufacturer'],
+    ['iron'],
+    ['manufacturer'],
   ],
-  // birmingham: [
-  //   ['cotton', 'manufacturer'],
-  //   ['manufacturer'],
-  //   ['iron'],
-  //   ['manufacturer'],
-  // ],
   coventry: [
-    ['cotton', 'manufacturer'], // Slot 1: Cotton or Manufacturer
-    ['pottery'], // Slot 2: Pottery only
+    ['pottery'],
+    ['manufacturer', 'coal'],
+    ['iron', 'manufacturer'],
   ],
   dudley: [
-    ['coal'], // Slot 1: Coal only
-    ['iron'], // Slot 2: Iron only
-    ['brewery'], // Slot 3: Brewery only
+    ['coal'],
+    ['iron'],
   ],
   wolverhampton: [
-    ['coal'], // Slot 1: Coal only
-    ['iron'], // Slot 2: Iron only
-    ['manufacturer'], // Slot 3: Manufacturer only
+    ['manufacturer'],
+    ['manufacturer', 'coal'],
   ],
   walsall: [
-    ['coal'], // Slot 1: Coal only
-    ['iron'], // Slot 2: Iron only
+    ['iron', 'manufacturer'],
+    ['manufacturer', 'brewery'],
   ],
 
   // Northern Industrial Cities
   stone: [
-    ['coal'], // Slot 1: Coal only
-    ['pottery', 'brewery'], // Slot 2: Pottery or Brewery
+    ['cotton', 'brewery'],
+    ['manufacturer', 'coal'],
   ],
   stafford: [
-    ['coal'], // Slot 1: Coal only
-    ['pottery'], // Slot 2: Pottery only
+    ['manufacturer', 'brewery'],
+    ['pottery'],
   ],
   stoke: [
-    ['coal'], // Slot 1: Coal only
-    ['pottery'], // Slot 2: Pottery only
-    ['brewery'], // Slot 3: Brewery only
+    ['cotton', 'manufacturer'],
+    ['pottery', 'iron'],
+    ['manufacturer'],
   ],
   leek: [
-    ['cotton', 'manufacturer'], // Slot 1: Cotton or Manufacturer
+    ['cotton', 'manufacturer'],
+    ['cotton', 'coal'],
   ],
   uttoxeter: [
-    ['brewery'], // Slot 1: Brewery only
+    ['manufacturer', 'brewery'],
+    ['cotton', 'brewery'],
   ],
   burton: [
-    ['brewery'], // Slot 1: Brewery only
-    ['brewery'], // Slot 2: Brewery only (Burton has 2 brewery slots)
+    ['manufacturer', 'coal'],
+    ['brewery'],
   ],
   derby: [
-    ['cotton', 'manufacturer'], // Slot 1: Cotton or Manufacturer
-    ['iron'], // Slot 2: Iron only
+    ['cotton', 'brewery'],
+    ['cotton', 'manufacturer'],
+    ['iron'],
   ],
   belper: [
-    ['cotton', 'manufacturer'], // Slot 1: Cotton or Manufacturer
+    ['cotton', 'manufacturer'],
+    ['coal'],
+    ['pottery'],
   ],
 
   // Southern Cities
   redditch: [
-    ['cotton', 'manufacturer'], // Slot 1: Cotton or Manufacturer
+    ['manufacturer', 'coal'],
+    ['iron'],
   ],
   worcester: [
-    ['cotton'], // Slot 1: Cotton only
-    ['pottery'], // Slot 2: Pottery only
+    ['cotton'],
+    ['cotton'],
   ],
   kidderminster: [
-    ['cotton'], // Slot 1: Cotton only
-    ['pottery'], // Slot 2: Pottery only
+    ['cotton', 'coal'],
+    ['cotton'],
   ],
   cannock: [
-    ['coal'], // Slot 1: Coal only
+    ['manufacturer', 'coal'],
+    ['coal'],
   ],
   tamworth: [
-    ['coal'], // Slot 1: Coal only
-    ['iron'], // Slot 2: Iron only
+    ['cotton', 'coal'],
+    ['cotton', 'coal'],
   ],
   nuneaton: [
-    ['cotton', 'manufacturer'], // Slot 1: Cotton or Manufacturer
+    ['manufacturer', 'brewery'],
+    ['cotton', 'coal'],
   ],
   coalbrookdale: [
-    ['coal'], // Slot 1: Coal only
-    ['iron'], // Slot 2: Iron only
+    ['iron', 'brewery'],
+    ['iron'],
+    ['coal'],
+  ],
+
+  // Farm Breweries
+  farmBreweryNorth: [
+    ['brewery'],
+  ],
+  farmBrewerySouth: [
+    ['brewery'],
   ],
 
   // Merchants (no industries can be built)

@@ -10,15 +10,15 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Game Engine
 
 - [x] **ENGINE-01**: Game machine correctly implements all Brass Birmingham rules for 2 players
-- [ ] **ENGINE-02**: Canal era scoring calculates link points and industry points correctly
-- [ ] **ENGINE-03**: Rail era scoring calculates link points and industry points correctly
-- [ ] **ENGINE-04**: Era transition correctly removes canal-only links/tiles, re-deals cards, sets turn order
+- [x] **ENGINE-02**: Canal era scoring calculates link points and industry points correctly
+- [x] **ENGINE-03**: Rail era scoring calculates link points and industry points correctly
+- [x] **ENGINE-04**: Era transition correctly removes canal-only links/tiles, re-deals cards, sets turn order
 - [ ] **ENGINE-05**: All 7 action types have complete rule enforcement with correct resource/money handling
 - [ ] **ENGINE-06**: Game machine has 100% unit test coverage for all actions and state transitions
 - [ ] **ENGINE-07**: Edge cases tested: bankruptcy, empty markets, no valid moves, last card scenarios
 - [ ] **ENGINE-08**: Turn order correctly determined each round (lowest spend goes first)
 - [ ] **ENGINE-09**: Current player switches correctly after each action (2 actions per turn)
-- [ ] **ENGINE-10**: First round of each era correctly gives each player only 1 action
+- [x] **ENGINE-10**: First round of each era correctly gives each player only 1 action
 
 ### Board UI
 
@@ -102,15 +102,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | ENGINE-01 | Phase 1 | Complete |
-| ENGINE-02 | Phase 1 | Pending |
-| ENGINE-03 | Phase 1 | Pending |
-| ENGINE-04 | Phase 1 | Pending |
+| ENGINE-02 | Phase 1 | Complete |
+| ENGINE-03 | Phase 1 | Complete |
+| ENGINE-04 | Phase 1 | Complete |
 | ENGINE-05 | Phase 1 | Pending |
 | ENGINE-06 | Phase 1 | Pending |
 | ENGINE-07 | Phase 1 | Pending |
 | ENGINE-08 | Phase 1 | Pending |
 | ENGINE-09 | Phase 1 | Pending |
-| ENGINE-10 | Phase 1 | Pending |
+| ENGINE-10 | Phase 1 | Complete |
 | BOARD-01 | Phase 2 | Pending |
 | BOARD-02 | Phase 2 | Pending |
 | BOARD-03 | Phase 2 | Pending |

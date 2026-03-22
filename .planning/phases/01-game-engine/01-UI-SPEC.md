@@ -58,7 +58,7 @@ Exceptions: none (no UI work in this phase)
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px | 400 | 1.5 |
-| Label | 14px | 500 | 1.4 |
+| Label | 14px | 400 | 1.4 |
 | Heading | 20px | 600 | 1.2 |
 | Display | 28px | 600 | 1.2 |
 

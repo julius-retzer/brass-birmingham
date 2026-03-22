@@ -71,3 +71,17 @@ export const merchants: Record<string, Merchant> = {
 }
 
 export type MerchantId = keyof typeof merchants
+
+export function getMerchantsForPlayerCount(playerCount: number): Record<string, Merchant> {
+  if (playerCount <= 2) {
+    // Per rules: "In a 2 player game, no Merchant tiles are placed in Warrington & Nottingham"
+    const { warrington, nottingham, ...activeMerchants } = merchants
+    return activeMerchants
+  }
+  if (playerCount === 3) {
+    // Per rules: "In a 3-player game, no Merchant tiles are placed in Nottingham"
+    const { nottingham, ...activeMerchants } = merchants
+    return activeMerchants
+  }
+  return merchants
+}

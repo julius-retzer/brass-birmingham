@@ -41,6 +41,26 @@ Plans:
 - [x] 01-08-PLAN.md -- Gap closure: guard functions, marketActions.ts, and ENGINE-07 edge cases
 - [ ] 01-09-PLAN.md -- Gap closure: final coverage push for gameStore.ts and industryTiles.ts
 
+### Phase 01.1: Engine rule audit and correctness verification (INSERTED)
+
+**Goal:** Systematically audit every Brass Birmingham rule against the engine implementation, producing a machine-parseable gap report with pass/fail/missing verdicts and test evidence for each rule
+**Requirements**: AUDIT-01, AUDIT-02, AUDIT-03, AUDIT-04, AUDIT-05, AUDIT-06, AUDIT-07, AUDIT-08, AUDIT-09, AUDIT-10, AUDIT-11, AUDIT-12
+**Depends on:** Phase 1
+**Success Criteria** (what must be TRUE):
+  1. Every rule in the Brass Birmingham rulebook has a pass/fail/missing verdict with test evidence
+  2. Data layer values (tile costs, board connections, merchants) are verified against the physical game
+  3. All 7 action types are audited for rule compliance
+  4. Scoring, era transitions, and income rules are audited
+  5. Summary report aggregates all findings with accurate totals
+**Plans:** 5 plans
+
+Plans:
+- [ ] 01.1-01-PLAN.md -- Audit data layer (industry tiles, board, cards, merchants) and game setup
+- [ ] 01.1-02-PLAN.md -- Audit turn flow, round progression, income, and bankruptcy
+- [ ] 01.1-03-PLAN.md -- Audit Build action and Network action
+- [ ] 01.1-04-PLAN.md -- Audit Sell, Develop, Loan, Scout, Pass actions and resource consumption
+- [ ] 01.1-05-PLAN.md -- Audit scoring, era transitions, and generate summary report
+
 ### Phase 2: Board and State Display
 **Goal**: Players can see the complete game state -- board, markets, hands, resources, and opponent public info
 **Depends on**: Phase 1
@@ -76,10 +96,11 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3
+Phases execute in numeric order: 1 -> 01.1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Game Engine | 8/9 | Gap closure | - |
+| 01.1. Engine Rule Audit | 0/5 | Planning | - |
 | 2. Board and State Display | 0/0 | Not started | - |
 | 3. Playable Game | 0/0 | Not started | - |

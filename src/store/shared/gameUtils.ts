@@ -29,7 +29,8 @@ export function drawCards(context: GameState, count: number): Card[] {
 }
 
 export function isFirstRound(context: GameState): boolean {
-  return context.era === 'canal' && context.round === 1
+  // First round of EITHER era gives 1 action per player (not 2)
+  return context.round === 1
 }
 
 // Network connectivity utilities - graph-based using built links (era-aware)

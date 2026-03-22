@@ -81,7 +81,7 @@ describe('Game Store - Era and Scoring', () => {
 
     expect(s.context.era).toBe('rail')
     expect(s.context.round).toBe(1)
-    expect(s.context.actionsRemaining).toBe(2)
+    expect(s.context.actionsRemaining).toBe(1) // First round of Rail era gives 1 action per rules
     expect(s.context.logs.some((l) => l.message === 'Canal Era ended')).toBe(
       true,
     )

@@ -157,6 +157,20 @@ export interface GameState {
   // Error state
   lastError: string | null
   errorContext: 'build' | 'network' | 'develop' | 'sell' | 'scout' | null
+  // Game result (set after rail era final scoring)
+  gameResult: {
+    winner: string | null // Player ID of winner, null if tie
+    isTie: boolean
+    tiedPlayerIds: string[]
+    scores: Array<{
+      playerId: string
+      totalVP: number
+      linkVP: number
+      industryVP: number
+      finalIncome: number
+      finalMoney: number
+    }>
+  } | null
 }
 
 type GameEvent =
@@ -1886,25 +1900,36 @@ export const gameStore = setup({
       const updatedPlayers = [...context.players]
       const logMessages: string[] = []
 
-      // Score Link tiles - each link scores 1 VP for each "•—•" in adjacent locations
+      // Score Link tiles - each link scores VPs based on linkScoringIcons
+      // from ALL flipped industries in BOTH adjacent cities (across ALL players)
       for (let i = 0; i < updatedPlayers.length; i++) {
         const player = updatedPlayers[i]!
         let linkVPs = 0
 
         for (const link of player.links) {
-          // Each link tile scores 1 VP (simplified - in full game would count "•—•" symbols)
-          linkVPs += 1
+          // For each link, sum linkScoringIcons from ALL flipped industries
+          // in BOTH adjacent cities, across ALL players
+          for (const cityId of [link.from, link.to]) {
+            for (const p of updatedPlayers) {
+              for (const industry of p.industries) {
+                if (industry.location === cityId && industry.flipped) {
+                  linkVPs += industry.tile.linkScoringIcons
+                }
+              }
+            }
+          }
         }
 
         if (linkVPs > 0) {
           logMessages.push(
             `${player.name} scored ${linkVPs} VPs from link tiles`,
           )
-          updatedPlayers[i] = {
-            ...player,
-            victoryPoints: player.victoryPoints + linkVPs,
-            links: [], // Remove link tiles after scoring
-          }
+        }
+        // Always update player to remove links after scoring
+        updatedPlayers[i] = {
+          ...player,
+          victoryPoints: player.victoryPoints + linkVPs,
+          links: [], // Remove link tiles after scoring
         }
       }
 
@@ -2017,7 +2042,7 @@ export const gameStore = setup({
         players: updatedPlayers,
         era: 'rail' as const,
         round: 1,
-        actionsRemaining: 2, // Rail Era starts with 2 actions per turn
+        actionsRemaining: GAME_CONSTANTS.FIRST_ROUND_ACTIONS, // First round of Rail era gives 1 action
         drawPile: newDrawPile.slice(currentIndex),
         discardPile: [],
         isFinalRound: false,
@@ -2035,10 +2060,110 @@ export const gameStore = setup({
     }),
 
     triggerRailEraEnd: assign(({ context }) => {
+      const updatedPlayers = [...context.players]
+      const logMessages: string[] = []
+
+      // Perform full scoring (same as triggerEraScoring for link + industry)
+      const scoreBreakdown: Array<{
+        playerId: string
+        linkVP: number
+        industryVP: number
+        totalVP: number
+        finalIncome: number
+        finalMoney: number
+      }> = []
+
+      for (let i = 0; i < updatedPlayers.length; i++) {
+        const player = updatedPlayers[i]!
+        let linkVPs = 0
+
+        // Score links - sum linkScoringIcons from adjacent flipped industries
+        for (const link of player.links) {
+          for (const cityId of [link.from, link.to]) {
+            for (const p of updatedPlayers) {
+              for (const industry of p.industries) {
+                if (industry.location === cityId && industry.flipped) {
+                  linkVPs += industry.tile.linkScoringIcons
+                }
+              }
+            }
+          }
+        }
+
+        // Score flipped industries
+        let industryVPs = 0
+        const remainingIndustries = []
+        for (const industry of player.industries) {
+          if (industry.flipped) {
+            industryVPs += industry.tile.victoryPoints
+            remainingIndustries.push(industry)
+          }
+        }
+
+        const totalVP = player.victoryPoints + linkVPs + industryVPs
+
+        if (linkVPs > 0) {
+          logMessages.push(`${player.name} scored ${linkVPs} VPs from link tiles`)
+        }
+        if (industryVPs > 0) {
+          logMessages.push(`${player.name} scored ${industryVPs} VPs from flipped industry tiles`)
+        }
+
+        updatedPlayers[i] = {
+          ...player,
+          victoryPoints: totalVP,
+          links: [],
+          industries: remainingIndustries,
+        }
+
+        scoreBreakdown.push({
+          playerId: player.id,
+          linkVP: linkVPs,
+          industryVP: industryVPs,
+          totalVP,
+          finalIncome: player.income,
+          finalMoney: player.money,
+        })
+      }
+
+      // Determine winner: highest VP -> highest income -> most money -> tie
+      const sorted = [...scoreBreakdown].sort((a, b) => {
+        if (a.totalVP !== b.totalVP) return b.totalVP - a.totalVP
+        if (a.finalIncome !== b.finalIncome) return b.finalIncome - a.finalIncome
+        if (a.finalMoney !== b.finalMoney) return b.finalMoney - a.finalMoney
+        return 0
+      })
+
+      const topScore = sorted[0]!
+      const tiedPlayers = sorted.filter(
+        (s) =>
+          s.totalVP === topScore.totalVP &&
+          s.finalIncome === topScore.finalIncome &&
+          s.finalMoney === topScore.finalMoney,
+      )
+
+      const isTie = tiedPlayers.length > 1
+      const winner = isTie ? null : topScore.playerId
+      const tiedPlayerIds = isTie ? tiedPlayers.map((p) => p.playerId) : []
+
+      const winnerName = winner
+        ? updatedPlayers.find((p) => p.id === winner)?.name ?? winner
+        : `Tie between ${tiedPlayerIds.map((id) => updatedPlayers.find((p) => p.id === id)?.name ?? id).join(' and ')}`
+
+      logMessages.push(`Final result: ${winnerName}${winner ? ' wins!' : ''}`)
+
       return {
+        players: updatedPlayers,
+        gameResult: {
+          winner,
+          isTie,
+          tiedPlayerIds,
+          scores: scoreBreakdown,
+        },
         logs: [
           ...context.logs,
           createLogEntry('Rail Era ended', 'system'),
+          ...logMessages.map((msg) => createLogEntry(msg, 'info')),
           createLogEntry('Game Over! Final scores calculated.', 'system'),
         ],
       }
@@ -2391,6 +2516,8 @@ export const gameStore = setup({
     // Error state
     lastError: null,
     errorContext: null,
+    // Game result
+    gameResult: null,
   },
   initial: 'setup',
   states: {

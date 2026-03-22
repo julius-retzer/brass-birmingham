@@ -12,7 +12,7 @@ The game engine already exists but needs gaps filled and full test coverage. Onc
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [x] **Phase 1: Game Engine** - Complete and fully test all game logic for 2-player Brass Birmingham (completed 2026-03-22)
+- [ ] **Phase 1: Game Engine** - Complete and fully test all game logic for 2-player Brass Birmingham (gap closure in progress)
 - [ ] **Phase 2: Board and State Display** - Visual representation of the game board, markets, and all player-visible state
 - [ ] **Phase 3: Playable Game** - Action UIs for all 7 action types, game lobby, and end-game scoring
 
@@ -28,14 +28,17 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Scoring produces correct VP totals for both canal and rail eras (verified against hand-calculated reference games)
   4. Turn order, action count per turn, and first-round single-action rules work correctly across both eras
   5. Edge cases (bankruptcy, empty markets, no valid moves, last card) are tested and handled
-**Plans:** 5/5 plans complete
+**Plans:** 8 plans (5 complete, 3 gap closure)
 
 Plans:
-- [ ] 01-01-PLAN.md -- Fix game data (board slots, connections, farm breweries, industry tiles, merchants)
-- [ ] 01-02-PLAN.md -- Fix scoring algorithms and automatic era transitions
-- [ ] 01-03-PLAN.md -- Fix action validation (network, build, develop, sell)
-- [ ] 01-04-PLAN.md -- Fix edge cases and turn management (bankruptcy, markets, turn order)
-- [ ] 01-05-PLAN.md -- Full game integration test and coverage
+- [x] 01-01-PLAN.md -- Fix game data (board slots, connections, farm breweries, industry tiles, merchants)
+- [x] 01-02-PLAN.md -- Fix scoring algorithms and automatic era transitions
+- [x] 01-03-PLAN.md -- Fix action validation (network, build, develop, sell)
+- [x] 01-04-PLAN.md -- Fix edge cases and turn management (bankruptcy, markets, turn order)
+- [x] 01-05-PLAN.md -- Full game integration test and coverage
+- [ ] 01-06-PLAN.md -- Gap closure: buildActions.ts and gameUtils.ts test coverage
+- [ ] 01-07-PLAN.md -- Gap closure: gameStore.ts action execution and selection test coverage
+- [ ] 01-08-PLAN.md -- Gap closure: guard functions, marketActions.ts, and ENGINE-07 edge cases
 
 ### Phase 2: Board and State Display
 **Goal**: Players can see the complete game state -- board, markets, hands, resources, and opponent public info
@@ -76,6 +79,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Game Engine | 5/5 | Complete   | 2026-03-22 |
+| 1. Game Engine | 5/8 | Gap closure | - |
 | 2. Board and State Display | 0/0 | Not started | - |
 | 3. Playable Game | 0/0 | Not started | - |

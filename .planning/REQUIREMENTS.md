@@ -9,7 +9,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Game Engine
 
-- [ ] **ENGINE-01**: Game machine correctly implements all Brass Birmingham rules for 2 players
+- [x] **ENGINE-01**: Game machine correctly implements all Brass Birmingham rules for 2 players
 - [ ] **ENGINE-02**: Canal era scoring calculates link points and industry points correctly
 - [ ] **ENGINE-03**: Rail era scoring calculates link points and industry points correctly
 - [ ] **ENGINE-04**: Era transition correctly removes canal-only links/tiles, re-deals cards, sets turn order
@@ -101,7 +101,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ENGINE-01 | Phase 1 | Pending |
+| ENGINE-01 | Phase 1 | Complete |
 | ENGINE-02 | Phase 1 | Pending |
 | ENGINE-03 | Phase 1 | Pending |
 | ENGINE-04 | Phase 1 | Pending |

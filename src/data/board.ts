@@ -32,57 +32,54 @@ export const cities = {
 
 // Connections between cities
 // Each connection can be either 'canal' (Canal Era) or 'rail' (Rail Era) or both
+// Verified against the physical board layout
 export const connections = [
-  // Birmingham Area
-  { from: 'birmingham', to: 'redditch', types: ['canal', 'rail'] },
-  { from: 'birmingham', to: 'dudley', types: ['canal', 'rail'] },
-  { from: 'birmingham', to: 'walsall', types: ['canal', 'rail'] },
-  { from: 'birmingham', to: 'tamworth', types: ['canal', 'rail'] },
-  { from: 'birmingham', to: 'coventry', types: ['canal', 'rail'] },
-  { from: 'birmingham', to: 'worcester', types: ['canal', 'rail'] },
-  { from: 'birmingham', to: 'nuneaton', types: ['canal', 'rail'] },
-  { from: 'birmingham', to: 'oxford', types: ['canal', 'rail'] },
-  { from: 'dudley', to: 'wolverhampton', types: ['canal', 'rail'] },
-  { from: 'dudley', to: 'kidderminster', types: ['canal', 'rail'] },
-  { from: 'wolverhampton', to: 'walsall', types: ['canal', 'rail'] },
-  { from: 'wolverhampton', to: 'cannock', types: ['canal', 'rail'] },
-  { from: 'wolverhampton', to: 'dudley', types: ['canal', 'rail'] },
-  { from: 'wolverhampton', to: 'coalbrookdale', types: ['canal', 'rail'] },
+  // Derbyshire
+  { from: 'belper', to: 'derby', types: ['canal', 'rail'] },
+  { from: 'belper', to: 'leek', types: ['rail'] },
+  { from: 'derby', to: 'nottingham', types: ['canal', 'rail'] },
+  { from: 'derby', to: 'uttoxeter', types: ['rail'] },
+  { from: 'derby', to: 'burton', types: ['canal', 'rail'] },
 
-  // Northern Area
-  { from: 'stone', to: 'stoke', types: ['canal', 'rail'] },
-  { from: 'stoke', to: 'leek', types: ['canal', 'rail'] },
-  { from: 'stone', to: 'stafford', types: ['canal', 'rail'] },
-  { from: 'stafford', to: 'cannock', types: ['canal', 'rail'] },
-  { from: 'uttoxeter', to: 'stoke', types: ['rail'] },
-  { from: 'uttoxeter', to: 'derby', types: ['rail'] },
-  { from: 'burton', to: 'derby', types: ['canal', 'rail'] },
-  { from: 'burton', to: 'stone', types: ['canal', 'rail'] },
-  { from: 'burton', to: 'cannock', types: ['canal', 'rail'] },
-  { from: 'derby', to: 'belper', types: ['canal', 'rail'] },
-
-  // Eastern Area
-  { from: 'tamworth', to: 'burton', types: ['canal', 'rail'] },
-  { from: 'tamworth', to: 'nuneaton', types: ['rail'] },
-  { from: 'coventry', to: 'nuneaton', types: ['canal', 'rail'] },
-  { from: 'walsall', to: 'tamworth', types: ['canal', 'rail'] },
-  { from: 'walsall', to: 'cannock', types: ['canal', 'rail'] },
-  { from: 'walsall', to: 'burton', types: ['canal', 'rail'] },
-
-  // Southern Area
-  { from: 'redditch', to: 'worcester', types: ['rail'] },
-  { from: 'worcester', to: 'kidderminster', types: ['canal', 'rail'] },
-  { from: 'kidderminster', to: 'dudley', types: ['canal', 'rail'] },
-  { from: 'kidderminster', to: 'coalbrookdale', types: ['canal', 'rail'] },
-
-  // Merchant Connections
-  { from: 'coalbrookdale', to: 'shrewsbury', types: ['canal', 'rail'] },
+  // North Staffordshire
+  { from: 'leek', to: 'stoke', types: ['canal', 'rail'] },
+  { from: 'stoke', to: 'stone', types: ['canal', 'rail'] },
   { from: 'stoke', to: 'warrington', types: ['canal', 'rail'] },
+  { from: 'stone', to: 'stafford', types: ['canal', 'rail'] },
+  { from: 'stone', to: 'uttoxeter', types: ['rail'] },
+  { from: 'stone', to: 'burton', types: ['canal', 'rail'] },
+
+  // Staffordshire / Midlands
+  { from: 'stafford', to: 'cannock', types: ['canal', 'rail'] },
+  { from: 'burton', to: 'cannock', types: ['rail'] },
+  { from: 'burton', to: 'tamworth', types: ['canal', 'rail'] },
+  { from: 'burton', to: 'walsall', types: ['canal'] },
+  { from: 'cannock', to: 'walsall', types: ['canal', 'rail'] },
+  { from: 'cannock', to: 'wolverhampton', types: ['canal', 'rail'] },
+  { from: 'tamworth', to: 'walsall', types: ['rail'] },
+  { from: 'tamworth', to: 'nuneaton', types: ['canal', 'rail'] },
+  { from: 'walsall', to: 'wolverhampton', types: ['canal', 'rail'] },
+
+  // Black Country
+  { from: 'wolverhampton', to: 'coalbrookdale', types: ['canal', 'rail'] },
+  { from: 'wolverhampton', to: 'dudley', types: ['canal', 'rail'] },
+  { from: 'coalbrookdale', to: 'kidderminster', types: ['canal', 'rail'] },
+  { from: 'coalbrookdale', to: 'shrewsbury', types: ['canal', 'rail'] },
+  { from: 'dudley', to: 'kidderminster', types: ['canal', 'rail'] },
+  { from: 'kidderminster', to: 'worcester', types: ['canal', 'rail'] },
   { from: 'worcester', to: 'gloucester', types: ['canal', 'rail'] },
-  { from: 'coventry', to: 'oxford', types: ['canal', 'rail'] },
-  { from: 'belper', to: 'nottingham', types: ['rail'] },
-  { from: 'gloucester', to: 'redditch', types: ['canal', 'rail'] },
-  { from: 'gloucester', to: 'oxford', types: ['canal', 'rail'] },
+
+  // Birmingham Area
+  { from: 'birmingham', to: 'coventry', types: ['canal', 'rail'] },
+  { from: 'birmingham', to: 'dudley', types: ['canal', 'rail'] },
+  { from: 'birmingham', to: 'nuneaton', types: ['rail'] },
+  { from: 'birmingham', to: 'oxford', types: ['canal', 'rail'] },
+  { from: 'birmingham', to: 'redditch', types: ['rail'] },
+  { from: 'birmingham', to: 'tamworth', types: ['canal', 'rail'] },
+  { from: 'birmingham', to: 'walsall', types: ['canal', 'rail'] },
+  { from: 'birmingham', to: 'worcester', types: ['canal', 'rail'] },
+  { from: 'coventry', to: 'nuneaton', types: ['rail'] },
+  { from: 'redditch', to: 'gloucester', types: ['canal', 'rail'] },
   { from: 'redditch', to: 'oxford', types: ['canal', 'rail'] },
 ] as const
 
@@ -105,96 +102,103 @@ export interface Connection {
 // Industry slots available in each city
 // Each city has specific slots, and each slot can accept multiple industry types
 // Based on the official Brass Birmingham board layout
+// Verified against the physical board layout
 export const cityIndustrySlots: Record<CityId, string[][]> = {
-  // Central Industrial Cities
+  // Birmingham Area
   birmingham: [
-    ['cotton', 'iron'], // Slot 1: Cotton or Iron
-    ['manufacturer', 'pottery'], // Slot 2: Manufacturer or Pottery
-    ['brewery'], // Slot 3: Brewery only
-    ['cotton', 'manufacturer'], // Slot 4: Cotton or Manufacturer
+    ['cotton', 'manufacturer'],
+    ['manufacturer'],
+    ['iron'],
+    ['manufacturer'],
   ],
-  // birmingham: [
-  //   ['cotton', 'manufacturer'],
-  //   ['manufacturer'],
-  //   ['iron'],
-  //   ['manufacturer'],
-  // ],
   coventry: [
-    ['cotton', 'manufacturer'], // Slot 1: Cotton or Manufacturer
-    ['pottery'], // Slot 2: Pottery only
-  ],
-  dudley: [
-    ['coal'], // Slot 1: Coal only
-    ['iron'], // Slot 2: Iron only
-    ['brewery'], // Slot 3: Brewery only
-  ],
-  wolverhampton: [
-    ['coal'], // Slot 1: Coal only
-    ['iron'], // Slot 2: Iron only
-    ['manufacturer'], // Slot 3: Manufacturer only
-  ],
-  walsall: [
-    ['coal'], // Slot 1: Coal only
-    ['iron'], // Slot 2: Iron only
-  ],
-
-  // Northern Industrial Cities
-  stone: [
-    ['coal'], // Slot 1: Coal only
-    ['pottery', 'brewery'], // Slot 2: Pottery or Brewery
-  ],
-  stafford: [
-    ['coal'], // Slot 1: Coal only
-    ['pottery'], // Slot 2: Pottery only
-  ],
-  stoke: [
-    ['coal'], // Slot 1: Coal only
-    ['pottery'], // Slot 2: Pottery only
-    ['brewery'], // Slot 3: Brewery only
-  ],
-  leek: [
-    ['cotton', 'manufacturer'], // Slot 1: Cotton or Manufacturer
-  ],
-  uttoxeter: [
-    ['brewery'], // Slot 1: Brewery only
-  ],
-  burton: [
-    ['brewery'], // Slot 1: Brewery only
-    ['brewery'], // Slot 2: Brewery only (Burton has 2 brewery slots)
-  ],
-  derby: [
-    ['cotton', 'manufacturer'], // Slot 1: Cotton or Manufacturer
-    ['iron'], // Slot 2: Iron only
-  ],
-  belper: [
-    ['cotton', 'manufacturer'], // Slot 1: Cotton or Manufacturer
-  ],
-
-  // Southern Cities
-  redditch: [
-    ['cotton', 'manufacturer'], // Slot 1: Cotton or Manufacturer
-  ],
-  worcester: [
-    ['cotton'], // Slot 1: Cotton only
-    ['pottery'], // Slot 2: Pottery only
-  ],
-  kidderminster: [
-    ['cotton'], // Slot 1: Cotton only
-    ['pottery'], // Slot 2: Pottery only
-  ],
-  cannock: [
-    ['coal'], // Slot 1: Coal only
-  ],
-  tamworth: [
-    ['coal'], // Slot 1: Coal only
-    ['iron'], // Slot 2: Iron only
+    ['pottery'],
+    ['manufacturer', 'coal'],
+    ['iron', 'manufacturer'],
   ],
   nuneaton: [
-    ['cotton', 'manufacturer'], // Slot 1: Cotton or Manufacturer
+    ['manufacturer', 'brewery'],
+    ['cotton', 'coal'],
+  ],
+  redditch: [
+    ['manufacturer', 'coal'],
+    ['iron'],
+  ],
+
+  // Black Country
+  wolverhampton: [
+    ['manufacturer'],
+    ['manufacturer', 'coal'],
   ],
   coalbrookdale: [
-    ['coal'], // Slot 1: Coal only
-    ['iron'], // Slot 2: Iron only
+    ['iron', 'brewery'],
+    ['iron'],
+    ['coal'],
+  ],
+  dudley: [
+    ['coal'],
+    ['iron'],
+  ],
+  kidderminster: [
+    ['cotton', 'coal'],
+    ['cotton'],
+  ],
+  worcester: [
+    ['cotton'],
+    ['cotton'],
+  ],
+
+  // Staffordshire / Midlands
+  stafford: [
+    ['manufacturer', 'brewery'],
+    ['pottery'],
+  ],
+  burton: [
+    ['manufacturer', 'coal'],
+    ['brewery'],
+  ],
+  cannock: [
+    ['manufacturer', 'coal'],
+    ['coal'],
+  ],
+  tamworth: [
+    ['cotton', 'coal'],
+    ['cotton', 'coal'],
+  ],
+  walsall: [
+    ['iron', 'manufacturer'],
+    ['manufacturer', 'brewery'],
+  ],
+
+  // North Staffordshire
+  leek: [
+    ['cotton', 'manufacturer'],
+    ['cotton', 'coal'],
+  ],
+  stoke: [
+    ['cotton', 'manufacturer'],
+    ['pottery', 'iron'],
+    ['manufacturer'],
+  ],
+  stone: [
+    ['cotton', 'brewery'],
+    ['manufacturer', 'coal'],
+  ],
+  uttoxeter: [
+    ['manufacturer', 'brewery'],
+    ['cotton', 'brewery'],
+  ],
+
+  // Derbyshire
+  belper: [
+    ['cotton', 'manufacturer'],
+    ['coal'],
+    ['pottery'],
+  ],
+  derby: [
+    ['cotton', 'brewery'],
+    ['cotton', 'manufacturer'],
+    ['iron'],
   ],
 
   // Merchants (no industries can be built)

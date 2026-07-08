@@ -245,19 +245,21 @@ const industries: Record<string, IndustryDefinition> = {
     threePlayers: 2,
     fourPlayers: 3,
   },
-  manufacturer: {
+  // The physical game has combined "Cotton Mill / Manufacturer" cards;
+  // none are in the 2-player deck
+  cotton_manufacturer: {
     type: 'industry',
-    industries: ['manufacturer'],
-    twoPlayers: 2,
-    threePlayers: 2,
-    fourPlayers: 2,
+    industries: ['cotton', 'manufacturer'],
+    twoPlayers: 0,
+    threePlayers: 6,
+    fourPlayers: 8,
   },
   pottery: {
     type: 'industry',
     industries: ['pottery'],
     twoPlayers: 2,
     threePlayers: 2,
-    fourPlayers: 2,
+    fourPlayers: 3,
   },
   brewery: {
     type: 'industry',

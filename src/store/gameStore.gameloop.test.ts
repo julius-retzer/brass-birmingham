@@ -345,10 +345,10 @@ describe('Overbuild in a full city', () => {
     }) as unknown as GameState
 
   test('own tile in a full single-slot city can be overbuilt with a higher level', () => {
-    // Cannock has a single coal slot, occupied by our level 1 mine
+    // Dudley has a single coal slot, occupied by our level 1 mine
     const context = makeContext([
       {
-        location: 'cannock',
+        location: 'dudley',
         type: 'coal',
         level: 1,
         flipped: false,
@@ -359,11 +359,11 @@ describe('Overbuild in a full city', () => {
       },
     ])
 
-    expect(canPlaceOrOverbuildIndustry(context, 'cannock', 'coal', 2)).toBe(
+    expect(canPlaceOrOverbuildIndustry(context, 'dudley', 'coal', 2)).toBe(
       true,
     )
     // Same or lower level is not a legal overbuild
-    expect(canPlaceOrOverbuildIndustry(context, 'cannock', 'coal', 1)).toBe(
+    expect(canPlaceOrOverbuildIndustry(context, 'dudley', 'coal', 1)).toBe(
       false,
     )
   })
@@ -373,7 +373,7 @@ describe('Overbuild in a full city', () => {
       [],
       [
         {
-          location: 'cannock',
+          location: 'dudley',
           type: 'coal',
           level: 1,
           flipped: false,
@@ -386,7 +386,7 @@ describe('Overbuild in a full city', () => {
     )
 
     // Coal cubes exist in the market, so opponent overbuild is illegal
-    expect(canPlaceOrOverbuildIndustry(context, 'cannock', 'coal', 2)).toBe(
+    expect(canPlaceOrOverbuildIndustry(context, 'dudley', 'coal', 2)).toBe(
       false,
     )
   })

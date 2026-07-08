@@ -92,9 +92,9 @@ describe('Error State System', () => {
     const canSelectBirmingham = snapshot.can({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
     expect(canSelectBirmingham).toBe(false)
     
-    // Valid coal locations should still be selectable (e.g., Stoke has coal slots)
-    const canSelectStoke = snapshot.can({ type: 'SELECT_LOCATION', cityId: 'stoke' })
-    expect(canSelectStoke).toBe(true)
+    // Valid coal locations should still be selectable (e.g., Dudley has a coal slot)
+    const canSelectDudley = snapshot.can({ type: 'SELECT_LOCATION', cityId: 'dudley' })
+    expect(canSelectDudley).toBe(true)
     
     // Should not have set any error state since the action was prevented
     expect(snapshot.context.lastError).toBe(null)

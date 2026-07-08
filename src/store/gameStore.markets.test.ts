@@ -152,7 +152,7 @@ describe('Game Store - Markets and Resources', () => {
 
     if (industryCard) {
       actor.send({ type: 'SELECT_CARD', cardId: industryCard.id })
-      actor.send({ type: 'SELECT_LOCATION', cityId: 'stoke' }) // Stoke has coal slots
+      actor.send({ type: 'SELECT_LOCATION', cityId: 'dudley' }) // Dudley has a coal slot
       actor.send({ type: 'CONFIRM' })
 
       const snapshot = actor.getSnapshot()

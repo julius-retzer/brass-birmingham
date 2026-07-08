@@ -73,8 +73,11 @@ export function consumeCoalFromSources(
 
   // If still need coal, consume from coal market (cheapest first)
   // RULE: All coal market access requires connection to merchant locations
-  const { connected: isConnectedToMarket } = isLocationConnectedToMerchant(context, location)
-  
+  const { connected: isConnectedToMarket } = isLocationConnectedToMerchant(
+    context,
+    location,
+  )
+
   if (isConnectedToMarket) {
     while (coalConsumed < coalRequired) {
       let foundCoal = false
@@ -85,7 +88,9 @@ export function consumeCoalFromSources(
           level.cubes--
           coalCost += level.price
           coalConsumed++
-          logDetails.push(`consumed 1 coal from connected market for £${level.price}`)
+          logDetails.push(
+            `consumed 1 coal from connected market for £${level.price}`,
+          )
           foundCoal = true
           break
         }
@@ -106,7 +111,7 @@ export function consumeCoalFromSources(
           foundCoal = true
         }
       }
-      
+
       // If no coal found in market, exit loop
       if (!foundCoal) {
         break
@@ -118,20 +123,27 @@ export function consumeCoalFromSources(
   if (coalConsumed < coalRequired) {
     const shortfall = coalRequired - coalConsumed
     const availableSources = []
-    
+
     if (connectedCoalMines.length > 0) {
       availableSources.push('connected coal mines (exhausted)')
     }
-    
-    const { connected: isConnectedToMarket } = isLocationConnectedToMerchant(context, location)
+
+    const { connected: isConnectedToMarket } = isLocationConnectedToMerchant(
+      context,
+      location,
+    )
     if (isConnectedToMarket) {
       availableSources.push('coal markets')
     }
-    
+
     if (availableSources.length === 0) {
-      logDetails.push(`Coal consumption failed: need ${shortfall} more coal. No coal mines or market connection available from ${location}.`)
+      logDetails.push(
+        `Coal consumption failed: need ${shortfall} more coal. No coal mines or market connection available from ${location}.`,
+      )
     } else {
-      logDetails.push(`Coal consumption failed: need ${shortfall} more coal. Available sources: ${availableSources.join(', ')} but insufficient supply.`)
+      logDetails.push(
+        `Coal consumption failed: need ${shortfall} more coal. Available sources: ${availableSources.join(', ')} but insufficient supply.`,
+      )
     }
   }
 
@@ -151,15 +163,17 @@ export function consumeCoalFromSources(
 
   // Determine if coal consumption was successful
   const success = coalConsumed >= coalRequired
-  const errorMessage = success ? undefined : `Insufficient coal available. Required: ${coalRequired}, available: ${coalConsumed}. Need connection to coal mines or markets.`
+  const errorMessage = success
+    ? undefined
+    : `Insufficient coal available. Required: ${coalRequired}, available: ${coalConsumed}. Need connection to coal mines or markets.`
 
-  return { 
-    success, 
+  return {
+    success,
     updatedPlayers: success ? updatedPlayers : context.players, // Return original state on failure
     updatedCoalMarket: success ? updatedCoalMarket : context.coalMarket, // Return original state on failure
     coalCost: success ? coalCost : 0, // No cost on failure
-    logDetails, 
-    errorMessage 
+    logDetails,
+    errorMessage,
   }
 }
 
@@ -399,8 +413,10 @@ export function consumeBeerFromSources(
   location: CityId,
   beerRequired: number,
   // Merchant beer may only be consumed as part of a Sell action, and only
-  // from the beer space beside the merchant tile being sold to
+  // from the beer space beside the merchant tile being sold to (identified
+  // by its location and, when given, the good it buys)
   merchantBeerLocation?: CityId,
+  merchantGoodsType?: IndustryType,
 ): {
   success: boolean
   updatedPlayers: Player[]
@@ -423,9 +439,7 @@ export function consumeBeerFromSources(
   const logDetails: string[] = []
   let updatedPlayers = [...context.players]
   const updatedResources = { ...context.resources }
-  let updatedMerchants = context.merchants
-    ? [...context.merchants]
-    : undefined
+  let updatedMerchants = context.merchants ? [...context.merchants] : undefined
   const merchantBonusesCollected: Array<{
     type: 'develop' | 'income' | 'victoryPoints' | 'money'
     value: number
@@ -502,11 +516,7 @@ export function consumeBeerFromSources(
 
   // If still need beer and this is a Sell action, consume the beer beside the
   // merchant tile being sold to (and collect its bonus)
-  if (
-    merchantBeerLocation &&
-    updatedMerchants &&
-    beerConsumed < beerRequired
-  ) {
+  if (merchantBeerLocation && updatedMerchants && beerConsumed < beerRequired) {
     const distance = calculateNetworkDistance(
       context,
       location,
@@ -516,7 +526,10 @@ export function consumeBeerFromSources(
     if (distance !== Infinity) {
       const merchantIndex = updatedMerchants.findIndex(
         (merchant) =>
-          merchant.location === merchantBeerLocation && merchant.hasBeer,
+          merchant.location === merchantBeerLocation &&
+          merchant.hasBeer &&
+          (!merchantGoodsType ||
+            merchant.industryIcons.includes(merchantGoodsType)),
       )
 
       if (merchantIndex !== -1) {

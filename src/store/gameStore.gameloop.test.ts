@@ -221,6 +221,61 @@ describe('Game loop - automatic era end and game over', () => {
     expect(p0.links).toHaveLength(0)
   })
 
+  test('era scoring: unflipped industries do not score but stay on the board', () => {
+    const { actor } = setup()
+
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 0,
+      industries: [
+        {
+          location: 'worcester',
+          type: 'cotton',
+          level: 2,
+          flipped: false,
+          tile: {
+            id: 'cotton_2',
+            type: 'cotton',
+            level: 2,
+            canBuildInCanalEra: true,
+            canBuildInRailEra: true,
+            incomeAdvancement: 2,
+            incomeSpaces: 2,
+            victoryPoints: 5,
+            beerRequired: 1,
+            cost: 14,
+            linkScoringIcons: 1,
+            coalRequired: 1,
+            ironRequired: 0,
+            beerProduced: 0,
+            coalProduced: 0,
+            ironProduced: 0,
+            hasLightbulbIcon: false,
+            quantity: 2,
+          },
+          coalCubesOnTile: 0,
+          ironCubesOnTile: 0,
+          beerBarrelsOnTile: 0,
+        },
+      ],
+    } as any)
+
+    actor.send({ type: 'TRIGGER_ERA_SCORING' } as any)
+
+    const s = actor.getSnapshot() as any
+    const p0 = s.context.players[0]
+    // No VP for the unflipped tile, but it survives era scoring
+    // (only level 1 tiles are removed, by the canal-era-end step)
+    expect(p0.victoryPoints).toBe(0)
+    expect(p0.industries).toHaveLength(1)
+    expect(p0.industries[0].flipped).toBe(false)
+
+    // The canal-era-end step does not remove it either (level 2)
+    actor.send({ type: 'TRIGGER_CANAL_ERA_END' } as any)
+    const s2 = actor.getSnapshot() as any
+    expect(s2.context.players[0].industries).toHaveLength(1)
+  })
+
   test('wild cards return to their draw areas when played, not to the discard pile', () => {
     const { actor } = setup()
     let s = actor.getSnapshot() as any

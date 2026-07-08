@@ -12,26 +12,26 @@ import {
 import {
   type IndustryTile,
   type IndustryTileWithQuantity,
+  decrementTileQuantity,
   getInitialPlayerIndustryTiles,
   getInitialPlayerIndustryTilesWithQuantities,
-  getLowestLevelTile,
   getLowestAvailableTile,
-  decrementTileQuantity,
+  getLowestLevelTile,
 } from '../data/industryTiles'
 import {
+  type ValidationResult,
   buildIndustryTile,
   validateBuildActionSelections,
+  // Non-throwing validation functions
+  validateBuildActionSelectionsResult,
   validateCardIndustryMatching,
   validateCardLocationMatching,
   validateCardType,
   validateIndustrySlotAvailability,
-  validateNetworkRequirement,
-  validateTileEraCompatibility,
-  // Non-throwing validation functions
-  validateBuildActionSelectionsResult,
   validateIndustrySlotAvailabilityResult,
+  validateNetworkRequirement,
   validateNetworkRequirementResult,
-  type ValidationResult,
+  validateTileEraCompatibility,
 } from './build/buildActions'
 import { GAME_CONSTANTS } from './constants'
 import {
@@ -42,9 +42,9 @@ import {
 import {
   calculateLinkVictoryPoints,
   calculateNetworkDistance,
+  canPlaceOrOverbuildIndustry,
   checkAndFlipIndustryTilesLogic,
   createLogEntry,
-  routeCardsToDiscard,
   debugLog,
   drawCards,
   findAvailableBreweries,
@@ -54,10 +54,10 @@ import {
   isFirstRound,
   isLocationInPlayerNetwork,
   removeCardFromHand,
+  routeCardsToDiscard,
   shuffleArray,
   updatePlayerInList,
   validateIndustryBuildLocation,
-  canPlaceOrOverbuildIndustry,
 } from './shared/gameUtils'
 
 export type LogEntryType = 'system' | 'action' | 'info' | 'error'
@@ -313,9 +313,8 @@ export type { GameEvent }
 // merchant space. Blank tiles accept no goods and get no beer barrel.
 type MerchantTileGoods = IndustryType[]
 
-const MERCHANT_LOCATION_BONUSES: Record<
-  string,
-  { bonusType: Merchant['bonusType']; bonusValue: number }
+const MERCHANT_LOCATION_BONUSES: Partial<
+  Record<CityId, { bonusType: Merchant['bonusType']; bonusValue: number }>
 > = {
   warrington: { bonusType: 'money', bonusValue: 5 },
   gloucester: { bonusType: 'develop', bonusValue: 1 },
@@ -390,6 +389,82 @@ const createMerchantsForPlayerCount = (playerCount: number): Merchant[] => {
       hasBeer: goods.length > 0,
     }
   })
+}
+
+const SELLABLE_INDUSTRY_TYPES: IndustryType[] = [
+  'cotton',
+  'manufacturer',
+  'pottery',
+]
+
+// Shared validation for a single sale within a Sell action, used by both the
+// canExecuteSale guard and the executeSingleSale action
+const validateSale = (
+  context: GameState,
+  event: { location: CityId; industryType: IndustryType; merchant: CityId },
+): {
+  isValid: boolean
+  error?: string
+  industry?: Player['industries'][number]
+} => {
+  const currentPlayer = getCurrentPlayer(context)
+
+  const industry = currentPlayer.industries.find(
+    (i) =>
+      i.location === event.location &&
+      i.type === event.industryType &&
+      !i.flipped,
+  )
+  if (!industry || !SELLABLE_INDUSTRY_TYPES.includes(industry.type)) {
+    return {
+      isValid: false,
+      error: `No unflipped ${event.industryType} to sell at ${event.location}`,
+    }
+  }
+
+  // The merchant being sold to must feature the industry's icon
+  const merchantSlot = context.merchants.find(
+    (m) =>
+      m.location === event.merchant && m.industryIcons.includes(industry.type),
+  )
+  if (!merchantSlot) {
+    return {
+      isValid: false,
+      error: `Cannot sell: no merchant at ${event.merchant} buys ${industry.type}`,
+      industry,
+    }
+  }
+
+  // ... and be connected to the industry's location
+  if (
+    calculateNetworkDistance(context, event.location, event.merchant) ===
+    Infinity
+  ) {
+    return {
+      isValid: false,
+      error: `Cannot sell: ${event.location} is not connected to ${event.merchant}`,
+      industry,
+    }
+  }
+
+  // Required beer must be consumable (merchant beer only from the
+  // icon-matching tile at the merchant being sold to)
+  const beerCheck = consumeBeerFromSources(
+    context,
+    event.location,
+    industry.tile.beerRequired,
+    event.merchant,
+    industry.type,
+  )
+  if (!beerCheck.success) {
+    return {
+      isValid: false,
+      error: beerCheck.errorMessage || 'Insufficient beer for sale',
+      industry,
+    }
+  }
+
+  return { isValid: true, industry }
 }
 
 // Setup the machine with proper typing
@@ -494,21 +569,22 @@ export const gameStore = setup({
       const player = getCurrentPlayer(context)
       const card = findCardInHand(player, event.cardId)
       debugLog('selectCard', context, event)
-      
+
       const result: Partial<GameState> = {
         selectedCard: card,
       }
-      
+
       // If the selected card is an industry card, auto-select the lowest tile of that industry type
       if (card?.type === 'industry') {
         const industryCard = card as IndustryCard
-        
+
         // Find the first industry type from the card that the player has tiles for
         for (const industryType of industryCard.industries) {
-          const tilesWithQuantity = player.industryTilesOnMat[industryType] || []
+          const tilesWithQuantity =
+            player.industryTilesOnMat[industryType] || []
           const availableTiles = tilesWithQuantity
-            .filter(t => t.quantityAvailable > 0)
-            .map(t => t.tile)
+            .filter((t) => t.quantityAvailable > 0)
+            .map((t) => t.tile)
             .filter((tile) => {
               if (context.era === 'canal') return tile.canBuildInCanalEra
               if (context.era === 'rail') return tile.canBuildInRailEra
@@ -524,7 +600,7 @@ export const gameStore = setup({
           }
         }
       }
-      
+
       return result
     }),
 
@@ -565,14 +641,14 @@ export const gameStore = setup({
     updatePlayer2Name: assign(({ context, event }) => {
       if (event.type !== 'JOIN_GAME') return {}
       debugLog('updatePlayer2Name', context, event)
-      
+
       // Update player 2 name in the players array
-      const updatedPlayers = context.players.map((player, index) => 
-        index === 1 ? { ...player, name: event.player2Name } : player
+      const updatedPlayers = context.players.map((player, index) =>
+        index === 1 ? { ...player, name: event.player2Name } : player,
       )
-      
+
       return {
-        players: updatedPlayers
+        players: updatedPlayers,
       }
     }),
 
@@ -630,11 +706,11 @@ export const gameStore = setup({
       ]
 
       // Check if any validation failed
-      const failedValidation = validationChecks.find(check => !check.isValid)
+      const failedValidation = validationChecks.find((check) => !check.isValid)
       if (failedValidation) {
         return {
           lastError: failedValidation.errorMessage || 'Validation failed',
-          errorContext: failedValidation.errorContext || 'build' as const,
+          errorContext: failedValidation.errorContext || ('build' as const),
         }
       }
 
@@ -654,7 +730,8 @@ export const gameStore = setup({
         )
       } catch (error) {
         return {
-          lastError: error instanceof Error ? error.message : 'Card validation failed',
+          lastError:
+            error instanceof Error ? error.message : 'Card validation failed',
           errorContext: 'build' as const,
         }
       }
@@ -679,7 +756,12 @@ export const gameStore = setup({
         let buildResult: ReturnType<typeof buildIndustryTile>
         try {
           validateTileEraCompatibility(context, tile)
-          buildResult = buildIndustryTile(context, currentPlayer, tile, updatedHand)
+          buildResult = buildIndustryTile(
+            context,
+            currentPlayer,
+            tile,
+            updatedHand,
+          )
         } catch (error) {
           return {
             lastError:
@@ -814,7 +896,7 @@ export const gameStore = setup({
         coalResult = consumeCoalFromSources(
           context,
           context.selectedLink.from, // Use the source of the link
-          1
+          1,
         )
 
         if (!coalResult.success) {
@@ -831,17 +913,18 @@ export const gameStore = setup({
         for (let i = 0; i < updatedCoalMarket.length; i++) {
           updatedCoalMarket[i] = coalResult.updatedCoalMarket[i]!
         }
-        
+
         logMessage += ` (${coalResult.logDetails.join(', ')})`
       }
 
       const totalCost = linkCost + coalCost
-      
+
       // Get player state after coal consumption, if any
-      const playerAfterCoal = context.era === 'rail' && coalResult ? 
-        coalResult.updatedPlayers[context.currentPlayerIndex]! : 
-        currentPlayer
-      
+      const playerAfterCoal =
+        context.era === 'rail' && coalResult
+          ? coalResult.updatedPlayers[context.currentPlayerIndex]!
+          : currentPlayer
+
       const updatedPlayer = {
         ...playerAfterCoal,
         hand: updatedHand,
@@ -928,9 +1011,9 @@ export const gameStore = setup({
 
       // CORRECT SEQUENCE per rules:
       // 1. Build first rail + consume first coal (closest)
-      // 2. Build second rail + consume second coal (closest from new network state)  
+      // 2. Build second rail + consume second coal (closest from new network state)
       // 3. Consume beer (must be reachable from second rail)
-      
+
       let updatedPlayersAfterCoal = [...context.players]
       let updatedCoalMarket = [...context.coalMarket]
       let coalCost = 0
@@ -956,11 +1039,15 @@ export const gameStore = setup({
 
       // Consume first coal (closest to first link)
       const firstCoalResult = consumeCoalFromSources(
-        { ...context, players: updatedPlayersAfterCoal, coalMarket: updatedCoalMarket },
+        {
+          ...context,
+          players: updatedPlayersAfterCoal,
+          coalMarket: updatedCoalMarket,
+        },
         context.selectedLink.from,
         1,
       )
-      
+
       if (!firstCoalResult.success) {
         return {
           lastError:
@@ -983,7 +1070,8 @@ export const gameStore = setup({
       }
 
       // Add second link to current player and consume second coal
-      const currentPlayerAfterFirstCoal = updatedPlayersAfterCoal[context.currentPlayerIndex]!
+      const currentPlayerAfterFirstCoal =
+        updatedPlayersAfterCoal[context.currentPlayerIndex]!
       const playerWithBothLinks = {
         ...currentPlayerAfterFirstCoal,
         links: [...currentPlayerAfterFirstCoal.links, secondLink],
@@ -996,11 +1084,15 @@ export const gameStore = setup({
 
       // Consume second coal (closest to second link, considering new network state)
       const secondCoalResult = consumeCoalFromSources(
-        { ...context, players: updatedPlayersAfterCoal, coalMarket: updatedCoalMarket },
+        {
+          ...context,
+          players: updatedPlayersAfterCoal,
+          coalMarket: updatedCoalMarket,
+        },
         context.selectedSecondLink.from,
         1,
       )
-      
+
       if (!secondCoalResult.success) {
         return {
           lastError:
@@ -1035,7 +1127,8 @@ export const gameStore = setup({
       totalCost += coalCost
 
       // Get final player state with beer consumption applied
-      const finalPlayerAfterBeer = beerResult.updatedPlayers[context.currentPlayerIndex]!
+      const finalPlayerAfterBeer =
+        beerResult.updatedPlayers[context.currentPlayerIndex]!
       const updatedPlayer = {
         ...finalPlayerAfterBeer,
         hand: updatedHand,
@@ -1177,8 +1270,8 @@ export const gameStore = setup({
           const tilesWithQuantity =
             currentPlayer.industryTilesOnMat[industryType] || []
           const developableTiles = tilesWithQuantity
-            .filter(t => t.quantityAvailable > 0)
-            .map(t => t.tile)
+            .filter((t) => t.quantityAvailable > 0)
+            .map((t) => t.tile)
             .filter(
               (tile) => industryType !== 'pottery' || !tile.hasLightbulbIcon,
             )
@@ -1217,8 +1310,8 @@ export const gameStore = setup({
 
         // Filter out pottery tiles with lightbulb and tiles with no quantity
         const developableTiles = tilesWithQuantity
-          .filter(t => t.quantityAvailable > 0)
-          .map(t => t.tile)
+          .filter((t) => t.quantityAvailable > 0)
+          .map((t) => t.tile)
           .filter(
             (tile) => industryType !== 'pottery' || !tile.hasLightbulbIcon,
           )
@@ -1229,7 +1322,7 @@ export const gameStore = setup({
           if (lowestTile) {
             updatedIndustryTilesOnMat[industryType] = decrementTileQuantity(
               tilesWithQuantity,
-              lowestTile
+              lowestTile,
             )
           }
         }
@@ -1285,70 +1378,27 @@ export const gameStore = setup({
       if (event.type !== 'SELECT_SALE') return {}
       const currentPlayer = getCurrentPlayer(context)
 
-      const industryToSell = currentPlayer.industries.find(
-        (industry) =>
-          industry.location === event.location &&
-          industry.type === event.industryType &&
-          !industry.flipped,
-      )
-
-      if (
-        !industryToSell ||
-        !['cotton', 'manufacturer', 'pottery'].includes(industryToSell.type)
-      ) {
+      const validation = validateSale(context, event)
+      if (!validation.isValid) {
         return {
-          lastError: `No unflipped ${event.industryType} to sell at ${event.location}`,
-          errorContext: 'sell' as const,
-        }
-      }
-
-      // The merchant being sold to must feature the industry's icon and be
-      // connected to the industry's location
-      const merchantSlot = context.merchants.find(
-        (merchant) =>
-          merchant.location === event.merchant &&
-          merchant.industryIcons.includes(industryToSell.type),
-      )
-      if (!merchantSlot) {
-        return {
-          lastError: `Cannot sell: no merchant at ${event.merchant} buys ${industryToSell.type}`,
+          lastError: validation.error ?? 'Invalid sale',
           errorContext: 'sell' as const,
           logs: [
             ...context.logs,
-            createLogEntry(
-              `Cannot sell: No merchant connected with ${industryToSell.type} icon`,
-              'error',
-            ),
+            createLogEntry(`Cannot sell: ${validation.error}`, 'error'),
           ],
         }
       }
+      const industryToSell = validation.industry!
 
-      const distance = calculateNetworkDistance(
-        context,
-        event.location,
-        event.merchant,
-      )
-      if (distance === Infinity) {
-        return {
-          lastError: `Cannot sell: ${event.location} is not connected to ${event.merchant}`,
-          errorContext: 'sell' as const,
-          logs: [
-            ...context.logs,
-            createLogEntry(
-              `Cannot sell: No merchant connected with ${industryToSell.type} icon`,
-              'error',
-            ),
-          ],
-        }
-      }
-
-      // Consume beer; merchant beer may come from the merchant being sold to
-      const beerRequired = industryToSell.tile.beerRequired
+      // Consume beer; merchant beer may come from the icon-matching tile at
+      // the merchant being sold to
       const beerResult = consumeBeerFromSources(
         context,
         event.location,
-        beerRequired,
+        industryToSell.tile.beerRequired,
         event.merchant,
+        industryToSell.type,
       )
 
       if (!beerResult.success) {
@@ -1382,7 +1432,7 @@ export const gameStore = setup({
         GAME_CONSTANTS.MAX_INCOME,
       )
 
-      let updatedPlayer = {
+      const updatedPlayer = {
         ...playerAfterBeer,
         industries: updatedIndustries,
         income: newIncome,
@@ -1415,7 +1465,7 @@ export const gameStore = setup({
               for (const tileWithQty of tilesWithQuantity) {
                 if (tileWithQty.quantityAvailable === 0) continue
                 const tile = tileWithQty.tile
-                
+
                 // Skip pottery tiles with lightbulb icon
                 if (tile.type === 'pottery' && tile.hasLightbulbIcon) {
                   continue
@@ -1433,8 +1483,8 @@ export const gameStore = setup({
               const tilesWithQuantity =
                 updatedPlayer.industryTilesOnMat[industryTypeToRemove]
               const tileToRemove = tilesWithQuantity
-                .filter(t => t.quantityAvailable > 0)
-                .map(t => t.tile)
+                .filter((t) => t.quantityAvailable > 0)
+                .map((t) => t.tile)
                 .find(
                   (t) =>
                     t.level === lowestLevel &&
@@ -1446,7 +1496,7 @@ export const gameStore = setup({
                   ...updatedPlayer.industryTilesOnMat,
                   [industryTypeToRemove]: decrementTileQuantity(
                     tilesWithQuantity,
-                    tileToRemove
+                    tileToRemove,
                   ),
                 }
               }
@@ -1843,7 +1893,6 @@ export const gameStore = setup({
         selectedLocation: event.cityId,
       }
 
-
       return result
     }),
 
@@ -1860,7 +1909,8 @@ export const gameStore = setup({
 
       // Get current player and find the lowest available tile of the selected industry type
       const player = getCurrentPlayer(context)
-      const tilesWithQuantity = player.industryTilesOnMat[event.industryType] || []
+      const tilesWithQuantity =
+        player.industryTilesOnMat[event.industryType] || []
       const lowestTile = getLowestAvailableTile(tilesWithQuantity)
 
       if (!lowestTile) {
@@ -1894,12 +1944,13 @@ export const gameStore = setup({
 
       // Validate each selected industry type
       for (const industryType of event.industryTypes) {
-        const tilesWithQuantity = currentPlayer.industryTilesOnMat[industryType] || []
+        const tilesWithQuantity =
+          currentPlayer.industryTilesOnMat[industryType] || []
 
         // Filter out pottery tiles with lightbulb icon and tiles with no quantity
         const developableTiles = tilesWithQuantity
-          .filter(t => t.quantityAvailable > 0)
-          .map(t => t.tile)
+          .filter((t) => t.quantityAvailable > 0)
+          .map((t) => t.tile)
           .filter(
             (tile) => industryType !== 'pottery' || !tile.hasLightbulbIcon,
           )
@@ -2032,40 +2083,28 @@ export const gameStore = setup({
         }
       }
 
-      // Score Flipped Industry tiles - score VPs shown in bottom left corner
-      // Also remove unflipped industries (per rules)
+      // Score Flipped Industry tiles - score VPs shown in bottom left corner.
+      // Unflipped tiles do not score but stay on the board (only level 1
+      // tiles are removed, by the canal-era-end step).
       for (let i = 0; i < updatedPlayers.length; i++) {
         const player = updatedPlayers[i]!
         let industryVPs = 0
-        const remainingIndustries = []
-        let removedUnflippedCount = 0
 
         for (const industry of player.industries) {
           if (industry.flipped) {
             industryVPs += industry.tile.victoryPoints
-            remainingIndustries.push(industry) // Keep flipped industries
-          } else {
-            removedUnflippedCount++ // Count removed unflipped industries
           }
         }
 
-        const messages = []
         if (industryVPs > 0) {
-          messages.push(
+          logMessages.push(
             `${player.name} scored ${industryVPs} VPs from flipped industry tiles`,
           )
         }
-        if (removedUnflippedCount > 0) {
-          messages.push(
-            `${player.name} had ${removedUnflippedCount} unflipped industry tiles removed`,
-          )
-        }
-        logMessages.push(...messages)
 
         updatedPlayers[i] = {
           ...player,
           victoryPoints: player.victoryPoints + industryVPs,
-          industries: remainingIndustries, // Only keep flipped industries
         }
       }
 
@@ -2223,7 +2262,7 @@ export const gameStore = setup({
           context.selectedCard !== null && context.selectedLocation !== null
         )
       }
-      
+
       // For industry cards, need card, tile, location AND sufficient resources
       if (
         context.selectedCard === null ||
@@ -2232,9 +2271,9 @@ export const gameStore = setup({
       ) {
         return false
       }
-      
+
       const tile = context.selectedIndustryTile
-      
+
       // Check coal availability if required
       if (tile.coalRequired > 0) {
         const coalResult = consumeCoalFromSources(
@@ -2246,51 +2285,21 @@ export const gameStore = setup({
           return false
         }
       }
-      
+
       // Iron is always available from market with fallback pricing, so no check needed
-      
+
       return true
     },
     canExecuteSale: ({ context, event }) => {
       if (event.type !== 'SELECT_SALE') return false
-      const currentPlayer = getCurrentPlayer(context)
-
-      const industry = currentPlayer.industries.find(
-        (i) =>
-          i.location === event.location &&
-          i.type === event.industryType &&
-          !i.flipped,
-      )
-      if (
-        !industry ||
-        !['cotton', 'manufacturer', 'pottery'].includes(industry.type)
-      ) {
-        return false
-      }
-
-      // The chosen merchant must buy this good and be connected
-      const merchantSlot = context.merchants.find(
-        (m) =>
-          m.location === event.merchant &&
-          m.industryIcons.includes(industry.type),
-      )
-      if (!merchantSlot) return false
-
-      if (
-        calculateNetworkDistance(context, event.location, event.merchant) ===
-        Infinity
-      ) {
-        return false
-      }
-
-      // Required beer must be consumable (merchant beer from this merchant)
-      return consumeBeerFromSources(
-        context,
-        event.location,
-        industry.tile.beerRequired,
-        event.merchant,
-      ).success
+      return validateSale(context, event).isValid
     },
+
+    // You cannot take a loan if it would take your income level below -10
+    canTakeLoan: ({ context }) =>
+      context.selectedCard !== null &&
+      getCurrentPlayer(context).income - GAME_CONSTANTS.LOAN_INCOME_PENALTY >=
+        GAME_CONSTANTS.MIN_INCOME,
 
     hasSoldThisAction: ({ context }) => context.salesMadeThisAction > 0,
 
@@ -2314,7 +2323,7 @@ export const gameStore = setup({
       if (context.selectedLink === null) {
         return false
       }
-      
+
       // Check coal availability for rail era links
       if (context.era === 'rail') {
         const coalResult = consumeCoalFromSources(
@@ -2326,14 +2335,13 @@ export const gameStore = setup({
           return false
         }
       }
-      
+
       return true
     },
     canBuildLink: ({ context, event }) => {
       if (event.type !== 'SELECT_LINK' && event.type !== 'SELECT_SECOND_LINK') {
         return false
       }
-      
 
       // Check if any player already has a link on this connection
       const existingLink = context.players.some((player) =>
@@ -2363,7 +2371,7 @@ export const gameStore = setup({
         if (!context.selectedLink) {
           return false
         }
-        
+
         // Second link follows same network adjacency rules as regular links
         // (No special adjacency requirement between the two links)
         // Continue to regular network adjacency check below
@@ -2416,7 +2424,11 @@ export const gameStore = setup({
 
       // For industry cards, check if the location can accommodate the selected
       // industry type - either in a free slot or as a legal overbuild
-      if ((context.selectedCard.type === 'industry' || context.selectedCard.type === 'wild_industry') && context.selectedIndustryTile) {
+      if (
+        (context.selectedCard.type === 'industry' ||
+          context.selectedCard.type === 'wild_industry') &&
+        context.selectedIndustryTile
+      ) {
         return canPlaceOrOverbuildIndustry(
           context,
           event.cityId,
@@ -2433,10 +2445,11 @@ export const gameStore = setup({
 
       // Check if player has tiles of this industry type available
       const player = getCurrentPlayer(context)
-      const tilesWithQuantity = player.industryTilesOnMat[event.industryType] || []
+      const tilesWithQuantity =
+        player.industryTilesOnMat[event.industryType] || []
       const availableTiles = tilesWithQuantity
-        .filter(t => t.quantityAvailable > 0)
-        .map(t => t.tile)
+        .filter((t) => t.quantityAvailable > 0)
+        .map((t) => t.tile)
         .filter((tile) => {
           if (context.era === 'canal') return tile.canBuildInCanalEra
           if (context.era === 'rail') return tile.canBuildInRailEra
@@ -2495,8 +2508,7 @@ export const gameStore = setup({
     // A player may only keep taking actions while they have actions left AND
     // cards to discard for them (hands shrink once the draw deck is empty)
     canContinueTurn: ({ context }) =>
-      context.actionsRemaining > 0 &&
-      getCurrentPlayer(context).hand.length > 0,
+      context.actionsRemaining > 0 && getCurrentPlayer(context).hand.length > 0,
 
     currentPlayerHandEmpty: ({ context }) =>
       getCurrentPlayer(context).hand.length === 0,
@@ -2527,12 +2539,13 @@ export const gameStore = setup({
 
       // Also check if there are opponent breweries available (detailed connectivity validation during execution)
       const opponentBreweries = context.players
-        .filter(player => player.id !== currentPlayer.id)
-        .flatMap(player => player.industries)
-        .filter(industry => 
-          industry.type === 'brewery' &&
-          !industry.flipped &&
-          industry.beerBarrelsOnTile > 0
+        .filter((player) => player.id !== currentPlayer.id)
+        .flatMap((player) => player.industries)
+        .filter(
+          (industry) =>
+            industry.type === 'brewery' &&
+            !industry.flipped &&
+            industry.beerBarrelsOnTile > 0,
         )
 
       // Allow if player has own brewery beer OR there are opponent breweries available
@@ -2555,10 +2568,11 @@ export const gameStore = setup({
         'manufacturer',
         'brewery',
       ] as IndustryType[]) {
-        const tilesWithQuantity = currentPlayer.industryTilesOnMat[industryType] || []
+        const tilesWithQuantity =
+          currentPlayer.industryTilesOnMat[industryType] || []
         const developableTiles = tilesWithQuantity
-          .filter(t => t.quantityAvailable > 0)
-          .map(t => t.tile)
+          .filter((t) => t.quantityAvailable > 0)
+          .map((t) => t.tile)
           .filter(
             (tile) => industryType !== 'pottery' || !tile.hasLightbulbIcon,
           )
@@ -2578,7 +2592,7 @@ export const gameStore = setup({
       ) {
         return false
       }
-      
+
       // Check if beer is available for double rail link
       const beerCheckResult = consumeBeerFromSources(
         context,
@@ -2586,7 +2600,7 @@ export const gameStore = setup({
         1,
         // No merchant beer for Network actions
       )
-      
+
       return beerCheckResult.success
     },
   },
@@ -2895,7 +2909,7 @@ export const gameStore = setup({
                     CONFIRM: {
                       target: '#brassGame.playing.actionComplete',
                       actions: 'executeLoanAction',
-                      guard: 'hasSelectedCard',
+                      guard: 'canTakeLoan',
                     },
                     CANCEL: {
                       target: 'selectingCard',

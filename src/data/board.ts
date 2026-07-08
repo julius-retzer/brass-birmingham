@@ -111,56 +111,24 @@ export const cityIndustrySlots: Record<CityId, string[][]> = {
     ['iron'],
     ['manufacturer'],
   ],
-  coventry: [
-    ['pottery'],
-    ['manufacturer', 'coal'],
-    ['iron', 'manufacturer'],
-  ],
+  coventry: [['pottery'], ['manufacturer', 'coal'], ['iron', 'manufacturer']],
   nuneaton: [
     ['manufacturer', 'brewery'],
     ['cotton', 'coal'],
   ],
-  redditch: [
-    ['manufacturer', 'coal'],
-    ['iron'],
-  ],
+  redditch: [['manufacturer', 'coal'], ['iron']],
 
   // Black Country
-  wolverhampton: [
-    ['manufacturer'],
-    ['manufacturer', 'coal'],
-  ],
-  coalbrookdale: [
-    ['iron', 'brewery'],
-    ['iron'],
-    ['coal'],
-  ],
-  dudley: [
-    ['coal'],
-    ['iron'],
-  ],
-  kidderminster: [
-    ['cotton', 'coal'],
-    ['cotton'],
-  ],
-  worcester: [
-    ['cotton'],
-    ['cotton'],
-  ],
+  wolverhampton: [['manufacturer'], ['manufacturer', 'coal']],
+  coalbrookdale: [['iron', 'brewery'], ['iron'], ['coal']],
+  dudley: [['coal'], ['iron']],
+  kidderminster: [['cotton', 'coal'], ['cotton']],
+  worcester: [['cotton'], ['cotton']],
 
   // Staffordshire / Midlands
-  stafford: [
-    ['manufacturer', 'brewery'],
-    ['pottery'],
-  ],
-  burton: [
-    ['manufacturer', 'coal'],
-    ['brewery'],
-  ],
-  cannock: [
-    ['manufacturer', 'coal'],
-    ['coal'],
-  ],
+  stafford: [['manufacturer', 'brewery'], ['pottery']],
+  burton: [['manufacturer', 'coal'], ['brewery']],
+  cannock: [['manufacturer', 'coal'], ['coal']],
   tamworth: [
     ['cotton', 'coal'],
     ['cotton', 'coal'],
@@ -175,11 +143,7 @@ export const cityIndustrySlots: Record<CityId, string[][]> = {
     ['cotton', 'manufacturer'],
     ['cotton', 'coal'],
   ],
-  stoke: [
-    ['cotton', 'manufacturer'],
-    ['pottery', 'iron'],
-    ['manufacturer'],
-  ],
+  stoke: [['cotton', 'manufacturer'], ['pottery', 'iron'], ['manufacturer']],
   stone: [
     ['cotton', 'brewery'],
     ['manufacturer', 'coal'],
@@ -190,16 +154,8 @@ export const cityIndustrySlots: Record<CityId, string[][]> = {
   ],
 
   // Derbyshire
-  belper: [
-    ['cotton', 'manufacturer'],
-    ['coal'],
-    ['pottery'],
-  ],
-  derby: [
-    ['cotton', 'brewery'],
-    ['cotton', 'manufacturer'],
-    ['iron'],
-  ],
+  belper: [['cotton', 'manufacturer'], ['coal'], ['pottery']],
+  derby: [['cotton', 'brewery'], ['cotton', 'manufacturer'], ['iron']],
 
   // Merchants (no industries can be built)
   warrington: [],

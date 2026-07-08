@@ -82,20 +82,35 @@ describe('Game Store - Actions', () => {
     expect(snapshot.context.discardPile).toContainEqual(cardToDiscard)
   })
 
-  test('loan action - income cannot go below -10', () => {
+  test('loan action - cannot take a loan that would drop income below -10', () => {
     const { actor } = setupGame()
 
-    // Take multiple loans to test minimum income
-    for (let i = 0; i < 8; i++) {
-      takeLoanAction(actor)
-      if (i < 7) takeLoanAction(actor) // Player 2 also takes loans
-    }
+    // Player at income -8: a loan would take them to -11, which is illegal
+    actor.send({ type: 'TEST_SET_PLAYER_STATE', playerId: 0, income: -8 })
+    let snapshot = actor.getSnapshot()
+    const moneyBefore = snapshot.context.players[0]!.money
 
-    const snapshot = actor.getSnapshot()
+    takeLoanAction(actor)
+
+    snapshot = actor.getSnapshot()
     const player = snapshot.context.players[0]!
+    // Guard blocked the loan - no money, no income change, action not consumed
+    expect(player.income).toBe(-8)
+    expect(player.money).toBe(moneyBefore)
+    expect(
+      snapshot.matches({
+        playing: { action: { takingLoan: 'confirmingLoan' } },
+      }),
+    ).toBe(true)
+    actor.send({ type: 'CANCEL' })
+    actor.send({ type: 'CANCEL' })
 
-    // After multiple loans: income should be capped at -10
-    expect(player.income).toBe(-10)
+    // At income -7 the loan is legal (lands exactly on -10)
+    actor.send({ type: 'TEST_SET_PLAYER_STATE', playerId: 0, income: -7 })
+    takeLoanAction(actor)
+    snapshot = actor.getSnapshot()
+    expect(snapshot.context.players[0]!.income).toBe(-10)
+    expect(snapshot.context.players[0]!.money).toBe(moneyBefore + 30)
   })
 
   test('pass action - basic mechanics', () => {

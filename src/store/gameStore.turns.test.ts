@@ -102,76 +102,89 @@ describe('Game Store - Turn Order and Rounds', () => {
   test('turn order determined by money spent - least spender goes first', () => {
     const { actor } = setup()
 
-    // Set up initial turn order (player 0 then player 1)
     let s = actor.getSnapshot()
+    expect(s.context.currentPlayerIndex).toBe(0)
+    expect(s.context.turnOrder).toEqual(['1', '2'])
 
-    // TODO: Implement turnOrder tracking in game context
-    // For now, check currentPlayerIndex as a proxy for turn order
-    const initialPlayerIndex = s.context.currentPlayerIndex
-    expect(initialPlayerIndex).toBe(0) // Player 0 starts first
-
-    // Player 0 performs expensive build action (spends money)
-    actor.send({ type: 'BUILD' })
+    // Player 0 builds a canal link (£3) - spends money
+    actor.send({ type: 'NETWORK' })
     s = actor.getSnapshot()
-    const cardId = s.context.players[0]!.hand[0]!.id
-    actor.send({ type: 'SELECT_CARD', cardId })
-    actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
-    // This would normally spend money and be placed on character tile
+    actor.send({ type: 'SELECT_CARD', cardId: s.context.players[0]!.hand[0]!.id })
+    actor.send({ type: 'SELECT_LINK', from: 'worcester', to: 'gloucester' })
     actor.send({ type: 'CONFIRM' })
 
-    // Player 1 performs pass action (spends no money)
+    // Player 1 passes (spends nothing)
     s = actor.getSnapshot()
-    if (s.context.currentPlayerIndex === 1) {
-      actor.send({ type: 'PASS' })
-      const p1CardId = s.context.players[1]!.hand[0]!.id
-      actor.send({ type: 'SELECT_CARD', cardId: p1CardId })
-      actor.send({ type: 'CONFIRM' })
-    }
+    expect(s.context.currentPlayerIndex).toBe(1)
+    actor.send({ type: 'PASS' })
+    actor.send({ type: 'SELECT_CARD', cardId: s.context.players[1]!.hand[0]!.id })
+    actor.send({ type: 'CONFIRM' })
 
-    // Complete the round to trigger turn order calculation
-    // (Implementation may vary - this assumes round end triggers reordering)
+    // Round complete: player 1 spent less, so goes first next round
     s = actor.getSnapshot()
-
-    // After round end, turn order should be recalculated
-    // Player 1 (who spent less) should go first next round
-    // Player 0 (who spent more on build) should go second
-
-    // TODO: Implement turn order recalculation based on spending
-    // This test validates the expected behavior once spending tracking is implemented
-    const currentPlayerAfterRound = s.context.currentPlayerIndex
-    console.warn(
-      'Turn order by spending not yet implemented - current player:',
-      currentPlayerAfterRound,
-    )
+    expect(s.context.round).toBe(2)
+    expect(s.context.turnOrder).toEqual(['2', '1'])
+    expect(s.context.currentPlayerIndex).toBe(1)
   })
 
   test('equal spending maintains relative turn order', () => {
     const { actor } = setup()
 
+    // Both players pass (equal spending of £0)
     let s = actor.getSnapshot()
-    const initialPlayerIndex = s.context.currentPlayerIndex
-
-    // Both players perform pass actions (equal spending of £0)
     actor.send({ type: 'PASS' })
-    s = actor.getSnapshot()
-    const p0CardId = s.context.players[0]!.hand[0]!.id
-    actor.send({ type: 'SELECT_CARD', cardId: p0CardId })
+    actor.send({ type: 'SELECT_CARD', cardId: s.context.players[0]!.hand[0]!.id })
     actor.send({ type: 'CONFIRM' })
 
     s = actor.getSnapshot()
-    if (s.context.currentPlayerIndex === 1) {
-      actor.send({ type: 'PASS' })
-      const p1CardId = s.context.players[1]!.hand[0]!.id
-      actor.send({ type: 'SELECT_CARD', cardId: p1CardId })
-      actor.send({ type: 'CONFIRM' })
-    }
+    expect(s.context.currentPlayerIndex).toBe(1)
+    actor.send({ type: 'PASS' })
+    actor.send({ type: 'SELECT_CARD', cardId: s.context.players[1]!.hand[0]!.id })
+    actor.send({ type: 'CONFIRM' })
 
-    // Complete round and check turn order
+    // With equal spending, relative order is maintained
     s = actor.getSnapshot()
+    expect(s.context.round).toBe(2)
+    expect(s.context.turnOrder).toEqual(['1', '2'])
+    expect(s.context.currentPlayerIndex).toBe(0)
+  })
 
-    // TODO: With equal spending, relative order should be maintained
-    // This test validates the expected behavior once turn order tracking is implemented
-    console.warn('Turn order tracking not yet implemented')
+  test('3-player game: full turn order sorted by spending, ties stable', () => {
+    const actor = createActor(gameStore)
+    activeActors.push(actor)
+    actor.start()
+    const players = [
+      { id: '1', name: 'P1', color: 'red' as const, character: 'Richard Arkwright' as const, money: 17, victoryPoints: 0, income: 10, industryTilesOnMat: {} as any },
+      { id: '2', name: 'P2', color: 'blue' as const, character: 'Eliza Tinsley' as const, money: 17, victoryPoints: 0, income: 10, industryTilesOnMat: {} as any },
+      { id: '3', name: 'P3', color: 'green' as const, character: 'Robert Owen' as const, money: 17, victoryPoints: 0, income: 10, industryTilesOnMat: {} as any },
+    ]
+    actor.send({ type: 'START_GAME', players })
+
+    // P1 spends £3 on a link, P2 passes (£0), P3 spends £3 on a link
+    let s = actor.getSnapshot()
+    actor.send({ type: 'NETWORK' })
+    actor.send({ type: 'SELECT_CARD', cardId: s.context.players[0]!.hand[0]!.id })
+    actor.send({ type: 'SELECT_LINK', from: 'worcester', to: 'gloucester' })
+    actor.send({ type: 'CONFIRM' })
+
+    s = actor.getSnapshot()
+    expect(s.context.currentPlayerIndex).toBe(1)
+    actor.send({ type: 'PASS' })
+    actor.send({ type: 'SELECT_CARD', cardId: s.context.players[1]!.hand[0]!.id })
+    actor.send({ type: 'CONFIRM' })
+
+    s = actor.getSnapshot()
+    expect(s.context.currentPlayerIndex).toBe(2)
+    actor.send({ type: 'NETWORK' })
+    actor.send({ type: 'SELECT_CARD', cardId: s.context.players[2]!.hand[0]!.id })
+    actor.send({ type: 'SELECT_LINK', from: 'stoke', to: 'warrington' })
+    actor.send({ type: 'CONFIRM' })
+
+    // New round: P2 (£0) first, then P1 and P3 (£3 each, tie keeps P1 before P3)
+    s = actor.getSnapshot()
+    expect(s.context.round).toBe(2)
+    expect(s.context.turnOrder).toEqual(['2', '1', '3'])
+    expect(s.context.currentPlayerIndex).toBe(1)
   })
 
   test('money placed on character tiles during spending', () => {

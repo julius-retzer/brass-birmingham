@@ -15,4 +15,6 @@ export const GAME_CONSTANTS = {
   MAX_SCOUT_SELECTION: 3,
   FIRST_ROUND_ACTIONS: 1,
   NORMAL_ROUND_ACTIONS: 2,
+  // Number of "•—•" link-scoring icons printed at each merchant location
+  MERCHANT_LINK_ICONS: 2,
 } as const

@@ -398,7 +398,9 @@ export function consumeBeerFromSources(
   context: GameState,
   location: CityId,
   beerRequired: number,
-  includeMerchantBeer = false,
+  // Merchant beer may only be consumed as part of a Sell action, and only
+  // from the beer space beside the merchant tile being sold to
+  merchantBeerLocation?: CityId,
 ): {
   success: boolean
   updatedPlayers: Player[]
@@ -421,7 +423,7 @@ export function consumeBeerFromSources(
   const logDetails: string[] = []
   let updatedPlayers = [...context.players]
   const updatedResources = { ...context.resources }
-  const updatedMerchants = context.merchants
+  let updatedMerchants = context.merchants
     ? [...context.merchants]
     : undefined
   const merchantBonusesCollected: Array<{
@@ -436,91 +438,101 @@ export function consumeBeerFromSources(
     currentPlayer,
   )
 
-  // First, consume from own breweries (free, no connection required)
+  // First, consume from own breweries (free, no connection required).
+  // A single brewery may supply multiple barrels if it has them.
   for (const brewery of ownBreweries) {
     if (beerConsumed >= beerRequired) break
 
-    if (brewery.beerBarrelsOnTile > 0) {
-      // Find the player who owns this brewery and update it
-      updatedPlayers = updatedPlayers.map((player) =>
-        player.id === currentPlayer.id
-          ? {
-              ...player,
-              industries: player.industries.map((industry) =>
-                industry === brewery
-                  ? {
-                      ...industry,
-                      beerBarrelsOnTile: industry.beerBarrelsOnTile - 1,
-                    }
-                  : industry,
-              ),
-            }
-          : player,
-      )
+    const barrelsToConsume = Math.min(
+      brewery.beerBarrelsOnTile,
+      beerRequired - beerConsumed,
+    )
+    if (barrelsToConsume <= 0) continue
 
-      beerConsumed++
-      logDetails.push(`1 beer from own brewery at ${brewery.location} (free)`)
+    updatedPlayers = updatedPlayers.map((player) =>
+      player.id === currentPlayer.id
+        ? {
+            ...player,
+            industries: player.industries.map((industry) =>
+              industry === brewery
+                ? {
+                    ...industry,
+                    beerBarrelsOnTile:
+                      industry.beerBarrelsOnTile - barrelsToConsume,
+                  }
+                : industry,
+            ),
+          }
+        : player,
+    )
 
-      break // Only consume from one brewery at a time
-    }
+    beerConsumed += barrelsToConsume
+    logDetails.push(
+      `${barrelsToConsume} beer from own brewery at ${brewery.location} (free)`,
+    )
   }
 
   // If still need beer, consume from connected opponent breweries
   for (const brewery of connectedBreweries) {
     if (beerConsumed >= beerRequired) break
 
-    if (brewery.beerBarrelsOnTile > 0) {
-      // Find the owner of this brewery and update it
-      updatedPlayers = updatedPlayers.map((player) => ({
-        ...player,
-        industries: player.industries.map((industry) =>
-          industry === brewery
-            ? { ...industry, beerBarrelsOnTile: industry.beerBarrelsOnTile - 1 }
-            : industry,
-        ),
-      }))
+    const barrelsToConsume = Math.min(
+      brewery.beerBarrelsOnTile,
+      beerRequired - beerConsumed,
+    )
+    if (barrelsToConsume <= 0) continue
 
-      beerConsumed++
-      logDetails.push(
-        `1 beer from connected opponent brewery at ${brewery.location} (free)`,
-      )
+    updatedPlayers = updatedPlayers.map((player) => ({
+      ...player,
+      industries: player.industries.map((industry) =>
+        industry === brewery
+          ? {
+              ...industry,
+              beerBarrelsOnTile: industry.beerBarrelsOnTile - barrelsToConsume,
+            }
+          : industry,
+      ),
+    }))
 
-      break // Only consume from one connected brewery at a time
-    }
+    beerConsumed += barrelsToConsume
+    logDetails.push(
+      `${barrelsToConsume} beer from connected opponent brewery at ${brewery.location} (free)`,
+    )
   }
 
-  // If still need beer and merchant beer is allowed, consume from merchants
-  if (includeMerchantBeer && updatedMerchants && beerConsumed < beerRequired) {
-    // Find merchants connected to this location with beer
+  // If still need beer and this is a Sell action, consume the beer beside the
+  // merchant tile being sold to (and collect its bonus)
+  if (
+    merchantBeerLocation &&
+    updatedMerchants &&
+    beerConsumed < beerRequired
+  ) {
+    const distance = calculateNetworkDistance(
+      context,
+      location,
+      merchantBeerLocation,
+    )
 
-    let connectedMerchant = null
-
-    // Find first available connected merchant with beer
-    for (const merchant of updatedMerchants) {
-      if (merchant.hasBeer) {
-        const distance = calculateNetworkDistance(
-          context,
-          location,
-          merchant.location,
-        )
-        if (distance !== Infinity) {
-          connectedMerchant = merchant
-          break
-        }
-      }
-    }
-
-    if (connectedMerchant) {
-      // Consume merchant beer and collect bonus
-      connectedMerchant.hasBeer = false
-      beerConsumed++
-      merchantBonusesCollected.push({
-        type: connectedMerchant.bonusType,
-        value: connectedMerchant.bonusValue,
-      })
-      logDetails.push(
-        `1 beer from merchant at ${connectedMerchant.location} (${connectedMerchant.bonusType} +${connectedMerchant.bonusValue})`,
+    if (distance !== Infinity) {
+      const merchantIndex = updatedMerchants.findIndex(
+        (merchant) =>
+          merchant.location === merchantBeerLocation && merchant.hasBeer,
       )
+
+      if (merchantIndex !== -1) {
+        const merchant = updatedMerchants[merchantIndex]!
+        updatedMerchants = updatedMerchants.map((m, index) =>
+          index === merchantIndex ? { ...m, hasBeer: false } : m,
+        )
+        beerConsumed++
+        merchantBonusesCollected.push({
+          type: merchant.bonusType,
+          value: merchant.bonusValue,
+        })
+        logDetails.push(
+          `1 beer from merchant at ${merchant.location} (${merchant.bonusType} +${merchant.bonusValue})`,
+        )
+      }
     }
   }
 

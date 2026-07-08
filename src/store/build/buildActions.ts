@@ -10,9 +10,10 @@ import {
   sellIronToMarket, 
   isLocationConnectedToMerchant
 } from '../market/marketActions'
-import { 
+import {
   canCityAccommodateIndustryType,
   canOverbuildIndustry,
+  canPlaceOrOverbuildIndustry,
   getCardDescription,
   getCurrentPlayer,
   isLocationInPlayerNetwork,
@@ -91,10 +92,11 @@ export function validateIndustrySlotAvailabilityResult(context: GameState): Vali
     }
   }
 
-  const canAccommodate = canCityAccommodateIndustryType(
+  const canAccommodate = canPlaceOrOverbuildIndustry(
     context,
     location,
-    industryTile.type
+    industryTile.type,
+    industryTile.level,
   )
 
   if (!canAccommodate) {

@@ -1,7 +1,13 @@
 import type { CityId, ConnectionType } from '../../data/board'
-import { connections, cityIndustrySlots } from '../../data/board'
-import type { Card, IndustryType } from '../../data/cards'
-import type { GameState, LogEntry, LogEntryType, Player } from '../gameStore'
+import { cities, connections, cityIndustrySlots } from '../../data/board'
+import type {
+  Card,
+  IndustryType,
+  WildIndustryCard,
+  WildLocationCard,
+} from '../../data/cards'
+import { GAME_CONSTANTS } from '../constants'
+import type { GameState, Link, LogEntry, LogEntryType, Player } from '../gameStore'
 
 export function getCurrentPlayer(context: GameState): Player {
   const player = context.players[context.currentPlayerIndex]
@@ -369,6 +375,70 @@ export function validateIndustryBuildLocation(
   return false
 }
 
+// Link scoring: 1 VP per "•—•" icon displayed in locations adjacent to the link.
+// Icons come from built Industry tiles (flipped or not) and from the printed
+// icons at merchant locations.
+export function countLinkIconsAtLocation(
+  context: GameState,
+  location: CityId,
+): number {
+  let icons = 0
+
+  if (cities[location]?.type === 'merchant') {
+    icons += GAME_CONSTANTS.MERCHANT_LINK_ICONS
+  }
+
+  for (const player of context.players) {
+    for (const industry of player.industries) {
+      if (industry.location === location) {
+        icons += industry.tile.linkScoringIcons || 0
+      }
+    }
+  }
+
+  return icons
+}
+
+export function calculateLinkVictoryPoints(
+  context: GameState,
+  link: Link,
+): number {
+  return (
+    countLinkIconsAtLocation(context, link.from) +
+    countLinkIconsAtLocation(context, link.to)
+  )
+}
+
+// Discard routing: wild cards go back onto their draw areas, never into the
+// discard pile (rules: "Wild cards are placed back onto their Card Draw Areas").
+export function routeCardsToDiscard(
+  context: Pick<
+    GameState,
+    'discardPile' | 'wildLocationPile' | 'wildIndustryPile'
+  >,
+  cards: Card[],
+): {
+  discardPile: Card[]
+  wildLocationPile: WildLocationCard[]
+  wildIndustryPile: WildIndustryCard[]
+} {
+  const discardPile = [...context.discardPile]
+  const wildLocationPile = [...context.wildLocationPile]
+  const wildIndustryPile = [...context.wildIndustryPile]
+
+  for (const card of cards) {
+    if (card.type === 'wild_location') {
+      wildLocationPile.push(card)
+    } else if (card.type === 'wild_industry') {
+      wildIndustryPile.push(card)
+    } else {
+      discardPile.push(card)
+    }
+  }
+
+  return { discardPile, wildLocationPile, wildIndustryPile }
+}
+
 // Overbuilding helper functions
 export function findExistingIndustryAtLocation(
   context: GameState,
@@ -493,6 +563,28 @@ export function performOverbuild(
 
   players[existingIndustry.playerIndex] = targetPlayer
   return players
+}
+
+// A build is placeable if the city has a free compatible slot, or if it is a
+// legal overbuild of an existing tile (which by definition occupies a slot)
+export function canPlaceOrOverbuildIndustry(
+  context: GameState,
+  location: CityId,
+  industryType: IndustryType,
+  tileLevel: number,
+): boolean {
+  if (canCityAccommodateIndustryType(context, location, industryType)) {
+    return true
+  }
+
+  const overbuildCheck = canOverbuildIndustry(
+    context,
+    context.currentPlayerIndex,
+    location,
+    industryType,
+    tileLevel,
+  )
+  return overbuildCheck.canOverbuild && !!overbuildCheck.existingIndustry
 }
 
 // Industry slot validation function

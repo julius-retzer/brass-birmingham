@@ -21,9 +21,30 @@ afterEach(() => {
 })
 
 const PLAYER_TEMPLATES = [
-  { id: '1', name: 'Alice', color: 'red' as const, character: 'Richard Arkwright' as const },
-  { id: '2', name: 'Bob', color: 'blue' as const, character: 'Eliza Tinsley' as const },
-  { id: '3', name: 'Carol', color: 'green' as const, character: 'Robert Owen' as const },
+  {
+    id: '1',
+    name: 'Alice',
+    color: 'red' as const,
+    character: 'Richard Arkwright' as const,
+  },
+  {
+    id: '2',
+    name: 'Bob',
+    color: 'blue' as const,
+    character: 'Eliza Tinsley' as const,
+  },
+  {
+    id: '3',
+    name: 'Carol',
+    color: 'green' as const,
+    character: 'Robert Owen' as const,
+  },
+  {
+    id: '4',
+    name: 'Dave',
+    color: 'yellow' as const,
+    character: 'George Stephenson' as const,
+  },
 ]
 
 const startGame = (playerCount: number) => {
@@ -57,7 +78,12 @@ const isSelectingAction = (actor: AnyActor) =>
 // turn/round advanced, or the game ended)
 const actionConsumed = (
   actor: AnyActor,
-  before: { actionsRemaining: number; playerIndex: number; round: number; era: string },
+  before: {
+    actionsRemaining: number
+    playerIndex: number
+    round: number
+    era: string
+  },
 ) => {
   const snap = actor.getSnapshot() as any
   if (snap.matches('gameOver')) return true
@@ -149,7 +175,9 @@ const tryBuild = (actor: AnyActor): boolean => {
       for (const industryType of types) {
         actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType } as any)
         const snap = actor.getSnapshot() as any
-        if (snap.matches({ playing: { action: { building: 'confirmingBuild' } } })) {
+        if (
+          snap.matches({ playing: { action: { building: 'confirmingBuild' } } })
+        ) {
           actor.send({ type: 'CONFIRM' } as any)
           if (actionConsumed(actor, before)) return true
           // Build failed or was guard-blocked - restart the flow cleanly
@@ -163,7 +191,9 @@ const tryBuild = (actor: AnyActor): boolean => {
       for (const cityId of cityIds) {
         actor.send({ type: 'SELECT_LOCATION', cityId } as any)
         const snap = actor.getSnapshot() as any
-        if (snap.matches({ playing: { action: { building: 'confirmingBuild' } } })) {
+        if (
+          snap.matches({ playing: { action: { building: 'confirmingBuild' } } })
+        ) {
           actor.send({ type: 'CONFIRM' } as any)
           if (actionConsumed(actor, before)) return true
           unwind(actor)
@@ -230,6 +260,60 @@ const tryLoan = (actor: AnyActor): boolean => {
   return false
 }
 
+const tryDevelop = (actor: AnyActor): boolean => {
+  const player = currentPlayer(actor)
+  if (player.money < 12 || player.hand.length === 0) return false
+
+  // Pick an industry type with a developable tile (skip pottery - lightbulb
+  // tiles may not be developed)
+  const developableType = Object.entries(player.industryTilesOnMat).find(
+    ([type, tiles]: [string, any]) =>
+      type !== 'pottery' && tiles.some((t: any) => t.quantityAvailable > 0),
+  )?.[0]
+  if (!developableType) return false
+
+  const before = turnState(actor)
+  actor.send({ type: 'DEVELOP' } as any)
+  actor.send({ type: 'SELECT_CARD', cardId: player.hand[0].id } as any)
+  actor.send({
+    type: 'SELECT_TILES_FOR_DEVELOP',
+    industryTypes: [developableType],
+  } as any)
+  actor.send({ type: 'CONFIRM' } as any)
+  if (actionConsumed(actor, before)) return true
+  unwind(actor)
+  return false
+}
+
+const tryScout = (actor: AnyActor): boolean => {
+  const c = ctx(actor)
+  const player = currentPlayer(actor)
+  // Scout burns 3 cards for one action - only when the hand can afford it,
+  // no wild is already held, and the wild piles have cards
+  if (player.hand.length < 4) return false
+  if (
+    player.hand.some(
+      (card: any) =>
+        card.type === 'wild_location' || card.type === 'wild_industry',
+    )
+  ) {
+    return false
+  }
+  if (c.wildLocationPile.length === 0 || c.wildIndustryPile.length === 0) {
+    return false
+  }
+
+  const before = turnState(actor)
+  actor.send({ type: 'SCOUT' } as any)
+  actor.send({ type: 'SELECT_CARD', cardId: player.hand[0].id } as any)
+  actor.send({ type: 'SELECT_CARD', cardId: player.hand[1].id } as any)
+  actor.send({ type: 'SELECT_CARD', cardId: player.hand[2].id } as any)
+  actor.send({ type: 'CONFIRM' } as any)
+  if (actionConsumed(actor, before)) return true
+  unwind(actor)
+  return false
+}
+
 const pass = (actor: AnyActor): boolean => {
   const before = turnState(actor)
   actor.send({ type: 'PASS' } as any)
@@ -248,6 +332,71 @@ const greedyPolicy: Policy = (actor) => {
 }
 
 const passOnlyPolicy: Policy = (actor) => pass(actor)
+
+// Scout/develop-heavy mix: scouting burns 3 cards per action, so hands
+// desynchronize across players - stresses the skip-empty-hand and era-end
+// logic on a very different action distribution than greedyPolicy
+const scoutDevelopPolicy: Policy = (actor) => {
+  const player = currentPlayer(actor)
+  if (trySell(actor)) return true
+  if (player.hand.length >= 6 && tryScout(actor)) return true
+  if (tryDevelop(actor)) return true
+  if (tryBuild(actor)) return true
+  if (player.money < 12 && tryLoan(actor)) return true
+  return pass(actor)
+}
+
+// Shared post-game assertions for any completed full game
+const expectCompletedGame = (
+  actor: AnyActor,
+  actions: number,
+  playerCount: number,
+) => {
+  const snap = actor.getSnapshot() as any
+  expect(snap.matches('gameOver')).toBe(true)
+  expect(actions).toBeLessThan(1500)
+
+  const c = snap.context
+  expect(c.players).toHaveLength(playerCount)
+
+  // Both era transitions fired automatically (no TRIGGER_* events sent)
+  expect(c.logs.some((l: any) => l.message === 'Canal Era ended')).toBe(true)
+  expect(c.logs.some((l: any) => l.message === 'Rail Era started')).toBe(true)
+  expect(c.logs.some((l: any) => l.message === 'Rail Era ended')).toBe(true)
+  expect(c.logs.some((l: any) => l.message.includes('Game Over'))).toBe(true)
+  expect(c.era).toBe('rail')
+
+  // Deck and hands fully exhausted
+  expect(c.drawPile).toHaveLength(0)
+  c.players.forEach((p: any) => expect(p.hand).toHaveLength(0))
+
+  // A winner is declared and it is the player with the most VPs
+  // (ties broken by income, then money)
+  expect(c.winners).not.toBeNull()
+  expect(c.winners.length).toBeGreaterThanOrEqual(1)
+  const ranked = [...c.players].sort(
+    (a: any, b: any) =>
+      b.victoryPoints - a.victoryPoints ||
+      b.income - a.income ||
+      b.money - a.money,
+  ) as any[]
+  expect(c.winners).toContain(ranked[0].id)
+
+  // Sanity on final player state
+  c.players.forEach((p: any) => {
+    expect(p.victoryPoints).toBeGreaterThanOrEqual(0)
+    expect(Number.isFinite(p.money)).toBe(true)
+    expect(p.income).toBeGreaterThanOrEqual(-10)
+    // Links were scored and removed in final era scoring
+    expect(p.links).toHaveLength(0)
+  })
+
+  // Wild cards all returned to their draw areas (2 of each in the game)
+  expect(c.wildLocationPile).toHaveLength(2)
+  expect(c.wildIndustryPile).toHaveLength(2)
+
+  return c
+}
 
 // Drive a game to completion with the given per-turn policy
 const playFullGame = (actor: AnyActor, policy: Policy, maxActions = 1500) => {
@@ -282,7 +431,7 @@ describe('Brass Birmingham - Full Game Integration', () => {
   test('complete 2-player game runs from START_GAME to gameOver with a winner (mixed actions)', () => {
     const actor = startGame(2)
 
-    let snap = actor.getSnapshot() as any
+    const snap = actor.getSnapshot() as any
     expect(snap.context.era).toBe('canal')
     expect(snap.context.round).toBe(1)
     expect(snap.context.actionsRemaining).toBe(1)
@@ -291,60 +440,62 @@ describe('Brass Birmingham - Full Game Integration', () => {
     expect(snap.context.players[0].income).toBe(10)
 
     const actions = playFullGame(actor, greedyPolicy)
+    expectCompletedGame(actor, actions, 2)
+  }, 30000)
 
-    snap = actor.getSnapshot() as any
-    expect(snap.matches('gameOver')).toBe(true)
-    expect(actions).toBeLessThan(1500)
+  test('complete 2-player game with a scout/develop-heavy action mix', () => {
+    const actor = startGame(2)
 
-    const c = snap.context
+    const actions = playFullGame(actor, scoutDevelopPolicy)
+    const c = expectCompletedGame(actor, actions, 2)
 
-    // Both era transitions fired automatically (no TRIGGER_* events sent)
-    expect(c.logs.some((l: any) => l.message === 'Canal Era ended')).toBe(true)
-    expect(c.logs.some((l: any) => l.message === 'Rail Era started')).toBe(true)
-    expect(c.logs.some((l: any) => l.message === 'Rail Era ended')).toBe(true)
-    expect(c.logs.some((l: any) => l.message.includes('Game Over'))).toBe(true)
-    expect(c.era).toBe('rail')
+    // The policy scouts whenever legal, so wild cards actually cycled
+    // through hands and back to their draw areas during the game
+    expect(c.logs.some((l: any) => l.message.includes('scouted'))).toBe(true)
+  }, 30000)
 
-    // Deck and hands fully exhausted
-    expect(c.drawPile).toHaveLength(0)
-    c.players.forEach((p: any) => expect(p.hand).toHaveLength(0))
+  test('complete 3-player game with mixed actions', () => {
+    const actor = startGame(3)
 
-    // A winner is declared and it is the player with the most VPs
-    // (ties broken by income, then money)
-    expect(c.winners).not.toBeNull()
-    expect(c.winners.length).toBeGreaterThanOrEqual(1)
-    const ranked = [...c.players].sort(
-      (a: any, b: any) =>
-        b.victoryPoints - a.victoryPoints ||
-        b.income - a.income ||
-        b.money - a.money,
-    ) as any[]
-    expect(c.winners).toContain(ranked[0].id)
+    // 3-player deck is 54 cards and includes cotton/manufacturer cards
+    const snap = actor.getSnapshot() as any
+    expect(snap.context.players).toHaveLength(3)
+    expect(snap.context.players.every((p: any) => p.hand.length === 8)).toBe(
+      true,
+    )
 
-    // Sanity on final player state
-    c.players.forEach((p: any) => {
-      expect(p.victoryPoints).toBeGreaterThanOrEqual(0)
-      expect(Number.isFinite(p.money)).toBe(true)
-      expect(p.income).toBeGreaterThanOrEqual(-10)
-      // Links were scored and removed in final era scoring
-      expect(p.links).toHaveLength(0)
-    })
+    const actions = playFullGame(actor, greedyPolicy)
+    const c = expectCompletedGame(actor, actions, 3)
+
+    // 3p merchant setup includes Warrington
+    expect(
+      c.merchants.filter((m: any) => m.location === 'warrington'),
+    ).toHaveLength(2)
+  }, 30000)
+
+  test('complete 4-player game with mixed actions', () => {
+    const actor = startGame(4)
+
+    const snap = actor.getSnapshot() as any
+    expect(snap.context.players).toHaveLength(4)
+    // 4-player deck: 64 cards - 32 dealt into hands leaves 32 to draw
+    expect(snap.context.drawPile).toHaveLength(64 - 4 * 8)
+
+    const actions = playFullGame(actor, greedyPolicy)
+    const c = expectCompletedGame(actor, actions, 4)
+
+    // 4p merchant setup includes Nottingham (9 merchant slots total)
+    expect(
+      c.merchants.filter((m: any) => m.location === 'nottingham'),
+    ).toHaveLength(2)
+    expect(c.merchants).toHaveLength(9)
   }, 30000)
 
   test('complete 3-player game reaches gameOver (pass-only variant)', () => {
     const actor = startGame(3)
 
     const actions = playFullGame(actor, passOnlyPolicy)
-
-    const snap = actor.getSnapshot() as any
-    expect(snap.matches('gameOver')).toBe(true)
-    expect(actions).toBeLessThan(1500)
-
-    const c = snap.context
-    expect(c.logs.some((l: any) => l.message === 'Canal Era ended')).toBe(true)
-    expect(c.winners).not.toBeNull()
-    expect(c.drawPile).toHaveLength(0)
-    c.players.forEach((p: any) => expect(p.hand).toHaveLength(0))
+    const c = expectCompletedGame(actor, actions, 3)
 
     // A pass-only game builds nothing: everyone ends on 0 VP and the game
     // is a draw between all players (equal VP, income, money)

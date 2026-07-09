@@ -159,3 +159,33 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   through the event surface with a guard-probing policy; if you add
   guards, keep CANCEL paths reachable so the driver can unwind
   (`unwind()` helper).
+
+## Hotseat UI (local pass-and-play, added 2026-07-09)
+
+- The home route `/` (`src/app/page.tsx`) renders `HotseatGame`
+  (`src/components/hotseat/`), a fully **client-side** surface that drives
+  `gameStore` directly with `@xstate/react`'s `useMachine`. No DB, no tRPC,
+  no polling, no per-player URLs — all 2-4 players share one screen. The
+  older networked flow (`gameManager` → DB → `GameInterface` →
+  `useGamePolling`, and `/game/[gameId]`) is untouched and unused by `/`.
+- The action UI is generated from the machine, not hand-coded state:
+  `ActionPanel` branches on `snapshot.matches('playing.action.<...>')` and
+  gates every choice with `snapshot.can(event)` so illegal picks are
+  disabled (cards, industry types, sales, confirms). Board city/link clicks
+  are validated with `state.can(...)` in `hotseat-game.tsx` and rejected
+  with a sonner toast (the `Board` component does NOT pre-filter link
+  legality by the `canBuildLink` guard). Recoverable `context.lastError`
+  is toasted then cleared via `CLEAR_ERROR`.
+- XState v5 `matches` accepts a dotted path string at runtime, but its
+  TYPES only allow the nested-object form — pass `path as never` (see the
+  `is()`/`matches()` helpers). Verified both forms return the same result.
+- Hotseat hides incoming hands: a "pass the device" gate blocks the panel
+  until the new current player taps ready (`revealedFor` state).
+- Reusing the existing `Board` (xyflow) is the big win — it already renders
+  cities/slots/links and takes `isBuilding`/`isNetworking` +
+  `onCitySelect`/`onLinkSelect`. Pass `gameContext={ctx}` for slot checks.
+- Dev run needs `DATABASE_URL` (set in `.env`, gitignored) OR
+  `SKIP_ENV_VALIDATION=1` because `src/env.js` validates it at boot; the
+  hotseat surface itself never touches the DB. `pnpm build` still fails on
+  pre-existing type errors in the legacy `Improved*`/`GameInterface`
+  components (unrelated to hotseat).

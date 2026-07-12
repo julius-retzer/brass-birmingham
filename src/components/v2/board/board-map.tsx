@@ -624,6 +624,8 @@ export function BoardMap({
                 {(pickingLink || onLinkClick) && (
                   <path
                     d={d}
+                    data-conn={key}
+                    data-legal={isLegal || undefined}
                     fill="none"
                     stroke="transparent"
                     strokeWidth="22"
@@ -845,6 +847,8 @@ function CityPlate({
   return (
     <g
       transform={`translate(${pos.x - plateW / 2}, ${pos.y - plateH / 2})`}
+      data-city={cityId}
+      data-legal={isLegal || undefined}
       opacity={dimmed ? 0.45 : 1}
       onClick={onClick}
       style={{

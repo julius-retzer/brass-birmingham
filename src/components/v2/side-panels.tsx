@@ -122,7 +122,12 @@ export function JournalPanel({ logs }: { logs: LogEntry[] }) {
       <span className="bb2-panel-title">Journal</span>
       <div className="bb2-log min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1">
         {recent.map((entry, i) => (
-          <div key={i} className="bb2-log-entry" data-type={entry.type}>
+          <div
+            key={i}
+            className="bb2-log-entry"
+            data-testid="journal-entry"
+            data-type={entry.type}
+          >
             {entry.message}
           </div>
         ))}

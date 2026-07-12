@@ -510,10 +510,13 @@ function V2GameInner({
 
         <span
           className={`bb2-era-plate ${ctx.era === 'canal' ? 'bb2-era-canal' : 'bb2-era-rail'}`}
+          data-testid="era-plate"
         >
           {ctx.era} era
         </span>
-        <span className="bb2-chip">Round {ctx.round}</span>
+        <span className="bb2-chip" data-testid="round-chip">
+          Round {ctx.round}
+        </span>
         <span className="bb2-chip">
           Actions
           <span className="flex items-center gap-1">

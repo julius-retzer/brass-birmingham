@@ -20,6 +20,7 @@ export function PassGate({
   return (
     <div
       className="bb2-curtain fixed inset-0 z-50 flex flex-col items-center justify-center gap-6"
+      data-testid="pass-curtain"
       style={{
         background:
           'radial-gradient(900px 600px at 50% 30%, rgba(214,168,84,.06), transparent 60%), linear-gradient(180deg, rgba(16,13,10,.97), rgba(12,10,8,.99))',
@@ -69,7 +70,12 @@ export function PassGate({
         </span>
       </div>
 
-      <button type="button" className="bb2-confirm max-w-xs" onClick={onReveal}>
+      <button
+        type="button"
+        className="bb2-confirm max-w-xs"
+        data-testid="reveal-hand"
+        onClick={onReveal}
+      >
         Reveal my hand
       </button>
       <p className="text-[11px]" style={{ color: 'rgba(231,215,177,.35)' }}>

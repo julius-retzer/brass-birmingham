@@ -52,6 +52,7 @@ export function HandTray({
               key={card.id}
               type="button"
               className="bb2-card"
+              data-testid={`card-${card.id}`}
               data-selected={selected || undefined}
               data-dimmed={(selecting && !enabled && !selected) || undefined}
               disabled={selecting ? !enabled : true}

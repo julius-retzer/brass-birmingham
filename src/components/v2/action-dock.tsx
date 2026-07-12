@@ -138,7 +138,12 @@ function Flow({
           <StepRail steps={steps} active={active} />
         </div>
         {onCancel && (
-          <button type="button" className="bb2-ghost-btn" onClick={onCancel}>
+          <button
+            type="button"
+            className="bb2-ghost-btn"
+            data-testid="cancel-action"
+            onClick={onCancel}
+          >
             Cancel
           </button>
         )}
@@ -176,6 +181,7 @@ function Confirm({
       <button
         type="button"
         className="bb2-confirm"
+        data-testid="confirm-action"
         disabled={disabled}
         onClick={onClick}
       >
@@ -261,6 +267,7 @@ export function ActionDock({
               key={a.label}
               type="button"
               className="bb2-plaque"
+              data-testid={`action-${a.label.toLowerCase()}`}
               disabled={!can(a.event) || a.blocked}
               onClick={() => send(a.event)}
             >
@@ -275,6 +282,7 @@ export function ActionDock({
         <button
           type="button"
           className="bb2-option justify-center"
+          data-testid="action-pass"
           disabled={!can({ type: 'PASS' })}
           onClick={() => send({ type: 'PASS' })}
         >
@@ -433,6 +441,7 @@ export function ActionDock({
           <button
             type="button"
             className="bb2-option justify-center"
+            data-testid="choose-double-link"
             onClick={() => send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })}
           >
             <RailIcon size={14} />

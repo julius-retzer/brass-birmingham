@@ -13,17 +13,20 @@ function Stat({
   value,
   icon,
   accent,
+  testId,
 }: {
   label: string
   value: React.ReactNode
   icon?: React.ReactNode
   accent?: string
+  testId?: string
 }) {
   return (
     <div className="flex min-w-[52px] flex-col items-start gap-0.5">
       <span className="bb2-stat-label">{label}</span>
       <span
         className="bb2-stat-value flex items-center gap-1"
+        data-testid={testId}
         style={accent ? { color: accent } : undefined}
       >
         {icon}
@@ -64,6 +67,7 @@ export function PlayerRail({
             key={p.id}
             type="button"
             className="bb2-mat min-w-[290px] text-left lg:min-w-0"
+            data-testid={`mat-${p.id}`}
             data-current={isCurrent}
             onClick={() => onOpenLedger?.(p.id)}
             title={`Open ${p.name}'s ledger`}
@@ -106,6 +110,7 @@ export function PlayerRail({
                   label="Treasury"
                   value={`£${p.money}`}
                   icon={<PoundIcon size={12} />}
+                  testId="treasury"
                 />
                 <Stat
                   label="Income"

@@ -253,3 +253,31 @@ When updating this file, preserve this bar for all agents and keep entries conci
 - The new-fixture pattern: probe a CLONED actor (see cloneActor /
   passesToGameOver in generate-demo.test.ts) so a freeze condition is
   asserted by the machine's own guards, never re-implemented.
+
+## Networked multiplayer (added 2026-07-13)
+
+- `/g/<token>` (`src/components/v2/mp/mp-game.tsx` + `src/server/mp/`) is
+  token-URL multiplayer: no accounts; token (128-bit) identifies the game,
+  token + per-seat secret (localStorage `bb-mp-<token>`) identifies the
+  player. Created from the charter's "Play online" mode.
+- SERVER-AUTHORITATIVE: clients POST machine events to `/api/mp/act`; the
+  server validates seat + turn + an event whitelist (never TEST_*/TRIGGER_*),
+  executes on the real engine, persists, broadcasts. The client's local
+  actor is READ-ONLY (rebuilt per SSE broadcast just for matches/can).
+- HIDDEN INFO IS FILTERED SERVER-SIDE in `filterSnapshotForSeat`: foreign
+  hands, the draw pile, and foreign in-flight selections become `hidden-*`
+  placeholders (lengths preserved — guards need counts). Wire-level tests:
+  `gameStore.multiplayer.test.ts` + `e2e/multiplayer.spec.ts` (reads raw
+  SSE bytes). NEVER add a field to the snapshot without deciding its
+  filtering here.
+- Transport = SSE (`/api/mp/stream`) + POST intents: first-class in Next
+  route handlers, EventSource auto-reconnects across dev restarts.
+  WebSockets would need a custom server. Store = one JSON file per game in
+  `.bb-games/` (gitignored), atomic tmp+rename, 7-day TTL sweep — durable
+  across restarts with zero env coupling (the Drizzle schema is a template
+  and dev runs without DATABASE_URL); swap to SQLite = replace store.ts.
+- Seat reclaim: refresh re-authenticates from localStorage; a LOST secret
+  is recovered via the host-only "Seats" → Release, then re-claim from the
+  invite link. GOTCHA: only the credentialed SSE stream may clear creds on
+  `you: null` — a late frame from the previous unauthenticated stream must
+  not wipe freshly-claimed credentials (race fixed 2026-07-13).

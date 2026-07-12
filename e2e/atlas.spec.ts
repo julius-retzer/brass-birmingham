@@ -1,0 +1,146 @@
+import { expect, test } from '@playwright/test'
+
+/**
+ * PoC e2e suite for the Ironmaster's Atlas (v2 UI).
+ * Runs against the dev server (see playwright.config.ts webServer).
+ *
+ * Selector strategy: visible text + roles only — no testids exist yet.
+ * State strategy: the app's own boot hooks (?fresh=1, ?demo, ?preview=gameover)
+ * provide deterministic states; ?demo is a frozen engine-generated fixture
+ * (canal round 6, George to act with £18 and 1 action remaining).
+ */
+
+/** Treasury chip of a named player in the player rail (first £-value = Treasury). */
+function treasuryOf(page: import('@playwright/test').Page, name: string) {
+  return page
+    .locator('button.bb2-mat')
+    .filter({ hasText: name })
+    .getByText(/^£\d+$/)
+    .first()
+}
+
+test('fresh game: setup charter → Loan action end-to-end → pass gate', async ({
+  page,
+}) => {
+  await page.goto('/?fresh=1')
+
+  // Setup charter: pick 2 players, name player 1, start.
+  await expect(page.getByText('Company charter')).toBeVisible()
+  await page.getByRole('button', { name: '2', exact: true }).click()
+  await page.getByPlaceholder('Eliza').fill('Ada')
+  await page.getByRole('button', { name: 'Open the ledger' }).click()
+
+  // Round 1, canal era, Ada to act with £17.
+  await expect(page.getByText('canal era')).toBeVisible()
+  await expect(page.getByText('Round 1', { exact: true })).toBeVisible()
+  await expect(treasuryOf(page, 'Ada')).toHaveText('£17')
+
+  // Loan: choose action → discard any card → confirm.
+  await page.getByRole('button', { name: /Loan/ }).click()
+  await page.locator('button.bb2-card:not([disabled])').first().click()
+  await page.getByRole('button', { name: 'Sign with the bank' }).click()
+
+  // Treasury +£30 and the journal records it.
+  await expect(treasuryOf(page, 'Ada')).toHaveText('£47')
+  await expect(page.getByText(/Ada took a loan/)).toBeVisible()
+
+  // Round 1 = single action → turn passes; the curtain hides the next hand.
+  const curtain = page.locator('.bb2-curtain')
+  await expect(curtain.getByText('pass the device to')).toBeVisible()
+  await expect(curtain.getByText('Isambard', { exact: true })).toBeVisible()
+  await expect(page.locator('button.bb2-card')).toHaveCount(0)
+})
+
+test('demo fixture: SVG map pan/zoom + Build action end-to-end', async ({
+  page,
+}) => {
+  await page.goto('/?demo')
+  await expect(page.getByText('canal era')).toBeVisible()
+  await expect(treasuryOf(page, 'George')).toHaveText('£18')
+
+  const svg = page.getByLabel('Game board map')
+  const before = await svg.getAttribute('viewBox')
+
+  // Probe the two risky SVG interactions: wheel-zoom and pointer-drag pan.
+  await svg.hover()
+  await page.mouse.wheel(0, -300) // zoom in
+  await expect
+    .poll(async () => svg.getAttribute('viewBox'))
+    .not.toBe(before)
+
+  const box = (await svg.boundingBox())!
+  const zoomed = await svg.getAttribute('viewBox')
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width / 2 - 120, box.y + box.height / 2 - 40, { steps: 8 })
+  await page.mouse.up()
+  await expect
+    .poll(async () => svg.getAttribute('viewBox'))
+    .not.toBe(zoomed)
+  await page.getByRole('button', { name: 'Reset view' }).click()
+
+  // Build: card → site (click a pulsing legal city plate) → confirm.
+  // coal_1 is an INDUSTRY card: the machine goes straight to site selection
+  // on the map (a location card would instead fix the site and ask for the
+  // industry type).
+  await page.getByRole('button', { name: /Build/ }).click()
+  await page.getByRole('button', { name: 'Card: coal_1' }).click()
+  await expect(page.getByText(/Choose a site for your coal/)).toBeVisible()
+
+  // Legal sites carry the pulsing brass target ring (a DIRECT child of the
+  // city plate's <g> — matching descendants would select every ancestor group).
+  const legalCity = page.locator(
+    'svg[aria-label="Game board map"] g:has(> rect.bb2-target)',
+  )
+  await expect(legalCity.first()).toBeVisible()
+  await legalCity.first().click()
+
+  const confirm = page.getByRole('button', { name: 'Raise the works' })
+  await expect(confirm).toBeEnabled()
+  await confirm.click()
+
+  // The build consumed money and hit the journal. The fixture has exactly one
+  // legal coal site (Tamworth), so the outcome is fully deterministic.
+  await expect(
+    page.getByText(/George built coal Level 1 at tamworth/),
+  ).toBeVisible()
+  const money = await treasuryOf(page, 'George').textContent()
+  expect(money).not.toBe('£18')
+})
+
+test('save → reload → resume: state survives a refresh behind the pass gate', async ({
+  page,
+}) => {
+  // Start from the demo fixture and take a loan so the state is distinctive.
+  await page.goto('/?demo')
+  await expect(treasuryOf(page, 'George')).toHaveText('£18')
+  await page.getByRole('button', { name: /Loan/ }).click()
+  await page.locator('button.bb2-card:not([disabled])').first().click()
+  await page.getByRole('button', { name: 'Sign with the bank' }).click()
+  // George was the round's last player: the loan (+£30) ends the round and
+  // end-of-round income (+£22 at income 22 after the loan's −3) lands too.
+  await expect(treasuryOf(page, 'George')).toHaveText('£70')
+  await expect(page.getByText(/George took a loan/)).toBeVisible()
+
+  // Reload WITHOUT query params: the localStorage save must resume, gated.
+  await page.goto('/')
+  await expect(page.getByText('pass the device to')).toBeVisible()
+  await expect(page.locator('button.bb2-card')).toHaveCount(0) // hand hidden
+  await page.getByRole('button', { name: 'Reveal my hand' }).click()
+
+  // Same game: canal era, the loan stuck, journal intact.
+  await expect(page.getByText('canal era')).toBeVisible()
+  await expect(treasuryOf(page, 'George')).toHaveText('£70')
+  await expect(page.getByText(/George took a loan/)).toBeVisible()
+})
+
+test('?preview=gameover renders the final scoring with a winner', async ({
+  page,
+}) => {
+  await page.goto('/?preview=gameover')
+  await expect(page.getByText('The books are closed')).toBeVisible()
+  await expect(page.getByRole('heading', { name: /prevails/ })).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Found a new company' }),
+  ).toBeVisible()
+})

@@ -35,50 +35,68 @@ function base(
 
 // Raw 24x24 path fragments, shared between the HTML icons below and the
 // SVG board (which wraps them in its own <g stroke=...> transforms).
+// Subjects follow the PHYSICAL game's tile iconography (goods crates,
+// cotton bale, coal lumps, iron ingots, urn, barrel) drawn in the Atlas's
+// engraved single-weight stroke style. Stroke-only — every consumer sets
+// its own stroke colour and fill="none".
 export function IndustryFragment({ type }: { type: IndustryType }) {
   switch (type) {
     case 'cotton':
-      // cotton boll — three lobes on a stem
+      // cotton bale — strapped bale with the raw boll billowing on top
       return (
         <>
-          <circle cx="9" cy="9" r="3.4" />
-          <circle cx="15" cy="9" r="3.4" />
-          <circle cx="12" cy="13.5" r="3.6" />
-          <path d="M12 17.2V21M12 21l-2.4 -1.7M12 21l2.4-1.7" />
+          <path d="M4.5 11.5v6.5a1.2 1.2 0 0 0 1.2 1.2h12.6a1.2 1.2 0 0 0 1.2-1.2v-6.5" />
+          <path d="M9.4 11.6v7.6M14.6 11.6v7.6" />
+          <path d="M4.5 11.5c-2-.6-2.3-3.3-.2-4.2-.1-2.4 2.8-3.5 4.4-2C9.6 3.2 14.4 3.2 15.3 5.3c1.6-1.5 4.5-.4 4.4 2 2.1.9 1.8 3.6-.2 4.2z" />
         </>
       )
     case 'coal':
-      // faceted coal lump
+      // a pile of faceted coal lumps
       return (
         <>
-          <path d="M12 3.5 19 8l-1.5 8.5L12 20.5 6.5 16.5 5 8z" />
-          <path d="M12 3.5 10 11l4.5 2M10 11l-3.5 5.5M10 11 5 8" />
+          <path d="M8.7 9.4 12 6.4l3.4 3-0.5 3.6h-5.7z" />
+          <path d="M4 17.5l1-3.6 3.7-1 3 2.4-.6 2.2z" />
+          <path d="M12.9 17.5l-.6-2.2 3-2.4 3.7 1 1 3.6z" />
+          <path d="M12 6.4l-.8 3.4 1.9 3.2" />
         </>
       )
     case 'iron':
-      // anvil
-      return (
-        <path d="M4 8h13c1.8 0 3-1 3.5-2.5-1 4.5-3.5 6-6.5 6.5v4h2.5v3h-9v-3H10v-4C7 12 4.5 10.5 4 8z" />
-      )
-    case 'manufacturer':
-      // cog
+      // stacked pig-iron ingots (two below, one atop)
       return (
         <>
-          <circle cx="12" cy="12" r="3.2" />
-          <path d="M12 4.5v2.4M12 17.1v2.4M4.5 12h2.4M17.1 12h2.4M6.7 6.7l1.7 1.7M15.6 15.6l1.7 1.7M17.3 6.7l-1.7 1.7M8.4 15.6l-1.7 1.7" />
+          <path d="M3.5 18.5 5.2 14.6h5.4l1.2 3.9zM12.1 18.5l1.3-3.9h5.4l1.7 3.9z" />
+          <path d="M7.8 14.6 9.4 10.7h5.2l1.6 3.9" />
+          <path d="M9.4 10.7l1 3.9M14.6 10.7l-1 3.9" />
+        </>
+      )
+    case 'manufacturer':
+      // stacked goods crates — X-braced crate atop two planked crates
+      return (
+        <>
+          <path d="M3.5 13.2h8.2v6.6H3.5zM12.3 13.2h8.2v6.6h-8.2z" />
+          <path d="M7.9 6.2h8.2v7h-8.2z" />
+          <path d="M8.3 6.6l7.4 6.2M15.7 6.6l-7.4 6.2" />
+          <path d="M3.5 16.8h8.2M12.3 16.8h8.2" />
         </>
       )
     case 'pottery':
-      // urn
-      return (
-        <path d="M9 4h6M10.5 4c0 2-2.8 3-2.8 6.5 0 3 1.6 4.6 1.6 6.5 0 1.6-1 2.3-2 3h9.4c-1-0.7-2-1.4-2-3 0-1.9 1.6-3.5 1.6-6.5C15.8 7 13.5 6 13.5 4" />
-      )
-    case 'brewery':
-      // barrel
+      // amphora — necked urn with side handles and a footed base
       return (
         <>
-          <path d="M8 4.5h8c1 2.2 1.5 4.7 1.5 7.5s-.5 5.3-1.5 7.5H8c-1-2.2-1.5-4.7-1.5-7.5S7 6.7 8 4.5z" />
-          <path d="M6.8 9h10.4M6.8 15h10.4M12 4.5v15" />
+          <path d="M9.2 4.3h5.6" />
+          <path d="M10.3 4.3c0 1.6-.8 2.4-1.9 3.3-1.4 1.2-2.2 2.7-2.2 4.5 0 3.4 2.4 5.6 5.8 5.6s5.8-2.2 5.8-5.6c0-1.8-.8-3.3-2.2-4.5-1.1-.9-1.9-1.7-1.9-3.3" />
+          <path d="M9.7 17.4c.3 1-.1 1.7-1 2.4h6.6c-.9-.7-1.3-1.4-1-2.4" />
+          <path d="M8.4 7.9c-1.9-.6-3 .5-2.1 2.1M15.6 7.9c1.9-.6 3 .5 2.1 2.1" />
+        </>
+      )
+    case 'brewery':
+      // oak barrel — bulged staves, two iron hoops, bung
+      return (
+        <>
+          <path d="M7.4 4.5C6.1 6.8 5.5 9.3 5.5 12s.6 5.2 1.9 7.5h9.2c1.3-2.3 1.9-4.8 1.9-7.5s-.6-5.2-1.9-7.5z" />
+          <path d="M6.1 8.3h11.8M6.1 15.7h11.8" />
+          <path d="M10.3 4.5c-.5 4.8-.5 10.2 0 15M13.7 4.5c.5 4.8.5 10.2 0 15" />
+          <circle cx="12" cy="12" r="1.1" />
         </>
       )
   }
@@ -142,13 +160,12 @@ export function BuildIcon(p: IconProps) {
 }
 
 export function NetworkIcon(p: IconProps) {
-  // two nodes, one route
+  // a junction — one route diverging into two, sleepers ticked across
   return base(
     p,
     <>
-      <circle cx="5.5" cy="18.5" r="2.5" />
-      <circle cx="18.5" cy="5.5" r="2.5" />
-      <path d="M7.5 16.5c3-3 6-3 9-9" strokeDasharray="3 2.4" />
+      <path d="M7 20.5C7 13.5 9.5 10 12 4M17 20.5C17 13.5 14.5 10 12 4" />
+      <path d="M6.2 17.5h3.4M14.4 17.5h3.4M7.2 13.5h3M13.8 13.5h3M9 9.5h6" />
     </>,
   )
 }

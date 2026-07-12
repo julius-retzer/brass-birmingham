@@ -585,17 +585,19 @@ export function BoardMap({
                   />
                 )}
 
-                {/* built link marker — the player's flag on the route */}
+                {/* built link marker — the player's tile on the route,
+                    stamped with the physical game's glyphs: a narrowboat
+                    for canals, a locomotive for rails */}
                 {built && (
                   <g
                     transform={`translate(${mid.x}, ${mid.y})`}
                     pointerEvents="none"
                   >
                     <rect
-                      x="-15"
-                      y="-9.5"
-                      width="30"
-                      height="19"
+                      x="-16"
+                      y="-10"
+                      width="32"
+                      height="20"
                       rx="3.5"
                       fill={PLAYER_FILL[built.player.color]}
                       stroke="#16130f"
@@ -604,17 +606,25 @@ export function BoardMap({
                     />
                     <g
                       stroke="#f2e6c8"
-                      strokeWidth="1.7"
+                      strokeWidth="1.5"
                       fill="none"
                       strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
                       {built.type === 'canal' ? (
-                        <path
-                          d="M-8 -1.5 c2.5 0 2.5 2 5 2 s2.5 -2 5 -2 s2.5 2 6 2 M-8 3 c2.5 0 2.5 2 5 2"
-                          transform="translate(0,-3.5) scale(0.9)"
-                        />
+                        // narrowboat: long hull, low cabin, stern chimney
+                        <>
+                          <path d="M-11 1.5h22c-1.2 2.6-3.4 4-6.4 4H-6c-2.8 0-4.4-1.4-5-4z" />
+                          <path d="M-6.5 1.5v-4h9v4M-8.6 1.5v-5.8" />
+                        </>
                       ) : (
-                        <path d="M-6 -5 v10 M6 -5 v10 M-6 -2 h12 M-6 2.5 h12" />
+                        // locomotive: boiler, cab, funnel, two wheels
+                        <>
+                          <path d="M-10.5 3.5v-6h11v6M0.5 -2.5h6.5a2 2 0 0 1 2 2v4h-19" />
+                          <path d="M-7.5 -2.5v-3.5M6.5 -2.5v-2.5h-3v2.5" />
+                          <circle cx="-5" cy="5.4" r="1.9" />
+                          <circle cx="4" cy="5.4" r="1.9" />
+                        </>
                       )}
                     </g>
                   </g>

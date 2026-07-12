@@ -1,0 +1,593 @@
+/* ================================================================
+   Brass: Birmingham v2 — "The Ironmaster's Atlas"
+   A Victorian industrial survey map on a gaslit drafting table.
+   Coal soot, aged parchment, polished brass, canal teal, rail rust.
+   Scoped under .bb2 so v1 is untouched.
+   ================================================================ */
+
+.bb2 {
+  /* --- palette --- */
+  --bb-coal-950: #100e0c;
+  --bb-coal-900: #16130f;
+  --bb-coal-850: #1c1813;
+  --bb-coal-800: #231e17;
+  --bb-coal-700: #2e271d;
+  --bb-iron-panel: #1e1a15;
+  --bb-iron-raised: #262019;
+
+  --bb-parchment: #e7d7b1;
+  --bb-parchment-bright: #f2e6c8;
+  --bb-parchment-dark: #d4bf92;
+  --bb-parchment-shadow: #b39d6e;
+  --bb-ink: #2a2014;
+  --bb-ink-soft: #4a3d29;
+
+  --bb-brass: #c39538;
+  --bb-brass-bright: #e6bd63;
+  --bb-brass-dim: #8a6d34;
+  --bb-brass-hairline: rgba(195, 149, 56, 0.35);
+  --bb-brass-hairline-soft: rgba(195, 149, 56, 0.18);
+
+  --bb-canal: #4e9c96;
+  --bb-canal-deep: #2b5a58;
+  --bb-rail: #c2632f;
+  --bb-rail-deep: #7c3d1c;
+  --bb-danger: #c14434;
+  --bb-danger-dim: #7c2f24;
+
+  --bb-board-field: #1b2526;
+  --bb-board-field-edge: #141c1d;
+
+  /* player colours — period pigments */
+  --bb-player-red: #b5402f;
+  --bb-player-blue: #45719d;
+  --bb-player-green: #5f7d45;
+  --bb-player-yellow: #c9a227;
+  --bb-player-purple: #7d5a86;
+  --bb-player-orange: #c07430;
+
+  /* industry colours (physical-tile inspired) */
+  --bb-ind-cotton: #ded1b4;
+  --bb-ind-coal: #3b3833;
+  --bb-ind-iron: #d07135;
+  --bb-ind-manufacturer: #a5433a;
+  --bb-ind-pottery: #c9a227;
+  --bb-ind-brewery: #7a8b3d;
+
+  /* --- typography (font vars provided by next/font in the layout) --- */
+  --bb-display: var(--font-bb-display), "Fraunces", georgia, serif;
+  --bb-body: var(--font-bb-body), "Barlow Semi Condensed", system-ui, sans-serif;
+
+  font-family: var(--bb-body);
+  color: var(--bb-parchment);
+  background-color: var(--bb-coal-900);
+}
+
+/* Layered gaslit canvas: warm pools of light over soot, plus grain */
+.bb2-canvas {
+  background: radial-gradient(
+      1200px 800px at 30% -10%,
+      rgba(214, 168, 84, 0.07),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 700px at 85% 110%,
+      rgba(120, 90, 40, 0.05),
+      transparent 55%
+    ), linear-gradient(180deg, #18140f 0%, #14110d 55%, #100e0b 100%);
+  position: relative;
+}
+.bb2-canvas::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.bb2-canvas::after {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 59;
+  background: radial-gradient(
+    120% 90% at 50% 40%,
+    transparent 55%,
+    rgba(8, 6, 4, 0.55) 100%
+  );
+}
+
+/* ---------------- panels & chrome ---------------- */
+
+.bb2-panel {
+  background: linear-gradient(
+    170deg,
+    var(--bb-iron-raised) 0%,
+    var(--bb-iron-panel) 60%,
+    #1a1611 100%
+  );
+  border: 1px solid var(--bb-brass-hairline-soft);
+  box-shadow: inset 0 1px 0 rgba(255, 230, 170, 0.06), 0 8px 24px
+    rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+}
+
+.bb2-panel-title {
+  font-family: var(--bb-body);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bb-brass);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bb2-panel-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--bb-brass-hairline), transparent);
+}
+
+.bb2-display {
+  font-family: var(--bb-display);
+}
+
+/* Brass-engraved rule between sections */
+.bb2-rule {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--bb-brass-hairline),
+    transparent
+  );
+}
+
+/* ---------------- action plaques ---------------- */
+
+.bb2-plaque {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  text-align: left;
+  border-radius: 5px;
+  border: 1px solid rgba(195, 149, 56, 0.28);
+  background: linear-gradient(175deg, #2b241b 0%, #211c15 55%, #1b1712 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 230, 170, 0.08), inset 0 -6px 12px
+    rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.45);
+  color: var(--bb-parchment);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s
+    ease;
+}
+.bb2-plaque:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--bb-brass);
+  box-shadow: inset 0 1px 0 rgba(255, 230, 170, 0.12), 0 6px 14px
+    rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(195, 149, 56, 0.25);
+}
+.bb2-plaque:active:not(:disabled) {
+  transform: translateY(0);
+}
+.bb2-plaque:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+  filter: saturate(0.4);
+}
+.bb2-plaque .bb2-plaque-name {
+  font-family: var(--bb-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  color: var(--bb-brass-bright);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.bb2-plaque .bb2-plaque-hint {
+  font-size: 11px;
+  line-height: 1.25;
+  color: rgba(231, 215, 177, 0.62);
+}
+
+/* Primary confirm button — a poured-brass bar */
+.bb2-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 5px;
+  border: 1px solid #7a5c22;
+  font-family: var(--bb-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.05em;
+  color: #241a08;
+  background: linear-gradient(
+    180deg,
+    #ecc568 0%,
+    #c99b3f 45%,
+    #a87d2c 55%,
+    #c79e46 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 245, 210, 0.7), 0 3px 10px
+    rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: filter 0.12s ease, transform 0.12s ease;
+}
+.bb2-confirm:hover:not(:disabled) {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+}
+.bb2-confirm:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.75) brightness(0.55);
+}
+
+.bb2-ghost-btn {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(231, 215, 177, 0.22);
+  color: rgba(231, 215, 177, 0.75);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+.bb2-ghost-btn:hover {
+  border-color: var(--bb-brass);
+  color: var(--bb-brass-bright);
+  background: rgba(195, 149, 56, 0.08);
+}
+
+/* option rows (sales, develop choices…) */
+.bb2-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 5px;
+  border: 1px solid rgba(231, 215, 177, 0.14);
+  background: rgba(255, 240, 200, 0.03);
+  color: var(--bb-parchment);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, transform 0.12s;
+}
+.bb2-option:hover:not(:disabled) {
+  border-color: var(--bb-brass);
+  background: rgba(195, 149, 56, 0.1);
+  transform: translateX(2px);
+}
+.bb2-option:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.bb2-option[data-selected="true"] {
+  border-color: var(--bb-brass-bright);
+  background: rgba(195, 149, 56, 0.16);
+  box-shadow: 0 0 0 1px rgba(230, 189, 99, 0.4);
+}
+
+/* ---------------- chips & gauges ---------------- */
+
+.bb2-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--bb-brass-hairline);
+  background: rgba(20, 16, 11, 0.7);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bb-parchment);
+  white-space: nowrap;
+}
+
+.bb2-era-plate {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 14px;
+  border-radius: 3px;
+  font-family: var(--bb-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #f4ead2;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -8px 14px
+    rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.bb2-era-canal {
+  background: linear-gradient(180deg, #3c7f7a 0%, #2b5a58 100%);
+  border: 1px solid #63a8a2;
+}
+.bb2-era-rail {
+  background: linear-gradient(180deg, #b65c2b 0%, #7c3d1c 100%);
+  border: 1px solid #d98a54;
+}
+
+/* action pips — remaining actions this turn */
+.bb2-pip {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  border: 1px solid var(--bb-brass-dim);
+  background: radial-gradient(circle at 35% 30%, #f0cd7c, #a87d2c 70%);
+  box-shadow: 0 0 6px rgba(230, 189, 99, 0.5);
+}
+.bb2-pip[data-spent="true"] {
+  background: #241e15;
+  box-shadow: none;
+  border-color: rgba(195, 149, 56, 0.25);
+}
+
+/* ---------------- player mats ---------------- */
+
+.bb2-mat {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  padding: 8px 12px 8px 0;
+  border-radius: 6px;
+  border: 1px solid rgba(195, 149, 56, 0.16);
+  background: linear-gradient(172deg, #251f18 0%, #1d1913 100%);
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.bb2-mat[data-current="true"] {
+  border-color: rgba(230, 189, 99, 0.7);
+  box-shadow: 0 0 0 1px rgba(230, 189, 99, 0.35), 0 0 22px
+    rgba(230, 189, 99, 0.12), 0 6px 16px rgba(0, 0, 0, 0.45);
+}
+.bb2-mat-ribbon {
+  width: 6px;
+  border-radius: 6px 0 0 6px;
+  flex: none;
+}
+
+.bb2-stat-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(231, 215, 177, 0.45);
+}
+.bb2-stat-value {
+  font-family: var(--bb-display);
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.1;
+  color: var(--bb-parchment-bright);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- cards ---------------- */
+
+.bb2-card {
+  position: relative;
+  width: 108px;
+  height: 156px;
+  border-radius: 8px;
+  background: radial-gradient(
+      120% 90% at 50% 0%,
+      rgba(255, 246, 220, 0.5),
+      transparent 55%
+    ), linear-gradient(168deg, #efe2c0 0%, #e2d0a4 70%, #d2bd8c 100%);
+  border: 1px solid #9c854f;
+  box-shadow: inset 0 0 0 3px rgba(120, 96, 48, 0.18), inset 0 0 22px
+    rgba(120, 92, 40, 0.18), 0 6px 14px rgba(0, 0, 0, 0.55);
+  color: var(--bb-ink);
+  overflow: hidden;
+  flex: none;
+  transition: transform 0.16s cubic-bezier(0.2, 0.9, 0.3, 1.3), box-shadow 0.16s
+    ease, filter 0.16s ease;
+}
+button.bb2-card {
+  cursor: pointer;
+}
+.bb2-card[data-dimmed="true"] {
+  filter: saturate(0.35) brightness(0.72);
+}
+.bb2-card[data-selected="true"] {
+  box-shadow: inset 0 0 0 3px rgba(120, 96, 48, 0.18), 0 0 0 2px
+    var(--bb-brass-bright), 0 0 24px rgba(230, 189, 99, 0.55), 0 10px 20px
+    rgba(0, 0, 0, 0.6);
+}
+.bb2-card-back {
+  background: repeating-linear-gradient(
+      45deg,
+      rgba(195, 149, 56, 0.07) 0 2px,
+      transparent 2px 9px
+    ),
+    radial-gradient(
+      110% 80% at 50% 15%,
+      rgba(195, 149, 56, 0.16),
+      transparent 60%
+    ), linear-gradient(170deg, #241f17 0%, #191510 100%);
+  border-color: #4d3f22;
+  color: var(--bb-brass);
+}
+
+/* hand tray fan */
+.bb2-hand {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  pointer-events: none;
+}
+.bb2-hand > * {
+  pointer-events: auto;
+  margin: 0 -17px;
+  transform-origin: 50% 120%;
+}
+.bb2-hand > *:hover {
+  transform: translateY(-26px) scale(1.06) rotate(0deg) !important;
+  z-index: 30 !important;
+}
+.bb2-hand > *[data-selected="true"] {
+  transform: translateY(-30px) scale(1.05) rotate(0deg) !important;
+  z-index: 29 !important;
+}
+
+/* ---------------- board ---------------- */
+
+.bb2-board-frame {
+  position: relative;
+  border-radius: 8px;
+  border: 1px solid rgba(195, 149, 56, 0.4);
+  background: linear-gradient(180deg, #2c241a, #1e1913);
+  padding: 5px;
+  box-shadow: inset 0 1px 0 rgba(255, 230, 170, 0.1), 0 14px 34px
+    rgba(0, 0, 0, 0.55);
+}
+.bb2-board-frame > .bb2-board-inner {
+  border-radius: 5px;
+  overflow: hidden;
+  background: radial-gradient(
+      130% 100% at 50% 0%,
+      rgba(110, 160, 150, 0.08),
+      transparent 60%
+    ), linear-gradient(178deg, #20302f 0%, #1b2526 55%, #161e1f 100%);
+  height: 100%;
+}
+
+.bb2-board-ctrl {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1px solid var(--bb-brass-hairline);
+  background: rgba(22, 18, 13, 0.85);
+  color: var(--bb-brass-bright);
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.bb2-board-ctrl:hover {
+  background: rgba(195, 149, 56, 0.18);
+  border-color: var(--bb-brass);
+}
+
+/* legal-target pulse on SVG nodes */
+@keyframes bb2-target-pulse {
+  0%,
+  100% {
+    stroke-opacity: 0.9;
+    stroke-width: 2;
+  }
+  50% {
+    stroke-opacity: 0.35;
+    stroke-width: 5;
+  }
+}
+.bb2-target {
+  animation: bb2-target-pulse 1.6s ease-in-out infinite;
+  cursor: pointer;
+}
+
+/* ---------------- log ---------------- */
+
+.bb2-log {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.bb2-log-entry {
+  padding: 3px 0 3px 10px;
+  border-left: 2px solid rgba(231, 215, 177, 0.12);
+  color: rgba(231, 215, 177, 0.78);
+}
+.bb2-log-entry[data-type="system"] {
+  border-left-color: var(--bb-brass);
+  color: var(--bb-brass-bright);
+}
+.bb2-log-entry[data-type="error"] {
+  border-left-color: var(--bb-danger);
+  color: #e0968b;
+}
+.bb2-log-entry[data-type="action"] {
+  border-left-color: rgba(231, 215, 177, 0.35);
+}
+
+/* ---------------- motion ---------------- */
+
+@keyframes bb2-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.bb2-rise {
+  animation: bb2-rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes bb2-curtain {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.bb2-curtain {
+  animation: bb2-curtain 0.35s ease both;
+}
+
+@keyframes bb2-seal-pop {
+  0% {
+    transform: scale(0.6) rotate(-8deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.06) rotate(1deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+.bb2-seal-pop {
+  animation: bb2-seal-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+}
+
+/* ---------------- scrollbars ---------------- */
+
+.bb2 *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.bb2 *::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+}
+.bb2 *::-webkit-scrollbar-thumb {
+  background: rgba(195, 149, 56, 0.3);
+  border-radius: 4px;
+}
+.bb2 *::-webkit-scrollbar-thumb:hover {
+  background: rgba(195, 149, 56, 0.5);
+}

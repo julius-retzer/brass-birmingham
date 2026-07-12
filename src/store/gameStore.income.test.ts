@@ -23,13 +23,21 @@ const setup = (playerCount = 2) => {
   const players = Array.from({ length: playerCount }, (_, i) => ({
     id: String(i + 1),
     name: `P${i + 1}`,
-    color: (['red', 'blue', 'green', 'yellow'][i] as 'red' | 'blue' | 'green' | 'yellow'),
-    character: ([
+    color: ['red', 'blue', 'green', 'yellow'][i] as
+      | 'red'
+      | 'blue'
+      | 'green'
+      | 'yellow',
+    character: [
       'Richard Arkwright',
       'Eliza Tinsley',
       'Isambard Kingdom Brunel',
       'George Stephenson',
-    ][i] as 'Richard Arkwright' | 'Eliza Tinsley' | 'Isambard Kingdom Brunel' | 'George Stephenson'),
+    ][i] as
+      | 'Richard Arkwright'
+      | 'Eliza Tinsley'
+      | 'Isambard Kingdom Brunel'
+      | 'George Stephenson',
     money: 17,
     victoryPoints: 0,
     income: 10,
@@ -352,7 +360,7 @@ describe('Game Store - Income Collection', () => {
         type: 'TEST_SET_PLAYER_STATE',
         playerId: 0,
       })
-      
+
       // Note: victoryPoints not supported by TEST_SET_PLAYER_STATE
 
       advanceRound(actor)
@@ -522,7 +530,7 @@ describe('Game Store - Income Collection', () => {
         type: 'TEST_SET_PLAYER_STATE',
         playerId: 0,
       })
-      
+
       // Note: victoryPoints not supported by TEST_SET_PLAYER_STATE
 
       advanceRound(actor)

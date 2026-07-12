@@ -1,7 +1,7 @@
 // Sell Actions Tests - player-chosen industry + merchant, multi-sell, beer
 import { afterEach, describe, expect, test } from 'vitest'
 import { createActor } from 'xstate'
-import { gameStore, type Merchant } from './gameStore'
+import { type Merchant, gameStore } from './gameStore'
 
 // Track actors for cleanup
 let activeActors: ReturnType<typeof createActor>[] = []
@@ -91,9 +91,7 @@ const makeIndustry = (
   beerBarrelsOnTile: 0,
 })
 
-const gloucesterMerchant = (
-  overrides: Partial<Merchant> = {},
-): Merchant => ({
+const gloucesterMerchant = (overrides: Partial<Merchant> = {}): Merchant => ({
   location: 'gloucester',
   industryIcons: ['cotton', 'manufacturer'],
   bonusType: 'money',
@@ -259,7 +257,7 @@ describe('Game Store - Sell Actions', () => {
     const { actor } = setupGame()
 
     actor.send({ type: 'SELL' })
-    let snapshot = actor.getSnapshot()
+    const snapshot = actor.getSnapshot()
     actor.send({
       type: 'SELECT_CARD',
       cardId:

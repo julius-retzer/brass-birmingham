@@ -109,7 +109,10 @@ describe('Game Store - Turn Order and Rounds', () => {
     // Player 0 builds a canal link (£3) - spends money
     actor.send({ type: 'NETWORK' })
     s = actor.getSnapshot()
-    actor.send({ type: 'SELECT_CARD', cardId: s.context.players[0]!.hand[0]!.id })
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: s.context.players[0]!.hand[0]!.id,
+    })
     actor.send({ type: 'SELECT_LINK', from: 'worcester', to: 'gloucester' })
     actor.send({ type: 'CONFIRM' })
 
@@ -117,7 +120,10 @@ describe('Game Store - Turn Order and Rounds', () => {
     s = actor.getSnapshot()
     expect(s.context.currentPlayerIndex).toBe(1)
     actor.send({ type: 'PASS' })
-    actor.send({ type: 'SELECT_CARD', cardId: s.context.players[1]!.hand[0]!.id })
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: s.context.players[1]!.hand[0]!.id,
+    })
     actor.send({ type: 'CONFIRM' })
 
     // Round complete: player 1 spent less, so goes first next round
@@ -133,13 +139,19 @@ describe('Game Store - Turn Order and Rounds', () => {
     // Both players pass (equal spending of £0)
     let s = actor.getSnapshot()
     actor.send({ type: 'PASS' })
-    actor.send({ type: 'SELECT_CARD', cardId: s.context.players[0]!.hand[0]!.id })
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: s.context.players[0]!.hand[0]!.id,
+    })
     actor.send({ type: 'CONFIRM' })
 
     s = actor.getSnapshot()
     expect(s.context.currentPlayerIndex).toBe(1)
     actor.send({ type: 'PASS' })
-    actor.send({ type: 'SELECT_CARD', cardId: s.context.players[1]!.hand[0]!.id })
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: s.context.players[1]!.hand[0]!.id,
+    })
     actor.send({ type: 'CONFIRM' })
 
     // With equal spending, relative order is maintained
@@ -154,29 +166,65 @@ describe('Game Store - Turn Order and Rounds', () => {
     activeActors.push(actor)
     actor.start()
     const players = [
-      { id: '1', name: 'P1', color: 'red' as const, character: 'Richard Arkwright' as const, money: 17, victoryPoints: 0, income: 10, industryTilesOnMat: {} as any },
-      { id: '2', name: 'P2', color: 'blue' as const, character: 'Eliza Tinsley' as const, money: 17, victoryPoints: 0, income: 10, industryTilesOnMat: {} as any },
-      { id: '3', name: 'P3', color: 'green' as const, character: 'Robert Owen' as const, money: 17, victoryPoints: 0, income: 10, industryTilesOnMat: {} as any },
+      {
+        id: '1',
+        name: 'P1',
+        color: 'red' as const,
+        character: 'Richard Arkwright' as const,
+        money: 17,
+        victoryPoints: 0,
+        income: 10,
+        industryTilesOnMat: {} as any,
+      },
+      {
+        id: '2',
+        name: 'P2',
+        color: 'blue' as const,
+        character: 'Eliza Tinsley' as const,
+        money: 17,
+        victoryPoints: 0,
+        income: 10,
+        industryTilesOnMat: {} as any,
+      },
+      {
+        id: '3',
+        name: 'P3',
+        color: 'green' as const,
+        character: 'Robert Owen' as const,
+        money: 17,
+        victoryPoints: 0,
+        income: 10,
+        industryTilesOnMat: {} as any,
+      },
     ]
     actor.send({ type: 'START_GAME', players })
 
     // P1 spends £3 on a link, P2 passes (£0), P3 spends £3 on a link
     let s = actor.getSnapshot()
     actor.send({ type: 'NETWORK' })
-    actor.send({ type: 'SELECT_CARD', cardId: s.context.players[0]!.hand[0]!.id })
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: s.context.players[0]!.hand[0]!.id,
+    })
     actor.send({ type: 'SELECT_LINK', from: 'worcester', to: 'gloucester' })
     actor.send({ type: 'CONFIRM' })
 
     s = actor.getSnapshot()
     expect(s.context.currentPlayerIndex).toBe(1)
     actor.send({ type: 'PASS' })
-    actor.send({ type: 'SELECT_CARD', cardId: s.context.players[1]!.hand[0]!.id })
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: s.context.players[1]!.hand[0]!.id,
+    })
     actor.send({ type: 'CONFIRM' })
 
     s = actor.getSnapshot()
     expect(s.context.currentPlayerIndex).toBe(2)
     actor.send({ type: 'NETWORK' })
-    actor.send({ type: 'SELECT_CARD', cardId: s.context.players[2]!.hand[0]!.id })
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: s.context.players[2]!.hand[0]!.id,
+    })
     actor.send({ type: 'SELECT_LINK', from: 'stoke', to: 'warrington' })
     actor.send({ type: 'CONFIRM' })
 

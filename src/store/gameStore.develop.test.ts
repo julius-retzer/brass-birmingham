@@ -152,9 +152,9 @@ describe('Game Store - Develop Actions', () => {
     snapshot = actor.getSnapshot()
 
     // Returns to action selection (or next player's action)
-    expect(
-      snapshot.matches({ playing: { action: 'selectingAction' } })
-    ).toBe(true)
+    expect(snapshot.matches({ playing: { action: 'selectingAction' } })).toBe(
+      true,
+    )
 
     // Discard pile increased by 1 (for the card used)
     expect(snapshot.context.discardPile.length).toBe(initialDiscard + 1)
@@ -275,7 +275,7 @@ describe('Game Store - Develop Actions', () => {
       playerId: 0,
       money: 50,
     })
-    
+
     // TODO: Implement proper tile management for testing
     /*
     industryTilesOnMat: {
@@ -400,7 +400,7 @@ describe('Game Store - Develop Actions', () => {
       playerId: 0,
       money: 50,
     })
-    
+
     // TODO: Implement proper tile management for testing
     /*
     industryTilesOnMat: {
@@ -545,10 +545,10 @@ describe('Game Store - Develop Actions', () => {
         },
       ],
     })
-    
+
     // Skip remainder of test - industryTilesOnMat not supported by TEST_SET_PLAYER_STATE
   })
-  
+
   test.skip('develop action - can develop 1 or 2 tiles consuming 1 iron each - ORIGINAL', () => {
     // This test needs proper tile management implementation
     /*

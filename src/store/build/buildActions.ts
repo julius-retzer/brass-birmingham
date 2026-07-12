@@ -66,10 +66,13 @@ export function validateIndustrySlotAvailability(context: GameState): void {
     throw new Error('No industry tile selected')
   }
 
-  const canAccommodate = canCityAccommodateIndustryType(
+  // A build is legal with a free compatible slot OR as a legal overbuild —
+  // keep this aligned with validateIndustrySlotAvailabilityResult below.
+  const canAccommodate = canPlaceOrOverbuildIndustry(
     context,
     location,
-    industryTile.type
+    industryTile.type,
+    industryTile.level,
   )
 
   if (!canAccommodate) {
@@ -223,14 +226,25 @@ export function buildIndustryTile(
   let ironCost = 0
   const resourceLogDetails: string[] = []
 
-  // Check for overbuilding
-  const overbuildCheck = canOverbuildIndustry(
+  // Free-slot-first: if the city still has a free compatible slot, the tile
+  // is placed there and NO overbuild happens — an existing same-type tile
+  // (any player's) stays on the board. Overbuild semantics apply only when
+  // no compatible slot is free (rules: overbuild replaces an existing tile).
+  const hasFreeSlot = canCityAccommodateIndustryType(
     context,
-    context.currentPlayerIndex,
     context.selectedLocation!,
     tile.type,
-    tile.level
   )
+
+  const overbuildCheck = hasFreeSlot
+    ? ({ canOverbuild: true } as ReturnType<typeof canOverbuildIndustry>)
+    : canOverbuildIndustry(
+        context,
+        context.currentPlayerIndex,
+        context.selectedLocation!,
+        tile.type,
+        tile.level,
+      )
 
   if (!overbuildCheck.canOverbuild && overbuildCheck.reason) {
     throw new Error(overbuildCheck.reason)

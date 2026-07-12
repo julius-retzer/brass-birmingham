@@ -30,6 +30,7 @@ import { demoSnapshotEraEnd } from './demo/demo-snapshot-era-end'
 import { demoSnapshotGameEnd } from './demo/demo-snapshot-game-end'
 import { demoSnapshotRail } from './demo/demo-snapshot-rail'
 import { demoSnapshotSell } from './demo/demo-snapshot-sell'
+import { demoSnapshotWilds } from './demo/demo-snapshot-wilds'
 import { HandTray } from './hand-tray'
 import { GameOverScreen, PassGate } from './overlays'
 import { PlayerLedger } from './player-ledger'
@@ -140,7 +141,9 @@ export function V2Game() {
             ? demoSnapshotEraEnd
             : demoParam === 'gameend'
               ? demoSnapshotGameEnd
-              : demoSnapshot
+              : demoParam === 'wilds'
+                ? demoSnapshotWilds
+                : demoSnapshot
       setBoot({
         kind: 'demo',
         snapshot: rehydrateSnapshot(fixture),

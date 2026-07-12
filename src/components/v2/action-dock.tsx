@@ -3,6 +3,7 @@
 // The action dock — every turn decision happens here, driven entirely by
 // the machine (`snapshot.matches` for the step, `snapshot.can` for legality).
 // Card discards are made in the HandTray fan; this dock shows the step rail.
+import { useState } from 'react'
 import { type CityId, cities } from '~/data/board'
 import { type IndustryType } from '~/data/cards'
 import {
@@ -75,6 +76,110 @@ export function getHandSelection(
     }
   }
   return null
+}
+
+/* ----- develop tile picker ----- */
+
+/**
+ * Rules: a Develop action removes ONE or TWO tiles (1 iron each). Clicking
+ * an industry cycles its count 0 → 1 → 2 → 0, capped at two tiles total
+ * (the same industry may be picked twice — successive levels).
+ */
+function DevelopTilePicker({
+  currentPlayer,
+  onCancel,
+  onPick,
+  onLowest,
+}: {
+  currentPlayer: Player
+  onCancel: () => void
+  onPick: (types: IndustryType[]) => void
+  onLowest: () => void
+}) {
+  const [counts, setCounts] = useState<Partial<Record<IndustryType, number>>>(
+    {},
+  )
+  const developable = INDUSTRY_TYPES.filter((t) => {
+    const tiles = currentPlayer.industryTilesOnMat[t] || []
+    return tiles.some(
+      (tw) =>
+        tw.quantityAvailable > 0 &&
+        !(t === 'pottery' && tw.tile.hasLightbulbIcon),
+    )
+  })
+  const available = (t: IndustryType) =>
+    (currentPlayer.industryTilesOnMat[t] || [])
+      .filter((tw) => !(t === 'pottery' && tw.tile.hasLightbulbIcon))
+      .reduce((n, tw) => n + tw.quantityAvailable, 0)
+  const total = Object.values(counts).reduce((a, b) => a + (b ?? 0), 0)
+  const selection = developable.flatMap((t) =>
+    Array.from({ length: counts[t] ?? 0 }, () => t),
+  )
+
+  const cycle = (t: IndustryType) =>
+    setCounts((prev) => {
+      const current = prev[t] ?? 0
+      const others = total - current
+      const max = Math.min(2 - others, available(t))
+      const next = current >= max ? 0 : current + 1
+      return { ...prev, [t]: next }
+    })
+
+  return (
+    <Flow
+      action="Develop"
+      steps={['Card', 'Tiles', 'Confirm']}
+      active={1}
+      onCancel={onCancel}
+    >
+      <Note>
+        Scrap one or <b>two</b> tiles from your mat — each consumes 1 iron. Tap
+        an industry again for a second tile of the same kind.
+      </Note>
+      <div className="grid grid-cols-3 gap-2">
+        {developable.map((t) => {
+          const n = counts[t] ?? 0
+          return (
+            <button
+              key={t}
+              type="button"
+              className="bb2-option relative flex-col !items-center gap-1.5 py-2.5"
+              data-selected={n > 0}
+              data-testid={`develop-${t}`}
+              onClick={() => cycle(t)}
+            >
+              <IndustryGlyph type={t} size={20} />
+              <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em]">
+                {t === 'manufacturer' ? 'Goods' : t}
+              </span>
+              {n > 0 && (
+                <span
+                  className="absolute right-1.5 top-1.5 rounded-full px-1.5 text-[10px] font-bold"
+                  style={{
+                    background: 'var(--bb-brass)',
+                    color: '#241a08',
+                  }}
+                >
+                  ×{n}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+      <Confirm disabled={total === 0} onClick={() => onPick(selection)}>
+        Scrap {total === 2 ? 'two tiles' : total === 1 ? 'one tile' : 'tiles'}
+      </Confirm>
+      <button
+        type="button"
+        className="bb2-ghost-btn"
+        data-testid="develop-lowest"
+        onClick={onLowest}
+      >
+        Develop lowest available
+      </button>
+    </Flow>
+  )
 }
 
 /* ----- step rail ----- */
@@ -504,42 +609,15 @@ export function ActionDock({
     )
   }
   if (is('playing.action.developing.selectingTiles')) {
-    const developable = INDUSTRY_TYPES.filter((t) => {
-      const tiles = currentPlayer.industryTilesOnMat[t] || []
-      return tiles.some(
-        (tw) =>
-          tw.quantityAvailable > 0 &&
-          !(t === 'pottery' && tw.tile.hasLightbulbIcon),
-      )
-    })
     return (
-      <Flow action="Develop" steps={devSteps} active={1} onCancel={cancel}>
-        <Note>Scrap a tile from your mat — each consumes 1 iron.</Note>
-        <div className="grid grid-cols-3 gap-2">
-          {developable.map((t) => (
-            <button
-              key={t}
-              type="button"
-              className="bb2-option flex-col !items-center gap-1.5 py-2.5"
-              onClick={() =>
-                send({ type: 'SELECT_TILES_FOR_DEVELOP', industryTypes: [t] })
-              }
-            >
-              <IndustryGlyph type={t} size={20} />
-              <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em]">
-                {t === 'manufacturer' ? 'Goods' : t}
-              </span>
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          className="bb2-ghost-btn"
-          onClick={() => send({ type: 'CONFIRM' })}
-        >
-          Develop lowest available
-        </button>
-      </Flow>
+      <DevelopTilePicker
+        currentPlayer={currentPlayer}
+        onCancel={cancel}
+        onPick={(types) =>
+          send({ type: 'SELECT_TILES_FOR_DEVELOP', industryTypes: types })
+        }
+        onLowest={() => send({ type: 'CONFIRM' })}
+      />
     )
   }
   if (is('playing.action.developing.confirmingDevelop')) {

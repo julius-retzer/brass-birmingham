@@ -154,7 +154,13 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   modelled; industry tile stats in `src/data/industryTiles.ts` are
   unaudited; the income track models levels as a flat number (levels vs
   spaces distinction not implemented); link building does not validate
-  against the board graph`connections`.
+  against the board graph `connections` (the UI enforces era + graph).
+- Build slot semantics are FREE-SLOT-FIRST (2026-07-13 bug hunt): a build
+  goes into a free compatible slot when one exists — overbuild (replace,
+  via `performOverbuild`) happens ONLY when no compatible slot is free.
+  Wild cards route through the full build flow: wild location picks
+  industry then ANY city; wild industry picks industry then a network
+  city. Regression tests: `gameStore.bugfixes.test.ts`, `e2e/bugfixes.spec.ts`.
 - Integration tests (`gameStore.integration.test.ts`) drive full games
   through the event surface with a guard-probing policy; if you add
   guards, keep CANCEL paths reachable so the driver can unwind
@@ -240,7 +246,7 @@ When updating this file, preserve this bar for all agents and keep entries conci
   misses the fat hit-stroke on bowed paths. Use the `clickRoute` helper in
   `e2e/coverage.spec.ts` (getPointAtLength midpoint + mouse click).
 - Fixtures: e2e boots `?demo` / `?demo=sell` / `?demo=eraend` /
-  `?demo=gameend` / `?era=rail`. Regenerating ANY fixture invalidates
+  `?demo=gameend` / `?demo=wilds` / `?era=rail`. Regenerating ANY fixture invalidates
   pinned test literals — regenerate ONE at a time with
   `GENERATE_DEMO=1 pnpm vitest run src/components/v2/demo/generate-demo.test.ts -t "<name> fixture"`
   and re-pin the affected spec (£ values, card ids, route pairs, winner).

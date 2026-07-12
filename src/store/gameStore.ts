@@ -1924,11 +1924,10 @@ export const gameStore = setup({
         selectedIndustryTile: lowestTile,
       }
 
-      // If the selected card is a location card, auto-select the location
-      if (
-        context.selectedCard?.type === 'location' ||
-        context.selectedCard?.type === 'wild_location'
-      ) {
+      // If the selected card is a REAL location card, auto-select the
+      // location printed on it. Wild location cards have no printed city —
+      // the player picks one in the selectingLocation step instead.
+      if (context.selectedCard?.type === 'location') {
         const locationCard = context.selectedCard as LocationCard
         result.selectedLocation = locationCard.location
       }
@@ -2244,7 +2243,10 @@ export const gameStore = setup({
       if (event.type !== 'SELECT_CARD') return false
       const player = getCurrentPlayer(context)
       const card = findCardInHand(player, event.cardId)
-      return card?.type === 'industry' || card?.type === 'wild_industry'
+      // Wild industry cards are NOT routed here: they carry no printed
+      // industries, so the flow must pass through selectingIndustryType
+      // (the fallback SELECT_CARD transition) before picking a location.
+      return card?.type === 'industry'
     },
     isLocationCard: ({ context, event }) => {
       if (event.type !== 'SELECT_CARD') return false
@@ -2253,11 +2255,9 @@ export const gameStore = setup({
       return card?.type === 'location' || card?.type === 'wild_location'
     },
     canCompleteBuild: ({ context }) => {
-      // For location cards, just need card and location
-      if (
-        context.selectedCard?.type === 'location' ||
-        context.selectedCard?.type === 'wild_location'
-      ) {
+      // For REAL location cards, just need card and location (wild location
+      // cards fall through to the full tile + location + resources check).
+      if (context.selectedCard?.type === 'location') {
         return (
           context.selectedCard !== null && context.selectedLocation !== null
         )
@@ -2422,13 +2422,10 @@ export const gameStore = setup({
         return locationCard.location === event.cityId
       }
 
-      // For industry cards, check if the location can accommodate the selected
-      // industry type - either in a free slot or as a legal overbuild
-      if (
-        (context.selectedCard.type === 'industry' ||
-          context.selectedCard.type === 'wild_industry') &&
-        context.selectedIndustryTile
-      ) {
+      // For industry and wild cards the industry tile is already chosen —
+      // check the location can accommodate it, either in a free slot or as
+      // a legal overbuild
+      if (context.selectedIndustryTile) {
         return canPlaceOrOverbuildIndustry(
           context,
           event.cityId,
@@ -2482,10 +2479,10 @@ export const gameStore = setup({
       return true
     },
     isLocationCardSelected: ({ context }) => {
-      return (
-        context.selectedCard?.type === 'location' ||
-        context.selectedCard?.type === 'wild_location'
-      )
+      // Only REAL location cards skip location selection (the city is
+      // printed on the card). A wild location card must continue to
+      // selectingLocation so the player can choose any city.
+      return context.selectedCard?.type === 'location'
     },
 
     isEraEnd: ({ context }) => {

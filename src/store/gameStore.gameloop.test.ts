@@ -168,7 +168,11 @@ describe('Game loop - automatic era end and game over', () => {
       type: 'SELECT_CARD',
       cardId: s.context.players[0].hand[0].id,
     } as any)
-    actor.send({ type: 'SELECT_LINK', from: 'worcester', to: 'gloucester' } as any)
+    actor.send({
+      type: 'SELECT_LINK',
+      from: 'worcester',
+      to: 'gloucester',
+    } as any)
     actor.send({ type: 'CONFIRM' } as any)
 
     // Give P0 a flipped cotton mill at worcester: 1 link icon + 3 VP
@@ -414,9 +418,7 @@ describe('Overbuild in a full city', () => {
       },
     ])
 
-    expect(canPlaceOrOverbuildIndustry(context, 'dudley', 'coal', 2)).toBe(
-      true,
-    )
+    expect(canPlaceOrOverbuildIndustry(context, 'dudley', 'coal', 2)).toBe(true)
     // Same or lower level is not a legal overbuild
     expect(canPlaceOrOverbuildIndustry(context, 'dudley', 'coal', 1)).toBe(
       false,

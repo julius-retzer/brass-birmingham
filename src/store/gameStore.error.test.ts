@@ -51,11 +51,11 @@ describe('Error State System', () => {
   test('prevents invalid location selection for industry cards with incompatible slots', () => {
     const { actor } = setupGame()
     let snapshot = actor.getSnapshot()
-    
+
     // Initially no error
     expect(snapshot.context.lastError).toBeNull()
     expect(snapshot.context.errorContext).toBeNull()
-    
+
     const currentPlayerId = snapshot.context.currentPlayerIndex
 
     // Set up player with a coal industry card (invalid for Birmingham)
@@ -82,26 +82,37 @@ describe('Error State System', () => {
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: 'coal_test' })
     actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'coal' })
-    
+
     snapshot = actor.getSnapshot()
-    
-    // Should be in selectingLocation state  
-    expect(snapshot.matches({ playing: { action: { building: 'selectingLocation' } } })).toBe(true)
-    
+
+    // Should be in selectingLocation state
+    expect(
+      snapshot.matches({
+        playing: { action: { building: 'selectingLocation' } },
+      }),
+    ).toBe(true)
+
     // Try to select Birmingham location - this should be rejected by the state machine
-    const canSelectBirmingham = snapshot.can({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    const canSelectBirmingham = snapshot.can({
+      type: 'SELECT_LOCATION',
+      cityId: 'birmingham',
+    })
     expect(canSelectBirmingham).toBe(false)
-    
+
     // Valid coal locations should still be selectable (e.g., Dudley has a coal slot)
-    const canSelectDudley = snapshot.can({ type: 'SELECT_LOCATION', cityId: 'dudley' })
+    const canSelectDudley = snapshot.can({
+      type: 'SELECT_LOCATION',
+      cityId: 'dudley',
+    })
     expect(canSelectDudley).toBe(true)
-    
+
     // Should not have set any error state since the action was prevented
     expect(snapshot.context.lastError).toBe(null)
     expect(snapshot.context.errorContext).toBe(null)
-    
+
     // Should not have built the industry
-    const player = snapshot.context.players[snapshot.context.currentPlayerIndex]!
+    const player =
+      snapshot.context.players[snapshot.context.currentPlayerIndex]!
     expect(player.industries.length).toBe(0)
   })
 
@@ -135,10 +146,12 @@ describe('Error State System', () => {
     actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'coal' })
     actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
     actor.send({ type: 'CONFIRM' })
-    
+
     snapshot = actor.getSnapshot()
-    expect(snapshot.context.lastError).toContain('Cannot build coal at birmingham')
-    
+    expect(snapshot.context.lastError).toContain(
+      'Cannot build coal at birmingham',
+    )
+
     // Now do a valid build - should clear error
     // First reset player state (similar to buildIndustryAction helper)
     actor.send({
@@ -152,25 +165,25 @@ describe('Error State System', () => {
         },
       ],
     })
-    
+
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
       playerId: currentPlayerId,
       money: 50,
     })
-    
+
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: 'coal_test2' })
     actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'coal' })
     actor.send({ type: 'SELECT_LOCATION', cityId: 'stoke' }) // Valid location for coal
     actor.send({ type: 'CONFIRM' })
-    
+
     snapshot = actor.getSnapshot()
-    
+
     // Error should be cleared
     expect(snapshot.context.lastError).toBeNull()
     expect(snapshot.context.errorContext).toBeNull()
-    
+
     // Industry should be built - check the player we set up (player 0)
     const player = snapshot.context.players[0]!
     expect(player.industries.length).toBe(1)
@@ -180,21 +193,21 @@ describe('Error State System', () => {
 
   test('can manually clear error state', () => {
     const { actor } = setupGame()
-    
+
     // Set error manually
     actor.send({
       type: 'SET_ERROR',
       message: 'Test error',
-      context: 'build'
+      context: 'build',
     })
-    
+
     let snapshot = actor.getSnapshot()
     expect(snapshot.context.lastError).toBe('Test error')
     expect(snapshot.context.errorContext).toBe('build')
-    
+
     // Clear error
     actor.send({ type: 'CLEAR_ERROR' })
-    
+
     snapshot = actor.getSnapshot()
     expect(snapshot.context.lastError).toBeNull()
     expect(snapshot.context.errorContext).toBeNull()

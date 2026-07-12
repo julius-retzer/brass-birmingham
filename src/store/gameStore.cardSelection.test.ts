@@ -1,7 +1,7 @@
-import { createActor } from 'xstate'
 import { describe, expect, test } from 'vitest'
-import { gameStore } from './gameStore'
+import { createActor } from 'xstate'
 import { getInitialPlayerIndustryTilesWithQuantities } from '../data/industryTiles'
+import { gameStore } from './gameStore'
 
 const setupGame = () => {
   const actor = createActor(gameStore)
@@ -58,14 +58,14 @@ describe('Game Store - Card Selection Auto-behavior', () => {
 
     // Start build action
     actor.send({ type: 'BUILD' })
-    
+
     // Before selecting card, industry tile should be null
     snapshot = actor.getSnapshot()
     expect(snapshot.context.selectedIndustryTile).toBeNull()
-    
+
     // Select the industry card
     actor.send({ type: 'SELECT_CARD', cardId: 'coal_test' })
-    
+
     // After selecting industry card, selectedIndustryTile should be auto-set
     snapshot = actor.getSnapshot()
     expect(snapshot.context.selectedIndustryTile).not.toBeNull()
@@ -94,7 +94,7 @@ describe('Game Store - Card Selection Auto-behavior', () => {
     // Start build action and select card
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: 'multi_test' })
-    
+
     // Should auto-select iron (first available industry type)
     snapshot = actor.getSnapshot()
     expect(snapshot.context.selectedIndustryTile?.type).toBe('iron')
@@ -123,7 +123,7 @@ describe('Game Store - Card Selection Auto-behavior', () => {
     // Start build action and select card
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: 'stoke_test' })
-    
+
     // Location cards should NOT auto-select industry tiles
     snapshot = actor.getSnapshot()
     expect(snapshot.context.selectedIndustryTile).toBeNull()
@@ -138,7 +138,7 @@ describe('Game Store - Card Selection Auto-behavior', () => {
     // Move to rail era
     actor.send({ type: 'TEST_SET_ERA', era: 'rail' })
 
-    // Set up player with a coal industry card  
+    // Set up player with a coal industry card
     actor.send({
       type: 'TEST_SET_PLAYER_HAND',
       playerId: currentPlayerId,
@@ -154,9 +154,9 @@ describe('Game Store - Card Selection Auto-behavior', () => {
     // Start build action and select card
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: 'coal_test' })
-    
+
     snapshot = actor.getSnapshot()
-    
+
     // In rail era, level 1 coal mines can't be built (canBuildInRailEra: false)
     // So it should select the next available tile (level 2) or be null if none available
     const selectedTile = snapshot.context.selectedIndustryTile
@@ -186,9 +186,9 @@ describe('Game Store - Card Selection Auto-behavior', () => {
     // Start build action and select card
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: 'wild_test' })
-    
+
     snapshot = actor.getSnapshot()
-    
+
     // Wild industry cards should auto-select some industry tile
     // (The exact behavior depends on implementation - it might select the first available type)
     expect(snapshot.context.selectedCard?.type).toBe('wild_industry')
@@ -211,7 +211,7 @@ describe('Game Store - Card Selection Auto-behavior', () => {
           industries: ['coal'],
         },
         {
-          id: 'iron_test', 
+          id: 'iron_test',
           type: 'industry',
           industries: ['iron'],
         },
@@ -220,15 +220,15 @@ describe('Game Store - Card Selection Auto-behavior', () => {
 
     // Start build action
     actor.send({ type: 'BUILD' })
-    
+
     // Select coal card first
     actor.send({ type: 'SELECT_CARD', cardId: 'coal_test' })
     snapshot = actor.getSnapshot()
     expect(snapshot.context.selectedIndustryTile?.type).toBe('coal')
-    
+
     // Cancel to go back to card selection
     actor.send({ type: 'CANCEL' })
-    
+
     // Select iron card - should update to iron tile
     actor.send({ type: 'SELECT_CARD', cardId: 'iron_test' })
     snapshot = actor.getSnapshot()

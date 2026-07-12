@@ -563,6 +563,68 @@ describe('v2 demo snapshot generator', () => {
     found.stop()
   })
 
+  test.skipIf(!process.env.GENERATE_DEMO)('generate wilds fixture', () => {
+    // Freeze where the current player HOLDS both wild cards (post-Scout)
+    // with money to build — for exercising wild-card build flows in e2e.
+    const tryScout = (actor: AnyActor): boolean => {
+      const c = ctx(actor)
+      const player = currentPlayer(actor)
+      if (player.hand.length < 6) return false
+      if (
+        player.hand.some(
+          (card: any) =>
+            card.type === 'wild_location' || card.type === 'wild_industry',
+        )
+      ) {
+        return false
+      }
+      if (c.wildLocationPile.length === 0 || c.wildIndustryPile.length === 0) {
+        return false
+      }
+      const before = turnState(actor)
+      actor.send({ type: 'SCOUT' } as any)
+      actor.send({ type: 'SELECT_CARD', cardId: player.hand[0].id } as any)
+      actor.send({ type: 'SELECT_CARD', cardId: player.hand[1].id } as any)
+      actor.send({ type: 'SELECT_CARD', cardId: player.hand[2].id } as any)
+      actor.send({ type: 'CONFIRM' } as any)
+      if (actionConsumed(actor, before)) return true
+      unwind(actor)
+      return false
+    }
+
+    let found: AnyActor | null = null
+    for (let attempt = 0; attempt < 30 && !found; attempt++) {
+      const actor = startFreshGame()
+      let actions = 0
+      while (actions < 200 && !actor.getSnapshot().matches('gameOver')) {
+        if (!isSelectingAction(actor)) unwind(actor)
+        const p = currentPlayer(actor)
+        if (
+          isSelectingAction(actor) &&
+          ctx(actor).era === 'canal' &&
+          p.money >= 20 &&
+          p.hand.some((card: any) => card.type === 'wild_location') &&
+          p.hand.some((card: any) => card.type === 'wild_industry')
+        ) {
+          found = actor
+          break
+        }
+        if (!tryScout(actor)) greedyPolicy(actor)
+        actions++
+      }
+      if (!found) actor.stop()
+    }
+
+    expect(found).not.toBeNull()
+    if (!found) return
+    writeFixture(
+      'wilds',
+      'Frozen with both wild cards in the current hand (build-with-wilds flows).',
+      found,
+    )
+    found.stop()
+  })
+
   test.skipIf(!process.env.GENERATE_DEMO)('generate game-end fixture', () => {
     // Freeze a few PASSes from gameOver so a UI test can play the actual
     // final turns (round income, rail-era end, scoring, winner).

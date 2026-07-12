@@ -26,43 +26,60 @@ function MarketTrack({
         {title}
       </span>
       <div className="flex flex-col gap-[3px]">
-        {rows.map((row) => (
-          <div key={row.price} className="flex items-center gap-1.5">
-            <span
-              className="w-6 text-right text-[11px] font-semibold tabular-nums"
-              style={{
-                color:
-                  row.price === cheapest
-                    ? 'var(--bb-brass-bright)'
-                    : 'rgba(231,215,177,.5)',
-              }}
-            >
-              £{row.price}
-            </span>
-            <div className="flex gap-[3px]">
-              {Array.from({ length: row.maxCubes }, (_, i) => (
-                <span
-                  key={i}
-                  className="inline-block h-[9px] w-[9px] rounded-[2px]"
-                  style={{
-                    background: i < row.cubes ? cubeFill : 'transparent',
-                    border: `1px solid ${
-                      i < row.cubes ? cubeStroke : 'rgba(231,215,177,.18)'
-                    }`,
-                  }}
-                />
-              ))}
-            </div>
-            {row.price === cheapest && (
+        {rows.map((row) => {
+          // The top price row has infinite capacity (serialized saves may
+          // carry it as null) — draw its held cubes plus an ∞ mark.
+          const bottomless = !Number.isFinite(row.maxCubes)
+          const boxes = bottomless
+            ? Math.min(row.cubes, 6)
+            : Math.min(row.maxCubes, 8)
+          return (
+            <div key={row.price} className="flex items-center gap-1.5">
               <span
-                className="text-[9px] font-bold uppercase tracking-[0.16em]"
-                style={{ color: 'var(--bb-brass)' }}
+                className="w-6 text-right text-[11px] font-semibold tabular-nums"
+                style={{
+                  color:
+                    row.price === cheapest
+                      ? 'var(--bb-brass-bright)'
+                      : 'rgba(231,215,177,.5)',
+                }}
               >
-                next
+                £{row.price}
               </span>
-            )}
-          </div>
-        ))}
+              <div className="flex items-center gap-[3px]">
+                {Array.from({ length: boxes }, (_, i) => (
+                  <span
+                    key={i}
+                    className="inline-block h-[9px] w-[9px] rounded-[2px]"
+                    style={{
+                      background: i < row.cubes ? cubeFill : 'transparent',
+                      border: `1px solid ${
+                        i < row.cubes ? cubeStroke : 'rgba(231,215,177,.18)'
+                      }`,
+                    }}
+                  />
+                ))}
+                {bottomless && (
+                  <span
+                    className="text-[10px] leading-none"
+                    style={{ color: 'rgba(231,215,177,.45)' }}
+                    title="Unlimited supply at this price"
+                  >
+                    ∞
+                  </span>
+                )}
+              </div>
+              {row.price === cheapest && (
+                <span
+                  className="text-[9px] font-bold uppercase tracking-[0.16em]"
+                  style={{ color: 'var(--bb-brass)' }}
+                >
+                  next
+                </span>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

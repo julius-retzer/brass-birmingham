@@ -190,9 +190,13 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   sets computed in `v2-game.tsx`; the map dims illegal plates/routes and
   pulses legal ones. Pan = pointer drag, zoom = wheel/pinch/buttons.
 - Boot order in `v2-game.tsx` (client-side, behind a mount gate):
-  `/?preview=gameover` → `/?era=rail` → `/?fresh=1` → localStorage save
-  (`bb2-save-v1`) → canal demo. Saves persist on every transition, clear on
-  game over / new game; a stale save is caught by `SaveRecoveryBoundary`.
+  `/?preview=gameover` → `/?era=rail` (rail fixture) → `/?demo` (canal
+  fixture) → `/?fresh=1` → localStorage save (`bb2-save-v1`) → setup
+  charter. Saves persist on every transition, clear on game over / new
+  game; a stale save is caught by `SaveRecoveryBoundary`. Snapshots MUST
+  pass through `rehydrateSnapshot` before `createActor` — JSON turns the
+  markets' `maxCubes: Infinity` into `null`, which breaks both rendering
+  and the engine's refill checks.
 - Demo fixtures (`v2/demo/demo-snapshot*.ts`) are REAL engine-driven games;
   regenerate both with
   `GENERATE_DEMO=1 pnpm vitest run src/components/v2/demo/generate-demo.test.ts`

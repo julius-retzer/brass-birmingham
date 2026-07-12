@@ -71,6 +71,26 @@ function clearSave() {
   }
 }
 
+// JSON round-trips (localStorage saves, generated fixtures) turn the coal /
+// iron markets' `maxCubes: Infinity` fallback rows into `null`, which would
+// make the engine's `cubes < maxCubes` refill checks silently fail after a
+// resume. Restore Infinity before handing any snapshot to createActor.
+function rehydrateSnapshot(snapshot: unknown): unknown {
+  const clone = structuredClone(snapshot) as {
+    context?: {
+      coalMarket?: Array<{ maxCubes: number | null }>
+      ironMarket?: Array<{ maxCubes: number | null }>
+    }
+  }
+  for (const market of [clone.context?.coalMarket, clone.context?.ironMarket]) {
+    if (!Array.isArray(market)) continue
+    for (const row of market) {
+      if (row && row.maxCubes === null) row.maxCubes = Infinity
+    }
+  }
+  return clone
+}
+
 const snapshotCurrentPlayerId = (snapshot: unknown): string | null => {
   const ctx = (
     snapshot as { context: { players: Player[]; currentPlayerIndex: number } }
@@ -97,7 +117,19 @@ export function V2Game() {
       return
     }
     if (params.get('era') === 'rail') {
-      setBoot({ kind: 'demo-rail', snapshot: demoSnapshotRail, resumed: false })
+      setBoot({
+        kind: 'demo-rail',
+        snapshot: rehydrateSnapshot(demoSnapshotRail),
+        resumed: false,
+      })
+      return
+    }
+    if (params.get('demo') !== null) {
+      setBoot({
+        kind: 'demo',
+        snapshot: rehydrateSnapshot(demoSnapshot),
+        resumed: false,
+      })
       return
     }
     if (params.get('fresh') === '1') {
@@ -106,10 +138,15 @@ export function V2Game() {
     }
     const save = loadSave()
     if (save) {
-      setBoot({ kind: save.kind, snapshot: save.snapshot, resumed: true })
+      setBoot({
+        kind: save.kind,
+        snapshot: rehydrateSnapshot(save.snapshot),
+        resumed: true,
+      })
       return
     }
-    setBoot({ kind: 'demo', snapshot: demoSnapshot, resumed: false })
+    // No game in progress — open the charter and start a new one.
+    setBoot({ kind: 'fresh', resumed: false })
   }, [])
 
   if (!boot) {

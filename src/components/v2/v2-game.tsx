@@ -326,6 +326,10 @@ function V2GameInner({
     if (!pickingLink && !pickingSecondLink) return null
     const set = new Set<string>()
     for (const conn of connections) {
+      // The engine's canBuildLink guard doesn't check the era (documented
+      // rules gap) — enforce it here so rail-only ghosts never pulse as
+      // legal canals and vice versa.
+      if (!(conn.types as readonly string[]).includes(ctx.era)) continue
       const ev = pickingSecondLink
         ? ({
             type: 'SELECT_SECOND_LINK',
@@ -339,7 +343,7 @@ function V2GameInner({
       }
     }
     return set
-  }, [pickingLink, pickingSecondLink, state])
+  }, [pickingLink, pickingSecondLink, state, ctx.era])
 
   // Exact "is any sale possible?" — walk a shadow actor into the sale step
   // and ask the machine's own guards (audit: Sell used to demand a discard
@@ -415,6 +419,18 @@ function V2GameInner({
   }
 
   const onLinkClick = (from: CityId, to: CityId) => {
+    const conn = connections.find(
+      (c) =>
+        (c.from === from && c.to === to) || (c.from === to && c.to === from),
+    )
+    if (conn && !(conn.types as readonly string[]).includes(ctx.era)) {
+      toast.error(
+        ctx.era === 'canal'
+          ? 'That corridor only carries rail — not available in the Canal Era.'
+          : 'That corridor was canal-only — not available in the Rail Era.',
+      )
+      return
+    }
     if (pickingSecondLink) {
       if (state.can({ type: 'SELECT_SECOND_LINK', from, to })) {
         send({ type: 'SELECT_SECOND_LINK', from, to })

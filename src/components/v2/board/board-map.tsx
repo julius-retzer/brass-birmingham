@@ -186,14 +186,28 @@ export function BoardMap({
     return Math.hypot(a.x - b.x, a.y - b.y)
   }
 
+  // IMPORTANT: never setPointerCapture on pointerdown. Capturing retargets
+  // the browser's compatibility `click` event to the svg element itself, so
+  // the city/route onClick handlers never fire for a real pointer (synthetic
+  // dispatchEvent clicks are unaffected, which is how this once hid in
+  // testing). Capture only once an actual drag/pinch is under way.
+  const capturePointer = (id: number) => {
+    try {
+      svgRef.current?.setPointerCapture(id)
+    } catch {
+      // pointer already gone — nothing to capture
+    }
+  }
+
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-    ;(e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId)
     if (pointers.current.size === 2) {
-      // second finger down — switch from pan to pinch
+      // second finger down — switch from pan to pinch (no click expected
+      // from a two-finger gesture, so capturing immediately is safe)
       pinch.current = { dist: pinchDistance(), vb }
       if (drag.current) drag.current.moved = true
+      for (const id of pointers.current.keys()) capturePointer(id)
       return
     }
     drag.current = { px: e.clientX, py: e.clientY, vb, moved: false }
@@ -232,9 +246,15 @@ export function BoardMap({
     const rect = svg.getBoundingClientRect()
     const dx = ((e.clientX - d.px) / rect.width) * d.vb.w
     const dy = ((e.clientY - d.py) / rect.height) * d.vb.h
-    if (Math.abs(e.clientX - d.px) + Math.abs(e.clientY - d.py) > 4) {
+    if (
+      !d.moved &&
+      Math.abs(e.clientX - d.px) + Math.abs(e.clientY - d.py) > 4
+    ) {
+      // a real pan has started — only now is it safe to capture the pointer
       d.moved = true
+      capturePointer(e.pointerId)
     }
+    if (!d.moved) return
     setVb({ x: d.vb.x - dx, y: d.vb.y - dy, w: d.vb.w, h: d.vb.h })
   }
   const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {

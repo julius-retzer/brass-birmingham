@@ -189,6 +189,15 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   `board-data.ts`) — NOT React Flow. Legal targets come from `state.can(...)`
   sets computed in `v2-game.tsx`; the map dims illegal plates/routes and
   pulses legal ones. Pan = pointer drag, zoom = wheel/pinch/buttons.
+  GOTCHA: never `setPointerCapture` on pointerdown — capture retargets the
+  browser's `click` to the svg, silently killing every city/route onClick
+  for REAL pointers while synthetic `dispatchEvent` clicks still pass (so
+  automated tests won't catch it). Capture only after drag movement starts.
+  When browser-verifying board clicks, use trusted input (axi `click @ref`),
+  not `dispatchEvent`.
+- The engine's `canBuildLink` guard does NOT check era or the board graph
+  (documented rules gap) — the UI enforces era in `legalLinks`/`onLinkClick`
+  (`v2-game.tsx`), so keep that filter if the guard ever changes.
 - Boot order in `v2-game.tsx` (client-side, behind a mount gate):
   `/?preview=gameover` → `/?era=rail` (rail fixture) → `/?demo` (canal
   fixture) → `/?fresh=1` → localStorage save (`bb2-save-v1`) → setup

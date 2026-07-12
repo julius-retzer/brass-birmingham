@@ -160,48 +160,37 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   guards, keep CANCEL paths reachable so the driver can unwind
   (`unwind()` helper).
 
-## Hotseat UI (local pass-and-play, added 2026-07-09)
+## UI — "The Ironmaster's Atlas" (v2, promoted to `/` on 2026-07-12)
 
-- The home route `/` (`src/app/page.tsx`) renders `HotseatGame`
-  (`src/components/hotseat/`), a fully **client-side** surface that drives
-  `gameStore` directly with `@xstate/react`'s `useMachine`. No DB, no tRPC,
-  no polling, no per-player URLs — all 2-4 players share one screen. The
-  older networked flow (`gameManager` → DB → `GameInterface` →
-  `useGamePolling`, and `/game/[gameId]`) is untouched and unused by `/`.
+- The home route `/` (`src/app/page.tsx`) renders `V2Game`
+  (`src/components/v2/`), a fully **client-side** hotseat surface driving
+  `gameStore` directly with `@xstate/react`'s `useMachine`. No DB, no
+  polling — all 2-4 players share one screen. `/v2` is a redirect kept for
+  old links (query params forwarded). The former v1 hotseat surface and the
+  legacy networked flow (`gameManager`/`GameInterface`/`/game/[gameId]`)
+  were deleted when v2 replaced them; `pnpm build` passes cleanly.
 - The action UI is generated from the machine, not hand-coded state:
-  `ActionPanel` branches on `snapshot.matches('playing.action.<...>')` and
-  gates every choice with `snapshot.can(event)` so illegal picks are
-  disabled (cards, industry types, sales, confirms). Board city/link clicks
-  are validated with `state.can(...)` in `hotseat-game.tsx` and rejected
-  with a sonner toast (the `Board` component does NOT pre-filter link
-  legality by the `canBuildLink` guard). Recoverable `context.lastError`
-  is toasted then cleared via `CLEAR_ERROR`.
+  `ActionDock` branches on `snapshot.matches('playing.action.<...>')` and
+  gates every choice with `snapshot.can(event)`. Board city/link clicks are
+  validated with `state.can(...)` in `v2-game.tsx` and rejected with a
+  sonner toast. Recoverable `context.lastError` is toasted then cleared via
+  `CLEAR_ERROR`.
 - XState v5 `matches` accepts a dotted path string at runtime, but its
   TYPES only allow the nested-object form — pass `path as never` (see the
-  `is()`/`matches()` helpers). Verified both forms return the same result.
-- Hotseat hides incoming hands: a "pass the device" gate blocks the panel
+  `is()` helpers). Verified both forms return the same result.
+- Incoming hands stay hidden: a "pass the device" gate blocks the dock
   until the new current player taps ready (`revealedFor` state).
-- Reusing the existing `Board` (xyflow) is the big win — it already renders
-  cities/slots/links and takes `isBuilding`/`isNetworking` +
-  `onCitySelect`/`onLinkSelect`. Pass `gameContext={ctx}` for slot checks.
 - Dev run needs `DATABASE_URL` (set in `.env`, gitignored) OR
   `SKIP_ENV_VALIDATION=1` because `src/env.js` validates it at boot; the
-  hotseat surface itself never touches the DB. `pnpm build` still fails on
-  pre-existing type errors in the legacy `Improved*`/`GameInterface`
-  components (unrelated to hotseat).
-
-## UI v2 — "The Ironmaster's Atlas" (added 2026-07-12)
-
-- `/v2` (`src/app/v2/` + `src/components/v2/`) is a second, design-first
-  hotseat surface driving the same `gameStore` machine; v1 at `/` is
-  untouched. All v2 styles are scoped under `.bb2` (`theme.css`) with
-  Fraunces + Barlow Semi Condensed via `next/font` in `src/app/v2/layout.tsx`.
+  game itself never touches the DB.
+- All styles are scoped under `.bb2` (`theme.css`) with Fraunces + Barlow
+  Semi Condensed via `next/font` in `src/app/page.tsx`.
 - The board is a custom SVG (`v2/board/board-map.tsx`, geometry hand-tuned in
   `board-data.ts`) — NOT React Flow. Legal targets come from `state.can(...)`
   sets computed in `v2-game.tsx`; the map dims illegal plates/routes and
   pulses legal ones. Pan = pointer drag, zoom = wheel/pinch/buttons.
 - Boot order in `v2-game.tsx` (client-side, behind a mount gate):
-  `?preview=gameover` → `?era=rail` → `?fresh=1` → localStorage save
+  `/?preview=gameover` → `/?era=rail` → `/?fresh=1` → localStorage save
   (`bb2-save-v1`) → canal demo. Saves persist on every transition, clear on
   game over / new game; a stale save is caught by `SaveRecoveryBoundary`.
 - Demo fixtures (`v2/demo/demo-snapshot*.ts`) are REAL engine-driven games;

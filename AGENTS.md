@@ -225,3 +225,25 @@ Keep this file for knowledge useful to almost every future agent session in this
 Do not repeat what the codebase already shows; point to the authoritative file or command instead.
 Prefer rewriting or pruning existing entries over appending new ones.
 When updating this file, preserve this bar for all agents and keep entries concise.
+
+## E2E suite (Playwright, added 2026-07-12)
+
+- `pnpm exec playwright test` — self-contained: `webServer` boots the dev
+  server on :3199 with `SKIP_ENV_VALIDATION=1`. 13 journey tests in `e2e/`,
+  ~13s, `retries: 0` — if a test needs retries, fix or delete it.
+- Selector policy: `data-testid` spine for structure (action-*, confirm-
+  action, cancel-action, mat-<id>/treasury, journal-entry, pass-curtain,
+  reveal-hand, card-<id>, era-plate, round-chip, sale-option; map uses
+  data-city / data-conn with data-legal) — journal-text assertions
+  intentionally pin engine log strings and fixture arithmetic.
+- GOTCHA: map routes are CURVED — Playwright's default bbox-centre click
+  misses the fat hit-stroke on bowed paths. Use the `clickRoute` helper in
+  `e2e/coverage.spec.ts` (getPointAtLength midpoint + mouse click).
+- Fixtures: e2e boots `?demo` / `?demo=sell` / `?demo=eraend` /
+  `?demo=gameend` / `?era=rail`. Regenerating ANY fixture invalidates
+  pinned test literals — regenerate ONE at a time with
+  `GENERATE_DEMO=1 pnpm vitest run src/components/v2/demo/generate-demo.test.ts -t "<name> fixture"`
+  and re-pin the affected spec (£ values, card ids, route pairs, winner).
+- The new-fixture pattern: probe a CLONED actor (see cloneActor /
+  passesToGameOver in generate-demo.test.ts) so a freeze condition is
+  asserted by the machine's own guards, never re-implemented.

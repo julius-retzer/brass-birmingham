@@ -26,7 +26,10 @@ import { ActionDock, SELLABLE, getHandSelection } from './action-dock'
 import { linkKey } from './board/board-data'
 import { BoardMap } from './board/board-map'
 import { demoSnapshot } from './demo/demo-snapshot'
+import { demoSnapshotEraEnd } from './demo/demo-snapshot-era-end'
+import { demoSnapshotGameEnd } from './demo/demo-snapshot-game-end'
 import { demoSnapshotRail } from './demo/demo-snapshot-rail'
+import { demoSnapshotSell } from './demo/demo-snapshot-sell'
 import { HandTray } from './hand-tray'
 import { GameOverScreen, PassGate } from './overlays'
 import { PlayerLedger } from './player-ledger'
@@ -124,10 +127,23 @@ export function V2Game() {
       })
       return
     }
-    if (params.get('demo') !== null) {
+    const demoParam = params.get('demo')
+    if (demoParam !== null) {
+      // Named engine-generated fixtures for demos and e2e journeys:
+      // ?demo (canal mid-game), ?demo=sell (multi-sale ready),
+      // ?demo=eraend (one PASS from the Rail Era),
+      // ?demo=gameend (a few PASSes from final scoring).
+      const fixture =
+        demoParam === 'sell'
+          ? demoSnapshotSell
+          : demoParam === 'eraend'
+            ? demoSnapshotEraEnd
+            : demoParam === 'gameend'
+              ? demoSnapshotGameEnd
+              : demoSnapshot
       setBoot({
         kind: 'demo',
-        snapshot: rehydrateSnapshot(demoSnapshot),
+        snapshot: rehydrateSnapshot(fixture),
         resumed: false,
       })
       return

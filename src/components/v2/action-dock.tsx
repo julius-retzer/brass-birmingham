@@ -628,6 +628,7 @@ export function ActionDock({
                 key={i}
                 type="button"
                 className="bb2-option"
+                data-testid="sale-option"
                 onClick={() =>
                   send({
                     type: 'SELECT_SALE',

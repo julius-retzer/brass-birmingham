@@ -364,6 +364,12 @@
   border-radius: 6px 0 0 6px;
   flex: none;
 }
+button.bb2-mat {
+  cursor: pointer;
+}
+button.bb2-mat:hover {
+  border-color: rgba(230, 189, 99, 0.45);
+}
 
 .bb2-stat-label {
   font-size: 9px;

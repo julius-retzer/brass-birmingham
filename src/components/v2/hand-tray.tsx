@@ -39,7 +39,7 @@ export function HandTray({
           {hint}
         </div>
       )}
-      <div className="bb2-hand -mb-5 h-[150px] w-full max-w-3xl">
+      <div className="bb2-hand -mb-5 h-[150px] w-full max-w-3xl origin-bottom scale-[0.72] sm:scale-90 lg:scale-100">
         {hand.map((card, i) => {
           const angle = (i - (n - 1) / 2) * (n > 6 ? 4 : 5.5)
           const lift = Math.abs(i - (n - 1) / 2) * (n > 6 ? 5 : 7)

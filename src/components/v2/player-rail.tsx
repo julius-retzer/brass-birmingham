@@ -3,6 +3,7 @@
 // One compact mat per industrialist, in seating order — the strip under the
 // masthead. Shows the numbers players actually reason about between turns,
 // including "spent this round" (turn order is set by least-spender-first).
+// Tapping a mat opens that player's full ledger (tile mat + holdings).
 import { type GameState, type Player } from '~/store/gameStore'
 import { PLAYER_FILL } from './board/board-map'
 import { CardsIcon, IncomeIcon, LaurelIcon, PoundIcon } from './icons'
@@ -37,18 +38,20 @@ export function PlayerRail({
   currentPlayerId,
   turnOrder,
   playerSpending,
+  onOpenLedger,
 }: {
   players: Player[]
   currentPlayerId: string | undefined
   turnOrder: GameState['turnOrder']
   playerSpending: GameState['playerSpending']
+  onOpenLedger?: (playerId: string) => void
 }) {
   const ordered = [...players].sort(
     (a, b) => turnOrder.indexOf(a.id) - turnOrder.indexOf(b.id),
   )
   return (
     <div
-      className="grid gap-2 px-3 pb-2"
+      className="flex gap-2 overflow-x-auto px-3 pb-2 lg:grid lg:overflow-visible"
       style={{
         gridTemplateColumns: `repeat(${ordered.length}, minmax(0, 1fr))`,
       }}
@@ -57,7 +60,14 @@ export function PlayerRail({
         const isCurrent = p.id === currentPlayerId
         const spent = playerSpending[p.id] ?? 0
         return (
-          <div key={p.id} className="bb2-mat" data-current={isCurrent}>
+          <button
+            key={p.id}
+            type="button"
+            className="bb2-mat min-w-[290px] text-left lg:min-w-0"
+            data-current={isCurrent}
+            onClick={() => onOpenLedger?.(p.id)}
+            title={`Open ${p.name}'s ledger`}
+          >
             <div
               className="bb2-mat-ribbon"
               style={{ background: PLAYER_FILL[p.color] }}
@@ -122,7 +132,7 @@ export function PlayerRail({
                 <Stat label="Works" value={p.industries.length} />
               </div>
             </div>
-          </div>
+          </button>
         )
       })}
     </div>

@@ -33,7 +33,7 @@ const INDUSTRY_TYPES: IndustryType[] = [
   'brewery',
 ]
 
-const SELLABLE: IndustryType[] = ['cotton', 'manufacturer', 'pottery']
+export const SELLABLE: IndustryType[] = ['cotton', 'manufacturer', 'pottery']
 
 const cityName = (id: CityId | string | null | undefined) =>
   id ? (cities[id as CityId]?.name ?? id) : '—'
@@ -42,6 +42,8 @@ interface ActionDockProps {
   snapshot: GameStoreSnapshot
   send: (event: GameEvent) => void
   currentPlayer: Player
+  /** Exact machine-probed check: can any sale legally happen this turn? */
+  canSellAnything?: boolean
 }
 
 /* ----- hand-selection contract for the shell / HandTray ----- */
@@ -190,7 +192,12 @@ function Confirm({
 
 /* ================================================================ */
 
-export function ActionDock({ snapshot, send, currentPlayer }: ActionDockProps) {
+export function ActionDock({
+  snapshot,
+  send,
+  currentPlayer,
+  canSellAnything = true,
+}: ActionDockProps) {
   const is = (path: string) => snapshot.matches(path as never)
   const can = (event: GameEvent) => snapshot.can(event)
   const cancel = () => send({ type: 'CANCEL' })
@@ -203,6 +210,7 @@ export function ActionDock({ snapshot, send, currentPlayer }: ActionDockProps) {
       event: GameEvent
       hint: string
       icon: React.ReactNode
+      blocked?: boolean
     }> = [
       {
         label: 'Build',
@@ -225,8 +233,11 @@ export function ActionDock({ snapshot, send, currentPlayer }: ActionDockProps) {
       {
         label: 'Sell',
         event: { type: 'SELL' },
-        hint: 'Flip goods at merchants',
+        hint: canSellAnything
+          ? 'Flip goods at merchants'
+          : 'No goods you can sell right now',
         icon: <SellIcon size={15} />,
+        blocked: !canSellAnything,
       },
       {
         label: 'Loan',
@@ -250,7 +261,7 @@ export function ActionDock({ snapshot, send, currentPlayer }: ActionDockProps) {
               key={a.label}
               type="button"
               className="bb2-plaque"
-              disabled={!can(a.event)}
+              disabled={!can(a.event) || a.blocked}
               onClick={() => send(a.event)}
             >
               <span className="bb2-plaque-name">

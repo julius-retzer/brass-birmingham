@@ -172,15 +172,63 @@ export function BoardMap({
     return () => svg.removeEventListener('wheel', onWheel)
   }, [])
 
+  // Live pointer positions — one pointer pans, two pointers pinch-zoom.
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const pinch = useRef<{
+    dist: number
+    vb: { x: number; y: number; w: number; h: number }
+  } | null>(null)
+
+  const pinchDistance = () => {
+    const pts = [...pointers.current.values()]
+    if (pts.length < 2) return 0
+    const [a, b] = pts as [{ x: number; y: number }, { x: number; y: number }]
+    return Math.hypot(a.x - b.x, a.y - b.y)
+  }
+
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (e.button !== 0) return
-    drag.current = { px: e.clientX, py: e.clientY, vb, moved: false }
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     ;(e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId)
+    if (pointers.current.size === 2) {
+      // second finger down — switch from pan to pinch
+      pinch.current = { dist: pinchDistance(), vb }
+      if (drag.current) drag.current.moved = true
+      return
+    }
+    drag.current = { px: e.clientX, py: e.clientY, vb, moved: false }
   }
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    const d = drag.current
     const svg = svgRef.current
-    if (!d || !svg) return
+    if (!svg || !pointers.current.has(e.pointerId)) return
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+    if (pinch.current && pointers.current.size >= 2) {
+      const p = pinch.current
+      const dist = pinchDistance()
+      if (dist <= 0 || p.dist <= 0) return
+      const rect = svg.getBoundingClientRect()
+      const pts = [...pointers.current.values()]
+      const midX = (pts[0]!.x + pts[1]!.x) / 2
+      const midY = (pts[0]!.y + pts[1]!.y) / 2
+      const fx = (midX - rect.left) / rect.width
+      const fy = (midY - rect.top) / rect.height
+      const w = Math.min(
+        Math.max(p.vb.w * (p.dist / dist), VIEW_W / 6),
+        VIEW_W * 1.3,
+      )
+      const h = (w / VIEW_W) * VIEW_H
+      setVb({
+        x: p.vb.x + (p.vb.w - w) * fx,
+        y: p.vb.y + (p.vb.h - h) * fy,
+        w,
+        h,
+      })
+      return
+    }
+
+    const d = drag.current
+    if (!d) return
     const rect = svg.getBoundingClientRect()
     const dx = ((e.clientX - d.px) / rect.width) * d.vb.w
     const dy = ((e.clientY - d.py) / rect.height) * d.vb.h
@@ -189,7 +237,9 @@ export function BoardMap({
     }
     setVb({ x: d.vb.x - dx, y: d.vb.y - dy, w: d.vb.w, h: d.vb.h })
   }
-  const onPointerUp = () => {
+  const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    pointers.current.delete(e.pointerId)
+    if (pointers.current.size < 2) pinch.current = null
     // Delay so child click handlers can consult wasDrag()
     setTimeout(() => {
       drag.current = null
@@ -261,6 +311,7 @@ export function BoardMap({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
         role="img"
         aria-label="Game board map"
       >

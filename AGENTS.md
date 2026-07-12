@@ -189,3 +189,37 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   hotseat surface itself never touches the DB. `pnpm build` still fails on
   pre-existing type errors in the legacy `Improved*`/`GameInterface`
   components (unrelated to hotseat).
+
+## UI v2 — "The Ironmaster's Atlas" (added 2026-07-12)
+
+- `/v2` (`src/app/v2/` + `src/components/v2/`) is a second, design-first
+  hotseat surface driving the same `gameStore` machine; v1 at `/` is
+  untouched. All v2 styles are scoped under `.bb2` (`theme.css`) with
+  Fraunces + Barlow Semi Condensed via `next/font` in `src/app/v2/layout.tsx`.
+- The board is a custom SVG (`v2/board/board-map.tsx`, geometry hand-tuned in
+  `board-data.ts`) — NOT React Flow. Legal targets come from `state.can(...)`
+  sets computed in `v2-game.tsx`; the map dims illegal plates/routes and
+  pulses legal ones. Pan = pointer drag, zoom = wheel/pinch/buttons.
+- Boot order in `v2-game.tsx` (client-side, behind a mount gate):
+  `?preview=gameover` → `?era=rail` → `?fresh=1` → localStorage save
+  (`bb2-save-v1`) → canal demo. Saves persist on every transition, clear on
+  game over / new game; a stale save is caught by `SaveRecoveryBoundary`.
+- Demo fixtures (`v2/demo/demo-snapshot*.ts`) are REAL engine-driven games;
+  regenerate both with
+  `GENERATE_DEMO=1 pnpm vitest run src/components/v2/demo/generate-demo.test.ts`
+  (guarded so `pnpm test:all` never rewrites them). The rail fixture is
+  frozen at a state where the double-link build is reachable.
+- Sell is gated in the action dock via a shadow-actor probe
+  (`canSellAnything` in `v2-game.tsx`): it walks SELL → SELECT_CARD on a
+  copy of the persisted snapshot and asks the machine's own SELECT_SALE
+  guards — never replicate merchant/beer logic in the UI by hand.
+- The hand tray (`hand-tray.tsx`) doubles as the card selector for every
+  discard step; which steps select cards is centralized in
+  `getHandSelection()` (`action-dock.tsx`).
+
+## Maintaining this file
+
+Keep this file for knowledge useful to almost every future agent session in this project.
+Do not repeat what the codebase already shows; point to the authoritative file or command instead.
+Prefer rewriting or pruning existing entries over appending new ones.
+When updating this file, preserve this bar for all agents and keep entries concise.

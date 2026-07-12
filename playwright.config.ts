@@ -8,6 +8,8 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:3199',
     trace: 'retain-on-failure',
+    // Watchable headed runs: SLOWMO=250 pnpm exec playwright test --headed --workers=1
+    launchOptions: { slowMo: Number(process.env.SLOWMO ?? 0) },
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {

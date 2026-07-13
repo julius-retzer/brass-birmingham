@@ -1142,7 +1142,7 @@ function BuiltTile({ occ }: { occ: BuiltIndustry }) {
         <LinkIcons
           n={occ.tile.linkScoringIcons}
           ink={statInk}
-          x={occ.tile.linkScoringIcons > 1 ? 20 : 24}
+          x={occ.tile.linkScoringIcons > 1 ? 19 : 23}
           y={SLOT - 14}
         />
         <text
@@ -1295,6 +1295,25 @@ function MerchantPlate({
           )
         },
       )}
+
+      {/* the two •—• link-scoring icons printed at every merchant location
+          (GAME_CONSTANTS.MERCHANT_LINK_ICONS — worth 2 to adjacent links) */}
+      <g transform={`translate(${plateW / 2 - 15}, -7)`} pointerEvents="none">
+        <title>2 link-scoring icons at this merchant</title>
+        {[0, 1].map((i) => (
+          <g
+            key={i}
+            transform={`translate(${i * 17}, 0)`}
+            stroke="#c39538"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          >
+            <circle cx="0" cy="0" r="1.7" fill="#c39538" stroke="none" />
+            <path d="M1.7 0 H9.3" />
+            <circle cx="11" cy="0" r="1.7" fill="#c39538" stroke="none" />
+          </g>
+        ))}
+      </g>
 
       {/* name + bonus */}
       <g

@@ -291,3 +291,78 @@ describe('VERIFY: coal control (market connection required)', () => {
     a.stop()
   })
 })
+
+describe('VERIFY: merchant beer sells their goods and grants the bonus', () => {
+  test('sale drinks the merchant barrel and applies the merchant bonus', () => {
+    const a = start()
+    // one merchant: gloucester buys cotton, HOLDS BEER, pays a £5 bonus
+    a.send({
+      type: 'TEST_SET_MERCHANTS',
+      merchants: [
+        {
+          location: 'gloucester',
+          industryIcons: ['cotton'],
+          bonusType: 'money',
+          bonusValue: 5,
+          hasBeer: true,
+        },
+      ],
+    } as any)
+    // hands scripted ONCE (see AGENTS.md gotcha): cotton, link discard, sale discard
+    setHand(a, 0, [
+      locCard('worcester', 60),
+      locCard('worcester', 61),
+      locCard('worcester', 62),
+      locCard('stone', 63),
+    ])
+
+    // round 1: P1 builds cotton at worcester; P2 passes
+    unwind(a)
+    a.send({ type: 'BUILD' } as any)
+    a.send({ type: 'SELECT_CARD', cardId: cur(a).hand[0].id } as any)
+    a.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'cotton' } as any)
+    a.send({ type: 'SELECT_LOCATION', cityId: 'worcester' } as any)
+    a.send({ type: 'CONFIRM' } as any)
+    expect(ctx(a).lastError).toBeNull()
+    unwind(a)
+    a.send({ type: 'PASS' } as any) // P2
+    unwind(a)
+
+    // round 2: P1 first (spent more? P1 spent 12, P2 0 → P2 first) — walk
+    // whoever is current: P2 passes both actions, then P1 links + sells
+    while (cur(a).name === 'P2') {
+      a.send({ type: 'PASS' } as any)
+      unwind(a)
+    }
+    a.send({ type: 'NETWORK' } as any)
+    a.send({ type: 'SELECT_CARD', cardId: cur(a).hand[0].id } as any)
+    a.send({ type: 'SELECT_LINK', from: 'worcester', to: 'gloucester' } as any)
+    a.send({ type: 'CONFIRM' } as any)
+    expect(ctx(a).lastError).toBeNull()
+    unwind(a)
+
+    const moneyBefore = ctx(a).players[0].money
+    a.send({ type: 'SELL' } as any)
+    a.send({ type: 'SELECT_CARD', cardId: cur(a).hand[0].id } as any)
+    a.send({
+      type: 'SELECT_SALE',
+      location: 'worcester',
+      industryType: 'cotton',
+      merchant: 'gloucester',
+    } as any)
+
+    const c = ctx(a)
+    const cotton = c.players[0].industries.find(
+      (i: any) => i.location === 'worcester',
+    )
+    expect(cotton.flipped).toBe(true) // the sale happened
+    expect(c.merchants[0].hasBeer).toBe(false) // the merchant barrel was drunk
+    expect(c.players[0].money).toBe(moneyBefore + 5) // £5 merchant bonus paid
+    expect(
+      c.logs.some((l: any) =>
+        l.message.includes('beer from merchant at gloucester'),
+      ),
+    ).toBe(true)
+    a.stop()
+  })
+})

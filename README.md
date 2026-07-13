@@ -27,3 +27,15 @@ You can check out the [create-t3-app GitHub repository](https://github.com/t3-os
 ## How do I deploy this?
 
 Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+
+## Icon credits
+
+Industry and marker icons are from [game-icons.net](https://game-icons.net),
+licensed [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/):
+
+- **Delapouite** — Cotton Flower, Coal Wagon, Wooden Crate, Amphora, Barrel,
+  Steam Locomotive
+- **Lorc** — Metal Bar, Beer Stein
+
+The narrowboat canal-link marker and all remaining UI glyphs are original
+hand-drawn artwork for this project.

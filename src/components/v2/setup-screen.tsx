@@ -204,6 +204,23 @@ export function SetupScreen({
           </button>
         )}
       </div>
+
+      {/* CC BY 3.0 attribution for the game-icons.net glyphs */}
+      <p
+        className="text-center text-[10.5px]"
+        style={{ color: 'rgba(231,215,177,.38)' }}
+      >
+        Industry icons by Delapouite &amp; Lorc —{' '}
+        <a
+          href="https://game-icons.net"
+          target="_blank"
+          rel="noreferrer"
+          className="underline"
+        >
+          game-icons.net
+        </a>{' '}
+        (CC BY 3.0)
+      </p>
     </div>
   )
 }

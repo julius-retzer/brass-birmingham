@@ -171,6 +171,7 @@ export function CardFaceContent({ card }: { card: GameCard }) {
               strokeWidth="1.7"
               strokeLinecap="round"
               strokeLinejoin="round"
+              style={{ color: INDUSTRY_TINT[t] }}
               aria-hidden
             >
               <IndustryFragment type={t} />

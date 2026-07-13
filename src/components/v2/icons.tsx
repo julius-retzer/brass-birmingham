@@ -2,6 +2,7 @@
 // All icons render on a 24x24 grid, stroke-based for an engraved feel,
 // and inherit `currentColor` so surfaces can tint them.
 import type { IndustryType } from '~/data/cards'
+import { GAME_ICONS } from './gameicons-data'
 
 interface IconProps {
   size?: number
@@ -33,73 +34,19 @@ function base(
 
 /* ---------- industries ---------- */
 
-// Raw 24x24 path fragments, shared between the HTML icons below and the
-// SVG board (which wraps them in its own <g stroke=...> transforms).
-// Subjects follow the PHYSICAL game's tile iconography (goods crates,
-// cotton bale, coal lumps, iron ingots, urn, barrel) drawn in the Atlas's
-// engraved single-weight stroke style. Stroke-only — every consumer sets
-// its own stroke colour and fill="none".
+// Industry glyphs from game-icons.net (CC BY 3.0) restyled into the Atlas
+// treatment: single-tone silhouettes taking the surface ink via
+// fill="currentColor", scaled onto the same 24-grid the hand-drawn set used.
+// Consumers keep their <g stroke=...> wrappers for the OTHER glyphs; these
+// paths ignore stroke and read the CSS `color` of their context instead.
+// Subjects (captain's final picks, bb-icon-research-f12): cotton-flower,
+// coal-wagon, metal-bar, wooden-crate, amphora, barrel.
 export function IndustryFragment({ type }: { type: IndustryType }) {
-  switch (type) {
-    case 'cotton':
-      // cotton bale — strapped bale with the raw boll billowing on top
-      return (
-        <>
-          <path d="M4.5 11.5v6.5a1.2 1.2 0 0 0 1.2 1.2h12.6a1.2 1.2 0 0 0 1.2-1.2v-6.5" />
-          <path d="M9.4 11.6v7.6M14.6 11.6v7.6" />
-          <path d="M4.5 11.5c-2-.6-2.3-3.3-.2-4.2-.1-2.4 2.8-3.5 4.4-2C9.6 3.2 14.4 3.2 15.3 5.3c1.6-1.5 4.5-.4 4.4 2 2.1.9 1.8 3.6-.2 4.2z" />
-        </>
-      )
-    case 'coal':
-      // a pile of faceted coal lumps
-      return (
-        <>
-          <path d="M8.7 9.4 12 6.4l3.4 3-0.5 3.6h-5.7z" />
-          <path d="M4 17.5l1-3.6 3.7-1 3 2.4-.6 2.2z" />
-          <path d="M12.9 17.5l-.6-2.2 3-2.4 3.7 1 1 3.6z" />
-          <path d="M12 6.4l-.8 3.4 1.9 3.2" />
-        </>
-      )
-    case 'iron':
-      // stacked pig-iron ingots (two below, one atop)
-      return (
-        <>
-          <path d="M3.5 18.5 5.2 14.6h5.4l1.2 3.9zM12.1 18.5l1.3-3.9h5.4l1.7 3.9z" />
-          <path d="M7.8 14.6 9.4 10.7h5.2l1.6 3.9" />
-          <path d="M9.4 10.7l1 3.9M14.6 10.7l-1 3.9" />
-        </>
-      )
-    case 'manufacturer':
-      // stacked goods crates — X-braced crate atop two planked crates
-      return (
-        <>
-          <path d="M3.5 13.2h8.2v6.6H3.5zM12.3 13.2h8.2v6.6h-8.2z" />
-          <path d="M7.9 6.2h8.2v7h-8.2z" />
-          <path d="M8.3 6.6l7.4 6.2M15.7 6.6l-7.4 6.2" />
-          <path d="M3.5 16.8h8.2M12.3 16.8h8.2" />
-        </>
-      )
-    case 'pottery':
-      // amphora — necked urn with side handles and a footed base
-      return (
-        <>
-          <path d="M9.2 4.3h5.6" />
-          <path d="M10.3 4.3c0 1.6-.8 2.4-1.9 3.3-1.4 1.2-2.2 2.7-2.2 4.5 0 3.4 2.4 5.6 5.8 5.6s5.8-2.2 5.8-5.6c0-1.8-.8-3.3-2.2-4.5-1.1-.9-1.9-1.7-1.9-3.3" />
-          <path d="M9.7 17.4c.3 1-.1 1.7-1 2.4h6.6c-.9-.7-1.3-1.4-1-2.4" />
-          <path d="M8.4 7.9c-1.9-.6-3 .5-2.1 2.1M15.6 7.9c1.9-.6 3 .5 2.1 2.1" />
-        </>
-      )
-    case 'brewery':
-      // oak barrel — bulged staves, two iron hoops, bung
-      return (
-        <>
-          <path d="M7.4 4.5C6.1 6.8 5.5 9.3 5.5 12s.6 5.2 1.9 7.5h9.2c1.3-2.3 1.9-4.8 1.9-7.5s-.6-5.2-1.9-7.5z" />
-          <path d="M6.1 8.3h11.8M6.1 15.7h11.8" />
-          <path d="M10.3 4.5c-.5 4.8-.5 10.2 0 15M13.7 4.5c.5 4.8.5 10.2 0 15" />
-          <circle cx="12" cy="12" r="1.1" />
-        </>
-      )
-  }
+  return (
+    <g transform="scale(0.046875)" stroke="none">
+      <path d={GAME_ICONS[type].d} fill="currentColor" />
+    </g>
+  )
 }
 
 export function CottonIcon(p: IconProps) {
@@ -124,6 +71,16 @@ export function PotteryIcon(p: IconProps) {
 
 export function BreweryIcon(p: IconProps) {
   return base(p, <IndustryFragment type="brewery" />)
+}
+
+export function BeerSteinIcon(p: IconProps) {
+  // lorc/beer-stein from game-icons.net (CC BY 3.0), Atlas single-tone
+  return base(
+    p,
+    <g transform="scale(0.046875)" stroke="none">
+      <path d={GAME_ICONS.beerStein.d} fill="currentColor" />
+    </g>,
+  )
 }
 
 export const INDUSTRY_ICONS: Record<

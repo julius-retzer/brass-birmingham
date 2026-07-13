@@ -12,6 +12,7 @@ import {
 } from '~/data/board'
 import { type IndustryType } from '~/data/cards'
 import { type Merchant, type Player } from '~/store/gameStore'
+import { GAME_ICONS } from '../gameicons-data'
 import { IndustryFragment } from '../icons'
 import { VIEW_H, VIEW_W, cityPos, linkKey, routeBow } from './board-data'
 
@@ -604,27 +605,16 @@ export function BoardMap({
                       strokeWidth="1.4"
                       filter="url(#bb2-plate-shadow)"
                     />
-                    <g
-                      stroke="#f2e6c8"
-                      strokeWidth="1.5"
-                      fill="none"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
+                    <g fill="#f2e6c8" stroke="none">
                       {built.type === 'canal' ? (
-                        // narrowboat: long hull, low cabin, stern chimney
-                        <>
-                          <path d="M-11 1.5h22c-1.2 2.6-3.4 4-6.4 4H-6c-2.8 0-4.4-1.4-5-4z" />
-                          <path d="M-6.5 1.5v-4h9v4M-8.6 1.5v-5.8" />
-                        </>
+                        // bespoke narrowboat silhouette (no such icon exists
+                        // in any library — see bb-icon-research-f12)
+                        <path d="M-10.6 -5.2 h2.4 v3 h6.6 v-3.4 h1.8 v3.4 h1.4 v2 h-12.2 z M-13 1 h26 c-0.7 2.9 -3.2 4.6 -6.4 4.6 h-13.2 c-3.2 0 -5.7 -1.7 -6.4 -4.6 z" />
                       ) : (
-                        // locomotive: boiler, cab, funnel, two wheels
-                        <>
-                          <path d="M-10.5 3.5v-6h11v6M0.5 -2.5h6.5a2 2 0 0 1 2 2v4h-19" />
-                          <path d="M-7.5 -2.5v-3.5M6.5 -2.5v-2.5h-3v2.5" />
-                          <circle cx="-5" cy="5.4" r="1.9" />
-                          <circle cx="4" cy="5.4" r="1.9" />
-                        </>
+                        // delapouite/steam-locomotive (game-icons.net CC BY 3.0)
+                        <g transform="translate(-12.5, -12.5) scale(0.04883)">
+                          <path d={GAME_ICONS.steamLocomotive.d} />
+                        </g>
                       )}
                     </g>
                   </g>
@@ -955,12 +945,8 @@ function EmptySlot({ allowed }: { allowed: IndustryType[] }) {
           <g
             key={t}
             transform={`translate(${x}, ${y}) scale(${size / 24})`}
-            stroke="#4a3d29"
-            strokeOpacity="0.8"
-            strokeWidth="1.9"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            opacity="0.8"
+            style={{ color: '#4a3d29' }}
           >
             <IndustryFragment type={t} />
           </g>
@@ -994,11 +980,7 @@ function BuiltTile({ occ }: { occ: BuiltIndustry }) {
       />
       <g
         transform={`translate(10, 7) scale(${24 / 24})`}
-        stroke={ink}
-        strokeWidth="2"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        style={{ color: ink }}
       >
         <IndustryFragment type={occ.type} />
       </g>
@@ -1135,11 +1117,7 @@ function MerchantPlate({
                     <g
                       key={j}
                       transform={`translate(${x}, ${y}) scale(${size / 24})`}
-                      stroke="#e6bd63"
-                      strokeWidth="2"
-                      fill="none"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                      style={{ color: '#e6bd63' }}
                     >
                       <IndustryFragment type={t} />
                     </g>

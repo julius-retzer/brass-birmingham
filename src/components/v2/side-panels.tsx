@@ -17,16 +17,20 @@ function MarketTrack({
   cubeStroke: string
 }) {
   const cheapest = rows.find((r) => r.cubes > 0)?.price
+  // Physical-board orientation: prices ascend UPWARD — £1 at the bottom.
+  // Setup leaves only £1 spaces open and buying drains cheapest-first, so
+  // empties accumulate at the BOTTOM, exactly like the real market track.
+  const display = [...rows].reverse()
   return (
     <div className="flex flex-1 flex-col gap-1.5">
       <span
-        className="text-[10px] font-bold uppercase tracking-[0.2em]"
+        className="text-[11.5px] font-bold uppercase tracking-[0.2em]"
         style={{ color: 'rgba(231,215,177,.55)' }}
       >
         {title}
       </span>
       <div className="flex flex-col gap-[3px]">
-        {rows.map((row) => {
+        {display.map((row) => {
           // The top price row has infinite capacity (serialized saves may
           // carry it as null) — draw its held cubes plus an ∞ mark.
           const bottomless = !Number.isFinite(row.maxCubes)
@@ -36,7 +40,7 @@ function MarketTrack({
           return (
             <div key={row.price} className="flex items-center gap-1.5">
               <span
-                className="w-6 text-right text-[11px] font-semibold tabular-nums"
+                className="w-7 text-right text-[12.5px] font-semibold tabular-nums"
                 style={{
                   color:
                     row.price === cheapest
@@ -71,7 +75,7 @@ function MarketTrack({
               </div>
               {row.price === cheapest && (
                 <span
-                  className="text-[9px] font-bold uppercase tracking-[0.16em]"
+                  className="text-[10px] font-bold uppercase tracking-[0.16em]"
                   style={{ color: 'var(--bb-brass)' }}
                 >
                   next

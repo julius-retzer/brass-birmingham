@@ -262,7 +262,7 @@ function Flow({
 function Note({ children }: { children: React.ReactNode }) {
   return (
     <p
-      className="text-[13px] leading-relaxed"
+      className="text-[14px] leading-relaxed"
       style={{ color: 'rgba(231,215,177,.7)' }}
     >
       {children}
@@ -293,7 +293,7 @@ function Confirm({
         {children}
       </button>
       {disabled && disabledReason && (
-        <p className="text-[11.5px] leading-snug" style={{ color: '#d68d80' }}>
+        <p className="text-[12.5px] leading-snug" style={{ color: '#d68d80' }}>
           {disabledReason}
         </p>
       )}

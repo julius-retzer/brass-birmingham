@@ -46,9 +46,9 @@ export const PLAYER_FILL: Record<Player['color'], string> = {
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII']
 
-const SLOT = 44
-const SLOT_GAP = 5
-const PLATE_PAD = 7
+const SLOT = 52
+const SLOT_GAP = 4
+const PLATE_PAD = 6
 
 /* ---------------- geometry helpers ---------------- */
 
@@ -86,6 +86,11 @@ interface BuiltIndustry {
   coalCubesOnTile: number
   ironCubesOnTile: number
   beerBarrelsOnTile: number
+  tile: {
+    victoryPoints: number
+    incomeAdvancement: number
+    linkScoringIcons: number
+  }
   owner: Player
 }
 
@@ -1001,10 +1006,10 @@ function EmptySlot({ allowed }: { allowed: IndustryType[] }) {
         strokeDasharray={allowed.length ? undefined : '3 3'}
       />
       {shown.map((t, i) => {
-        const size = shown.length === 1 ? 26 : 19
-        const x = shown.length === 1 ? (SLOT - size) / 2 : 3 + i * (size + 1.5)
+        const size = shown.length === 1 ? 30 : 22
+        const x = shown.length === 1 ? (SLOT - size) / 2 : 4 + i * (size + 2)
         const y =
-          shown.length === 1 ? (SLOT - size) / 2 : i === 0 ? 4 : SLOT - size - 4
+          shown.length === 1 ? (SLOT - size) / 2 : i === 0 ? 5 : SLOT - size - 5
         return (
           <g
             key={t}
@@ -1020,9 +1025,40 @@ function EmptySlot({ allowed }: { allowed: IndustryType[] }) {
   )
 }
 
+/** The •—• link-scoring glyph printed on physical tiles (0, 1 or 2). */
+function LinkIcons({
+  n,
+  ink,
+  x,
+  y,
+}: { n: number; ink: string; x: number; y: number }) {
+  if (n <= 0) return null
+  return (
+    <g
+      transform={`translate(${x}, ${y})`}
+      stroke={ink}
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    >
+      {Array.from({ length: Math.min(n, 2) }, (_, i) => (
+        <g key={i} transform={`translate(${i * 13}, 0)`}>
+          <circle cx="0" cy="0" r="1.4" fill={ink} stroke="none" />
+          <path d="M1.4 0 H7.6" />
+          <circle cx="9" cy="0" r="1.4" fill={ink} stroke="none" />
+        </g>
+      ))}
+    </g>
+  )
+}
+
+// The tile face mirrors the physical layout: industry + level up top,
+// resource cubes riding mid-tile, and the printed stats along the bottom —
+// VP in a parchment roundel (left), •—• link icons (centre), income
+// advance (right) — above the owner's ribbon.
 function BuiltTile({ occ }: { occ: BuiltIndustry }) {
   const fill = occ.flipped ? '#f2e6c8' : INDUSTRY_FILL[occ.type]
   const ink = occ.flipped ? INDUSTRY_FILL[occ.type] : INDUSTRY_INK[occ.type]
+  const statInk = occ.flipped ? '#4a3d29' : ink
   const cubes =
     occ.type === 'coal'
       ? { n: occ.coalCubesOnTile, c: '#1d1b18', s: '#e7d7b1' }
@@ -1042,22 +1078,19 @@ function BuiltTile({ occ }: { occ: BuiltIndustry }) {
         stroke={occ.flipped ? INDUSTRY_FILL[occ.type] : '#16130f'}
         strokeWidth={occ.flipped ? 2.2 : 1.2}
       />
-      <g
-        transform={`translate(10, 7) scale(${24 / 24})`}
-        style={{ color: ink }}
-      >
+      <g transform="translate(5, 4)" style={{ color: ink }}>
         <IndustryFragment type={occ.type} />
       </g>
       {/* level numeral */}
       <text
         x={SLOT - 5}
-        y="12"
+        y="13"
         textAnchor="end"
         fill={ink}
         style={{
           fontFamily: 'var(--bb-display)',
           fontWeight: 700,
-          fontSize: 10.5,
+          fontSize: 11.5,
         }}
       >
         {ROMAN[occ.level] ?? occ.level}
@@ -1068,26 +1101,73 @@ function BuiltTile({ occ }: { occ: BuiltIndustry }) {
           {Array.from({ length: Math.min(cubes.n, 5) }, (_, i) => (
             <rect
               key={i}
-              x={5 + i * 7.2}
-              y={SLOT - 15}
-              width="5.4"
-              height="5.4"
+              x={SLOT - 11}
+              y={17 + i * 6.4}
+              width="5.6"
+              height="5.6"
               rx="1"
               fill={cubes.c}
               stroke={cubes.s}
               strokeWidth="0.8"
-            />
+            >
+              <title>resource cube on tile</title>
+            </rect>
           ))}
         </g>
       )}
+      {/* printed stats: VP roundel · link icons · income advance */}
+      <g>
+        <circle
+          cx="9.5"
+          cy={SLOT - 14}
+          r="6.6"
+          fill={occ.flipped ? 'rgba(74,61,41,.14)' : '#f2e6c8'}
+          stroke={occ.flipped ? '#4a3d29' : '#16130f'}
+          strokeWidth="0.9"
+        />
+        <text
+          x="9.5"
+          y={SLOT - 11}
+          textAnchor="middle"
+          fill="#2a2014"
+          style={{
+            fontFamily: 'var(--bb-body)',
+            fontWeight: 700,
+            fontSize: 8.6,
+          }}
+        >
+          {occ.tile.victoryPoints}
+          <title>victory points when flipped</title>
+        </text>
+        <LinkIcons
+          n={occ.tile.linkScoringIcons}
+          ink={statInk}
+          x={occ.tile.linkScoringIcons > 1 ? 20 : 24}
+          y={SLOT - 14}
+        />
+        <text
+          x={SLOT - 4}
+          y={SLOT - 10.5}
+          textAnchor="end"
+          fill={statInk}
+          style={{
+            fontFamily: 'var(--bb-body)',
+            fontWeight: 700,
+            fontSize: 8.6,
+          }}
+        >
+          {`+${occ.tile.incomeAdvancement}`}
+          <title>income advance when flipped</title>
+        </text>
+      </g>
       {/* flipped seal */}
       {occ.flipped && (
-        <g transform={`translate(${SLOT - 9}, ${SLOT - 9})`}>
-          <circle r="6" fill="#c39538" stroke="#7a5c22" strokeWidth="1" />
+        <g transform={`translate(${SLOT - 9}, 22)`}>
+          <circle r="5.6" fill="#c39538" stroke="#7a5c22" strokeWidth="1" />
           <path
-            d="M-2.5 0 L-0.5 2.2 L3 -2.2"
+            d="M-2.3 0 L-0.5 2 L2.8 -2"
             stroke="#241a08"
-            strokeWidth="1.6"
+            strokeWidth="1.5"
             fill="none"
             strokeLinecap="round"
             strokeLinejoin="round"

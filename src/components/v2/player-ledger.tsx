@@ -8,7 +8,13 @@ import { type CityId, cities } from '~/data/board'
 import { type IndustryType } from '~/data/cards'
 import { type Player } from '~/store/gameStore'
 import { PLAYER_FILL } from './board/board-map'
-import { CanalIcon, IndustryGlyph, LaurelIcon, RailIcon } from './icons'
+import {
+  CanalIcon,
+  IncomeIcon,
+  IndustryGlyph,
+  LaurelIcon,
+  RailIcon,
+} from './icons'
 
 const INDUSTRY_TYPES: IndustryType[] = [
   'cotton',
@@ -65,7 +71,7 @@ export function PlayerLedger({
           />
           <div className="flex flex-col">
             <span
-              className="bb2-display text-[22px] font-black leading-none"
+              className="bb2-display text-[24px] font-black leading-none"
               style={{ color: 'var(--bb-parchment-bright)' }}
             >
               {player.name}
@@ -79,7 +85,7 @@ export function PlayerLedger({
               )}
             </span>
             <span
-              className="text-[11px] uppercase tracking-[0.18em]"
+              className="text-[12px] uppercase tracking-[0.18em]"
               style={{ color: 'rgba(231,215,177,.45)' }}
             >
               {player.character}
@@ -99,7 +105,7 @@ export function PlayerLedger({
         <div className="pt-4">
           <span className="bb2-panel-title">Tiles on the mat</span>
           <p
-            className="pt-1.5 text-[11.5px]"
+            className="pt-1.5 text-[12.5px]"
             style={{ color: 'rgba(231,215,177,.5)' }}
           >
             Lowest level builds first — the brass-ringed tile is the next one
@@ -120,7 +126,7 @@ export function PlayerLedger({
               return (
                 <div key={t} className="flex flex-col gap-1.5">
                   <span
-                    className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em]"
+                    className="flex items-center gap-1.5 text-[12.5px] font-bold uppercase tracking-[0.14em]"
                     style={{ color: 'var(--bb-parchment)' }}
                   >
                     <IndustryGlyph type={t} size={14} />
@@ -137,7 +143,7 @@ export function PlayerLedger({
                       return (
                         <div
                           key={r.tile.id}
-                          className="flex items-center gap-2 rounded border px-2 py-1 text-[11.5px]"
+                          className="flex items-center gap-2 rounded border px-2 py-1.5 text-[13px]"
                           style={{
                             borderColor: isNext
                               ? 'var(--bb-brass-bright)'
@@ -152,7 +158,7 @@ export function PlayerLedger({
                           }}
                         >
                           <span
-                            className="bb2-display w-6 text-[12px] font-bold"
+                            className="bb2-display w-7 text-[13.5px] font-bold"
                             style={{ color: 'var(--bb-brass-bright)' }}
                           >
                             {ROMAN[r.tile.level] ?? r.tile.level}
@@ -197,14 +203,56 @@ export function PlayerLedger({
                             </span>
                           )}
                           <span
-                            className="ml-auto flex items-center gap-0.5 text-[10.5px]"
+                            className="ml-auto flex items-center gap-0.5 text-[12px]"
                             style={{ color: 'rgba(231,215,177,.6)' }}
+                            title="victory points when flipped"
                           >
-                            <LaurelIcon size={10} />
+                            <LaurelIcon size={11} />
                             {r.tile.victoryPoints}
                           </span>
                           <span
-                            className="text-[10.5px] tabular-nums"
+                            className="flex items-center gap-0.5 text-[12px]"
+                            style={{ color: 'rgba(231,215,177,.6)' }}
+                            title="income advance when flipped"
+                          >
+                            <IncomeIcon size={11} />+{r.tile.incomeAdvancement}
+                          </span>
+                          <span
+                            className="flex items-center gap-0.5 text-[12px]"
+                            style={{ color: 'rgba(231,215,177,.6)' }}
+                            title="link-scoring icons on the tile"
+                          >
+                            <svg
+                              width="15"
+                              height="8"
+                              viewBox="0 0 15 8"
+                              aria-hidden
+                            >
+                              <circle
+                                cx="2"
+                                cy="4"
+                                r="1.6"
+                                fill="currentColor"
+                              />
+                              <line
+                                x1="3.6"
+                                y1="4"
+                                x2="11"
+                                y2="4"
+                                stroke="currentColor"
+                                strokeWidth="1.4"
+                              />
+                              <circle
+                                cx="12.6"
+                                cy="4"
+                                r="1.6"
+                                fill="currentColor"
+                              />
+                            </svg>
+                            ×{r.tile.linkScoringIcons}
+                          </span>
+                          <span
+                            className="text-[12px] tabular-nums"
                             style={{
                               color: depleted
                                 ? 'var(--bb-danger)'
@@ -218,7 +266,7 @@ export function PlayerLedger({
                     })}
                     {rows.length === 0 && (
                       <span
-                        className="text-[11px] italic"
+                        className="text-[12px] italic"
                         style={{ color: 'rgba(231,215,177,.35)' }}
                       >
                         None remaining
@@ -239,7 +287,7 @@ export function PlayerLedger({
               {player.industries.map((ind, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-2 text-[12px]"
+                  className="flex items-center gap-2 text-[13.5px]"
                   style={{ color: 'var(--bb-parchment)' }}
                 >
                   <IndustryGlyph type={ind.type} size={13} />
@@ -261,7 +309,7 @@ export function PlayerLedger({
               ))}
               {player.industries.length === 0 && (
                 <span
-                  className="text-[11px] italic"
+                  className="text-[12px] italic"
                   style={{ color: 'rgba(231,215,177,.35)' }}
                 >
                   Nothing built yet
@@ -275,7 +323,7 @@ export function PlayerLedger({
               {player.links.map((l, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-2 text-[12px]"
+                  className="flex items-center gap-2 text-[13.5px]"
                   style={{ color: 'var(--bb-parchment)' }}
                 >
                   {l.type === 'canal' ? (
@@ -288,7 +336,7 @@ export function PlayerLedger({
               ))}
               {player.links.length === 0 && (
                 <span
-                  className="text-[11px] italic"
+                  className="text-[12px] italic"
                   style={{ color: 'rgba(231,215,177,.35)' }}
                 >
                   No routes yet

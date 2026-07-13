@@ -79,7 +79,7 @@ export function PlayerRail({
             <div className="flex min-w-0 flex-1 flex-col gap-1 py-0.5">
               <div className="flex items-baseline gap-2">
                 <span
-                  className="bb2-display truncate text-[15px] font-bold leading-none"
+                  className="bb2-display truncate text-[17px] font-bold leading-none"
                   style={{
                     color: isCurrent
                       ? 'var(--bb-brass-bright)'
@@ -89,7 +89,7 @@ export function PlayerRail({
                   {p.name}
                 </span>
                 <span
-                  className="truncate text-[10px] uppercase tracking-[0.14em]"
+                  className="truncate text-[11.5px] uppercase tracking-[0.14em]"
                   style={{ color: 'rgba(231,215,177,.4)' }}
                 >
                   {i + 1}
@@ -98,7 +98,7 @@ export function PlayerRail({
                 </span>
                 {isCurrent && (
                   <span
-                    className="ml-auto flex-none text-[9px] font-bold uppercase tracking-[0.22em]"
+                    className="ml-auto flex-none text-[10px] font-bold uppercase tracking-[0.22em]"
                     style={{ color: 'var(--bb-brass-bright)' }}
                   >
                     · to act ·

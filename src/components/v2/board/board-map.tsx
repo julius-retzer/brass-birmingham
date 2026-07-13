@@ -841,6 +841,42 @@ export function BoardMap({
 
 /* ================= city plate ================= */
 
+// Slot arrangement per city, matching the physical board's blocky cities:
+// Birmingham is THE big 2x2 square; Coventry, Stoke and Coalbrookdale are
+// compact 2+1 blocks. Everything else stays a horizontal strip (default).
+// Index order remains reading order (left→right, top→bottom) so slot
+// assignment and cityIndustrySlots stay untouched.
+const PLATE_GRIDS: Partial<Record<CityId, Array<[number, number]>>> = {
+  birmingham: [
+    [0, 0],
+    [1, 0],
+    [0, 1],
+    [1, 1],
+  ],
+  coventry: [
+    [0, 0],
+    [1, 0],
+    [0, 1],
+  ],
+  stoke: [
+    [0, 0],
+    [1, 0],
+    [0, 1],
+  ],
+  coalbrookdale: [
+    [0, 0],
+    [1, 0],
+    [0, 1],
+  ],
+}
+
+function plateGrid(cityId: CityId, slotCount: number): Array<[number, number]> {
+  return (
+    PLATE_GRIDS[cityId] ??
+    Array.from({ length: Math.max(slotCount, 1) }, (_, i) => [i, 0])
+  )
+}
+
 function CityPlate({
   cityId,
   occupants,
@@ -860,9 +896,11 @@ function CityPlate({
 }) {
   const pos = cityPos[cityId]
   const slots = cityIndustrySlots[cityId] ?? []
-  const n = Math.max(slots.length, 1)
-  const plateW = n * SLOT + (n - 1) * SLOT_GAP + PLATE_PAD * 2
-  const plateH = SLOT + PLATE_PAD * 2
+  const grid = plateGrid(cityId, slots.length)
+  const cols = Math.max(...grid.map(([c]) => c)) + 1
+  const rows = Math.max(...grid.map(([, r]) => r)) + 1
+  const plateW = cols * SLOT + (cols - 1) * SLOT_GAP + PLATE_PAD * 2
+  const plateH = rows * SLOT + (rows - 1) * SLOT_GAP + PLATE_PAD * 2
   const name = cities[cityId].name
   const isFarm = FARM_BREWERIES.has(cityId)
 
@@ -903,12 +941,14 @@ function CityPlate({
         />
       )}
 
-      {/* slots */}
+      {/* slots — laid out on the city's plate grid */}
       {slots.map((allowed, i) => {
-        const sx = PLATE_PAD + i * (SLOT + SLOT_GAP)
+        const [col, row] = grid[i] ?? [i, 0]
+        const sx = PLATE_PAD + col * (SLOT + SLOT_GAP)
+        const sy = PLATE_PAD + row * (SLOT + SLOT_GAP)
         const occ = occupants[i]
         return (
-          <g key={i} transform={`translate(${sx}, ${PLATE_PAD})`}>
+          <g key={i} transform={`translate(${sx}, ${sy})`}>
             {occ ? (
               <BuiltTile occ={occ} />
             ) : (

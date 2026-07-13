@@ -10,7 +10,7 @@ export const VIEW_H = 1150
 export const cityPos: Record<CityId, { x: number; y: number }> = {
   // North
   warrington: { x: 545, y: 78 },
-  stoke: { x: 545, y: 208 },
+  stoke: { x: 548, y: 226 },
   leek: { x: 780, y: 110 },
   belper: { x: 1165, y: 100 },
   derby: { x: 1110, y: 248 },

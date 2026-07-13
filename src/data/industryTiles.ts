@@ -644,7 +644,7 @@ export function getInitialPlayerIndustryTilesWithQuantities(): Record<
   // Convert each tile definition to include its quantity
   for (const [industryType, tiles] of Object.entries(industryTileDefinitions)) {
     if (tiles) {
-      tilesWithQuantity[industryType as IndustryType] = tiles.map(tile => ({
+      tilesWithQuantity[industryType as IndustryType] = tiles.map((tile) => ({
         tile,
         quantityAvailable: tile.quantity,
       }))
@@ -663,15 +663,15 @@ export function getLowestLevelTile(tiles: IndustryTile[]): IndustryTile | null {
 
 // Get lowest level tile considering quantities
 export function getLowestAvailableTile(
-  tilesWithQuantity: IndustryTileWithQuantity[]
+  tilesWithQuantity: IndustryTileWithQuantity[],
 ): IndustryTile | null {
   // Filter to only tiles with quantity > 0
   const availableTiles = tilesWithQuantity
-    .filter(t => t.quantityAvailable > 0)
-    .map(t => t.tile)
-  
+    .filter((t) => t.quantityAvailable > 0)
+    .map((t) => t.tile)
+
   if (availableTiles.length === 0) return null
-  
+
   // Return the lowest level available tile
   return availableTiles.reduce((lowest, current) =>
     current.level < lowest.level ? current : lowest,
@@ -681,13 +681,13 @@ export function getLowestAvailableTile(
 // Decrement quantity of a specific tile
 export function decrementTileQuantity(
   tilesWithQuantity: IndustryTileWithQuantity[],
-  tileToDecrement: IndustryTile
+  tileToDecrement: IndustryTile,
 ): IndustryTileWithQuantity[] {
-  return tilesWithQuantity.map(tileWithQty => {
+  return tilesWithQuantity.map((tileWithQty) => {
     if (tileWithQty.tile.id === tileToDecrement.id) {
       return {
         ...tileWithQty,
-        quantityAvailable: Math.max(0, tileWithQty.quantityAvailable - 1)
+        quantityAvailable: Math.max(0, tileWithQty.quantityAvailable - 1),
       }
     }
     return tileWithQty

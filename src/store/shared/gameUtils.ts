@@ -1,5 +1,10 @@
 import type { CityId, ConnectionType } from '../../data/board'
-import { cities, cityIndustrySlots, connections } from '../../data/board'
+import {
+  cities,
+  cityIndustrySlots,
+  connections,
+  linkConnectedLocations,
+} from '../../data/board'
 import type {
   Card,
   IndustryType,
@@ -66,7 +71,13 @@ export function calculateNetworkDistance(
   for (const player of context.players) {
     for (const link of player.links) {
       if (link.type !== era) continue
-      addEdge(link.from, link.to)
+      // a link may connect more than its two endpoints (farm breweries)
+      const locs = linkConnectedLocations(link.from, link.to)
+      for (let i = 0; i < locs.length; i++) {
+        for (let j = i + 1; j < locs.length; j++) {
+          addEdge(locs[i]!, locs[j]!)
+        }
+      }
     }
   }
 
@@ -339,10 +350,11 @@ export function getPlayerNetworkLocations(
     networkLocations.add(industry.location)
   })
 
-  // Add locations adjacent to player's links
+  // Add locations adjacent to player's links (incl. farm breweries)
   player.links.forEach((link) => {
-    networkLocations.add(link.from)
-    networkLocations.add(link.to)
+    for (const loc of linkConnectedLocations(link.from, link.to)) {
+      networkLocations.add(loc)
+    }
   })
 
   return networkLocations
@@ -409,9 +421,9 @@ export function calculateLinkVictoryPoints(
   context: GameState,
   link: Link,
 ): number {
-  return (
-    countLinkIconsAtLocation(context, link.from) +
-    countLinkIconsAtLocation(context, link.to)
+  return linkConnectedLocations(link.from, link.to).reduce(
+    (vp, loc) => vp + countLinkIconsAtLocation(context, loc),
+    0,
   )
 }
 

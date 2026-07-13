@@ -28,6 +28,11 @@ export const cityPos: Record<CityId, { x: number; y: number }> = {
   coalbrookdale: { x: 158, y: 615 },
   shrewsbury: { x: 128, y: 432 },
 
+  // Farm breweries — unnamed countryside spots "to the left" of their
+  // cities on the physical board
+  farmBrewery1: { x: 318, y: 575 },
+  farmBrewery2: { x: 132, y: 1030 },
+
   // South
   dudley: { x: 445, y: 852 },
   birmingham: { x: 795, y: 810 },
@@ -63,6 +68,7 @@ export const routeBow: Record<string, number> = {
   'burton|derby': 18,
   'walsall|wolverhampton': 16,
   'cannock|wolverhampton': -14,
+  'cannock|farmBrewery1': -12,
   'birmingham|nuneaton': -22,
   'tamworth|nuneaton': 22,
 }

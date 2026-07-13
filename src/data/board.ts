@@ -22,6 +22,12 @@ export const cities = {
   derby: { name: 'Derby', type: 'city' },
   belper: { name: 'Belper', type: 'city' },
 
+  // Farm Breweries — the two unnamed brewery-only locations (rules p.5).
+  // Not reachable by location/wild-location cards; brewery-industry and
+  // wild-industry cards only.
+  farmBrewery1: { name: 'Farm Brewery', type: 'city' },
+  farmBrewery2: { name: 'Farm Brewery', type: 'city' },
+
   // External Markets (Merchants)
   warrington: { name: 'Warrington', type: 'merchant' },
   gloucester: { name: 'Gloucester', type: 'merchant' },
@@ -55,6 +61,11 @@ export const connections = [
   { from: 'burton', to: 'tamworth', types: ['canal', 'rail'] },
   { from: 'burton', to: 'walsall', types: ['canal'] },
   { from: 'cannock', to: 'walsall', types: ['canal', 'rail'] },
+  // "A Link tile is required to connect Cannock to the Farm Brewery to its
+  // left" (rules p.5). The southern Farm Brewery has NO connection of its
+  // own: the kidderminster-worcester link also connects it (see
+  // linkConnectedLocations below) and a second tile may not be placed.
+  { from: 'cannock', to: 'farmBrewery1', types: ['canal', 'rail'] },
   { from: 'cannock', to: 'wolverhampton', types: ['canal', 'rail'] },
   { from: 'tamworth', to: 'walsall', types: ['rail'] },
   { from: 'tamworth', to: 'nuneaton', types: ['canal', 'rail'] },
@@ -157,6 +168,10 @@ export const cityIndustrySlots: Record<CityId, string[][]> = {
   belper: [['cotton', 'manufacturer'], ['coal'], ['pottery']],
   derby: [['cotton', 'brewery'], ['cotton', 'manufacturer'], ['iron']],
 
+  // Farm Breweries: exactly one brewery slot each
+  farmBrewery1: [['brewery']],
+  farmBrewery2: [['brewery']],
+
   // Merchants (no industries can be built)
   warrington: [],
   gloucester: [],
@@ -164,3 +179,23 @@ export const cityIndustrySlots: Record<CityId, string[][]> = {
   nottingham: [],
   shrewsbury: [],
 } as const
+
+// The two unnamed Farm Brewery locations (brewery-only, industry-card-only)
+export const FARM_BREWERIES: ReadonlySet<CityId> = new Set([
+  'farmBrewery1',
+  'farmBrewery2',
+])
+
+// Locations a built link connects. Almost always its two endpoints — but
+// the kidderminster-worcester tile ALSO connects the southern Farm Brewery
+// (rules p.5: "A Link tile placed between Kidderminster and Worcester also
+// connects both locations to the Farm Brewery to their left").
+export function linkConnectedLocations(from: CityId, to: CityId): CityId[] {
+  if (
+    (from === 'kidderminster' && to === 'worcester') ||
+    (from === 'worcester' && to === 'kidderminster')
+  ) {
+    return [from, to, 'farmBrewery2']
+  }
+  return [from, to]
+}

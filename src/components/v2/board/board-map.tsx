@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   type CityId,
+  FARM_BREWERIES,
   cities,
   cityIndustrySlots,
   connections,
@@ -648,6 +649,26 @@ export function BoardMap({
           })}
         </g>
 
+        {/* the southern Farm Brewery's implicit connection: a spur off the
+            kidderminster—worcester corridor (rules p.5 — one tile connects
+            all three; no second tile may be placed, so no hit area) */}
+        {(() => {
+          const { mid } = routePath('kidderminster', 'worcester')
+          const fb = cityPos.farmBrewery2
+          const linked = builtLinks.has(linkKey('kidderminster', 'worcester'))
+          return (
+            <path
+              d={`M ${mid.x} ${mid.y} L ${fb.x} ${fb.y}`}
+              fill="none"
+              stroke={linked ? '#4e9c96' : '#7a8b3d'}
+              strokeOpacity={linked ? 0.8 : 0.35}
+              strokeWidth={linked ? 3.5 : 2}
+              strokeDasharray={linked ? undefined : '4 5'}
+              pointerEvents="none"
+            />
+          )
+        })()}
+
         {/* ------------ merchant plates ------------ */}
         {(Object.keys(cities) as CityId[])
           .filter((id) => cities[id].type === 'merchant')
@@ -843,6 +864,7 @@ function CityPlate({
   const plateW = n * SLOT + (n - 1) * SLOT_GAP + PLATE_PAD * 2
   const plateH = SLOT + PLATE_PAD * 2
   const name = cities[cityId].name
+  const isFarm = FARM_BREWERIES.has(cityId)
 
   return (
     <g
@@ -859,10 +881,11 @@ function CityPlate({
       <rect
         width={plateW}
         height={plateH}
-        rx="7"
+        rx={isFarm ? 14 : 7}
         fill="url(#bb2-plate)"
-        stroke={isSelected ? '#e6bd63' : '#9c854f'}
+        stroke={isSelected ? '#e6bd63' : isFarm ? '#7a8b3d' : '#9c854f'}
         strokeWidth={isSelected ? 3 : 1.4}
+        strokeDasharray={isFarm ? '5 3' : undefined}
         filter="url(#bb2-plate-shadow)"
       />
       {(isLegal || isSelected) && (
@@ -902,16 +925,17 @@ function CityPlate({
       >
         <text
           textAnchor="middle"
-          fill="#e7d7b1"
+          fill={isFarm ? '#a9ba6c' : '#e7d7b1'}
           stroke="#12100c"
           strokeWidth="3"
           paintOrder="stroke"
           style={{
-            fontFamily: 'var(--bb-body)',
+            fontFamily: isFarm ? 'var(--bb-display)' : 'var(--bb-body)',
             fontWeight: 600,
-            fontSize: 14.5,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
+            fontSize: isFarm ? 13 : 14.5,
+            fontStyle: isFarm ? 'italic' : undefined,
+            letterSpacing: isFarm ? '0.03em' : '0.1em',
+            textTransform: isFarm ? 'none' : 'uppercase',
           }}
         >
           {name}

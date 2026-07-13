@@ -150,8 +150,14 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   discarding played cards.
 - Board/deck data (`src/data/board.ts`, `src/data/cards.ts`) was corrected
   against the physical board (photo-verified) and the official deck counts
-  (40/54/64). Known remaining data gaps: the 2 Farm Breweries are not
-  modelled; industry tile stats in `src/data/industryTiles.ts` are
+  (40/54/64). Farm Breweries are modelled (2026-07-13): two brewery-only
+  locations `farmBrewery1`/`farmBrewery2` in `src/data/board.ts` with a
+  buildable cannock link for the northern one; the southern one has NO
+  connection of its own — `linkConnectedLocations()` makes the
+  kidderminster-worcester link a 3-way (network, beer reach and link VP all
+  route through it; regression tests in `gameStore.farmbrewery.test.ts`).
+  Location/wild-location cards are guard-blocked there (rules p.5).
+  Known remaining data gaps: industry tile stats in `src/data/industryTiles.ts` are
   unaudited; the income track models levels as a flat number (levels vs
   spaces distinction not implemented); link building does not validate
   against the board graph `connections` (the UI enforces era + graph).
@@ -161,6 +167,11 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   Wild cards route through the full build flow: wild location picks
   industry then ANY city; wild industry picks industry then a network
   city. Regression tests: `gameStore.bugfixes.test.ts`, `e2e/bugfixes.spec.ts`.
+- ENGINE-TEST GOTCHA: never call TEST_SET_PLAYER_HAND repeatedly in a
+  scripted scenario — every end-of-turn refill then draws a full hand from
+  the draw pile, burning the deck in ~3 rounds and ending the era mid-test
+  (links removed, level-1 tiles wiped, merchant beer reset). Script hands
+  ONCE up front, ordered so hand[0] is always the next planned card.
 - Integration tests (`gameStore.integration.test.ts`) drive full games
   through the event surface with a guard-probing policy; if you add
   guards, keep CANCEL paths reachable so the driver can unwind

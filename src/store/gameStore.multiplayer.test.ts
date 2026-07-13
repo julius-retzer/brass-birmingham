@@ -17,7 +17,9 @@ const createdTokens: string[] = []
 afterAll(async () => {
   await Promise.all(
     createdTokens.map((t) =>
-      fs.unlink(path.join(process.cwd(), '.bb-games', `${t}.json`)).catch(() => {}),
+      fs
+        .unlink(path.join(process.cwd(), '.bb-games', `${t}.json`))
+        .catch(() => {}),
     ),
   )
 })
@@ -58,7 +60,9 @@ describe('multiplayer: lifecycle and authority', () => {
 
     // wrong secret
     expect(
-      await actInGame(host.token, 0, 'not-the-secret-aaaaaaaa', { type: 'PASS' }),
+      await actInGame(host.token, 0, 'not-the-secret-aaaaaaaa', {
+        type: 'PASS',
+      }),
     ).toEqual({ ok: false, error: 'Not your seat' })
 
     // not your turn (the seat that is NOT current tries to act)
@@ -92,8 +96,11 @@ describe('multiplayer: lifecycle and authority', () => {
 
     // Loan through the full flow: TAKE_LOAN → SELECT_CARD → CONFIRM
     expect(
-      (await actInGame(host.token, current, creds.seatSecret, { type: 'TAKE_LOAN' }))
-        .ok,
+      (
+        await actInGame(host.token, current, creds.seatSecret, {
+          type: 'TAKE_LOAN',
+        })
+      ).ok,
     ).toBe(true)
     view = await getGameView(host.token, current, creds.seatSecret)
     const ownHand = ctxOf(view!).players[current]!.hand
@@ -106,8 +113,11 @@ describe('multiplayer: lifecycle and authority', () => {
       ).ok,
     ).toBe(true)
     expect(
-      (await actInGame(host.token, current, creds.seatSecret, { type: 'CONFIRM' }))
-        .ok,
+      (
+        await actInGame(host.token, current, creds.seatSecret, {
+          type: 'CONFIRM',
+        })
+      ).ok,
     ).toBe(true)
 
     view = await getGameView(host.token, current, creds.seatSecret)
@@ -142,14 +152,26 @@ describe('multiplayer: hidden information never crosses the wire', () => {
     const guestCtx = ctxOf(guestView!)
 
     // own hands are real
-    expect(hostCtx.players[0]!.hand.every((c) => !c.id.startsWith('hidden-'))).toBe(true)
-    expect(guestCtx.players[1]!.hand.every((c) => !c.id.startsWith('hidden-'))).toBe(true)
+    expect(
+      hostCtx.players[0]!.hand.every((c) => !c.id.startsWith('hidden-')),
+    ).toBe(true)
+    expect(
+      guestCtx.players[1]!.hand.every((c) => !c.id.startsWith('hidden-')),
+    ).toBe(true)
     // foreign hands are placeholders of the SAME LENGTH (guards need counts)
-    expect(hostCtx.players[1]!.hand.every((c) => c.id.startsWith('hidden-'))).toBe(true)
-    expect(guestCtx.players[0]!.hand.every((c) => c.id.startsWith('hidden-'))).toBe(true)
-    expect(guestCtx.players[0]!.hand).toHaveLength(hostCtx.players[0]!.hand.length)
+    expect(
+      hostCtx.players[1]!.hand.every((c) => c.id.startsWith('hidden-')),
+    ).toBe(true)
+    expect(
+      guestCtx.players[0]!.hand.every((c) => c.id.startsWith('hidden-')),
+    ).toBe(true)
+    expect(guestCtx.players[0]!.hand).toHaveLength(
+      hostCtx.players[0]!.hand.length,
+    )
     // the draw pile is never shipped (only its size)
-    expect(guestCtx.drawPile.every((c) => c.id.startsWith('hidden-'))).toBe(true)
+    expect(guestCtx.drawPile.every((c) => c.id.startsWith('hidden-'))).toBe(
+      true,
+    )
 
     // Wire-level: walk the exact payload the guest receives and assert every
     // card in a hidden zone (foreign hands, draw pile, foreign selections)

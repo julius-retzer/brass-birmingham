@@ -1,5 +1,9 @@
 import { type Actor, StateFrom, assign, setup } from 'xstate'
-import { type CityId } from '../data/board'
+import {
+  type CityId,
+  FARM_BREWERIES,
+  linkConnectedLocations,
+} from '../data/board'
 import {
   type Card,
   type IndustryCard,
@@ -2389,10 +2393,11 @@ export const gameStore = setup({
         playerLocations.add(industry.location)
       })
 
-      // Add locations adjacent to player's links
+      // Add locations adjacent to player's links (incl. farm breweries)
       currentPlayer.links.forEach((link) => {
-        playerLocations.add(link.from)
-        playerLocations.add(link.to)
+        for (const loc of linkConnectedLocations(link.from, link.to)) {
+          playerLocations.add(loc)
+        }
       })
 
       // Check if either end of the new link is part of player's network
@@ -2401,6 +2406,16 @@ export const gameStore = setup({
     canSelectLocation: ({ context, event }) => {
       if (event.type !== 'SELECT_LOCATION') return false
       if (!context.selectedCard) return false
+
+      // Farm Breweries may only be reached with a Brewery Industry or a
+      // Wild Industry card — never location/wild-location cards (rules p.5)
+      if (
+        FARM_BREWERIES.has(event.cityId) &&
+        (context.selectedCard.type === 'location' ||
+          context.selectedCard.type === 'wild_location')
+      ) {
+        return false
+      }
 
       const currentPlayer = getCurrentPlayer(context)
 

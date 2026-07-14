@@ -1389,16 +1389,40 @@ function MerchantPlate({
                   ✕
                 </text>
               ) : null}
-              {/* beer barrel ready at this merchant */}
+              {/* beer barrel ready at this merchant — drawn as a barrel,
+                  not an anonymous dot (captain feedback 2026-07-14) */}
               {m?.hasBeer && (
-                <circle
-                  cx={SLOT - 6}
-                  cy="6"
-                  r="4.5"
-                  fill="#e8bc4f"
-                  stroke="#5c451a"
-                  strokeWidth="1.2"
-                />
+                <g transform={`translate(${SLOT - 7}, 6.5)`}>
+                  <title>
+                    Beer barrel available — consumed when selling to this
+                    merchant
+                  </title>
+                  <ellipse
+                    cx="0"
+                    cy="0"
+                    rx="4.2"
+                    ry="5.2"
+                    fill="#e8bc4f"
+                    stroke="#5c451a"
+                    strokeWidth="1.2"
+                  />
+                  <line
+                    x1="-4.2"
+                    y1="-1.7"
+                    x2="4.2"
+                    y2="-1.7"
+                    stroke="#5c451a"
+                    strokeWidth="0.9"
+                  />
+                  <line
+                    x1="-4.2"
+                    y1="1.7"
+                    x2="4.2"
+                    y2="1.7"
+                    stroke="#5c451a"
+                    strokeWidth="0.9"
+                  />
+                </g>
               )}
             </g>
           )

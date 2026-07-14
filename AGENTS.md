@@ -228,10 +228,22 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   `GENERATE_DEMO=1 pnpm vitest run src/components/v2/demo/generate-demo.test.ts`
   (guarded so `pnpm test:all` never rewrites them). The rail fixture is
   frozen at a state where the double-link build is reachable.
-- Sell is gated in the action dock via a shadow-actor probe
-  (`canSellAnything` in `v2-game.tsx`): it walks SELL → SELECT_CARD on a
-  copy of the persisted snapshot and asks the machine's own SELECT_SALE
-  guards — never replicate merchant/beer logic in the UI by hand.
+- Legality/preview signals come from shadow-actor probes in `v2-game.tsx`
+  (`canSellAnything`, `viableIndustries`, `confirmOutcome`) — never
+  replicate rules in the UI by hand. Probe GOTCHAS: (1) always spin probes
+  through `createProbeActor` (deep clone via `rehydrateSnapshot`) —
+  `getPersistedSnapshot()` shares nested refs with the live context and
+  the engine mutates in place on some paths; (2) a probed CONFIRM that
+  closes a round cascades through income collection, so money-diff
+  previews must be suppressed when `round`/`era` changed (2026-07-14 UX
+  batch). Build slot-compatibility for REAL location cards is validated
+  only inside `executeBuildAction` (guard order skips
+  `canSelectIndustryType`), which is why the industry step needs the
+  execution probe.
+- Pass-the-turn is TWO-TAP (arm, confirm ≤4s) — e2e must click
+  `action-pass` twice. City plates and route hit-areas are labelled a11y
+  buttons (keyboard-activatable when legal); the board svg must NOT get
+  `role="img"` back, that flattens them out of the a11y tree.
 - The hand tray (`hand-tray.tsx`) doubles as the card selector for every
   discard step; which steps select cards is centralized in
   `getHandSelection()` (`action-dock.tsx`).

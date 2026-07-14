@@ -791,6 +791,10 @@ function MpTable({
                 send={send as never}
                 currentPlayer={currentPlayer}
                 canSellAnything={canSellAnything}
+                actionsLeft={{
+                  remaining: ctx.actionsRemaining,
+                  max: maxActions,
+                }}
               />
             ) : (
               <div className="flex flex-col gap-2" data-testid="waiting-panel">

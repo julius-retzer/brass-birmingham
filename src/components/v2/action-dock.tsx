@@ -43,9 +43,13 @@ const cityName = (id: CityId | string | null | undefined) =>
 const industryLabel = (t: IndustryType | string) =>
   t === 'manufacturer' ? 'goods' : t
 
-/** Result of dry-running the pending confirm on a shadow actor. */
+/**
+ * Result of dry-running the pending confirm on a shadow actor. `cost` is
+ * omitted when the probe crossed a round boundary (round-end income would
+ * pollute the money diff) — the action is still known to succeed.
+ */
 export type ConfirmOutcome =
-  | { ok: true; cost: number; balanceAfter: number }
+  | { ok: true; cost?: number; balanceAfter?: number }
   | { ok: false; error: string }
 
 interface ActionDockProps {
@@ -303,7 +307,7 @@ function Confirm({
   const reason = outcome && !outcome.ok ? outcome.error : disabledReason
   return (
     <div className="flex flex-col gap-1.5">
-      {outcome?.ok && (
+      {outcome?.ok && outcome.cost !== undefined && (
         <p
           className="text-[12.5px] leading-snug tabular-nums"
           data-testid="confirm-cost"

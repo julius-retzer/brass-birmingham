@@ -103,6 +103,16 @@ function rehydrateSnapshot(snapshot: unknown): unknown {
   return clone
 }
 
+// Shadow actors for legality probes. getPersistedSnapshot() can share
+// nested references with the live context, and probes that EXECUTE a
+// confirm would reach engine code paths with in-place mutations — always
+// probe a deep clone (rehydrateSnapshot structured-clones and keeps the
+// markets' Infinity rows intact).
+const createProbeActor = (actorRef: { getPersistedSnapshot: () => unknown }) =>
+  createActor(gameStore, {
+    snapshot: rehydrateSnapshot(actorRef.getPersistedSnapshot()) as never,
+  })
+
 const snapshotCurrentPlayerId = (snapshot: unknown): string | null => {
   const ctx = (
     snapshot as { context: { players: Player[]; currentPlayerIndex: number } }
@@ -334,15 +344,11 @@ function V2GameInner({
 
   const is = (path: string) => state.matches(path as never)
 
-  // Escape backs out of the current step: close an open ledger first,
-  // otherwise unwind the in-flight action exactly like the Cancel button.
+  // Escape unwinds the in-flight action exactly like the Cancel button.
+  // An open ledger swallows the keypress — PlayerLedger closes itself.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      if (ledgerFor) {
-        setLedgerFor(null)
-        return
-      }
+      if (e.key !== 'Escape' || ledgerFor) return
       const snap = actorRef.getSnapshot()
       if (snap.can({ type: 'CANCEL' })) send({ type: 'CANCEL' })
     }
@@ -398,9 +404,7 @@ function V2GameInner({
     )
     if (sellable.length === 0 || currentPlayer.hand.length === 0) return false
     try {
-      const probe = createActor(gameStore, {
-        snapshot: actorRef.getPersistedSnapshot() as never,
-      })
+      const probe = createProbeActor(actorRef)
       probe.start()
       probe.send({ type: 'SELL' })
       const firstCard = currentPlayer.hand[0]
@@ -443,9 +447,7 @@ function V2GameInner({
       const viable = new Set<IndustryType>()
       for (const industryType of INDUSTRY_TYPES) {
         if (!state.can({ type: 'SELECT_INDUSTRY_TYPE', industryType })) continue
-        const probe = createActor(gameStore, {
-          snapshot: actorRef.getPersistedSnapshot() as never,
-        })
+        const probe = createProbeActor(actorRef)
         probe.start()
         probe.send({ type: 'SELECT_INDUSTRY_TYPE', industryType })
         const snap = probe.getSnapshot()
@@ -497,9 +499,7 @@ function V2GameInner({
     if (!confirmEvent || !currentPlayer) return null
     if (!state.can(confirmEvent)) return null // machine guard already refuses
     try {
-      const probe = createActor(gameStore, {
-        snapshot: actorRef.getPersistedSnapshot() as never,
-      })
+      const probe = createProbeActor(actorRef)
       probe.start()
       const moneyBefore = currentPlayer.money
       probe.send(confirmEvent)
@@ -510,6 +510,12 @@ function V2GameInner({
       }
       const me = after.players.find((p) => p.id === currentPlayer.id)
       if (!me) return null
+      // If the probed action closed the round (or the era), the cascade
+      // collects round-end income into the same money diff — the action
+      // still succeeds, but the price would be wrong, so omit it.
+      if (after.round !== ctx.round || after.era !== ctx.era) {
+        return { ok: true }
+      }
       return { ok: true, cost: moneyBefore - me.money, balanceAfter: me.money }
     } catch {
       return null // fail open — the confirm button keeps its default gating

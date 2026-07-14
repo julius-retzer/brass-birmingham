@@ -341,6 +341,7 @@ export function BoardMap({
         onPointerCancel={onPointerUp}
         // NOT role="img": that would flatten the tree and hide the city /
         // route buttons from assistive tech and accessibility tooling.
+        role="group"
         aria-label="Game board map"
       >
         <defs>

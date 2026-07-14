@@ -1123,6 +1123,7 @@ function LinkIcons({
   y,
 }: { n: number; ink: string; x: number; y: number }) {
   if (n <= 0) return null
+  const count = Math.min(n, 2)
   return (
     <g
       transform={`translate(${x}, ${y})`}
@@ -1130,8 +1131,10 @@ function LinkIcons({
       strokeWidth="1.3"
       strokeLinecap="round"
     >
-      {Array.from({ length: Math.min(n, 2) }, (_, i) => (
-        <g key={i} transform={`translate(${i * 13}, 0)`}>
+      {/* stacked VERTICALLY: side by side they collide with the income
+          figure on the narrow tile face */}
+      {Array.from({ length: count }, (_, i) => (
+        <g key={i} transform={`translate(0, ${(i - (count - 1) / 2) * 6.5})`}>
           <circle cx="0" cy="0" r="1.4" fill={ink} stroke="none" />
           <path d="M1.4 0 H7.6" />
           <circle cx="9" cy="0" r="1.4" fill={ink} stroke="none" />
@@ -1205,51 +1208,55 @@ function BuiltTile({ occ }: { occ: BuiltIndustry }) {
           ))}
         </g>
       )}
-      {/* printed stats: VP roundel · link icons · income advance */}
-      <g>
-        <circle
-          cx="9.5"
-          cy={SLOT - 14}
-          r="6.6"
-          fill={occ.flipped ? 'rgba(74,61,41,.14)' : '#f2e6c8'}
-          stroke={occ.flipped ? '#4a3d29' : '#16130f'}
-          strokeWidth="0.9"
-        />
-        <text
-          x="9.5"
-          y={SLOT - 11}
-          textAnchor="middle"
-          fill="#2a2014"
-          style={{
-            fontFamily: 'var(--bb-body)',
-            fontWeight: 700,
-            fontSize: 8.6,
-          }}
-        >
-          {occ.tile.victoryPoints}
-          <title>victory points when flipped</title>
-        </text>
-        <LinkIcons
-          n={occ.tile.linkScoringIcons}
-          ink={statInk}
-          x={occ.tile.linkScoringIcons > 1 ? 19 : 23}
-          y={SLOT - 14}
-        />
-        <text
-          x={SLOT - 4}
-          y={SLOT - 10.5}
-          textAnchor="end"
-          fill={statInk}
-          style={{
-            fontFamily: 'var(--bb-body)',
-            fontWeight: 700,
-            fontSize: 8.6,
-          }}
-        >
-          {`+${occ.tile.incomeAdvancement}`}
-          <title>income advance when flipped</title>
-        </text>
-      </g>
+      {/* printed stats: VP roundel · link icons · income advance.
+          Like the physical tile, the scoring side shows ONLY when the
+          tile is flipped — an unflipped tile shows its working face. */}
+      {occ.flipped && (
+        <g>
+          <circle
+            cx="9.5"
+            cy={SLOT - 14}
+            r="6.6"
+            fill="rgba(74,61,41,.14)"
+            stroke="#4a3d29"
+            strokeWidth="0.9"
+          />
+          <text
+            x="9.5"
+            y={SLOT - 11}
+            textAnchor="middle"
+            fill="#2a2014"
+            style={{
+              fontFamily: 'var(--bb-body)',
+              fontWeight: 700,
+              fontSize: 8.6,
+            }}
+          >
+            {occ.tile.victoryPoints}
+            <title>victory points scored</title>
+          </text>
+          <LinkIcons
+            n={occ.tile.linkScoringIcons}
+            ink={statInk}
+            x={21}
+            y={SLOT - 14}
+          />
+          <text
+            x={SLOT - 4}
+            y={SLOT - 10.5}
+            textAnchor="end"
+            fill={statInk}
+            style={{
+              fontFamily: 'var(--bb-body)',
+              fontWeight: 700,
+              fontSize: 8.6,
+            }}
+          >
+            {`+${occ.tile.incomeAdvancement}`}
+            <title>income advance</title>
+          </text>
+        </g>
+      )}
       {/* flipped seal */}
       {occ.flipped && (
         <g transform={`translate(${SLOT - 9}, 22)`}>

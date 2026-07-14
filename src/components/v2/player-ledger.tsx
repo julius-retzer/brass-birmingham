@@ -271,36 +271,47 @@ export function PlayerLedger({
                           <span
                             className="flex items-center gap-0.5 text-[12px]"
                             style={{ color: 'rgba(231,215,177,.6)' }}
-                            title="link-scoring icons on the tile"
+                            title={`${r.tile.linkScoringIcons} link-scoring icon(s) on the tile`}
                           >
-                            <svg
-                              width="15"
-                              height="8"
-                              viewBox="0 0 15 8"
-                              aria-hidden
-                            >
-                              <circle
-                                cx="2"
-                                cy="4"
-                                r="1.6"
-                                fill="currentColor"
-                              />
-                              <line
-                                x1="3.6"
-                                y1="4"
-                                x2="11"
-                                y2="4"
-                                stroke="currentColor"
-                                strokeWidth="1.4"
-                              />
-                              <circle
-                                cx="12.6"
-                                cy="4"
-                                r="1.6"
-                                fill="currentColor"
-                              />
-                            </svg>
-                            ×{r.tile.linkScoringIcons}
+                            {/* one •—• per printed icon, like the physical
+                                tile face (0 icons → an em-dash) */}
+                            {r.tile.linkScoringIcons === 0 ? (
+                              <span style={{ opacity: 0.5 }}>—</span>
+                            ) : (
+                              Array.from(
+                                { length: r.tile.linkScoringIcons },
+                                (_, k) => (
+                                  <svg
+                                    key={k}
+                                    width="15"
+                                    height="8"
+                                    viewBox="0 0 15 8"
+                                    aria-hidden
+                                  >
+                                    <circle
+                                      cx="2"
+                                      cy="4"
+                                      r="1.6"
+                                      fill="currentColor"
+                                    />
+                                    <line
+                                      x1="3.6"
+                                      y1="4"
+                                      x2="11"
+                                      y2="4"
+                                      stroke="currentColor"
+                                      strokeWidth="1.4"
+                                    />
+                                    <circle
+                                      cx="12.6"
+                                      cy="4"
+                                      r="1.6"
+                                      fill="currentColor"
+                                    />
+                                  </svg>
+                                ),
+                              )
+                            )}
                           </span>
                           <span
                             className="text-[12px] tabular-nums"

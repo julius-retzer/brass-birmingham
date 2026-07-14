@@ -24,6 +24,7 @@ import {
   type Player,
   gameStore,
 } from '~/store/gameStore'
+import { refreshEmbeddedTileStats } from '~/store/saveMigration'
 import {
   ActionDock,
   type ConfirmOutcome,
@@ -87,6 +88,9 @@ function clearSave() {
 // iron markets' `maxCubes: Infinity` fallback rows into `null`, which would
 // make the engine's `cubes < maxCubes` refill checks silently fail after a
 // resume. Restore Infinity before handing any snapshot to createActor.
+// Saves also embed COPIES of the industry tile stats — refresh them from
+// the audited definitions so a pre-audit game doesn't keep playing with
+// the old printed values (see saveMigration.ts).
 function rehydrateSnapshot(snapshot: unknown): unknown {
   const clone = structuredClone(snapshot) as {
     context?: {
@@ -99,6 +103,11 @@ function rehydrateSnapshot(snapshot: unknown): unknown {
     for (const row of market) {
       if (row && row.maxCubes === null) row.maxCubes = Infinity
     }
+  }
+  try {
+    refreshEmbeddedTileStats(clone)
+  } catch {
+    // malformed save — let SaveRecoveryBoundary deal with it downstream
   }
   return clone
 }

@@ -17,6 +17,7 @@ import {
   type Player,
   gameStore,
 } from '~/store/gameStore'
+import { refreshEmbeddedTileStats } from '~/store/saveMigration'
 import { ActionDock, SELLABLE, getHandSelection } from '../action-dock'
 import { linkKey } from '../board/board-data'
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from '../board/board-map'
@@ -78,6 +79,11 @@ function rehydrate(snapshot: unknown): unknown {
     for (const row of market) {
       if (row && row.maxCubes === null) row.maxCubes = Infinity
     }
+  }
+  try {
+    refreshEmbeddedTileStats(clone)
+  } catch {
+    // tolerate malformed frames — the server remains authoritative
   }
   return clone
 }

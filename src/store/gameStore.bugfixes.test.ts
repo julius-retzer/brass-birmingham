@@ -62,6 +62,17 @@ const buildViaLocationCard = (
   unwind(a)
   a.send({ type: 'BUILD' } as any)
   a.send({ type: 'SELECT_CARD', cardId: cur(a).hand[0].id } as any)
+  // Since the 2026-07-15 slot-guard fix an incompatible industry is refused
+  // right here (no transition) — report that as the rejection reason.
+  if (
+    !(a.getSnapshot() as any).can({
+      type: 'SELECT_INDUSTRY_TYPE',
+      industryType,
+    })
+  ) {
+    unwind(a)
+    return `guard refused ${industryType} at ${city}`
+  }
   a.send({ type: 'SELECT_INDUSTRY_TYPE', industryType } as any)
   a.send({ type: 'SELECT_LOCATION', cityId: city } as any) // no-op for real location cards
   a.send({ type: 'CONFIRM' } as any)

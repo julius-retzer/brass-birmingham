@@ -1,4 +1,4 @@
-import { type Actor, StateFrom, assign, setup } from 'xstate'
+import { type Actor, StateFrom, and, assign, setup } from 'xstate'
 import {
   type CityId,
   FARM_BREWERIES,
@@ -2754,7 +2754,17 @@ export const gameStore = setup({
                       {
                         target: 'confirmingBuild',
                         actions: 'selectIndustryType',
-                        guard: 'isLocationCardSelected',
+                        // BOTH guards: a real location card fixes the site,
+                        // and canSelectIndustryType checks the industry has
+                        // a compatible slot (or legal overbuild) THERE.
+                        // Guard-order bug fixed 2026-07-15: with only
+                        // isLocationCardSelected, the wizard reached an
+                        // enabled Confirm for brewery at Birmingham (no
+                        // brewery slot) and failed only at execution.
+                        guard: and([
+                          'isLocationCardSelected',
+                          'canSelectIndustryType',
+                        ]),
                       },
                       {
                         target: 'selectingLocation',

@@ -152,6 +152,8 @@ export interface BoardMapProps {
   networkCities?: ReadonlySet<string> | null
   /** The viewing player's colour — tints the network markers and legend. */
   networkColor?: string | null
+  /** Cities spotlit while a hand card is hovered (soft preview hint). */
+  hoverCities?: ReadonlySet<string> | null
 }
 
 /* ================================================================ */
@@ -169,6 +171,7 @@ export function BoardMap({
   onLinkClick,
   networkCities = null,
   networkColor = null,
+  hoverCities = null,
 }: BoardMapProps) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const [vb, setVb] = useState({ x: 0, y: 0, w: VIEW_W, h: VIEW_H })
@@ -745,6 +748,7 @@ export function BoardMap({
                 dimmed={pickingCity && !isLegal && selectedCity !== id}
                 inNetwork={networkCities?.has(id) ?? false}
                 networkColor={networkColor}
+                hoverHint={hoverCities?.has(id) ?? false}
                 onClick={() => {
                   if (!wasDrag() && pickingCity) onCityClick?.(id)
                 }}
@@ -949,6 +953,7 @@ function CityPlate({
   onClick,
   inNetwork = false,
   networkColor = null,
+  hoverHint = false,
 }: {
   cityId: CityId
   occupants: (BuiltIndustry | null)[]
@@ -959,6 +964,7 @@ function CityPlate({
   onClick: () => void
   inNetwork?: boolean
   networkColor?: string | null
+  hoverHint?: boolean
 }) {
   const pos = cityPos[cityId]
   const slots = cityIndustrySlots[cityId] ?? []
@@ -995,6 +1001,22 @@ function CityPlate({
         transition: 'opacity .2s',
       }}
     >
+      {/* hovered-card spotlight — a dashed parchment ring */}
+      {hoverHint && (
+        <rect
+          x="-5.5"
+          y="-5.5"
+          width={plateW + 11}
+          height={plateH + 11}
+          rx={isFarm ? 16 : 11}
+          fill="rgba(231,215,177,.08)"
+          stroke="#e7d7b1"
+          strokeOpacity="0.95"
+          strokeWidth="2.2"
+          strokeDasharray="6 4"
+          pointerEvents="none"
+        />
+      )}
       {/* your-network band — sits outside the plate, under the legal ring */}
       {inNetwork && networkColor && (
         <rect

@@ -12,6 +12,8 @@ export interface HandTrayProps {
   onSelect?: (cardId: string) => void
   selectedIds?: string[]
   hint?: string | null
+  /** Hover preview: the shell highlights the card's targets on the map. */
+  onHoverCard?: (card: GameCard | null) => void
 }
 
 export function HandTray({
@@ -20,6 +22,7 @@ export function HandTray({
   onSelect,
   selectedIds = [],
   hint,
+  onHoverCard,
 }: HandTrayProps) {
   const n = hand.length
   const selecting = canSelect !== null
@@ -48,28 +51,39 @@ export function HandTray({
             ? (canSelect?.(card.id) ?? false) || selected
             : false
           return (
-            <button
+            // The fan transform and hover events live on a wrapper: mouse
+            // events don't fire on disabled buttons, but the hover preview
+            // should work even when the hand is display-only.
+            <span
               key={card.id}
-              type="button"
-              className="bb2-card"
-              data-testid={`card-${card.id}`}
-              data-selected={selected || undefined}
-              data-dimmed={(selecting && !enabled && !selected) || undefined}
-              disabled={selecting ? !enabled : true}
-              onClick={() => enabled && onSelect?.(card.id)}
+              className="bb2-card-seat"
               style={{
                 transform: `rotate(${angle}deg) translateY(${lift}px)`,
                 zIndex: i,
-                cursor: selecting
-                  ? enabled
-                    ? 'pointer'
-                    : 'not-allowed'
-                  : 'default',
               }}
-              aria-label={`Card: ${card.id}`}
+              onMouseEnter={() => onHoverCard?.(card)}
+              onMouseLeave={() => onHoverCard?.(null)}
             >
-              <CardFaceContent card={card} />
-            </button>
+              <button
+                type="button"
+                className="bb2-card"
+                data-testid={`card-${card.id}`}
+                data-selected={selected || undefined}
+                data-dimmed={(selecting && !enabled && !selected) || undefined}
+                disabled={selecting ? !enabled : true}
+                onClick={() => enabled && onSelect?.(card.id)}
+                style={{
+                  cursor: selecting
+                    ? enabled
+                      ? 'pointer'
+                      : 'not-allowed'
+                    : 'default',
+                }}
+                aria-label={`Card: ${card.id}`}
+              >
+                <CardFaceContent card={card} />
+              </button>
+            </span>
           )
         })}
         {n === 0 && (

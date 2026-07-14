@@ -16,8 +16,13 @@ import { Component, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { createActor } from 'xstate'
 import { Toaster } from '~/components/ui/sonner'
-import { type CityId, cities, connections } from '~/data/board'
-import { type IndustryType } from '~/data/cards'
+import {
+  type CityId,
+  cities,
+  cityIndustrySlots,
+  connections,
+} from '~/data/board'
+import { type Card, type IndustryType } from '~/data/cards'
 import {
   type GameEvent,
   type GameStoreSnapshot,
@@ -328,6 +333,7 @@ function V2GameInner({
       : null,
   )
   const [ledgerFor, setLedgerFor] = useState<string | null>(null)
+  const [hoveredCard, setHoveredCard] = useState<Card | null>(null)
 
   const ctx = state.context
   const currentPlayer: Player | undefined = ctx.players[ctx.currentPlayerIndex]
@@ -577,6 +583,38 @@ function V2GameInner({
     [currentPlayer],
   )
 
+  // Hovering a hand card previews its targets on the map: a location
+  // card spotlights its city; an industry card spotlights cities with a
+  // matching slot inside the player's network (anywhere while they have
+  // no presence). A soft HINT for orientation — build legality proper is
+  // still decided by the machine when the flow starts.
+  const hoverCities = useMemo(() => {
+    if (!hoveredCard || !currentPlayer) return null
+    if (hoveredCard.type === 'location') {
+      return new Set<string>([hoveredCard.location])
+    }
+    if (hoveredCard.type !== 'industry') return null // wilds: anywhere
+    const network = networkCities ?? new Set<CityId>()
+    const anywhere = network.size === 0
+    const set = new Set<string>()
+    for (const [cityId, slots] of Object.entries(cityIndustrySlots)) {
+      if (!anywhere && !network.has(cityId as CityId)) continue
+      if (
+        slots.some((slot) =>
+          hoveredCard.industries.some((t) => slot.includes(t)),
+        )
+      ) {
+        set.add(cityId)
+      }
+    }
+    return set
+  }, [hoveredCard, currentPlayer, networkCities])
+
+  // A lingering hover from the previous turn must not haunt the next one.
+  useEffect(() => {
+    setHoveredCard(null)
+  }, [currentPlayer?.id])
+
   const boardPrompt = useMemo(() => {
     if (pickingSite) {
       const t = ctx.selectedIndustryTile?.type
@@ -779,6 +817,7 @@ function V2GameInner({
               networkColor={
                 needsReveal ? null : PLAYER_FILL[currentPlayer.color]
               }
+              hoverCities={needsReveal ? null : hoverCities}
             />
           </div>
         </div>
@@ -821,6 +860,7 @@ function V2GameInner({
           onSelect={(cardId) => send({ type: 'SELECT_CARD', cardId })}
           selectedIds={handSel?.selectedIds ?? []}
           hint={handSel?.hint ?? null}
+          onHoverCard={setHoveredCard}
         />
       )}
 

@@ -11,6 +11,7 @@ pinned by `src/data/industryTiles.test.ts`.
 | `player-mat-retail-night-bgg4231622.jpg` | Same board, night side | BoardGameGeek image 4231622 |
 | `retail-mfg-iv.jpg` | Close-up: retail Manufacturer IV = £8, 1 iron, 3 VP, income 6, 1 link icon | Crop of 4231621 |
 | `rulebook-prototype-mfg-iv-discrepancy.jpg` | The 2018 rulebook PDF's mat photo shows a PROTOTYPE: its Manufacturer IV reads £14 / income 7, which does NOT match the retail component | Crop of Roxley rulebook PDF p.5 (files.roxley.com/Brass-Birmingham-Rulebook-2018.11.20-highlights.pdf, rendered at 1200 dpi) |
+| `board-retail-day-bgg4231616.jpg` | RETAIL game board, flat photo — source for the board-graph audit (city slots, connection era types, merchant bonuses); board.ts matched it with NO deviations, pinned by `src/data/board.test.ts` | BoardGameGeek image 4231616, uploaded 2018-07-24 |
 
 ## How to read a mat slot
 

@@ -19,7 +19,7 @@ import {
 } from '~/store/gameStore'
 import { ActionDock, SELLABLE, getHandSelection } from '../action-dock'
 import { linkKey } from '../board/board-data'
-import { BoardMap } from '../board/board-map'
+import { BoardMap, PLAYER_FILL, playerNetworkCities } from '../board/board-map'
 import { HandTray } from '../hand-tray'
 import { GameOverScreen } from '../overlays'
 import { PlayerLedger } from '../player-ledger'
@@ -779,6 +779,8 @@ function MpTable({
               prompt={myTurn ? boardPrompt : null}
               onCityClick={onCityClick}
               onLinkClick={onLinkClick}
+              networkCities={me ? playerNetworkCities(me) : null}
+              networkColor={me ? PLAYER_FILL[me.color] : null}
             />
           </div>
         </div>

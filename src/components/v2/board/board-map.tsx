@@ -10,6 +10,7 @@ import {
   cities,
   cityIndustrySlots,
   connections,
+  linkConnectedLocations,
 } from '~/data/board'
 import { type IndustryType } from '~/data/cards'
 import { type Merchant, type Player } from '~/store/gameStore'
@@ -45,6 +46,25 @@ export const PLAYER_FILL: Record<Player['color'], string> = {
 }
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII']
+
+/**
+ * The locations that are part of a player's network, exactly as the
+ * engine's canBuildLink guard computes it: cities holding one of their
+ * works, plus every location touched by one of their routes (the shared
+ * linkConnectedLocations helper covers the farm-brewery 3-way). An empty
+ * set means "no presence yet" — the rules then allow building anywhere,
+ * so callers should highlight nothing rather than everything.
+ */
+export function playerNetworkCities(player: Player): Set<CityId> {
+  const network = new Set<CityId>()
+  for (const industry of player.industries) network.add(industry.location)
+  for (const link of player.links) {
+    for (const loc of linkConnectedLocations(link.from, link.to)) {
+      network.add(loc)
+    }
+  }
+  return network
+}
 
 const SLOT = 52
 const SLOT_GAP = 4
@@ -128,6 +148,10 @@ export interface BoardMapProps {
   prompt?: string | null
   onCityClick?: (cityId: CityId) => void
   onLinkClick?: (from: CityId, to: CityId) => void
+  /** Locations in the viewing player's network (see playerNetworkCities). */
+  networkCities?: ReadonlySet<string> | null
+  /** The viewing player's colour — tints the network markers and legend. */
+  networkColor?: string | null
 }
 
 /* ================================================================ */
@@ -143,6 +167,8 @@ export function BoardMap({
   prompt = null,
   onCityClick,
   onLinkClick,
+  networkCities = null,
+  networkColor = null,
 }: BoardMapProps) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const [vb, setVb] = useState({ x: 0, y: 0, w: VIEW_W, h: VIEW_H })
@@ -698,6 +724,8 @@ export function BoardMap({
               cityId={id}
               entries={merchantsByCity.get(id) ?? []}
               dimmed={pickingCity}
+              inNetwork={networkCities?.has(id) ?? false}
+              networkColor={networkColor}
             />
           ))}
 
@@ -715,6 +743,8 @@ export function BoardMap({
                 isLegal={isLegal}
                 isSelected={selectedCity === id}
                 dimmed={pickingCity && !isLegal && selectedCity !== id}
+                inNetwork={networkCities?.has(id) ?? false}
+                networkColor={networkColor}
                 onClick={() => {
                   if (!wasDrag() && pickingCity) onCityClick?.(id)
                 }}
@@ -854,6 +884,18 @@ export function BoardMap({
           </svg>
           Other era
         </span>
+        {networkColor && networkCities && networkCities.size > 0 && (
+          <span className="flex items-center gap-1.5">
+            <span
+              className="inline-block h-3 w-4 rounded-[3px]"
+              style={{
+                background: `${networkColor}30`,
+                border: `1.5px solid ${networkColor}`,
+              }}
+            />
+            Your network
+          </span>
+        )}
       </div>
     </div>
   )
@@ -905,6 +947,8 @@ function CityPlate({
   dimmed,
   clickable,
   onClick,
+  inNetwork = false,
+  networkColor = null,
 }: {
   cityId: CityId
   occupants: (BuiltIndustry | null)[]
@@ -913,6 +957,8 @@ function CityPlate({
   dimmed: boolean
   clickable: boolean
   onClick: () => void
+  inNetwork?: boolean
+  networkColor?: string | null
 }) {
   const pos = cityPos[cityId]
   const slots = cityIndustrySlots[cityId] ?? []
@@ -933,9 +979,9 @@ function CityPlate({
       onClick={onClick}
       role={clickable ? 'button' : undefined}
       aria-label={
-        clickable
+        (clickable
           ? `${name}${isLegal ? ' — legal site' : ' — not a legal site'}`
-          : name
+          : name) + (inNetwork ? ' — in your network' : '')
       }
       tabIndex={clickable && isLegal ? 0 : undefined}
       onKeyDown={(e) => {
@@ -949,6 +995,22 @@ function CityPlate({
         transition: 'opacity .2s',
       }}
     >
+      {/* your-network band — sits outside the plate, under the legal ring */}
+      {inNetwork && networkColor && (
+        <rect
+          x="-7"
+          y="-7"
+          width={plateW + 14}
+          height={plateH + 14}
+          rx={isFarm ? 18 : 12}
+          fill={networkColor}
+          fillOpacity="0.13"
+          stroke={networkColor}
+          strokeOpacity="0.75"
+          strokeWidth="2"
+          pointerEvents="none"
+        />
+      )}
       <rect
         width={plateW}
         height={plateH}
@@ -1223,10 +1285,14 @@ function MerchantPlate({
   cityId,
   entries,
   dimmed,
+  inNetwork = false,
+  networkColor = null,
 }: {
   cityId: CityId
   entries: Merchant[]
   dimmed: boolean
+  inNetwork?: boolean
+  networkColor?: string | null
 }) {
   const pos = cityPos[cityId]
   const n = Math.max(entries.length, 2)
@@ -1249,6 +1315,21 @@ function MerchantPlate({
       opacity={dimmed ? 0.45 : closed ? 0.3 : 1}
       style={{ transition: 'opacity .2s' }}
     >
+      {inNetwork && networkColor && (
+        <rect
+          x="-7"
+          y="-7"
+          width={plateW + 14}
+          height={plateH + 14}
+          rx="12"
+          fill={networkColor}
+          fillOpacity="0.13"
+          stroke={networkColor}
+          strokeOpacity="0.75"
+          strokeWidth="2"
+          pointerEvents="none"
+        />
+      )}
       <rect
         width={plateW}
         height={plateH}

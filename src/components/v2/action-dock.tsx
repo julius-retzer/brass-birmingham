@@ -64,6 +64,8 @@ interface ActionDockProps {
   confirmOutcome?: ConfirmOutcome | null
   /** How many actions the player still has this turn (shown while choosing). */
   actionsLeft?: { remaining: number; max: number } | null
+  /** Deep-probed count of cities where the pending build can complete. */
+  legalSiteCount?: number | null
 }
 
 /* ----- hand-selection contract for the shell / HandTray ----- */
@@ -400,6 +402,7 @@ export function ActionDock({
   viableIndustries = null,
   confirmOutcome = null,
   actionsLeft = null,
+  legalSiteCount = null,
 }: ActionDockProps) {
   const is = (path: string) => snapshot.matches(path as never)
   const can = (event: GameEvent) => snapshot.can(event)
@@ -561,21 +564,27 @@ export function ActionDock({
     )
   }
   if (is('playing.action.building.selectingLocation')) {
-    const legalCount = (Object.keys(cities) as CityId[]).filter((id) =>
-      can({ type: 'SELECT_LOCATION', cityId: id }),
-    ).length
+    // Prefer the shell's deep-probed count (slot AND completable); fall
+    // back to the raw slot guard when the probe isn't wired (multiplayer).
+    const legalCount =
+      legalSiteCount ??
+      (Object.keys(cities) as CityId[]).filter((id) =>
+        can({ type: 'SELECT_LOCATION', cityId: id }),
+      ).length
     return (
       <Flow action="Build" steps={buildSteps} active={2} onCancel={cancel}>
         {legalCount === 0 ? (
           <Note>
             <b style={{ color: '#d68d80' }}>No city can take this build</b> —
-            every legal site is occupied or out of your network. Cancel and
-            choose a different industry or card.
+            every candidate site is occupied, out of your network, or cannot be
+            paid for or supplied. Cancel and choose a different industry or
+            card.
           </Note>
         ) : (
           <Note>
             Choose a site on the map — legal cities are ringed in brass and
-            pulsing. Illegal ones are dimmed.
+            pulsing. Dimmed cities are out of reach, full, or can't be paid for
+            or supplied from there.
           </Note>
         )}
       </Flow>
@@ -602,6 +611,16 @@ export function ActionDock({
                 <IndustryGlyph type={tile.type} size={14} />
                 {industryLabel(tile.type)} · level {tile.level} · £{tile.cost}
               </span>
+              {(tile.coalRequired > 0 || tile.ironRequired > 0) && (
+                <span
+                  className="inline-flex items-center gap-1 text-[11.5px]"
+                  style={{ color: 'rgba(231,215,177,.6)' }}
+                >
+                  + {tile.coalRequired > 0 && `${tile.coalRequired} coal`}
+                  {tile.coalRequired > 0 && tile.ironRequired > 0 && ' · '}
+                  {tile.ironRequired > 0 && `${tile.ironRequired} iron`}
+                </span>
+              )}
             </div>
           )}
           <div className="flex items-center gap-2">

@@ -32,7 +32,7 @@ import {
   getHandSelection,
 } from './action-dock'
 import { linkKey } from './board/board-data'
-import { BoardMap } from './board/board-map'
+import { BoardMap, PLAYER_FILL, playerNetworkCities } from './board/board-map'
 import { demoSnapshot } from './demo/demo-snapshot'
 import { demoSnapshotEraEnd } from './demo/demo-snapshot-era-end'
 import { demoSnapshotGameEnd } from './demo/demo-snapshot-game-end'
@@ -112,6 +112,28 @@ const createProbeActor = (actorRef: { getPersistedSnapshot: () => unknown }) =>
   createActor(gameStore, {
     snapshot: rehydrateSnapshot(actorRef.getPersistedSnapshot()) as never,
   })
+
+// From a snapshot sitting in building.selectingLocation, can the build be
+// COMPLETED at this city? The SELECT_LOCATION guard only checks the slot;
+// coal access and payment are validated at CONFIRM (guard + execution), so
+// a slot-legal city can still be a dead end (audit follow-up: iron works
+// at Coventry pulsed legal, then the confirm refused without a why).
+const buildCompletesAt = (
+  source: { getPersistedSnapshot: () => unknown },
+  cityId: CityId,
+): boolean => {
+  const probe = createProbeActor(source)
+  probe.start()
+  probe.send({ type: 'SELECT_LOCATION', cityId })
+  const snap = probe.getSnapshot()
+  let ok = false
+  if (snap.can({ type: 'CONFIRM' })) {
+    probe.send({ type: 'CONFIRM' })
+    ok = probe.getSnapshot().context.lastError === null
+  }
+  probe.stop()
+  return ok
+}
 
 const snapshotCurrentPlayerId = (snapshot: unknown): string | null => {
   const ctx = (
@@ -362,14 +384,26 @@ function V2GameInner({
   const pickingLink = is('playing.action.networking.selectingLink')
   const pickingSecondLink = is('playing.action.networking.selectingSecondLink')
 
-  const legalCities = useMemo(() => {
-    if (!pickingSite) return null
-    const set = new Set<string>()
+  // Cities where the build can actually be COMPLETED — slot-legal per the
+  // SELECT_LOCATION guard, then a full dry-run for coal access / payment.
+  // `slotOnlyCities` keeps the slot-legal-but-uncompletable ones so a click
+  // there can explain WHY instead of a generic refusal.
+  const [legalCities, slotOnlyCities] = useMemo(() => {
+    if (!pickingSite) return [null, null] as const
+    const legal = new Set<string>()
+    const slotOnly = new Set<string>()
     for (const id of Object.keys(cities) as CityId[]) {
-      if (state.can({ type: 'SELECT_LOCATION', cityId: id })) set.add(id)
+      if (!state.can({ type: 'SELECT_LOCATION', cityId: id })) continue
+      try {
+        if (buildCompletesAt(actorRef, id)) legal.add(id)
+        else slotOnly.add(id)
+      } catch {
+        legal.add(id) // fail open to the guard's answer
+      }
     }
-    return set
-  }, [pickingSite, state])
+    return [legal, slotOnly] as const
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickingSite, state, actorRef])
 
   const legalLinks = useMemo(() => {
     if (!pickingLink && !pickingSecondLink) return null
@@ -455,18 +489,22 @@ function V2GameInner({
           snap.matches({ playing: { action: { building: 'confirmingBuild' } } })
         ) {
           // Location card — the site is fixed, so dry-run the build itself.
-          probe.send({ type: 'CONFIRM' })
-          if (probe.getSnapshot().context.lastError === null) {
-            viable.add(industryType)
+          if (snap.can({ type: 'CONFIRM' })) {
+            probe.send({ type: 'CONFIRM' })
+            if (probe.getSnapshot().context.lastError === null) {
+              viable.add(industryType)
+            }
           }
         } else if (
           snap.matches({
             playing: { action: { building: 'selectingLocation' } },
           })
         ) {
-          // Industry / wild card — viable if any city would accept the tile.
+          // Industry / wild card — viable if the build COMPLETES somewhere
+          // (a slot-legal city can still lack coal access or funds).
           for (const id of Object.keys(cities) as CityId[]) {
-            if (snap.can({ type: 'SELECT_LOCATION', cityId: id })) {
+            if (!snap.can({ type: 'SELECT_LOCATION', cityId: id })) continue
+            if (buildCompletesAt(probe, id)) {
               viable.add(industryType)
               break
             }
@@ -523,6 +561,13 @@ function V2GameInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, actorRef, currentPlayer])
 
+  // "What belongs to me" at a glance — the viewing player's network, from
+  // the same shared helper the engine's guards use (never hand-derived).
+  const networkCities = useMemo(
+    () => (currentPlayer ? playerNetworkCities(currentPlayer) : null),
+    [currentPlayer],
+  )
+
   const boardPrompt = useMemo(() => {
     if (pickingSite) {
       const t = ctx.selectedIndustryTile?.type
@@ -545,12 +590,23 @@ function V2GameInner({
   ])
 
   const onCityClick = (cityId: CityId) => {
-    if (state.can({ type: 'SELECT_LOCATION', cityId })) {
+    const name = cities[cityId]?.name ?? cityId
+    if (slotOnlyCities?.has(cityId)) {
+      // The machine's guard would accept the slot, but the dry run shows
+      // the build can never be confirmed there — explain instead of
+      // letting the player walk into a dead Confirm step.
+      toast.error(
+        `${name} has a free slot, but the build can't be completed there — no coal/iron within reach, or you can't pay for it.`,
+      )
+      return
+    }
+    if (
+      state.can({ type: 'SELECT_LOCATION', cityId }) &&
+      (legalCities === null || legalCities.has(cityId))
+    ) {
       send({ type: 'SELECT_LOCATION', cityId })
     } else {
-      toast.error(
-        `${cities[cityId]?.name ?? cityId} is not a legal site for this build.`,
-      )
+      toast.error(`${name} is not a legal site for this build.`)
     }
   }
 
@@ -710,6 +766,10 @@ function V2GameInner({
               prompt={boardPrompt}
               onCityClick={onCityClick}
               onLinkClick={onLinkClick}
+              networkCities={needsReveal ? null : networkCities}
+              networkColor={
+                needsReveal ? null : PLAYER_FILL[currentPlayer.color]
+              }
             />
           </div>
         </div>
@@ -728,6 +788,7 @@ function V2GameInner({
                   remaining: ctx.actionsRemaining,
                   max: maxActions,
                 }}
+                legalSiteCount={pickingSite ? (legalCities?.size ?? 0) : null}
               />
             )}
           </div>

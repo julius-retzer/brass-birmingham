@@ -339,7 +339,8 @@ export function BoardMap({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        role="img"
+        // NOT role="img": that would flatten the tree and hide the city /
+        // route buttons from assistive tech and accessibility tooling.
         aria-label="Game board map"
       >
         <defs>
@@ -635,6 +636,19 @@ export function BoardMap({
                     fill="none"
                     stroke="transparent"
                     strokeWidth="22"
+                    role={pickingLink ? 'button' : undefined}
+                    aria-label={
+                      pickingLink
+                        ? `Route ${cities[conn.from]?.name ?? conn.from} — ${cities[conn.to]?.name ?? conn.to}${isLegal ? ' — legal route' : ' — not a legal route'}`
+                        : undefined
+                    }
+                    tabIndex={pickingLink && isLegal ? 0 : undefined}
+                    onKeyDown={(e) => {
+                      if (pickingLink && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault()
+                        onLinkClick?.(conn.from, conn.to)
+                      }
+                    }}
                     style={{
                       cursor: isLegal
                         ? 'pointer'
@@ -916,6 +930,19 @@ function CityPlate({
       data-legal={isLegal || undefined}
       opacity={dimmed ? 0.45 : 1}
       onClick={onClick}
+      role={clickable ? 'button' : undefined}
+      aria-label={
+        clickable
+          ? `${name}${isLegal ? ' — legal site' : ' — not a legal site'}`
+          : name
+      }
+      tabIndex={clickable && isLegal ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (clickable && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault()
+          onClick()
+        }
+      }}
       style={{
         cursor: clickable ? (isLegal ? 'pointer' : 'not-allowed') : 'default',
         transition: 'opacity .2s',

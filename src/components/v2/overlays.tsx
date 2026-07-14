@@ -123,6 +123,20 @@ export function GameOverScreen({
 
       <div className="bb2-panel w-full max-w-xl p-4">
         <div className="flex flex-col gap-2">
+          <div
+            className="flex items-center justify-end gap-4 px-3 text-[10.5px] font-semibold uppercase tracking-[0.14em]"
+            style={{ color: 'rgba(231,215,177,.45)' }}
+          >
+            <span className="flex items-center gap-1">
+              <LaurelIcon size={11} /> victory
+            </span>
+            <span className="flex items-center gap-1">
+              <IncomeIcon size={11} /> income
+            </span>
+            <span className="flex items-center gap-1">
+              <PoundIcon size={11} /> money
+            </span>
+          </div>
           {ranked.map((p, i) => (
             <div
               key={p.id}
@@ -164,6 +178,12 @@ export function GameOverScreen({
             </div>
           ))}
         </div>
+        <p
+          className="pt-3 text-center text-[11.5px]"
+          style={{ color: 'rgba(231,215,177,.4)' }}
+        >
+          Ties break by income, then by money in the treasury.
+        </p>
       </div>
 
       <button

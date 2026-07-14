@@ -4,6 +4,7 @@
 // Opened from a player's rail card: remaining industry tiles by type and
 // level (cost, VP, resource needs, next-buildable highlight), plus the
 // works and routes already on the board.
+import { useEffect } from 'react'
 import { type CityId, cities } from '~/data/board'
 import { type IndustryType } from '~/data/cards'
 import { type Player } from '~/store/gameStore'
@@ -49,6 +50,15 @@ export function PlayerLedger({
   isCurrent: boolean
   onClose: () => void
 }) {
+  // Escape closes the ledger — promised by the a11y note on the backdrop.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click-to-close is a convenience; Escape/close button are the accessible paths
     <div
@@ -110,6 +120,47 @@ export function PlayerLedger({
           >
             Lowest level builds first — the brass-ringed tile is the next one
             out of the mat. Greyed tiles cannot be built in the {era} era.
+          </p>
+          <p
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1.5 text-[11.5px]"
+            style={{ color: 'rgba(231,215,177,.45)' }}
+          >
+            <span className="flex items-center gap-1">
+              <span
+                className="inline-block h-[7px] w-[7px] rounded-[1.5px]"
+                style={{ background: '#55504a', border: '1px solid #8d867c' }}
+              />
+              coal to build
+            </span>
+            <span className="flex items-center gap-1">
+              <span
+                className="inline-block h-[7px] w-[7px] rounded-[1.5px]"
+                style={{ background: '#c2632f', border: '1px solid #7c3d1c' }}
+              />
+              iron to build
+            </span>
+            <span className="flex items-center gap-1">
+              <LaurelIcon size={11} /> victory points
+            </span>
+            <span className="flex items-center gap-1">
+              <IncomeIcon size={11} /> income when flipped
+            </span>
+            <span className="flex items-center gap-1">
+              <svg width="15" height="8" viewBox="0 0 15 8" aria-hidden>
+                <circle cx="2" cy="4" r="1.6" fill="currentColor" />
+                <line
+                  x1="3.6"
+                  y1="4"
+                  x2="11"
+                  y2="4"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                />
+                <circle cx="12.6" cy="4" r="1.6" fill="currentColor" />
+              </svg>
+              link-scoring icons
+            </span>
+            <span>×N tiles left</span>
           </p>
           <div className="grid grid-cols-2 gap-x-6 gap-y-4 pt-3 sm:grid-cols-3">
             {INDUSTRY_TYPES.map((t) => {

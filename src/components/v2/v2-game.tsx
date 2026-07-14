@@ -17,12 +17,20 @@ import { toast } from 'sonner'
 import { createActor } from 'xstate'
 import { Toaster } from '~/components/ui/sonner'
 import { type CityId, cities, connections } from '~/data/board'
+import { type IndustryType } from '~/data/cards'
 import {
+  type GameEvent,
   type GameStoreSnapshot,
   type Player,
   gameStore,
 } from '~/store/gameStore'
-import { ActionDock, SELLABLE, getHandSelection } from './action-dock'
+import {
+  ActionDock,
+  type ConfirmOutcome,
+  INDUSTRY_TYPES,
+  SELLABLE,
+  getHandSelection,
+} from './action-dock'
 import { linkKey } from './board/board-data'
 import { BoardMap } from './board/board-map'
 import { demoSnapshot } from './demo/demo-snapshot'
@@ -326,6 +334,22 @@ function V2GameInner({
 
   const is = (path: string) => state.matches(path as never)
 
+  // Escape backs out of the current step: close an open ledger first,
+  // otherwise unwind the in-flight action exactly like the Cancel button.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (ledgerFor) {
+        setLedgerFor(null)
+        return
+      }
+      const snap = actorRef.getSnapshot()
+      if (snap.can({ type: 'CANCEL' })) send({ type: 'CANCEL' })
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [ledgerFor, actorRef, send])
+
   /* ---------- board interaction state ---------- */
 
   const pickingSite = is('playing.action.building.selectingLocation')
@@ -406,6 +430,93 @@ function V2GameInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, actorRef, currentPlayer, ctx.merchants])
 
+  // Which industries can actually complete a build with the selected card?
+  // The machine validates slot compatibility for a REAL location card only
+  // inside executeBuildAction (audit: cotton at Coventry sailed through
+  // Card → Industry → Confirm and failed at the very end). Walk a detached
+  // shadow actor through each industry and keep the ones that survive —
+  // the engine's own rules stay the single source of truth.
+  const viableIndustries = useMemo(() => {
+    if (!is('playing.action.building.selectingIndustryType') || !currentPlayer)
+      return null
+    try {
+      const viable = new Set<IndustryType>()
+      for (const industryType of INDUSTRY_TYPES) {
+        if (!state.can({ type: 'SELECT_INDUSTRY_TYPE', industryType })) continue
+        const probe = createActor(gameStore, {
+          snapshot: actorRef.getPersistedSnapshot() as never,
+        })
+        probe.start()
+        probe.send({ type: 'SELECT_INDUSTRY_TYPE', industryType })
+        const snap = probe.getSnapshot()
+        if (
+          snap.matches({ playing: { action: { building: 'confirmingBuild' } } })
+        ) {
+          // Location card — the site is fixed, so dry-run the build itself.
+          probe.send({ type: 'CONFIRM' })
+          if (probe.getSnapshot().context.lastError === null) {
+            viable.add(industryType)
+          }
+        } else if (
+          snap.matches({
+            playing: { action: { building: 'selectingLocation' } },
+          })
+        ) {
+          // Industry / wild card — viable if any city would accept the tile.
+          for (const id of Object.keys(cities) as CityId[]) {
+            if (snap.can({ type: 'SELECT_LOCATION', cityId: id })) {
+              viable.add(industryType)
+              break
+            }
+          }
+        }
+        probe.stop()
+      }
+      return viable
+    } catch {
+      return null // fail open — buttons fall back to the machine's can()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, actorRef, currentPlayer])
+
+  // Dry-run the pending confirm on a shadow actor: surfaces the engine's
+  // exact refusal BEFORE the player commits, and prices the action all-in
+  // (tile cost plus any coal/iron bought from the market) when it works.
+  const confirmOutcome = useMemo((): ConfirmOutcome | null => {
+    const confirmEvent: GameEvent | null = is(
+      'playing.action.building.confirmingBuild',
+    )
+      ? { type: 'CONFIRM' }
+      : is('playing.action.networking.confirmingLink')
+        ? { type: 'CONFIRM' }
+        : is('playing.action.networking.confirmingDoubleLink')
+          ? { type: 'EXECUTE_DOUBLE_NETWORK_ACTION' }
+          : is('playing.action.developing.confirmingDevelop')
+            ? { type: 'CONFIRM' }
+            : null
+    if (!confirmEvent || !currentPlayer) return null
+    if (!state.can(confirmEvent)) return null // machine guard already refuses
+    try {
+      const probe = createActor(gameStore, {
+        snapshot: actorRef.getPersistedSnapshot() as never,
+      })
+      probe.start()
+      const moneyBefore = currentPlayer.money
+      probe.send(confirmEvent)
+      const after = probe.getSnapshot().context
+      probe.stop()
+      if (after.lastError !== null) {
+        return { ok: false, error: after.lastError }
+      }
+      const me = after.players.find((p) => p.id === currentPlayer.id)
+      if (!me) return null
+      return { ok: true, cost: moneyBefore - me.money, balanceAfter: me.money }
+    } catch {
+      return null // fail open — the confirm button keeps its default gating
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, actorRef, currentPlayer])
+
   const boardPrompt = useMemo(() => {
     if (pickingSite) {
       const t = ctx.selectedIndustryTile?.type
@@ -465,10 +576,17 @@ function V2GameInner({
     }
   }
 
-  const selectedLinks = [
-    ...(ctx.selectedLink ? [ctx.selectedLink] : []),
-    ...(ctx.selectedSecondLink ? [ctx.selectedSecondLink] : []),
-  ]
+  // Selection highlights only belong to a live flow — after an aborted or
+  // failed action the context keeps its last selections, and echoing them
+  // would leave a stale brass ring on the map (audit finding).
+  const inBuildFlow = is('playing.action.building')
+  const inNetworkFlow = is('playing.action.networking')
+  const selectedLinks = inNetworkFlow
+    ? [
+        ...(ctx.selectedLink ? [ctx.selectedLink] : []),
+        ...(ctx.selectedSecondLink ? [ctx.selectedSecondLink] : []),
+      ]
+    : []
 
   /* ---------- hand selection ---------- */
 
@@ -581,7 +699,7 @@ function V2GameInner({
               merchants={ctx.merchants}
               legalCities={legalCities}
               legalLinks={legalLinks}
-              selectedCity={ctx.selectedLocation}
+              selectedCity={inBuildFlow ? ctx.selectedLocation : null}
               selectedLinks={selectedLinks}
               prompt={boardPrompt}
               onCityClick={onCityClick}
@@ -598,6 +716,12 @@ function V2GameInner({
                 send={send}
                 currentPlayer={currentPlayer}
                 canSellAnything={canSellAnything}
+                viableIndustries={viableIndustries}
+                confirmOutcome={confirmOutcome}
+                actionsLeft={{
+                  remaining: ctx.actionsRemaining,
+                  max: maxActions,
+                }}
               />
             )}
           </div>

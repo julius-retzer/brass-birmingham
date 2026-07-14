@@ -240,6 +240,9 @@ test('era transition: one pass ends the Canal Era and opens the Rail Era', async
   await expect(page.getByTestId('era-plate')).toHaveText('canal era')
   await expect(page.getByTestId('round-chip')).toHaveText('Round 10')
 
+  // Passing is two-tap: the first click arms the button, the second confirms.
+  await page.getByTestId('action-pass').click()
+  await expect(page.getByTestId('action-pass')).toContainText('Really pass?')
   await page.getByTestId('action-pass').click()
 
   // Era scoring runs, the board turns over, and the Rail Era begins.
@@ -265,11 +268,12 @@ test('capstone: play the final turns through the UI to the winner', async ({
   // Play the game out: pass every remaining turn (8 passes across three
   // players, with the hotseat curtain between turns) until the books close.
   const finished = page.getByText('The books are closed')
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 45; i++) {
     if (await finished.isVisible().catch(() => false)) break
     await revealIfGated(page)
     const pass = page.getByTestId('action-pass')
     if (await pass.isVisible().catch(() => false)) {
+      // Two-tap pass: the loop's next iteration lands the confirming click.
       await pass.click()
     }
     await page.waitForTimeout(50)

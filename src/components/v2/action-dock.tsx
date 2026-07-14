@@ -3,7 +3,7 @@
 // The action dock — every turn decision happens here, driven entirely by
 // the machine (`snapshot.matches` for the step, `snapshot.can` for legality).
 // Card discards are made in the HandTray fan; this dock shows the step rail.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { type CityId, cities } from '~/data/board'
 import { type IndustryType } from '~/data/cards'
 import {
@@ -25,7 +25,7 @@ import {
   SellIcon,
 } from './icons'
 
-const INDUSTRY_TYPES: IndustryType[] = [
+export const INDUSTRY_TYPES: IndustryType[] = [
   'cotton',
   'coal',
   'iron',
@@ -39,12 +39,27 @@ export const SELLABLE: IndustryType[] = ['cotton', 'manufacturer', 'pottery']
 const cityName = (id: CityId | string | null | undefined) =>
   id ? (cities[id as CityId]?.name ?? id) : '—'
 
+/** On-board 'manufacturer' reads as "Goods" everywhere in the UI. */
+const industryLabel = (t: IndustryType | string) =>
+  t === 'manufacturer' ? 'goods' : t
+
+/** Result of dry-running the pending confirm on a shadow actor. */
+export type ConfirmOutcome =
+  | { ok: true; cost: number; balanceAfter: number }
+  | { ok: false; error: string }
+
 interface ActionDockProps {
   snapshot: GameStoreSnapshot
   send: (event: GameEvent) => void
   currentPlayer: Player
   /** Exact machine-probed check: can any sale legally happen this turn? */
   canSellAnything?: boolean
+  /** Machine-probed set of industries that can complete the current build. */
+  viableIndustries?: Set<IndustryType> | null
+  /** Machine-probed dry run of the step's confirm (cost or exact refusal). */
+  confirmOutcome?: ConfirmOutcome | null
+  /** How many actions the player still has this turn (shown while choosing). */
+  actionsLeft?: { remaining: number; max: number } | null
 }
 
 /* ----- hand-selection contract for the shell / HandTray ----- */
@@ -275,29 +290,99 @@ function Confirm({
   onClick,
   children,
   disabledReason,
+  outcome,
 }: {
   disabled: boolean
   onClick: () => void
   children: React.ReactNode
   disabledReason?: string
+  /** Shadow-actor dry run: prices the action, or blocks it with the engine's reason. */
+  outcome?: ConfirmOutcome | null
 }) {
+  const refused = outcome ? !outcome.ok : false
+  const reason = outcome && !outcome.ok ? outcome.error : disabledReason
   return (
     <div className="flex flex-col gap-1.5">
+      {outcome?.ok && (
+        <p
+          className="text-[12.5px] leading-snug tabular-nums"
+          data-testid="confirm-cost"
+          style={{ color: 'rgba(231,215,177,.65)' }}
+        >
+          {outcome.cost > 0 ? (
+            <>
+              All-in cost{' '}
+              <b style={{ color: 'var(--bb-brass-bright)' }}>£{outcome.cost}</b>{' '}
+              — leaves £{outcome.balanceAfter} in the treasury.
+            </>
+          ) : (
+            'Costs nothing from the treasury.'
+          )}
+        </p>
+      )}
       <button
         type="button"
         className="bb2-confirm"
         data-testid="confirm-action"
-        disabled={disabled}
+        disabled={disabled || refused}
         onClick={onClick}
       >
         {children}
       </button>
-      {disabled && disabledReason && (
+      {(disabled || refused) && reason && (
         <p className="text-[12.5px] leading-snug" style={{ color: '#d68d80' }}>
-          {disabledReason}
+          {reason}
         </p>
       )}
     </div>
+  )
+}
+
+/**
+ * Passing forfeits the whole turn with no undo, so it arms like the
+ * New-game button: first tap asks, second tap within 4s confirms.
+ */
+function PassButton({
+  disabled,
+  onPass,
+}: {
+  disabled: boolean
+  onPass: () => void
+}) {
+  const [armed, setArmed] = useState(false)
+  useEffect(() => {
+    if (!armed) return
+    const t = setTimeout(() => setArmed(false), 4000)
+    return () => clearTimeout(t)
+  }, [armed])
+  return (
+    <button
+      type="button"
+      className="bb2-option justify-center"
+      data-testid="action-pass"
+      disabled={disabled}
+      style={
+        armed
+          ? {
+              borderColor: 'var(--bb-brass-bright)',
+              color: 'var(--bb-brass-bright)',
+            }
+          : undefined
+      }
+      onClick={() => {
+        if (armed) {
+          setArmed(false)
+          onPass()
+        } else {
+          setArmed(true)
+        }
+      }}
+    >
+      <PassIcon size={14} />
+      <span className="font-semibold uppercase tracking-[0.14em] text-[11.5px]">
+        {armed ? 'Really pass? Tap again' : 'Pass the turn'}
+      </span>
+    </button>
   )
 }
 
@@ -308,6 +393,9 @@ export function ActionDock({
   send,
   currentPlayer,
   canSellAnything = true,
+  viableIndustries = null,
+  confirmOutcome = null,
+  actionsLeft = null,
 }: ActionDockProps) {
   const is = (path: string) => snapshot.matches(path as never)
   const can = (event: GameEvent) => snapshot.can(event)
@@ -365,7 +453,20 @@ export function ActionDock({
     ]
     return (
       <div className="flex flex-col gap-3">
-        <span className="bb2-panel-title">Choose an action</span>
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="bb2-panel-title">Choose an action</span>
+          {actionsLeft && (
+            <span
+              className="text-[11px] font-semibold uppercase tracking-[0.14em]"
+              data-testid="actions-left"
+              style={{ color: 'var(--bb-brass)' }}
+            >
+              {actionsLeft.max === 1 || actionsLeft.remaining === 1
+                ? 'Last action this turn'
+                : `${actionsLeft.remaining} of ${actionsLeft.max} actions left`}
+            </span>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-2">
           {actions.map((a) => (
             <button
@@ -384,18 +485,10 @@ export function ActionDock({
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          className="bb2-option justify-center"
-          data-testid="action-pass"
+        <PassButton
           disabled={!can({ type: 'PASS' })}
-          onClick={() => send({ type: 'PASS' })}
-        >
-          <PassIcon size={14} />
-          <span className="font-semibold uppercase tracking-[0.14em] text-[11.5px]">
-            Pass the turn
-          </span>
-        </button>
+          onPass={() => send({ type: 'PASS' })}
+        />
       </div>
     )
   }
@@ -413,6 +506,10 @@ export function ActionDock({
     )
   }
   if (is('playing.action.building.selectingIndustryType')) {
+    const isViable = (t: IndustryType) =>
+      can({ type: 'SELECT_INDUSTRY_TYPE', industryType: t }) &&
+      (viableIndustries === null || viableIndustries.has(t))
+    const anyBlocked = INDUSTRY_TYPES.some((t) => !isViable(t))
     return (
       <Flow action="Build" steps={buildSteps} active={1} onCancel={cancel}>
         {c.selectedCard && (
@@ -429,7 +526,13 @@ export function ActionDock({
               key={t}
               type="button"
               className="bb2-option flex-col !items-center gap-1.5 py-2.5"
-              disabled={!can({ type: 'SELECT_INDUSTRY_TYPE', industryType: t })}
+              data-testid={`industry-${t}`}
+              disabled={!isViable(t)}
+              title={
+                isViable(t)
+                  ? undefined
+                  : 'No legal build for this industry with the played card'
+              }
               onClick={() =>
                 send({ type: 'SELECT_INDUSTRY_TYPE', industryType: t })
               }
@@ -441,16 +544,36 @@ export function ActionDock({
             </button>
           ))}
         </div>
+        {anyBlocked && (
+          <p
+            className="text-[12px] leading-snug"
+            style={{ color: 'rgba(231,215,177,.5)' }}
+          >
+            Greyed industries have no legal build with this card — no free slot,
+            no tile on your mat, or no way to pay for it.
+          </p>
+        )}
       </Flow>
     )
   }
   if (is('playing.action.building.selectingLocation')) {
+    const legalCount = (Object.keys(cities) as CityId[]).filter((id) =>
+      can({ type: 'SELECT_LOCATION', cityId: id }),
+    ).length
     return (
       <Flow action="Build" steps={buildSteps} active={2} onCancel={cancel}>
-        <Note>
-          Choose a site on the map — legal cities are ringed in brass and
-          pulsing. Illegal ones are dimmed.
-        </Note>
+        {legalCount === 0 ? (
+          <Note>
+            <b style={{ color: '#d68d80' }}>No city can take this build</b> —
+            every legal site is occupied or out of your network. Cancel and
+            choose a different industry or card.
+          </Note>
+        ) : (
+          <Note>
+            Choose a site on the map — legal cities are ringed in brass and
+            pulsing. Illegal ones are dimmed.
+          </Note>
+        )}
       </Flow>
     )
   }
@@ -473,7 +596,7 @@ export function ActionDock({
                 style={{ color: 'var(--bb-parchment-bright)' }}
               >
                 <IndustryGlyph type={tile.type} size={14} />
-                {tile.type} · level {tile.level} · £{tile.cost}
+                {industryLabel(tile.type)} · level {tile.level} · £{tile.cost}
               </span>
             </div>
           )}
@@ -491,6 +614,7 @@ export function ActionDock({
           disabled={!can({ type: 'CONFIRM' })}
           onClick={() => send({ type: 'CONFIRM' })}
           disabledReason="The ledger refuses this build — check your funds and coal / iron access from this site."
+          outcome={confirmOutcome}
         >
           Raise the works
         </Confirm>
@@ -539,6 +663,7 @@ export function ActionDock({
           disabled={!can({ type: 'CONFIRM' })}
           onClick={() => send({ type: 'CONFIRM' })}
           disabledReason="This route can't be claimed — it must touch your network and be payable."
+          outcome={confirmOutcome}
         >
           Lay the {c.era === 'canal' ? 'canal' : 'track'}
         </Confirm>
@@ -592,6 +717,7 @@ export function ActionDock({
           disabled={!can({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })}
           onClick={() => send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })}
           disabledReason="Two rails need £15, 2 coal and 1 beer within reach."
+          outcome={confirmOutcome}
         >
           Lay both tracks
         </Confirm>
@@ -634,6 +760,7 @@ export function ActionDock({
           disabled={!can({ type: 'CONFIRM' })}
           onClick={() => send({ type: 'CONFIRM' })}
           disabledReason="No iron within reach (or none on the market you can afford)."
+          outcome={confirmOutcome}
         >
           Scrap the tile
         </Confirm>

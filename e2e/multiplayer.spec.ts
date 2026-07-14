@@ -61,6 +61,8 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
   /* ---- turn passes to the guest; both converge on round 2 ---- */
   await expect(guest.getByTestId('action-pass')).toBeVisible()
   await expect(host.getByTestId('waiting-panel')).toBeVisible()
+  // Two-tap pass: arm, then confirm.
+  await guest.getByTestId('action-pass').click()
   await guest.getByTestId('action-pass').click()
   await expect(host.getByTestId('round-chip')).toHaveText('Round 2')
   await expect(guest.getByTestId('round-chip')).toHaveText('Round 2')

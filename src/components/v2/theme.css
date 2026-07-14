@@ -597,3 +597,13 @@ button.bb2-card {
 .bb2 *::-webkit-scrollbar-thumb:hover {
   background: rgba(195, 149, 56, 0.5);
 }
+
+/* ---------------- keyboard focus on the SVG board ---------------- */
+
+.bb2 svg [role='button']:focus {
+  outline: none;
+}
+.bb2 svg [role='button']:focus-visible {
+  outline: 2.5px solid var(--bb-brass-bright);
+  outline-offset: 3px;
+}

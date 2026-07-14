@@ -300,8 +300,9 @@ describe('farm breweries: beer reach and link scoring', () => {
       to: 'worcester',
       type: 'canal',
     } as any)
-    // only tile adjacent to the link is the farm brewery (1 link icon)
-    expect(vp).toBe(1)
+    // only tile adjacent to the link is the farm brewery — a brewery
+    // carries 2 link-scoring icons (retail board, audited 2026-07-14)
+    expect(vp).toBe(2)
     a.stop()
   })
 })

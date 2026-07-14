@@ -163,9 +163,10 @@ describe('bugfix: free same-type slots are usable (no forced overbuild)', () => 
 describe('bugfix: own overbuild works when no free slot remains', () => {
   test('dudley has one coal slot — own coal L1 upgrades to L2 in place', () => {
     const a = startGame()
-    // P1 owns 2× coal L1: build both (dudley, then cannock) so the next
-    // coal tile from the mat is L2, then rebuild at dudley. Its only
-    // coal-capable slot is occupied by P1's own L1 → must overbuild.
+    // P1 owns 1× coal L1 (retail mat): build it at dudley, build the
+    // first L2 at cannock, then rebuild at dudley. Its only coal-capable
+    // slot is occupied by P1's own L1 → must overbuild (with the second
+    // L2 from the mat).
     const plan: Array<[string, string]> = [
       ['dudley', 'coal'],
       ['cannock', 'coal'],
@@ -185,7 +186,7 @@ describe('bugfix: own overbuild works when no free slot remains', () => {
       { who: 'P1', type: 'coal', level: 2 },
     ])
     expect(industriesAt(a, 'cannock')).toEqual([
-      { who: 'P1', type: 'coal', level: 1 },
+      { who: 'P1', type: 'coal', level: 2 },
     ])
     a.stop()
   })

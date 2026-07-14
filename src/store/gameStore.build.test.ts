@@ -144,11 +144,13 @@ describe('Game Store - Build Actions', () => {
   })
 
   test('build industry - different industry types (Canal Era) - no coal required', () => {
-    // Test Level 1 industries that require no coal to build in Canal Era
+    // Test Level 1 industries that require no coal to build in Canal Era.
+    // (Brewery L1 and pottery L1 need IRON, which is always purchasable
+    // from the market without a connection — retail board, 2026-07-14.)
     const industryTestCases = [
       { type: 'coal', location: 'dudley' },
       { type: 'cotton', location: 'birmingham' },
-      { type: 'manufacturer', location: 'birmingham' },
+      { type: 'pottery', location: 'stoke' },
       { type: 'brewery', location: 'burton' },
     ]
 
@@ -176,9 +178,11 @@ describe('Game Store - Build Actions', () => {
 
   test('build industry - different industry types (Canal Era) - coal required', () => {
     // Test Level 1 industries that require coal to build in Canal Era
+    // (iron works L1 and manufacturer L1 each consume 1 coal — retail
+    // board, audited 2026-07-14)
     const industryTestCases = [
       { type: 'iron', location: 'birmingham' },
-      { type: 'pottery', location: 'stoke' },
+      { type: 'manufacturer', location: 'birmingham' },
     ]
 
     industryTestCases.forEach(({ type, location }) => {

@@ -6,11 +6,11 @@ import { type Page, expect, test } from '@playwright/test'
  *
  * Fixtures (all real engine-generated states, frozen by probe conditions in
  * generate-demo.test.ts):
- *   ?demo         canal round 6 — George to act, £18, 1 action left
- *   ?demo=sell    canal round 8 — Isambard to act, £10; multi-sale possible
+ *   ?demo         canal round 8 — Isambard to act, £19, 2 actions left
+ *   ?demo=sell    canal round 9 — George to act, £38; multi-sale possible
  *   ?demo=eraend  canal round 10 — Eliza to act; ONE pass ends the era
  *   ?demo=gameend rail round 8 — Isambard to act; 8 passes reach game over
- *   ?era=rail     rail round 1 — Isambard to act, £41; double-link reachable
+ *   ?era=rail     rail round 1 — Isambard to act, £27; double-link reachable
  */
 
 function treasuryOf(page: Page, name: string) {
@@ -48,7 +48,7 @@ test('Network: claim a canal route by clicking it on the map', async ({
   page,
 }) => {
   await page.goto('/?demo')
-  await expect(treasuryOf(page, 'George')).toHaveText('£18')
+  await expect(treasuryOf(page, 'Isambard')).toHaveText('£19')
 
   await page.getByTestId('action-network').click()
   await page.locator('button.bb2-card:not([disabled])').first().click()
@@ -67,17 +67,18 @@ test('Network: claim a canal route by clicking it on the map', async ({
   await confirm.click()
 
   await expect(
-    page.getByText(/George built a canal link between/),
+    page.getByText(/Isambard built a canal link between/),
   ).toBeVisible()
-  // £18 − £3 canal + £25 end-of-round income (George is the round's last
-  // player and this was his only action).
-  await expect(treasuryOf(page, 'George')).toHaveText('£40')
-  // Least spender goes first: George (£3) opens round 7 himself, so no
-  // curtain — the round chip advancing is the turn-lifecycle proof.
-  await expect(page.getByTestId('round-chip')).toHaveText('Round 7')
-  await expect(page.getByTestId('mat-3')).toHaveAttribute(
+  // £19 − £3 canal; this was the FIRST of Isambard's two actions, so the
+  // round does not advance and he stays on the clock.
+  await expect(treasuryOf(page, 'Isambard')).toHaveText('£16')
+  await expect(page.getByTestId('round-chip')).toHaveText('Round 8')
+  await expect(page.getByTestId('mat-2')).toHaveAttribute(
     'data-current',
     'true',
+  )
+  await expect(page.getByTestId('actions-left')).toHaveText(
+    'Last action this turn',
   )
 })
 
@@ -86,7 +87,7 @@ test('Network: rail-era double-link build (two routes, £15 + coal + beer)', asy
 }) => {
   await page.goto('/?era=rail')
   await expect(page.getByTestId('era-plate')).toHaveText('rail era')
-  await expect(treasuryOf(page, 'Isambard')).toHaveText('£41')
+  await expect(treasuryOf(page, 'Isambard')).toHaveText('£27')
 
   await page.getByTestId('action-network').click()
   await page.locator('button.bb2-card:not([disabled])').first().click()
@@ -98,19 +99,22 @@ test('Network: rail-era double-link build (two routes, £15 + coal + beer)', asy
     page.getByText('Choose the second rail route on the map.'),
   ).toBeVisible()
 
-  await clickRoute(page, 'tamworth|nuneaton')
+  await clickRoute(page, 'walsall|wolverhampton')
   const confirm = page.getByTestId('confirm-action')
   await expect(confirm).toBeEnabled()
   await confirm.click()
 
   await expect(
     page.getByText(
-      /Isambard built 2 rail links \(cannock-wolverhampton, tamworth-nuneaton\)/,
+      /Isambard built 2 rail links \(cannock-wolverhampton, walsall-wolverhampton\)/,
     ),
   ).toBeVisible()
-  // £41 − £15 (both coal cubes came free from a connected mine).
-  await expect(treasuryOf(page, 'Isambard')).toHaveText('£26')
-  await expect(page.getByTestId('pass-curtain')).toBeVisible()
+  // £27 − £15 (both coal cubes came free from connected mines). First of
+  // two actions: Isambard keeps the device.
+  await expect(treasuryOf(page, 'Isambard')).toHaveText('£12')
+  await expect(page.getByTestId('actions-left')).toHaveText(
+    'Last action this turn',
+  )
 })
 
 test('Sell: gated with an explanation when nothing can be sold', async ({
@@ -126,7 +130,7 @@ test('Sell: multi-sale — flip two industries in one action', async ({
   page,
 }) => {
   await page.goto('/?demo=sell')
-  await expect(treasuryOf(page, 'Isambard')).toHaveText('£10')
+  await expect(treasuryOf(page, 'George')).toHaveText('£38')
 
   const sell = page.getByTestId('action-sell')
   await expect(sell).toBeEnabled()
@@ -141,21 +145,21 @@ test('Sell: multi-sale — flip two industries in one action', async ({
 
   await page.getByTestId('confirm-action').click()
   await expect(
-    page.getByText(/Isambard completed Sell action \(2 industries sold\)/),
+    page.getByText(/George completed Sell action \(2 industries sold\)/),
   ).toBeVisible()
 })
 
 test('illegal clicks toast and CANCEL unwinds every flow', async ({ page }) => {
   await page.goto('/?demo')
-  await expect(treasuryOf(page, 'George')).toHaveText('£18')
+  await expect(treasuryOf(page, 'Isambard')).toHaveText('£19')
 
   const chooseAnAction = page.getByText('Choose an action')
   const cancel = page.getByTestId('cancel-action')
 
   // Build: reach the site step, click an ILLEGAL (dimmed) city → toast.
   await page.getByTestId('action-build').click()
-  await page.getByTestId('card-coal_1').click()
-  await expect(page.getByText(/Choose a site for your coal/)).toBeVisible()
+  await page.getByTestId('card-iron_2').click()
+  await expect(page.getByText(/Choose a site for your iron/)).toBeVisible()
   await page
     .locator('g[data-city="birmingham"]:not([data-legal])')
     .click({ force: true })
@@ -186,7 +190,7 @@ test('illegal clicks toast and CANCEL unwinds every flow', async ({ page }) => {
   }
 
   // Nothing was spent and the action was never consumed.
-  await expect(treasuryOf(page, 'George')).toHaveText('£18')
+  await expect(treasuryOf(page, 'Isambard')).toHaveText('£19')
 })
 
 test('Scout: discard three cards for the two wilds', async ({ page }) => {
@@ -206,10 +210,12 @@ test('Scout: discard three cards for the two wilds', async ({ page }) => {
   await confirm.click()
 
   await expect(
-    page.getByText(/George scouted \(discarded 3 cards, gained 2 wild cards\)/),
+    page.getByText(
+      /Isambard scouted \(discarded 3 cards, gained 2 wild cards\)/,
+    ),
   ).toBeVisible()
-  // George spent £0, so he leads the next round himself (no curtain).
-  await expect(page.getByTestId('round-chip')).toHaveText('Round 7')
+  // First of two actions — the round does not advance.
+  await expect(page.getByTestId('round-chip')).toHaveText('Round 8')
 })
 
 test('Develop: scrap the lowest tile, consuming iron', async ({ page }) => {
@@ -226,11 +232,10 @@ test('Develop: scrap the lowest tile, consuming iron', async ({ page }) => {
   await page.getByTestId('confirm-action').click()
 
   await expect(
-    page.getByText(/George developed \(removed 1 tile/),
+    page.getByText(/Isambard developed \(removed 1 tile/),
   ).toBeVisible()
-  // George spent nothing from the treasury (market iron was free-of-charge
-  // only if from a works; either way the round advanced).
-  await expect(page.getByTestId('round-chip')).toHaveText('Round 7')
+  // First of two actions — the round does not advance.
+  await expect(page.getByTestId('round-chip')).toHaveText('Round 8')
 })
 
 test('era transition: one pass ends the Canal Era and opens the Rail Era', async ({
@@ -279,9 +284,8 @@ test('capstone: play the final turns through the UI to the winner', async ({
     await page.waitForTimeout(50)
   }
 
-  // Final scoring (links + flipped industries) crowns Eliza at 57 VP —
-  // she entered these last turns THIRD on points (11 vp) and wins on
-  // end-of-era scoring, which is exactly what this test pins.
+  // Final scoring (links + flipped industries) crowns Eliza at 48 VP —
+  // end-of-era scoring decides it, which is exactly what this test pins.
   await expect(finished).toBeVisible()
   await expect(
     page.getByRole('heading', { name: 'Eliza prevails' }),
@@ -289,7 +293,7 @@ test('capstone: play the final turns through the UI to the winner', async ({
   const rows = page.locator('.bb2-mat')
   await expect(rows).toHaveCount(3)
   await expect(rows.first()).toContainText('Eliza')
-  await expect(rows.first()).toContainText('57')
+  await expect(rows.first()).toContainText('48')
   await expect(
     page.getByRole('button', { name: 'Found a new company' }),
   ).toBeVisible()

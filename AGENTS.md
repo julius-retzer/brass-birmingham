@@ -157,10 +157,15 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   kidderminster-worcester link a 3-way (network, beer reach and link VP all
   route through it; regression tests in `gameStore.farmbrewery.test.ts`).
   Location/wild-location cards are guard-blocked there (rules p.5).
-  Known remaining data gaps: industry tile stats in `src/data/industryTiles.ts` are
-  unaudited; the income track models levels as a flat number (levels vs
-  spaces distinction not implemented); link building does not validate
-  against the board graph `connections` (the UI enforces era + graph).
+  Industry tile stats in `src/data/industryTiles.ts` were AUDITED 2026-07-14
+  against the retail player board (photos + provenance in
+  `ai-docs/reference/`; every value pinned by `src/data/industryTiles.test.ts`
+  — do not change a stat without re-verifying against the component; the
+  rulebook PDF's mat photos are a PROTOTYPE and deviate on Manufacturer IV).
+  Known remaining data gaps: the income track models levels as a flat number
+  (levels vs spaces distinction not implemented); link building does not
+  validate against the board graph `connections` (the UI enforces era +
+  graph).
 - Build slot semantics are FREE-SLOT-FIRST (2026-07-13 bug hunt): a build
   goes into a free compatible slot when one exists — overbuild (replace,
   via `performOverbuild`) happens ONLY when no compatible slot is free.

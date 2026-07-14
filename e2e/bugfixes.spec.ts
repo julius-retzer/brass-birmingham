@@ -77,7 +77,7 @@ test('develop removes TWO tiles in one action through the UI', async ({
   page,
 }) => {
   await page.goto('/?demo')
-  await expect(treasuryOf(page, 'George')).toHaveText('£18')
+  await expect(treasuryOf(page, 'Isambard')).toHaveText('£19')
 
   await page.getByTestId('action-develop').click()
   await page.locator('button.bb2-card:not([disabled])').first().click()
@@ -90,6 +90,6 @@ test('develop removes TWO tiles in one action through the UI', async ({
   await page.getByTestId('confirm-action').click() // confirm step
 
   await expect(
-    page.getByText(/George developed \(removed 2 tiles/),
+    page.getByText(/Isambard developed \(removed 2 tiles/),
   ).toBeVisible()
 })

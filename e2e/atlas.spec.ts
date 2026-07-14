@@ -57,7 +57,7 @@ test('demo fixture: SVG map pan/zoom + Build action end-to-end', async ({
 }) => {
   await page.goto('/?demo')
   await expect(page.getByTestId('era-plate')).toHaveText('canal era')
-  await expect(treasuryOf(page, 'George')).toHaveText('£18')
+  await expect(treasuryOf(page, 'Isambard')).toHaveText('£19')
 
   const svg = page.getByLabel('Game board map')
   const before = await svg.getAttribute('viewBox')
@@ -81,28 +81,28 @@ test('demo fixture: SVG map pan/zoom + Build action end-to-end', async ({
   await page.getByRole('button', { name: 'Reset view' }).click()
 
   // Build: card → site (click the pulsing legal city plate) → confirm.
-  // coal_1 is an INDUSTRY card: the machine goes straight to site selection
+  // iron_2 is an INDUSTRY card: the machine goes straight to site selection
   // on the map (a location card would instead fix the site and ask for the
   // industry type).
   await page.getByTestId('action-build').click()
-  await page.getByTestId('card-coal_1').click()
-  await expect(page.getByText(/Choose a site for your coal/)).toBeVisible()
+  await page.getByTestId('card-iron_2').click()
+  await expect(page.getByText(/Choose a site for your iron/)).toBeVisible()
 
   const legalCity = page.locator('g[data-city][data-legal="true"]')
   await expect(legalCity.first()).toBeVisible()
-  await legalCity.first().click()
+  await page.locator('g[data-city="coalbrookdale"]').click()
 
   const confirm = page.getByTestId('confirm-action')
   await expect(confirm).toBeEnabled()
   await confirm.click()
 
-  // The build consumed money and hit the journal. The fixture has exactly one
-  // legal coal site (Tamworth), so the outcome is fully deterministic.
+  // The build consumed money and hit the journal (an overbuild of his own
+  // level 3 iron works — deterministic for this fixture).
   await expect(
-    page.getByText(/George built coal Level 1 at tamworth/),
+    page.getByText(/Isambard built iron Level 4 at coalbrookdale/),
   ).toBeVisible()
-  const money = await treasuryOf(page, 'George').textContent()
-  expect(money).not.toBe('£18')
+  const money = await treasuryOf(page, 'Isambard').textContent()
+  expect(money).not.toBe('£19')
 })
 
 test('save → reload → resume: state survives a refresh behind the pass gate', async ({
@@ -110,14 +110,15 @@ test('save → reload → resume: state survives a refresh behind the pass gate'
 }) => {
   // Start from the demo fixture and take a loan so the state is distinctive.
   await page.goto('/?demo')
-  await expect(treasuryOf(page, 'George')).toHaveText('£18')
+  await expect(treasuryOf(page, 'Isambard')).toHaveText('£19')
   await page.getByTestId('action-loan').click()
   await page.locator('button.bb2-card:not([disabled])').first().click()
   await page.getByTestId('confirm-action').click()
-  // George was the round's last player: the loan (+£30) ends the round and
-  // end-of-round income (+£22 at income 22 after the loan's −3) lands too.
-  await expect(treasuryOf(page, 'George')).toHaveText('£70')
-  await expect(page.getByText(/George took a loan/)).toBeVisible()
+  // First of Isambard's two actions: +£30, no round end, no income yet.
+  await expect(treasuryOf(page, 'Isambard')).toHaveText('£49')
+  // .first(): the generated fixture's own journal already holds an older
+  // Isambard loan entry.
+  await expect(page.getByText(/Isambard took a loan/).first()).toBeVisible()
 
   // Reload WITHOUT query params: the localStorage save must resume, gated.
   await page.goto('/')
@@ -127,8 +128,10 @@ test('save → reload → resume: state survives a refresh behind the pass gate'
 
   // Same game: canal era, the loan stuck, journal intact.
   await expect(page.getByTestId('era-plate')).toHaveText('canal era')
-  await expect(treasuryOf(page, 'George')).toHaveText('£70')
-  await expect(page.getByText(/George took a loan/)).toBeVisible()
+  await expect(treasuryOf(page, 'Isambard')).toHaveText('£49')
+  // .first(): the generated fixture's own journal already holds an older
+  // Isambard loan entry.
+  await expect(page.getByText(/Isambard took a loan/).first()).toBeVisible()
 })
 
 test('?preview=gameover renders the final scoring with a winner', async ({

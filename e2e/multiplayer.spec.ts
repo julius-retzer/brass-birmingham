@@ -113,9 +113,9 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
       )
       const reader = res.body!.getReader()
       let text = ''
-      // the initial view arrives as the first data: frame; read until the
-      // frame terminator
-      for (let i = 0; i < 10 && !text.includes('\n\n'); i++) {
+      // The stream opens with a `retry:` reconnect hint, then the initial view
+      // as a `data:` frame; read until a complete data frame has arrived.
+      for (let i = 0; i < 20 && !/data: .+\n\n/.test(text); i++) {
         const { value, done } = await reader.read()
         if (done) break
         text += new TextDecoder().decode(value)
@@ -125,9 +125,15 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
     },
     { token },
   )
+  // The stream sends a reconnect hint so EventSource reconnects in ~1.5s (not
+  // Chrome's ~4s default) when the bounded stream rotates.
+  expect(rawEvent).toContain('retry: 1500')
   expect(rawEvent).toContain('data: ')
+  // Slice the data frame relative to `data: ` — the FIRST `\n\n` now
+  // terminates the leading `retry:` line, not the payload.
+  const dataStart = rawEvent.indexOf('data: ') + 6
   const payload = JSON.parse(
-    rawEvent.slice(rawEvent.indexOf('data: ') + 6, rawEvent.indexOf('\n\n')),
+    rawEvent.slice(dataStart, rawEvent.indexOf('\n\n', dataStart)),
   ) as {
     you: number
     snapshot: {

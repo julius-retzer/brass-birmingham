@@ -388,12 +388,29 @@ When updating this file, preserve this bar for all agents and keep entries conci
   `messages`/`ai`, atomic upsert, 7-day TTL sweep (a DELETE) — so game state
   and chat SURVIVE a redeploy (`.bb-games/` files, or any ephemeral-disk file,
   did not). `saveGame` is version-guarded (upsert applies only when the stored
-  `version` is lower; a stale writer throws 'Concurrent write') because the
-  game lock + SSE bus + AI runner are PER-PROCESS singletons — the app is
-  single-instance: a second instance's writes would be rejected but its SSE
-  clients would hear nothing. `store.ts` is the single seam (load/save/sweep
-  by token); the DB engine is a config swap in `drizzle.config.ts` +
-  `src/server/db/index.ts`.
+  `version` is lower; a stale writer throws 'Concurrent write').
+- REALTIME SYNC IS DB-AS-BUS (2026-07-15, decision doc
+  `brass-realtime-arch-d6`): the `games.version` column IS the event bus —
+  the app is NOT assumed single-instance. The stream (`stream/route.ts`,
+  `maxDuration=300`, needs Fluid compute) is a server-side poll loop: it
+  `loadVersion(token)` every ~1.2s and re-derives the full per-seat view on
+  change, deduped by version; it opens with a `retry: 1500` hint and closes
+  cleanly at ~290s so EventSource reconnects on our terms. The in-process
+  `subscribe`/`broadcast` bus in `game.ts` is now ONLY a same-instance FAST
+  PATH (zero-latency when writer + stream share a Fluid-reused instance), not
+  the delivery guarantee. `act`/`chat` routes return `{ok, view, version}`
+  (the actor's own `viewFor` — server-authoritative, NOT optimistic) so the
+  actor applies its result in POST time (~1s); opponents converge ≤~2s via
+  the poll. The client applies act/chat responses and SSE frames through ONE
+  version-guarded path (`applyView` in `mp-game.tsx`). `kickAiTurns` returns
+  its runner promise; the act/chat routes `waitUntil()` it (`@vercel/functions`)
+  so a serverless instance isn't frozen out from under a multi-step AI turn,
+  and the stream poll re-kicks a stalled AI each tick. Do NOT add
+  WebSockets/LISTEN-NOTIFY/an external pub-sub (decision doc §5). Wire tests:
+  `gameStore.multiplayer.test.ts` (act/chat view shape + hidden-info) +
+  `e2e/multiplayer.spec.ts` (raw SSE `retry:` line).
+- `store.ts` is the single seam (load/save/sweep/loadVersion by token); the
+  DB engine is a config swap in `drizzle.config.ts` + `src/server/db/index.ts`.
   DATABASE_URL is now REQUIRED (a libsql `file:` URL will NOT connect through
   neon-http). Migrations in `./drizzle`; apply with `pnpm db:migrate`/`db:push`.
   Store-touching tests need a live DB (a Neon dev branch) — they self-provision

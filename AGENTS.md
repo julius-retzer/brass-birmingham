@@ -442,12 +442,18 @@ When updating this file, preserve this bar for all agents and keep entries conci
   LOCAL — put it in `.env.local` (gitignored via `.env*.local`; never committed
   / printed); CI — the `NEON_API_KEY` repo secret (a plain env var, which also
   overrides `.env.local` in disposable worktrees). `NEON_PROJECT_ID` is likewise
-  overridable but defaults to the brass project. FALLBACK (offline never
-  hard-fails): `TEST_DB_BRANCH=0` skips branching and keeps the current
-  `DATABASE_URL`; a missing `NEON_API_KEY` skips branching with a one-line
-  `[test-db]` notice; a create failure warns and falls back. Point `.env`
-  DATABASE_URL at a branch (`neonctl connection-string <branch> --project-id
-  muddy-night-85782525`) only for the fallback / `TEST_DB_BRANCH=0` path.
+  overridable but defaults to the brass project. FALLBACK PRECEDENCE (offline
+  never hard-fails, and tests must NEVER hit `dev`): (1) `NEON_API_KEY` present
+  → ephemeral per-run branch (above); (2) else — `TEST_DB_BRANCH=0`, no key, or
+  a create failure — use `TEST_DATABASE_URL` when set, the dedicated long-lived
+  Neon `test` branch (`br-sparkling-truth-adswa45j`; put it in `.env.local`);
+  (3) else fall back to the existing `DATABASE_URL` but print a LOUD multi-line
+  `[test-db] ⚠` warning that tests are about to hit a non-test database.
+  Whichever branch DATABASE_URL lands on, the DB suites' `ensureTestSchema()`
+  (beforeAll, `src/test/db-schema.ts`) migrates it idempotently — so a stale
+  `test` branch is brought current by the same harness step the ephemeral path
+  uses. Keep `TEST_DATABASE_URL` (not the plain `DATABASE_URL`) pointed at the
+  `test` branch for the no-key / `TEST_DB_BRANCH=0` path.
 - DEPLOY (Vercel, wired 2026-07-15): ship is direct-PR → Vercel Git
   integration (project `brass-birmingham`, prod branch = `main`, PR previews
   on). The Neon<->Vercel native integration (store "brass") manages the

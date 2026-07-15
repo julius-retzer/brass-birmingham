@@ -1,4 +1,5 @@
-// Vitest globalSetup: give each LOCAL test run its own throwaway Neon branch.
+// Vitest globalSetup: point DB-backed suites at an ISOLATED database, never the
+// shared `dev` branch.
 //
 // Runs ONCE in the main process before any worker spawns, so setting
 // `process.env.DATABASE_URL` here propagates to the test workers that import
@@ -6,27 +7,65 @@
 // (.github/workflows/ci.yml) for laptops. Uses the official Neon TypeScript SDK
 // directly — see src/test/neon-branch.ts.
 //
-// Behaviour (offline work must never hard-fail):
-//   - TEST_DB_BRANCH=0  → skip branching, keep whatever DATABASE_URL is set.
-//   - no NEON_API_KEY   → skip branching with a one-line notice (set it in
-//                         `.env.local` locally, or the CI repo secret).
-//   - create failure    → warn and fall back to the existing DATABASE_URL.
-// The pure-engine suites never touch the DB and are unaffected in every case.
-import { createBranch, deleteBranch, resolveNeonApiKey } from './neon-branch'
+// Precedence (offline work must never hard-fail; tests must NEVER hit `dev`):
+//   1. NEON_API_KEY present (and TEST_DB_BRANCH!=0) → per-run EPHEMERAL branch
+//      off `ci`, deleted in teardown. The isolation guarantee.
+//   2. else (TEST_DB_BRANCH=0, no key, or create failed) → TEST_DATABASE_URL,
+//      the dedicated long-lived Neon `test` branch, when set.
+//   3. else → the existing DATABASE_URL, with a LOUD warning that tests are
+//      about to hit a non-test database.
+// Whichever branch we land on, the DB suites' `ensureTestSchema()` (beforeAll)
+// migrates it idempotently — so a stale `test` branch is brought up to date by
+// the same harness step the ephemeral path relies on.
+import {
+  createBranch,
+  deleteBranch,
+  resolveNeonApiKey,
+  resolveTestDatabaseUrl,
+} from './neon-branch'
 
-export default async function setup(): Promise<(() => Promise<void>) | void> {
-  if (process.env.TEST_DB_BRANCH === '0') {
+// Fallback shared by every no-ephemeral path: prefer the dedicated test branch;
+// only ever touch a non-test DATABASE_URL as a last resort, and shout about it.
+function useFallbackDatabase(reason: string): void {
+  const testUrl = resolveTestDatabaseUrl()
+  if (testUrl) {
+    process.env.DATABASE_URL = testUrl
     console.info(
-      '[test-db] TEST_DB_BRANCH=0 → using existing DATABASE_URL, no ephemeral Neon branch',
+      `[test-db] ${reason} → using TEST_DATABASE_URL (dedicated Neon test branch); ensureTestSchema migrates it if stale`,
     )
     return
   }
-
-  const apiKey = resolveNeonApiKey()
-  if (!apiKey) {
-    console.info(
-      '[test-db] no NEON_API_KEY (set it in .env.local or as an env var) → DB-backed suites use existing DATABASE_URL if set; engine suites run offline',
+  if (process.env.DATABASE_URL) {
+    console.warn(
+      [
+        '',
+        '════════════════════════════════════════════════════════════════════',
+        `[test-db] ⚠  ${reason}, and TEST_DATABASE_URL is not set.`,
+        '[test-db] ⚠  DB-backed tests are about to run against DATABASE_URL,',
+        '[test-db] ⚠  which is NOT a designated test database (possibly dev/prod).',
+        '[test-db] ⚠  Set NEON_API_KEY (ephemeral per-run branch) or',
+        '[test-db] ⚠  TEST_DATABASE_URL (shared Neon `test` branch) in .env.local.',
+        '════════════════════════════════════════════════════════════════════',
+        '',
+      ].join('\n'),
     )
+    return
+  }
+  console.info(
+    `[test-db] ${reason}, no TEST_DATABASE_URL / DATABASE_URL → DB-backed suites cannot run; engine suites run offline`,
+  )
+}
+
+export default async function setup(): Promise<(() => Promise<void>) | void> {
+  // TEST_DB_BRANCH=0 forces the no-ephemeral path (still avoids `dev`).
+  const apiKey = process.env.TEST_DB_BRANCH === '0' ? null : resolveNeonApiKey()
+
+  if (!apiKey) {
+    const reason =
+      process.env.TEST_DB_BRANCH === '0'
+        ? 'TEST_DB_BRANCH=0'
+        : 'no NEON_API_KEY'
+    useFallbackDatabase(reason)
     return
   }
 
@@ -34,8 +73,8 @@ export default async function setup(): Promise<(() => Promise<void>) | void> {
   try {
     branch = await createBranch(apiKey)
   } catch (err) {
-    console.warn(
-      `[test-db] could not create ephemeral Neon branch (${(err as Error).message.split('\n')[0]}) → falling back to existing DATABASE_URL`,
+    useFallbackDatabase(
+      `could not create ephemeral Neon branch (${(err as Error).message.split('\n')[0]})`,
     )
     return
   }

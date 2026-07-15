@@ -76,6 +76,18 @@ export function resolveNeonApiKey(): string | null {
   return fromFile || null
 }
 
+/**
+ * Resolve the shared long-lived test-branch URL used by the no-ephemeral
+ * fallback: `TEST_DATABASE_URL` from the process env, else `.env.local`. This
+ * is the dedicated Neon `test` branch — NEVER `dev`. Returns `null` when unset.
+ */
+export function resolveTestDatabaseUrl(): string | null {
+  const fromEnv = process.env.TEST_DATABASE_URL?.trim()
+  if (fromEnv) return fromEnv
+  const fromFile = readEnvLocal().TEST_DATABASE_URL?.trim()
+  return fromFile || null
+}
+
 /** Project id: `NEON_PROJECT_ID` env / `.env.local`, else the brass default. */
 function resolveProjectId(): string {
   return (

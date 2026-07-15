@@ -204,8 +204,10 @@ describe('VERIFY: iron auto-sale to market on build', () => {
     ).toBe(true)
     expect(tile?.ironCubesOnTile).toBe(0)
     expect(tile?.flipped).toBe(true)
-    // flip advances income by the tile's incomeAdvancement (iron L1 = +3)
-    expect(ctx(a).players[0].income).toBe(13)
+    // flip advances the marker by SPACES (iron L1 = +3): the player starts
+    // on space 10 (level 0), +3 spaces = space 13 = level 2 (audited track)
+    expect(ctx(a).players[0].income).toBe(2)
+    expect(ctx(a).players[0].incomeSpace).toBe(13)
     a.stop()
   })
 })

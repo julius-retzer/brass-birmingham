@@ -437,7 +437,7 @@ describe('Brass Birmingham - Full Game Integration', () => {
     expect(snap.context.actionsRemaining).toBe(1)
     expect(snap.context.players[0].hand).toHaveLength(8)
     expect(snap.context.players[0].money).toBe(17)
-    expect(snap.context.players[0].income).toBe(10)
+    expect(snap.context.players[0].income).toBe(0) // marker on space 10 = level 0
 
     const actions = playFullGame(actor, greedyPolicy)
     expectCompletedGame(actor, actions, 2)

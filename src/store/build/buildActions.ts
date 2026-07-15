@@ -3,6 +3,10 @@ import type { Card, IndustryCard, LocationCard } from '../../data/cards'
 import type { IndustryTile } from '../../data/industryTiles'
 import { decrementTileQuantity } from '../../data/industryTiles'
 import type { CityId } from '../../data/board'
+import {
+  advanceIncomeSpaces,
+  incomeLevelForSpace,
+} from '../../data/incomeTrack'
 import { 
   consumeCoalFromSources, 
   consumeIronFromSources, 
@@ -362,17 +366,23 @@ export function buildIndustryTile(
   // Get updated player state from resource consumption
   const currentPlayerFromResources = updatedPlayersFromResources[context.currentPlayerIndex]!
   const finalMoney = currentPlayerFromResources.money - totalCost + marketIncome
-  let finalIncome = currentPlayerFromResources.income
+  // A tile flipped by its own market auto-sale advances the marker by
+  // SPACES on the income track (audited 2026-07-15).
+  let finalIncomeSpace = currentPlayerFromResources.incomeSpace
 
   if (newIndustry.flipped) {
-    finalIncome += newIndustry.tile.incomeSpaces
+    finalIncomeSpace = advanceIncomeSpaces(
+      finalIncomeSpace,
+      newIndustry.tile.incomeSpaces,
+    )
   }
 
   const updatedPlayer = {
     ...currentPlayerFromResources,
     hand: updatedHand,
     money: finalMoney,
-    income: finalIncome,
+    income: incomeLevelForSpace(finalIncomeSpace),
+    incomeSpace: finalIncomeSpace,
     industries: [...currentPlayerFromResources.industries, newIndustry],
     industryTilesOnMat: updatedTilesOnMat,
   }

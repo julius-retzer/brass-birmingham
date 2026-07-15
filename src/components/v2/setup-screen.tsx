@@ -16,7 +16,10 @@ const CHARACTERS: Player['character'][] = [
 ]
 const DEFAULT_NAMES = ['Eliza', 'Isambard', 'George', 'Richard']
 
-export type SetupPlayer = Omit<Player, 'hand' | 'links' | 'industries'>
+export type SetupPlayer = Omit<
+  Player,
+  'hand' | 'links' | 'industries' | 'incomeSpace'
+>
 
 export function SetupScreen({
   onStart,

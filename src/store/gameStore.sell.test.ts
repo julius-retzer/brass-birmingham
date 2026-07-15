@@ -176,7 +176,10 @@ describe('Game Store - Sell Actions', () => {
 
     // Industry flipped, income advanced
     expect(seller.industries[0]!.flipped).toBe(true)
-    expect(seller.income).toBe(initialIncome + cottonTile.incomeAdvancement)
+    // The sale advances the marker by SPACES (this fixture tile: +2):
+    // level 10 = space 30, +2 spaces = space 32 = level 11.
+    expect(seller.income).toBe(11)
+    expect(seller.incomeSpace).toBe(32)
 
     // Merchant beer consumed from the merchant sold to, money bonus applied
     const merchant = snapshot.context.merchants.find(

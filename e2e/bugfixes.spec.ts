@@ -9,8 +9,8 @@ import { type Page, expect, test } from '@playwright/test'
  *  - the Develop action could only remove ONE tile through the UI (rules:
  *    one or two per action)
  *
- * ?demo=wilds: canal round 2 — Eliza to act, £27, empty board, holding
- * wild_location_1 and wild_industry_1.
+ * ?demo=wilds: canal round 3 — Isambard to act, £35, holding
+ * wild_location_2 and wild_industry_2.
  */
 
 function treasuryOf(page: Page, name: string) {
@@ -24,27 +24,30 @@ test('wild location card: pick industry, pick ANY city on the map, build', async
   page,
 }) => {
   await page.goto('/?demo=wilds')
-  await expect(treasuryOf(page, 'Eliza')).toHaveText('£27')
+  await expect(treasuryOf(page, 'Isambard')).toHaveText('£35')
 
   await page.getByTestId('action-build').click()
-  await page.getByTestId('card-wild_location_1').click()
+  await page.getByTestId('card-wild_location_2').click()
 
   // Wild location asks for the industry first…
   await page.getByTestId('action-build').isHidden()
   await page.locator('button', { hasText: 'Coal' }).first().click()
 
-  // …then for a site: with nothing on the board every coal city is legal.
+  // …then for a site: a wild location is a free choice among every city
+  // that can take (and pay for) the tile.
   await expect(page.getByText(/Choose a site for your coal/)).toBeVisible()
   const legalCity = page.locator('g[data-city][data-legal="true"]')
   expect(await legalCity.count()).toBeGreaterThan(1) // wild = free choice
-  await page.locator('g[data-city="dudley"]').click()
+  await page.locator('g[data-city="cannock"]').click()
 
   const confirm = page.getByTestId('confirm-action')
   await expect(confirm).toBeEnabled()
   await confirm.click()
 
   await expect(
-    page.getByText(/Eliza built coal Level 1 at dudley .* using wild location/),
+    page.getByText(
+      /Isambard built coal Level 2 at cannock .* using wild location/,
+    ),
   ).toBeVisible()
 })
 
@@ -52,10 +55,10 @@ test('wild industry card: pick industry type, then a city, build', async ({
   page,
 }) => {
   await page.goto('/?demo=wilds')
-  await expect(treasuryOf(page, 'Eliza')).toHaveText('£27')
+  await expect(treasuryOf(page, 'Isambard')).toHaveText('£35')
 
   await page.getByTestId('action-build').click()
-  await page.getByTestId('card-wild_industry_1').click()
+  await page.getByTestId('card-wild_industry_2').click()
 
   // Wild industry has no printed industries — the type step must appear.
   await page.locator('button', { hasText: 'Brewery' }).first().click()
@@ -68,7 +71,7 @@ test('wild industry card: pick industry type, then a city, build', async ({
 
   await expect(
     page.getByText(
-      /Eliza built brewery Level 1 at burton.*using wild industry/,
+      /Isambard built brewery Level \d+ at burton.*using wild industry/,
     ),
   ).toBeVisible()
 })
@@ -77,7 +80,7 @@ test('develop removes TWO tiles in one action through the UI', async ({
   page,
 }) => {
   await page.goto('/?demo')
-  await expect(treasuryOf(page, 'Isambard')).toHaveText('£19')
+  await expect(treasuryOf(page, 'Eliza')).toHaveText('£19')
 
   await page.getByTestId('action-develop').click()
   await page.locator('button.bb2-card:not([disabled])').first().click()
@@ -90,6 +93,6 @@ test('develop removes TWO tiles in one action through the UI', async ({
   await page.getByTestId('confirm-action').click() // confirm step
 
   await expect(
-    page.getByText(/Isambard developed \(removed 2 tiles/),
+    page.getByText(/Eliza developed \(removed 2 tiles/),
   ).toBeVisible()
 })

@@ -57,7 +57,7 @@ test('demo fixture: SVG map pan/zoom + Build action end-to-end', async ({
 }) => {
   await page.goto('/?demo')
   await expect(page.getByTestId('era-plate')).toHaveText('canal era')
-  await expect(treasuryOf(page, 'Isambard')).toHaveText('£19')
+  await expect(treasuryOf(page, 'Eliza')).toHaveText('£19')
 
   const svg = page.getByLabel('Game board map')
   const before = await svg.getAttribute('viewBox')
@@ -81,44 +81,47 @@ test('demo fixture: SVG map pan/zoom + Build action end-to-end', async ({
   await page.getByRole('button', { name: 'Reset view' }).click()
 
   // Build: card → site (click the pulsing legal city plate) → confirm.
-  // iron_2 is an INDUSTRY card: the machine goes straight to site selection
-  // on the map (a location card would instead fix the site and ask for the
-  // industry type).
+  // brewery_2 is an INDUSTRY card: the machine goes straight to site
+  // selection on the map (a location card would instead fix the site and
+  // ask for the industry type).
   await page.getByTestId('action-build').click()
-  await page.getByTestId('card-iron_2').click()
-  await expect(page.getByText(/Choose a site for your iron/)).toBeVisible()
+  await page.getByTestId('card-brewery_2').click()
+  await expect(page.getByText(/Choose a site for your brewery/)).toBeVisible()
 
   const legalCity = page.locator('g[data-city][data-legal="true"]')
   await expect(legalCity.first()).toBeVisible()
-  await page.locator('g[data-city="coalbrookdale"]').click()
+  await page.locator('g[data-city="derby"]').click()
 
   const confirm = page.getByTestId('confirm-action')
   await expect(confirm).toBeEnabled()
   await confirm.click()
 
-  // The build consumed money and hit the journal (an overbuild of his own
-  // level 3 iron works — deterministic for this fixture).
+  // The build consumed money and hit the journal (£5 tile + market iron —
+  // deterministic for this fixture).
   await expect(
-    page.getByText(/Isambard built iron Level 4 at coalbrookdale/),
+    page.getByText(/Eliza built brewery Level 1 at derby/),
   ).toBeVisible()
-  const money = await treasuryOf(page, 'Isambard').textContent()
+  const money = await treasuryOf(page, 'Eliza').textContent()
   expect(money).not.toBe('£19')
 })
 
 test('save → reload → resume: state survives a refresh behind the pass gate', async ({
   page,
 }) => {
-  // Start from the demo fixture and take a loan so the state is distinctive.
+  // Start from the demo fixture and make a distinctive state change (a
+  // brewery at Derby). A loan is impossible here: Eliza sits at income
+  // level −9 and the −10 floor refuses another −3 (audited loan rule).
   await page.goto('/?demo')
-  await expect(treasuryOf(page, 'Isambard')).toHaveText('£19')
-  await page.getByTestId('action-loan').click()
-  await page.locator('button.bb2-card:not([disabled])').first().click()
+  await expect(treasuryOf(page, 'Eliza')).toHaveText('£19')
+  await page.getByTestId('action-build').click()
+  await page.getByTestId('card-brewery_2').click()
+  await page.locator('g[data-city="derby"]').click()
   await page.getByTestId('confirm-action').click()
-  // First of Isambard's two actions: +£30, no round end, no income yet.
-  await expect(treasuryOf(page, 'Isambard')).toHaveText('£49')
-  // .first(): the generated fixture's own journal already holds an older
-  // Isambard loan entry.
-  await expect(page.getByText(/Isambard took a loan/).first()).toBeVisible()
+  // £5 tile + £1 market iron; her last action — the device passes on.
+  await expect(treasuryOf(page, 'Eliza')).toHaveText('£13')
+  await expect(
+    page.getByText(/Eliza built brewery Level 1 at derby/),
+  ).toBeVisible()
 
   // Reload WITHOUT query params: the localStorage save must resume, gated.
   await page.goto('/')
@@ -126,12 +129,12 @@ test('save → reload → resume: state survives a refresh behind the pass gate'
   await expect(page.locator('button.bb2-card')).toHaveCount(0) // hand hidden
   await page.getByTestId('reveal-hand').click()
 
-  // Same game: canal era, the loan stuck, journal intact.
+  // Same game: canal era, the build stuck, journal intact.
   await expect(page.getByTestId('era-plate')).toHaveText('canal era')
-  await expect(treasuryOf(page, 'Isambard')).toHaveText('£49')
-  // .first(): the generated fixture's own journal already holds an older
-  // Isambard loan entry.
-  await expect(page.getByText(/Isambard took a loan/).first()).toBeVisible()
+  await expect(treasuryOf(page, 'Eliza')).toHaveText('£13')
+  await expect(
+    page.getByText(/Eliza built brewery Level 1 at derby/),
+  ).toBeVisible()
 })
 
 test('?preview=gameover renders the final scoring with a winner', async ({

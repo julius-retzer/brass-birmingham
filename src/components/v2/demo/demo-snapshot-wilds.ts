@@ -15,9 +15,9 @@ export const demoSnapshotWilds: unknown = {
         "name": "Eliza",
         "color": "red",
         "character": "Eliza Tinsley",
-        "money": 27,
+        "money": 0,
         "victoryPoints": 0,
-        "income": 10,
+        "income": 0,
         "industryTilesOnMat": {
           "cotton": [
             {
@@ -41,7 +41,7 @@ export const demoSnapshotWilds: unknown = {
                 "incomeAdvancement": 5,
                 "quantity": 3
               },
-              "quantityAvailable": 3
+              "quantityAvailable": 2
             },
             {
               "tile": {
@@ -135,7 +135,7 @@ export const demoSnapshotWilds: unknown = {
                 "incomeAdvancement": 4,
                 "quantity": 1
               },
-              "quantityAvailable": 1
+              "quantityAvailable": 0
             },
             {
               "tile": {
@@ -699,1506 +699,18 @@ export const demoSnapshotWilds: unknown = {
             }
           ]
         },
+        "incomeSpace": 10,
         "hand": [
           {
-            "id": "walsall_1",
-            "type": "location",
-            "location": "walsall",
-            "color": "other"
-          },
-          {
-            "id": "coventry_1",
-            "type": "location",
-            "location": "coventry",
-            "color": "other"
-          },
-          {
-            "id": "coalbrookdale_3",
-            "type": "location",
-            "location": "coalbrookdale",
-            "color": "other"
-          },
-          {
-            "id": "stoke_1",
-            "type": "location",
-            "location": "stoke",
-            "color": "other"
-          },
-          {
-            "id": "birmingham_2",
-            "type": "location",
-            "location": "birmingham",
-            "color": "other"
-          },
-          {
-            "id": "wild_location_1",
-            "type": "wild_location"
-          },
-          {
-            "id": "wild_industry_1",
-            "type": "wild_industry"
-          },
-          {
-            "id": "leek_2",
-            "type": "location",
-            "location": "leek",
-            "color": "other"
-          }
-        ],
-        "links": [],
-        "industries": []
-      },
-      {
-        "id": "2",
-        "name": "Isambard",
-        "color": "blue",
-        "character": "Isambard Kingdom Brunel",
-        "money": 27,
-        "victoryPoints": 0,
-        "income": 10,
-        "industryTilesOnMat": {
-          "cotton": [
-            {
-              "tile": {
-                "id": "cotton_1",
-                "type": "cotton",
-                "level": 1,
-                "cost": 12,
-                "victoryPoints": 5,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": false,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 3
-              },
-              "quantityAvailable": 3
-            },
-            {
-              "tile": {
-                "id": "cotton_2",
-                "type": "cotton",
-                "level": 2,
-                "cost": 14,
-                "victoryPoints": 5,
-                "incomeSpaces": 4,
-                "linkScoringIcons": 2,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 4,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "cotton_3",
-                "type": "cotton",
-                "level": 3,
-                "cost": 16,
-                "victoryPoints": 9,
-                "incomeSpaces": 3,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 1,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 3,
-                "quantity": 3
-              },
-              "quantityAvailable": 3
-            },
-            {
-              "tile": {
-                "id": "cotton_4",
-                "type": "cotton",
-                "level": 4,
-                "cost": 18,
-                "victoryPoints": 12,
-                "incomeSpaces": 2,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 1,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 2,
-                "quantity": 3
-              },
-              "quantityAvailable": 3
-            }
-          ],
-          "coal": [
-            {
-              "tile": {
-                "id": "coal_1",
-                "type": "coal",
-                "level": 1,
-                "cost": 5,
-                "victoryPoints": 1,
-                "incomeSpaces": 4,
-                "linkScoringIcons": 2,
-                "coalRequired": 0,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 2,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": false,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 4,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "coal_2",
-                "type": "coal",
-                "level": 2,
-                "cost": 7,
-                "victoryPoints": 2,
-                "incomeSpaces": 7,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 3,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 7,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "coal_3",
-                "type": "coal",
-                "level": 3,
-                "cost": 8,
-                "victoryPoints": 3,
-                "incomeSpaces": 6,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 4,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 6,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "coal_4",
-                "type": "coal",
-                "level": 4,
-                "cost": 10,
-                "victoryPoints": 4,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 5,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            }
-          ],
-          "iron": [
-            {
-              "tile": {
-                "id": "iron_1",
-                "type": "iron",
-                "level": 1,
-                "cost": 5,
-                "victoryPoints": 3,
-                "incomeSpaces": 3,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 4,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": false,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 3,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "iron_2",
-                "type": "iron",
-                "level": 2,
-                "cost": 7,
-                "victoryPoints": 5,
-                "incomeSpaces": 3,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 4,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 3,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "iron_3",
-                "type": "iron",
-                "level": 3,
-                "cost": 9,
-                "victoryPoints": 7,
-                "incomeSpaces": 2,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 5,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 2,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "iron_4",
-                "type": "iron",
-                "level": 4,
-                "cost": 12,
-                "victoryPoints": 9,
-                "incomeSpaces": 1,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 6,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 1,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            }
-          ],
-          "manufacturer": [
-            {
-              "tile": {
-                "id": "manufacturer_1",
-                "type": "manufacturer",
-                "level": 1,
-                "cost": 8,
-                "victoryPoints": 3,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 2,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": false,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "manufacturer_2",
-                "type": "manufacturer",
-                "level": 2,
-                "cost": 10,
-                "victoryPoints": 5,
-                "incomeSpaces": 1,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 1,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "manufacturer_3",
-                "type": "manufacturer",
-                "level": 3,
-                "cost": 12,
-                "victoryPoints": 4,
-                "incomeSpaces": 4,
-                "linkScoringIcons": 0,
-                "coalRequired": 2,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 4,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "manufacturer_4",
-                "type": "manufacturer",
-                "level": 4,
-                "cost": 8,
-                "victoryPoints": 3,
-                "incomeSpaces": 6,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 6,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "manufacturer_5",
-                "type": "manufacturer",
-                "level": 5,
-                "cost": 16,
-                "victoryPoints": 8,
-                "incomeSpaces": 2,
-                "linkScoringIcons": 2,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 2,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 2,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "manufacturer_6",
-                "type": "manufacturer",
-                "level": 6,
-                "cost": 20,
-                "victoryPoints": 7,
-                "incomeSpaces": 6,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 6,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "manufacturer_7",
-                "type": "manufacturer",
-                "level": 7,
-                "cost": 16,
-                "victoryPoints": 9,
-                "incomeSpaces": 4,
-                "linkScoringIcons": 0,
-                "coalRequired": 1,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 4,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "manufacturer_8",
-                "type": "manufacturer",
-                "level": 8,
-                "cost": 20,
-                "victoryPoints": 11,
-                "incomeSpaces": 1,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 2,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 1,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            }
-          ],
-          "pottery": [
-            {
-              "tile": {
-                "id": "pottery_1",
-                "type": "pottery",
-                "level": 1,
-                "cost": 17,
-                "victoryPoints": 10,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": true,
-                "incomeAdvancement": 5,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "pottery_2",
-                "type": "pottery",
-                "level": 2,
-                "cost": 0,
-                "victoryPoints": 1,
-                "incomeSpaces": 1,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 1,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "pottery_3",
-                "type": "pottery",
-                "level": 3,
-                "cost": 22,
-                "victoryPoints": 11,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 1,
-                "coalRequired": 2,
-                "ironRequired": 0,
-                "beerRequired": 2,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": true,
-                "incomeAdvancement": 5,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "pottery_4",
-                "type": "pottery",
-                "level": 4,
-                "cost": 0,
-                "victoryPoints": 1,
-                "incomeSpaces": 1,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 1,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "pottery_5",
-                "type": "pottery",
-                "level": 5,
-                "cost": 24,
-                "victoryPoints": 20,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 1,
-                "coalRequired": 2,
-                "ironRequired": 0,
-                "beerRequired": 2,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": false,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            }
-          ],
-          "brewery": [
-            {
-              "tile": {
-                "id": "brewery_1",
-                "type": "brewery",
-                "level": 1,
-                "cost": 5,
-                "victoryPoints": 4,
-                "incomeSpaces": 4,
-                "linkScoringIcons": 2,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 1,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": false,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 4,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "brewery_2",
-                "type": "brewery",
-                "level": 2,
-                "cost": 7,
-                "victoryPoints": 5,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 2,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 1,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "brewery_3",
-                "type": "brewery",
-                "level": 3,
-                "cost": 9,
-                "victoryPoints": 7,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 2,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 1,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "brewery_4",
-                "type": "brewery",
-                "level": 4,
-                "cost": 9,
-                "victoryPoints": 10,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 2,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 1,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": false,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            }
-          ]
-        },
-        "hand": [
-          {
-            "id": "kidderminster_1",
-            "type": "location",
-            "location": "kidderminster",
-            "color": "other"
-          },
-          {
-            "id": "wolverhampton_1",
-            "type": "location",
-            "location": "wolverhampton",
-            "color": "other"
-          },
-          {
-            "id": "brewery_5",
+            "id": "cotton_manufacturer_6",
             "type": "industry",
             "industries": [
-              "brewery"
+              "cotton",
+              "manufacturer"
             ]
           },
           {
-            "id": "dudley_1",
-            "type": "location",
-            "location": "dudley",
-            "color": "other"
-          },
-          {
-            "id": "kidderminster_2",
-            "type": "location",
-            "location": "kidderminster",
-            "color": "other"
-          },
-          {
-            "id": "wild_location_2",
-            "type": "wild_location"
-          },
-          {
-            "id": "wild_industry_2",
-            "type": "wild_industry"
-          },
-          {
-            "id": "coventry_2",
-            "type": "location",
-            "location": "coventry",
-            "color": "other"
-          }
-        ],
-        "links": [],
-        "industries": []
-      },
-      {
-        "id": "3",
-        "name": "George",
-        "color": "green",
-        "character": "George Stephenson",
-        "money": 20,
-        "victoryPoints": 0,
-        "income": 10,
-        "industryTilesOnMat": {
-          "cotton": [
-            {
-              "tile": {
-                "id": "cotton_1",
-                "type": "cotton",
-                "level": 1,
-                "cost": 12,
-                "victoryPoints": 5,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": false,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 3
-              },
-              "quantityAvailable": 3
-            },
-            {
-              "tile": {
-                "id": "cotton_2",
-                "type": "cotton",
-                "level": 2,
-                "cost": 14,
-                "victoryPoints": 5,
-                "incomeSpaces": 4,
-                "linkScoringIcons": 2,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 4,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "cotton_3",
-                "type": "cotton",
-                "level": 3,
-                "cost": 16,
-                "victoryPoints": 9,
-                "incomeSpaces": 3,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 1,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 3,
-                "quantity": 3
-              },
-              "quantityAvailable": 3
-            },
-            {
-              "tile": {
-                "id": "cotton_4",
-                "type": "cotton",
-                "level": 4,
-                "cost": 18,
-                "victoryPoints": 12,
-                "incomeSpaces": 2,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 1,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 2,
-                "quantity": 3
-              },
-              "quantityAvailable": 3
-            }
-          ],
-          "coal": [
-            {
-              "tile": {
-                "id": "coal_1",
-                "type": "coal",
-                "level": 1,
-                "cost": 5,
-                "victoryPoints": 1,
-                "incomeSpaces": 4,
-                "linkScoringIcons": 2,
-                "coalRequired": 0,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 2,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": false,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 4,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "coal_2",
-                "type": "coal",
-                "level": 2,
-                "cost": 7,
-                "victoryPoints": 2,
-                "incomeSpaces": 7,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 3,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 7,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "coal_3",
-                "type": "coal",
-                "level": 3,
-                "cost": 8,
-                "victoryPoints": 3,
-                "incomeSpaces": 6,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 4,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 6,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "coal_4",
-                "type": "coal",
-                "level": 4,
-                "cost": 10,
-                "victoryPoints": 4,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 5,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            }
-          ],
-          "iron": [
-            {
-              "tile": {
-                "id": "iron_1",
-                "type": "iron",
-                "level": 1,
-                "cost": 5,
-                "victoryPoints": 3,
-                "incomeSpaces": 3,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 4,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": false,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 3,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "iron_2",
-                "type": "iron",
-                "level": 2,
-                "cost": 7,
-                "victoryPoints": 5,
-                "incomeSpaces": 3,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 4,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 3,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "iron_3",
-                "type": "iron",
-                "level": 3,
-                "cost": 9,
-                "victoryPoints": 7,
-                "incomeSpaces": 2,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 5,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 2,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "iron_4",
-                "type": "iron",
-                "level": 4,
-                "cost": 12,
-                "victoryPoints": 9,
-                "incomeSpaces": 1,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 6,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 1,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            }
-          ],
-          "manufacturer": [
-            {
-              "tile": {
-                "id": "manufacturer_1",
-                "type": "manufacturer",
-                "level": 1,
-                "cost": 8,
-                "victoryPoints": 3,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 2,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": false,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "manufacturer_2",
-                "type": "manufacturer",
-                "level": 2,
-                "cost": 10,
-                "victoryPoints": 5,
-                "incomeSpaces": 1,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 1,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "manufacturer_3",
-                "type": "manufacturer",
-                "level": 3,
-                "cost": 12,
-                "victoryPoints": 4,
-                "incomeSpaces": 4,
-                "linkScoringIcons": 0,
-                "coalRequired": 2,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 4,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "manufacturer_4",
-                "type": "manufacturer",
-                "level": 4,
-                "cost": 8,
-                "victoryPoints": 3,
-                "incomeSpaces": 6,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 6,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "manufacturer_5",
-                "type": "manufacturer",
-                "level": 5,
-                "cost": 16,
-                "victoryPoints": 8,
-                "incomeSpaces": 2,
-                "linkScoringIcons": 2,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 2,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 2,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "manufacturer_6",
-                "type": "manufacturer",
-                "level": 6,
-                "cost": 20,
-                "victoryPoints": 7,
-                "incomeSpaces": 6,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 6,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "manufacturer_7",
-                "type": "manufacturer",
-                "level": 7,
-                "cost": 16,
-                "victoryPoints": 9,
-                "incomeSpaces": 4,
-                "linkScoringIcons": 0,
-                "coalRequired": 1,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 4,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "manufacturer_8",
-                "type": "manufacturer",
-                "level": 8,
-                "cost": 20,
-                "victoryPoints": 11,
-                "incomeSpaces": 1,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 2,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 1,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            }
-          ],
-          "pottery": [
-            {
-              "tile": {
-                "id": "pottery_1",
-                "type": "pottery",
-                "level": 1,
-                "cost": 17,
-                "victoryPoints": 10,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": true,
-                "incomeAdvancement": 5,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "pottery_2",
-                "type": "pottery",
-                "level": 2,
-                "cost": 0,
-                "victoryPoints": 1,
-                "incomeSpaces": 1,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 1,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "pottery_3",
-                "type": "pottery",
-                "level": 3,
-                "cost": 22,
-                "victoryPoints": 11,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 1,
-                "coalRequired": 2,
-                "ironRequired": 0,
-                "beerRequired": 2,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": true,
-                "incomeAdvancement": 5,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "pottery_4",
-                "type": "pottery",
-                "level": 4,
-                "cost": 0,
-                "victoryPoints": 1,
-                "incomeSpaces": 1,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 1,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "pottery_5",
-                "type": "pottery",
-                "level": 5,
-                "cost": 24,
-                "victoryPoints": 20,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 1,
-                "coalRequired": 2,
-                "ironRequired": 0,
-                "beerRequired": 2,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": false,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            }
-          ],
-          "brewery": [
-            {
-              "tile": {
-                "id": "brewery_1",
-                "type": "brewery",
-                "level": 1,
-                "cost": 5,
-                "victoryPoints": 4,
-                "incomeSpaces": 4,
-                "linkScoringIcons": 2,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 1,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": false,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 4,
-                "quantity": 2
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "brewery_2",
-                "type": "brewery",
-                "level": 2,
-                "cost": 7,
-                "victoryPoints": 5,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 2,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 1,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "brewery_3",
-                "type": "brewery",
-                "level": 3,
-                "cost": 9,
-                "victoryPoints": 7,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 2,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 1,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "brewery_4",
-                "type": "brewery",
-                "level": 4,
-                "cost": 9,
-                "victoryPoints": 10,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 2,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 1,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": false,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            }
-          ]
-        },
-        "hand": [
-          {
-            "id": "stafford_2",
-            "type": "location",
-            "location": "stafford",
-            "color": "other"
-          },
-          {
-            "id": "iron_2",
-            "type": "industry",
-            "industries": [
-              "iron"
-            ]
-          },
-          {
-            "id": "pottery_1",
-            "type": "industry",
-            "industries": [
-              "pottery"
-            ]
-          },
-          {
-            "id": "cotton_manufacturer_3",
+            "id": "cotton_manufacturer_2",
             "type": "industry",
             "industries": [
               "cotton",
@@ -2214,28 +726,1720 @@ export const demoSnapshotWilds: unknown = {
             ]
           },
           {
+            "id": "wild_location_1",
+            "type": "wild_location"
+          },
+          {
+            "id": "wild_industry_1",
+            "type": "wild_industry"
+          },
+          {
+            "id": "leek_2",
+            "type": "location",
+            "location": "leek",
+            "color": "other"
+          },
+          {
+            "id": "kidderminster_1",
+            "type": "location",
+            "location": "kidderminster",
+            "color": "other"
+          },
+          {
             "id": "pottery_2",
             "type": "industry",
             "industries": [
               "pottery"
             ]
+          }
+        ],
+        "links": [],
+        "industries": [
+          {
+            "location": "cannock",
+            "type": "coal",
+            "level": 1,
+            "flipped": false,
+            "tile": {
+              "id": "coal_1",
+              "type": "coal",
+              "level": 1,
+              "cost": 5,
+              "victoryPoints": 1,
+              "incomeSpaces": 4,
+              "linkScoringIcons": 2,
+              "coalRequired": 0,
+              "ironRequired": 0,
+              "beerRequired": 0,
+              "beerProduced": 0,
+              "coalProduced": 2,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": false,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 4,
+              "quantity": 1
+            },
+            "coalCubesOnTile": 2,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
           },
           {
-            "id": "iron_4",
+            "location": "birmingham",
+            "type": "cotton",
+            "level": 1,
+            "flipped": false,
+            "tile": {
+              "id": "cotton_1",
+              "type": "cotton",
+              "level": 1,
+              "cost": 12,
+              "victoryPoints": 5,
+              "incomeSpaces": 5,
+              "linkScoringIcons": 1,
+              "coalRequired": 0,
+              "ironRequired": 0,
+              "beerRequired": 1,
+              "beerProduced": 0,
+              "coalProduced": 0,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": false,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 5,
+              "quantity": 3
+            },
+            "coalCubesOnTile": 0,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          }
+        ]
+      },
+      {
+        "id": "2",
+        "name": "Isambard",
+        "color": "blue",
+        "character": "Isambard Kingdom Brunel",
+        "money": 35,
+        "victoryPoints": 0,
+        "income": -3,
+        "industryTilesOnMat": {
+          "cotton": [
+            {
+              "tile": {
+                "id": "cotton_1",
+                "type": "cotton",
+                "level": 1,
+                "cost": 12,
+                "victoryPoints": 5,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": false,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 3
+              },
+              "quantityAvailable": 3
+            },
+            {
+              "tile": {
+                "id": "cotton_2",
+                "type": "cotton",
+                "level": 2,
+                "cost": 14,
+                "victoryPoints": 5,
+                "incomeSpaces": 4,
+                "linkScoringIcons": 2,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 4,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "cotton_3",
+                "type": "cotton",
+                "level": 3,
+                "cost": 16,
+                "victoryPoints": 9,
+                "incomeSpaces": 3,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 1,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 3,
+                "quantity": 3
+              },
+              "quantityAvailable": 3
+            },
+            {
+              "tile": {
+                "id": "cotton_4",
+                "type": "cotton",
+                "level": 4,
+                "cost": 18,
+                "victoryPoints": 12,
+                "incomeSpaces": 2,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 1,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 2,
+                "quantity": 3
+              },
+              "quantityAvailable": 3
+            }
+          ],
+          "coal": [
+            {
+              "tile": {
+                "id": "coal_1",
+                "type": "coal",
+                "level": 1,
+                "cost": 5,
+                "victoryPoints": 1,
+                "incomeSpaces": 4,
+                "linkScoringIcons": 2,
+                "coalRequired": 0,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 2,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": false,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 4,
+                "quantity": 1
+              },
+              "quantityAvailable": 0
+            },
+            {
+              "tile": {
+                "id": "coal_2",
+                "type": "coal",
+                "level": 2,
+                "cost": 7,
+                "victoryPoints": 2,
+                "incomeSpaces": 7,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 3,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 7,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "coal_3",
+                "type": "coal",
+                "level": 3,
+                "cost": 8,
+                "victoryPoints": 3,
+                "incomeSpaces": 6,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 4,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 6,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "coal_4",
+                "type": "coal",
+                "level": 4,
+                "cost": 10,
+                "victoryPoints": 4,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 5,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            }
+          ],
+          "iron": [
+            {
+              "tile": {
+                "id": "iron_1",
+                "type": "iron",
+                "level": 1,
+                "cost": 5,
+                "victoryPoints": 3,
+                "incomeSpaces": 3,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 4,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": false,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 3,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "iron_2",
+                "type": "iron",
+                "level": 2,
+                "cost": 7,
+                "victoryPoints": 5,
+                "incomeSpaces": 3,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 4,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 3,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "iron_3",
+                "type": "iron",
+                "level": 3,
+                "cost": 9,
+                "victoryPoints": 7,
+                "incomeSpaces": 2,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 5,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 2,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "iron_4",
+                "type": "iron",
+                "level": 4,
+                "cost": 12,
+                "victoryPoints": 9,
+                "incomeSpaces": 1,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 6,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 1,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            }
+          ],
+          "manufacturer": [
+            {
+              "tile": {
+                "id": "manufacturer_1",
+                "type": "manufacturer",
+                "level": 1,
+                "cost": 8,
+                "victoryPoints": 3,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 2,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": false,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "manufacturer_2",
+                "type": "manufacturer",
+                "level": 2,
+                "cost": 10,
+                "victoryPoints": 5,
+                "incomeSpaces": 1,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 1,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "manufacturer_3",
+                "type": "manufacturer",
+                "level": 3,
+                "cost": 12,
+                "victoryPoints": 4,
+                "incomeSpaces": 4,
+                "linkScoringIcons": 0,
+                "coalRequired": 2,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 4,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "manufacturer_4",
+                "type": "manufacturer",
+                "level": 4,
+                "cost": 8,
+                "victoryPoints": 3,
+                "incomeSpaces": 6,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 6,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "manufacturer_5",
+                "type": "manufacturer",
+                "level": 5,
+                "cost": 16,
+                "victoryPoints": 8,
+                "incomeSpaces": 2,
+                "linkScoringIcons": 2,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 2,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 2,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "manufacturer_6",
+                "type": "manufacturer",
+                "level": 6,
+                "cost": 20,
+                "victoryPoints": 7,
+                "incomeSpaces": 6,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 6,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "manufacturer_7",
+                "type": "manufacturer",
+                "level": 7,
+                "cost": 16,
+                "victoryPoints": 9,
+                "incomeSpaces": 4,
+                "linkScoringIcons": 0,
+                "coalRequired": 1,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 4,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "manufacturer_8",
+                "type": "manufacturer",
+                "level": 8,
+                "cost": 20,
+                "victoryPoints": 11,
+                "incomeSpaces": 1,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 2,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 1,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            }
+          ],
+          "pottery": [
+            {
+              "tile": {
+                "id": "pottery_1",
+                "type": "pottery",
+                "level": 1,
+                "cost": 17,
+                "victoryPoints": 10,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": true,
+                "incomeAdvancement": 5,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "pottery_2",
+                "type": "pottery",
+                "level": 2,
+                "cost": 0,
+                "victoryPoints": 1,
+                "incomeSpaces": 1,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 1,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "pottery_3",
+                "type": "pottery",
+                "level": 3,
+                "cost": 22,
+                "victoryPoints": 11,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 1,
+                "coalRequired": 2,
+                "ironRequired": 0,
+                "beerRequired": 2,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": true,
+                "incomeAdvancement": 5,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "pottery_4",
+                "type": "pottery",
+                "level": 4,
+                "cost": 0,
+                "victoryPoints": 1,
+                "incomeSpaces": 1,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 1,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "pottery_5",
+                "type": "pottery",
+                "level": 5,
+                "cost": 24,
+                "victoryPoints": 20,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 1,
+                "coalRequired": 2,
+                "ironRequired": 0,
+                "beerRequired": 2,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": false,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            }
+          ],
+          "brewery": [
+            {
+              "tile": {
+                "id": "brewery_1",
+                "type": "brewery",
+                "level": 1,
+                "cost": 5,
+                "victoryPoints": 4,
+                "incomeSpaces": 4,
+                "linkScoringIcons": 2,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 1,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": false,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 4,
+                "quantity": 2
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "brewery_2",
+                "type": "brewery",
+                "level": 2,
+                "cost": 7,
+                "victoryPoints": 5,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 2,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 1,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "brewery_3",
+                "type": "brewery",
+                "level": 3,
+                "cost": 9,
+                "victoryPoints": 7,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 2,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 1,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "brewery_4",
+                "type": "brewery",
+                "level": 4,
+                "cost": 9,
+                "victoryPoints": 10,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 2,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 1,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": false,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            }
+          ]
+        },
+        "incomeSpace": 7,
+        "hand": [
+          {
+            "id": "iron_2",
             "type": "industry",
             "industries": [
               "iron"
             ]
           },
           {
-            "id": "worcester_2",
+            "id": "pottery_1",
+            "type": "industry",
+            "industries": [
+              "pottery"
+            ]
+          },
+          {
+            "id": "wild_location_2",
+            "type": "wild_location"
+          },
+          {
+            "id": "wild_industry_2",
+            "type": "wild_industry"
+          },
+          {
+            "id": "stoke_1",
             "type": "location",
-            "location": "worcester",
+            "location": "stoke",
             "color": "other"
+          },
+          {
+            "id": "cannock_1",
+            "type": "location",
+            "location": "cannock",
+            "color": "other"
+          },
+          {
+            "id": "brewery_4",
+            "type": "industry",
+            "industries": [
+              "brewery"
+            ]
           }
         ],
         "links": [],
         "industries": [
+          {
+            "location": "burton",
+            "type": "coal",
+            "level": 1,
+            "flipped": false,
+            "tile": {
+              "id": "coal_1",
+              "type": "coal",
+              "level": 1,
+              "cost": 5,
+              "victoryPoints": 1,
+              "incomeSpaces": 4,
+              "linkScoringIcons": 2,
+              "coalRequired": 0,
+              "ironRequired": 0,
+              "beerRequired": 0,
+              "beerProduced": 0,
+              "coalProduced": 2,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": false,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 4,
+              "quantity": 1
+            },
+            "coalCubesOnTile": 2,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          },
+          {
+            "location": "nuneaton",
+            "type": "brewery",
+            "level": 1,
+            "flipped": false,
+            "tile": {
+              "id": "brewery_1",
+              "type": "brewery",
+              "level": 1,
+              "cost": 5,
+              "victoryPoints": 4,
+              "incomeSpaces": 4,
+              "linkScoringIcons": 2,
+              "coalRequired": 0,
+              "ironRequired": 1,
+              "beerRequired": 0,
+              "beerProduced": 1,
+              "coalProduced": 0,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": false,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 4,
+              "quantity": 2
+            },
+            "coalCubesOnTile": 0,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 1
+          }
+        ]
+      },
+      {
+        "id": "3",
+        "name": "George",
+        "color": "green",
+        "character": "George Stephenson",
+        "money": 4,
+        "victoryPoints": 0,
+        "income": -3,
+        "industryTilesOnMat": {
+          "cotton": [
+            {
+              "tile": {
+                "id": "cotton_1",
+                "type": "cotton",
+                "level": 1,
+                "cost": 12,
+                "victoryPoints": 5,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": false,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 3
+              },
+              "quantityAvailable": 3
+            },
+            {
+              "tile": {
+                "id": "cotton_2",
+                "type": "cotton",
+                "level": 2,
+                "cost": 14,
+                "victoryPoints": 5,
+                "incomeSpaces": 4,
+                "linkScoringIcons": 2,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 4,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "cotton_3",
+                "type": "cotton",
+                "level": 3,
+                "cost": 16,
+                "victoryPoints": 9,
+                "incomeSpaces": 3,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 1,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 3,
+                "quantity": 3
+              },
+              "quantityAvailable": 3
+            },
+            {
+              "tile": {
+                "id": "cotton_4",
+                "type": "cotton",
+                "level": 4,
+                "cost": 18,
+                "victoryPoints": 12,
+                "incomeSpaces": 2,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 1,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 2,
+                "quantity": 3
+              },
+              "quantityAvailable": 3
+            }
+          ],
+          "coal": [
+            {
+              "tile": {
+                "id": "coal_1",
+                "type": "coal",
+                "level": 1,
+                "cost": 5,
+                "victoryPoints": 1,
+                "incomeSpaces": 4,
+                "linkScoringIcons": 2,
+                "coalRequired": 0,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 2,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": false,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 4,
+                "quantity": 1
+              },
+              "quantityAvailable": 0
+            },
+            {
+              "tile": {
+                "id": "coal_2",
+                "type": "coal",
+                "level": 2,
+                "cost": 7,
+                "victoryPoints": 2,
+                "incomeSpaces": 7,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 3,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 7,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "coal_3",
+                "type": "coal",
+                "level": 3,
+                "cost": 8,
+                "victoryPoints": 3,
+                "incomeSpaces": 6,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 4,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 6,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "coal_4",
+                "type": "coal",
+                "level": 4,
+                "cost": 10,
+                "victoryPoints": 4,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 5,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            }
+          ],
+          "iron": [
+            {
+              "tile": {
+                "id": "iron_1",
+                "type": "iron",
+                "level": 1,
+                "cost": 5,
+                "victoryPoints": 3,
+                "incomeSpaces": 3,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 4,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": false,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 3,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "iron_2",
+                "type": "iron",
+                "level": 2,
+                "cost": 7,
+                "victoryPoints": 5,
+                "incomeSpaces": 3,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 4,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 3,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "iron_3",
+                "type": "iron",
+                "level": 3,
+                "cost": 9,
+                "victoryPoints": 7,
+                "incomeSpaces": 2,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 5,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 2,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "iron_4",
+                "type": "iron",
+                "level": 4,
+                "cost": 12,
+                "victoryPoints": 9,
+                "incomeSpaces": 1,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 6,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 1,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            }
+          ],
+          "manufacturer": [
+            {
+              "tile": {
+                "id": "manufacturer_1",
+                "type": "manufacturer",
+                "level": 1,
+                "cost": 8,
+                "victoryPoints": 3,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 2,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": false,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "manufacturer_2",
+                "type": "manufacturer",
+                "level": 2,
+                "cost": 10,
+                "victoryPoints": 5,
+                "incomeSpaces": 1,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 1,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "manufacturer_3",
+                "type": "manufacturer",
+                "level": 3,
+                "cost": 12,
+                "victoryPoints": 4,
+                "incomeSpaces": 4,
+                "linkScoringIcons": 0,
+                "coalRequired": 2,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 4,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "manufacturer_4",
+                "type": "manufacturer",
+                "level": 4,
+                "cost": 8,
+                "victoryPoints": 3,
+                "incomeSpaces": 6,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 6,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "manufacturer_5",
+                "type": "manufacturer",
+                "level": 5,
+                "cost": 16,
+                "victoryPoints": 8,
+                "incomeSpaces": 2,
+                "linkScoringIcons": 2,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 2,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 2,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "manufacturer_6",
+                "type": "manufacturer",
+                "level": 6,
+                "cost": 20,
+                "victoryPoints": 7,
+                "incomeSpaces": 6,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 6,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "manufacturer_7",
+                "type": "manufacturer",
+                "level": 7,
+                "cost": 16,
+                "victoryPoints": 9,
+                "incomeSpaces": 4,
+                "linkScoringIcons": 0,
+                "coalRequired": 1,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 4,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "manufacturer_8",
+                "type": "manufacturer",
+                "level": 8,
+                "cost": 20,
+                "victoryPoints": 11,
+                "incomeSpaces": 1,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 2,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 1,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            }
+          ],
+          "pottery": [
+            {
+              "tile": {
+                "id": "pottery_1",
+                "type": "pottery",
+                "level": 1,
+                "cost": 17,
+                "victoryPoints": 10,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": true,
+                "incomeAdvancement": 5,
+                "quantity": 1
+              },
+              "quantityAvailable": 0
+            },
+            {
+              "tile": {
+                "id": "pottery_2",
+                "type": "pottery",
+                "level": 2,
+                "cost": 0,
+                "victoryPoints": 1,
+                "incomeSpaces": 1,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 1,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "pottery_3",
+                "type": "pottery",
+                "level": 3,
+                "cost": 22,
+                "victoryPoints": 11,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 1,
+                "coalRequired": 2,
+                "ironRequired": 0,
+                "beerRequired": 2,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": true,
+                "incomeAdvancement": 5,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "pottery_4",
+                "type": "pottery",
+                "level": 4,
+                "cost": 0,
+                "victoryPoints": 1,
+                "incomeSpaces": 1,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 1,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "pottery_5",
+                "type": "pottery",
+                "level": 5,
+                "cost": 24,
+                "victoryPoints": 20,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 1,
+                "coalRequired": 2,
+                "ironRequired": 0,
+                "beerRequired": 2,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": false,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            }
+          ],
+          "brewery": [
+            {
+              "tile": {
+                "id": "brewery_1",
+                "type": "brewery",
+                "level": 1,
+                "cost": 5,
+                "victoryPoints": 4,
+                "incomeSpaces": 4,
+                "linkScoringIcons": 2,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 1,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": false,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 4,
+                "quantity": 2
+              },
+              "quantityAvailable": 0
+            },
+            {
+              "tile": {
+                "id": "brewery_2",
+                "type": "brewery",
+                "level": 2,
+                "cost": 7,
+                "victoryPoints": 5,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 2,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 1,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "brewery_3",
+                "type": "brewery",
+                "level": 3,
+                "cost": 9,
+                "victoryPoints": 7,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 2,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 1,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "brewery_4",
+                "type": "brewery",
+                "level": 4,
+                "cost": 9,
+                "victoryPoints": 10,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 2,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 1,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": false,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            }
+          ]
+        },
+        "incomeSpace": 7,
+        "hand": [
+          {
+            "id": "birmingham_1",
+            "type": "location",
+            "location": "birmingham",
+            "color": "other"
+          },
+          {
+            "id": "walsall_1",
+            "type": "location",
+            "location": "walsall",
+            "color": "other"
+          },
+          {
+            "id": "kidderminster_2",
+            "type": "location",
+            "location": "kidderminster",
+            "color": "other"
+          },
+          {
+            "id": "stone_1",
+            "type": "location",
+            "location": "stone",
+            "color": "other"
+          },
+          {
+            "id": "wolverhampton_1",
+            "type": "location",
+            "location": "wolverhampton",
+            "color": "other"
+          },
+          {
+            "id": "coalbrookdale_2",
+            "type": "location",
+            "location": "coalbrookdale",
+            "color": "other"
+          },
+          {
+            "id": "coalbrookdale_3",
+            "type": "location",
+            "location": "coalbrookdale",
+            "color": "other"
+          },
+          {
+            "id": "brewery_1",
+            "type": "industry",
+            "industries": [
+              "brewery"
+            ]
+          }
+        ],
+        "links": [],
+        "industries": [
+          {
+            "location": "walsall",
+            "type": "brewery",
+            "level": 1,
+            "flipped": false,
+            "tile": {
+              "id": "brewery_1",
+              "type": "brewery",
+              "level": 1,
+              "cost": 5,
+              "victoryPoints": 4,
+              "incomeSpaces": 4,
+              "linkScoringIcons": 2,
+              "coalRequired": 0,
+              "ironRequired": 1,
+              "beerRequired": 0,
+              "beerProduced": 1,
+              "coalProduced": 0,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": false,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 4,
+              "quantity": 2
+            },
+            "coalCubesOnTile": 0,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 1
+          },
+          {
+            "location": "dudley",
+            "type": "coal",
+            "level": 1,
+            "flipped": false,
+            "tile": {
+              "id": "coal_1",
+              "type": "coal",
+              "level": 1,
+              "cost": 5,
+              "victoryPoints": 1,
+              "incomeSpaces": 4,
+              "linkScoringIcons": 2,
+              "coalRequired": 0,
+              "ironRequired": 0,
+              "beerRequired": 0,
+              "beerProduced": 0,
+              "coalProduced": 2,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": false,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 4,
+              "quantity": 1
+            },
+            "coalCubesOnTile": 2,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          },
+          {
+            "location": "coventry",
+            "type": "pottery",
+            "level": 1,
+            "flipped": false,
+            "tile": {
+              "id": "pottery_1",
+              "type": "pottery",
+              "level": 1,
+              "cost": 17,
+              "victoryPoints": 10,
+              "incomeSpaces": 5,
+              "linkScoringIcons": 1,
+              "coalRequired": 0,
+              "ironRequired": 1,
+              "beerRequired": 1,
+              "beerProduced": 0,
+              "coalProduced": 0,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": true,
+              "hasLightbulbIcon": true,
+              "incomeAdvancement": 5,
+              "quantity": 1
+            },
+            "coalCubesOnTile": 0,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          },
           {
             "location": "uttoxeter",
             "type": "brewery",
@@ -2268,10 +2472,10 @@ export const demoSnapshotWilds: unknown = {
         ]
       }
     ],
-    "currentPlayerIndex": 0,
+    "currentPlayerIndex": 1,
     "era": "canal",
-    "round": 2,
-    "actionsRemaining": 2,
+    "round": 3,
+    "actionsRemaining": 1,
     "resources": {
       "coal": 24,
       "iron": 10,
@@ -2327,12 +2531,12 @@ export const demoSnapshotWilds: unknown = {
       },
       {
         "price": 2,
-        "cubes": 1,
+        "cubes": 0,
         "maxCubes": 2
       },
       {
         "price": 3,
-        "cubes": 2,
+        "cubes": 0,
         "maxCubes": 2
       },
       {
@@ -2355,45 +2559,116 @@ export const demoSnapshotWilds: unknown = {
       {
         "message": "Game started",
         "type": "system",
-        "timestamp": "2026-07-14T22:07:06.530Z"
+        "timestamp": "2026-07-15T00:08:26.710Z"
       },
       {
         "message": "Eliza scouted (discarded 3 cards, gained 2 wild cards)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.530Z"
+        "timestamp": "2026-07-15T00:08:26.710Z"
       },
       {
         "message": "Isambard scouted (discarded 3 cards, gained 2 wild cards)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.530Z"
+        "timestamp": "2026-07-15T00:08:26.710Z"
       },
       {
-        "message": "George built brewery Level 1 at uttoxeter for £7 (consumed consumed 1 iron from market for £2) using uttoxeter (other)",
+        "message": "George built brewery Level 1 at walsall for £7 (consumed consumed 1 iron from market for £2) using brewery industry",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.531Z"
+        "timestamp": "2026-07-15T00:08:26.710Z"
       },
       {
-        "message": "Eliza collected £10 income",
+        "message": "Eliza collected £0 income",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.531Z"
+        "timestamp": "2026-07-15T00:08:26.710Z"
       },
       {
-        "message": "Isambard collected £10 income",
+        "message": "Isambard collected £0 income",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.531Z"
+        "timestamp": "2026-07-15T00:08:26.710Z"
       },
       {
-        "message": "George collected £10 income",
+        "message": "George collected £0 income",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.531Z"
+        "timestamp": "2026-07-15T00:08:26.710Z"
       },
       {
         "message": "Round 1 completed",
         "type": "system",
-        "timestamp": "2026-07-14T22:07:06.531Z"
+        "timestamp": "2026-07-15T00:08:26.710Z"
+      },
+      {
+        "message": "Eliza built coal Level 1 at cannock for £5 using cannock (other)",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.710Z"
+      },
+      {
+        "message": "Eliza built cotton Level 1 at birmingham for £12 using birmingham (other)",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.710Z"
+      },
+      {
+        "message": "Isambard built coal Level 1 at burton for £5 using burton (other)",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.711Z"
+      },
+      {
+        "message": "Isambard built brewery Level 1 at nuneaton for £7 (consumed consumed 1 iron from market for £2) using nuneaton (other)",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.711Z"
+      },
+      {
+        "message": "George built coal Level 1 at dudley for £5 using dudley (other)",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.711Z"
+      },
+      {
+        "message": "George took a loan (£30, -3 income) using cotton_manufacturer_1",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.711Z"
+      },
+      {
+        "message": "Eliza collected £0 income",
+        "type": "info",
+        "timestamp": "2026-07-15T00:08:26.711Z"
+      },
+      {
+        "message": "Isambard collected £0 income",
+        "type": "info",
+        "timestamp": "2026-07-15T00:08:26.711Z"
+      },
+      {
+        "message": "George paid £3 negative income",
+        "type": "info",
+        "timestamp": "2026-07-15T00:08:26.711Z"
+      },
+      {
+        "message": "Round 2 completed",
+        "type": "system",
+        "timestamp": "2026-07-15T00:08:26.711Z"
+      },
+      {
+        "message": "George built pottery Level 1 at coventry for £20 (consumed consumed 1 iron from market for £3) using coventry (other)",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.711Z"
+      },
+      {
+        "message": "George built brewery Level 1 at uttoxeter for £8 (consumed consumed 1 iron from market for £3) using uttoxeter (other)",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.711Z"
+      },
+      {
+        "message": "Isambard took a loan (£30, -3 income) using iron_3",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.711Z"
       }
     ],
     "drawPile": [
+      {
+        "id": "stafford_2",
+        "type": "location",
+        "location": "stafford",
+        "color": "other"
+      },
       {
         "id": "worcester_1",
         "type": "location",
@@ -2401,39 +2676,43 @@ export const demoSnapshotWilds: unknown = {
         "color": "other"
       },
       {
-        "id": "nuneaton_1",
+        "id": "iron_4",
+        "type": "industry",
+        "industries": [
+          "iron"
+        ]
+      },
+      {
+        "id": "tamworth_1",
         "type": "location",
-        "location": "nuneaton",
+        "location": "tamworth",
         "color": "other"
       },
       {
-        "id": "cannock_1",
-        "type": "location",
-        "location": "cannock",
-        "color": "other"
+        "id": "iron_1",
+        "type": "industry",
+        "industries": [
+          "iron"
+        ]
       },
       {
-        "id": "stoke_2",
-        "type": "location",
-        "location": "stoke",
-        "color": "other"
+        "id": "cotton_manufacturer_3",
+        "type": "industry",
+        "industries": [
+          "cotton",
+          "manufacturer"
+        ]
       },
       {
-        "id": "coalbrookdale_2",
-        "type": "location",
-        "location": "coalbrookdale",
-        "color": "other"
-      },
-      {
-        "id": "dudley_2",
+        "id": "dudley_1",
         "type": "location",
         "location": "dudley",
         "color": "other"
       },
       {
-        "id": "burton_2",
+        "id": "stafford_1",
         "type": "location",
-        "location": "burton",
+        "location": "stafford",
         "color": "other"
       },
       {
@@ -2443,15 +2722,15 @@ export const demoSnapshotWilds: unknown = {
         "color": "other"
       },
       {
-        "id": "cannock_2",
+        "id": "coventry_3",
         "type": "location",
-        "location": "cannock",
+        "location": "coventry",
         "color": "other"
       },
       {
-        "id": "stone_2",
+        "id": "worcester_2",
         "type": "location",
-        "location": "stone",
+        "location": "worcester",
         "color": "other"
       },
       {
@@ -2462,6 +2741,51 @@ export const demoSnapshotWilds: unknown = {
         ]
       },
       {
+        "id": "redditch_1",
+        "type": "location",
+        "location": "redditch",
+        "color": "other"
+      },
+      {
+        "id": "coalbrookdale_1",
+        "type": "location",
+        "location": "coalbrookdale",
+        "color": "other"
+      },
+      {
+        "id": "birmingham_2",
+        "type": "location",
+        "location": "birmingham",
+        "color": "other"
+      },
+      {
+        "id": "coventry_2",
+        "type": "location",
+        "location": "coventry",
+        "color": "other"
+      },
+      {
+        "id": "burton_2",
+        "type": "location",
+        "location": "burton",
+        "color": "other"
+      },
+      {
+        "id": "coal_2",
+        "type": "industry",
+        "industries": [
+          "coal"
+        ]
+      },
+      {
+        "id": "stoke_2",
+        "type": "location",
+        "location": "stoke",
+        "color": "other"
+      }
+    ],
+    "discardPile": [
+      {
         "id": "brewery_3",
         "type": "industry",
         "industries": [
@@ -2469,11 +2793,17 @@ export const demoSnapshotWilds: unknown = {
         ]
       },
       {
-        "id": "iron_3",
+        "id": "coal_1",
         "type": "industry",
         "industries": [
-          "iron"
+          "coal"
         ]
+      },
+      {
+        "id": "stone_2",
+        "type": "location",
+        "location": "stone",
+        "color": "other"
       },
       {
         "id": "wolverhampton_2",
@@ -2482,9 +2812,30 @@ export const demoSnapshotWilds: unknown = {
         "color": "other"
       },
       {
-        "id": "coalbrookdale_1",
+        "id": "stoke_3",
         "type": "location",
-        "location": "coalbrookdale",
+        "location": "stoke",
+        "color": "other"
+      },
+      {
+        "id": "cotton_manufacturer_4",
+        "type": "industry",
+        "industries": [
+          "cotton",
+          "manufacturer"
+        ]
+      },
+      {
+        "id": "brewery_5",
+        "type": "industry",
+        "industries": [
+          "brewery"
+        ]
+      },
+      {
+        "id": "cannock_2",
+        "type": "location",
+        "location": "cannock",
         "color": "other"
       },
       {
@@ -2500,12 +2851,16 @@ export const demoSnapshotWilds: unknown = {
         "color": "other"
       },
       {
-        "id": "cotton_manufacturer_6",
-        "type": "industry",
-        "industries": [
-          "cotton",
-          "manufacturer"
-        ]
+        "id": "nuneaton_1",
+        "type": "location",
+        "location": "nuneaton",
+        "color": "other"
+      },
+      {
+        "id": "dudley_2",
+        "type": "location",
+        "location": "dudley",
+        "color": "other"
       },
       {
         "id": "cotton_manufacturer_1",
@@ -2516,98 +2871,9 @@ export const demoSnapshotWilds: unknown = {
         ]
       },
       {
-        "id": "cotton_manufacturer_4",
-        "type": "industry",
-        "industries": [
-          "cotton",
-          "manufacturer"
-        ]
-      },
-      {
-        "id": "coal_1",
-        "type": "industry",
-        "industries": [
-          "coal"
-        ]
-      },
-      {
-        "id": "cotton_manufacturer_2",
-        "type": "industry",
-        "industries": [
-          "cotton",
-          "manufacturer"
-        ]
-      },
-      {
-        "id": "tamworth_1",
-        "type": "location",
-        "location": "tamworth",
-        "color": "other"
-      },
-      {
-        "id": "coal_2",
-        "type": "industry",
-        "industries": [
-          "coal"
-        ]
-      },
-      {
-        "id": "coventry_3",
+        "id": "coventry_1",
         "type": "location",
         "location": "coventry",
-        "color": "other"
-      },
-      {
-        "id": "birmingham_1",
-        "type": "location",
-        "location": "birmingham",
-        "color": "other"
-      },
-      {
-        "id": "redditch_1",
-        "type": "location",
-        "location": "redditch",
-        "color": "other"
-      }
-    ],
-    "discardPile": [
-      {
-        "id": "iron_1",
-        "type": "industry",
-        "industries": [
-          "iron"
-        ]
-      },
-      {
-        "id": "stafford_1",
-        "type": "location",
-        "location": "stafford",
-        "color": "other"
-      },
-      {
-        "id": "brewery_1",
-        "type": "industry",
-        "industries": [
-          "brewery"
-        ]
-      },
-      {
-        "id": "brewery_4",
-        "type": "industry",
-        "industries": [
-          "brewery"
-        ]
-      },
-      {
-        "id": "stoke_3",
-        "type": "location",
-        "location": "stoke",
-        "color": "other"
-      },
-      {
-        "id": "stone_1",
-        "type": "location",
-        "location": "stone",
         "color": "other"
       },
       {
@@ -2615,63 +2881,89 @@ export const demoSnapshotWilds: unknown = {
         "type": "location",
         "location": "uttoxeter",
         "color": "other"
+      },
+      {
+        "id": "iron_3",
+        "type": "industry",
+        "industries": [
+          "iron"
+        ]
       }
     ],
     "wildLocationPile": [],
     "wildIndustryPile": [],
     "selectedCard": null,
     "selectedCardsForScout": [],
-    "spentMoney": 0,
-    "playerSpending": {},
+    "spentMoney": 28,
+    "playerSpending": {
+      "3": 28
+    },
     "turnOrder": [
-      "1",
+      "3",
       "2",
-      "3"
+      "1"
     ],
     "isFinalRound": false,
     "selectedLink": null,
     "selectedSecondLink": null,
     "selectedLocation": null,
-    "selectedIndustryTile": null,
+    "selectedIndustryTile": {
+      "id": "iron_1",
+      "type": "iron",
+      "level": 1,
+      "cost": 5,
+      "victoryPoints": 3,
+      "incomeSpaces": 3,
+      "linkScoringIcons": 1,
+      "coalRequired": 1,
+      "ironRequired": 0,
+      "beerRequired": 0,
+      "beerProduced": 0,
+      "coalProduced": 0,
+      "ironProduced": 4,
+      "canBuildInCanalEra": true,
+      "canBuildInRailEra": false,
+      "hasLightbulbIcon": false,
+      "incomeAdvancement": 3,
+      "quantity": 1
+    },
     "selectedTilesForDevelop": [],
     "merchants": [
       {
         "location": "shrewsbury",
-        "industryIcons": [],
-        "bonusType": "victoryPoints",
-        "bonusValue": 4,
-        "hasBeer": false
-      },
-      {
-        "location": "gloucester",
-        "industryIcons": [
-          "cotton",
-          "manufacturer",
-          "pottery"
-        ],
-        "bonusType": "develop",
-        "bonusValue": 1,
-        "hasBeer": true
-      },
-      {
-        "location": "gloucester",
         "industryIcons": [
           "manufacturer"
         ],
+        "bonusType": "victoryPoints",
+        "bonusValue": 4,
+        "hasBeer": true
+      },
+      {
+        "location": "gloucester",
+        "industryIcons": [
+          "cotton",
+          "manufacturer",
+          "pottery"
+        ],
+        "bonusType": "develop",
+        "bonusValue": 1,
+        "hasBeer": true
+      },
+      {
+        "location": "gloucester",
+        "industryIcons": [
+          "cotton"
+        ],
         "bonusType": "develop",
         "bonusValue": 1,
         "hasBeer": true
       },
       {
         "location": "oxford",
-        "industryIcons": [
-          "cotton",
-          "manufacturer",
-          "pottery"
-        ],
+        "industryIcons": [],
         "bonusType": "income",
         "bonusValue": 2,
-        "hasBeer": true
+        "hasBeer": false
       },
       {
         "location": "oxford",
@@ -2680,15 +2972,6 @@ export const demoSnapshotWilds: unknown = {
         ],
         "bonusType": "income",
         "bonusValue": 2,
-        "hasBeer": true
-      },
-      {
-        "location": "warrington",
-        "industryIcons": [
-          "cotton"
-        ],
-        "bonusType": "money",
-        "bonusValue": 5,
         "hasBeer": true
       },
       {
@@ -2697,6 +2980,17 @@ export const demoSnapshotWilds: unknown = {
         "bonusType": "money",
         "bonusValue": 5,
         "hasBeer": false
+      },
+      {
+        "location": "warrington",
+        "industryIcons": [
+          "cotton",
+          "manufacturer",
+          "pottery"
+        ],
+        "bonusType": "money",
+        "bonusValue": 5,
+        "hasBeer": true
       }
     ],
     "salesMadeThisAction": 0,

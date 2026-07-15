@@ -21,6 +21,7 @@ const createTestContext = (overrides: Partial<GameState> = {}): GameState => {
         money: 17,
         victoryPoints: 0,
         income: 10,
+      incomeSpace: 30,
         hand: [],
         industryTilesOnMat: {} as any,
         links: [],

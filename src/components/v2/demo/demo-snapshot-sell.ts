@@ -15,9 +15,9 @@ export const demoSnapshotSell: unknown = {
         "name": "Eliza",
         "color": "red",
         "character": "Eliza Tinsley",
-        "money": 51,
+        "money": 22,
         "victoryPoints": 0,
-        "income": 15,
+        "income": -9,
         "industryTilesOnMat": {
           "cotton": [
             {
@@ -64,7 +64,7 @@ export const demoSnapshotSell: unknown = {
                 "incomeAdvancement": 4,
                 "quantity": 2
               },
-              "quantityAvailable": 1
+              "quantityAvailable": 2
             },
             {
               "tile": {
@@ -509,7 +509,7 @@ export const demoSnapshotSell: unknown = {
                 "incomeAdvancement": 5,
                 "quantity": 1
               },
-              "quantityAvailable": 0
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -626,7 +626,7 @@ export const demoSnapshotSell: unknown = {
                 "incomeAdvancement": 4,
                 "quantity": 2
               },
-              "quantityAvailable": 2
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -699,7 +699,15 @@ export const demoSnapshotSell: unknown = {
             }
           ]
         },
-        "hand": [],
+        "incomeSpace": 1,
+        "hand": [
+          {
+            "id": "worcester_2",
+            "type": "location",
+            "location": "worcester",
+            "color": "other"
+          }
+        ],
         "links": [
           {
             "from": "leek",
@@ -719,152 +727,94 @@ export const demoSnapshotSell: unknown = {
         ],
         "industries": [
           {
-            "location": "redditch",
-            "type": "coal",
+            "location": "tamworth",
+            "type": "cotton",
             "level": 1,
             "flipped": false,
             "tile": {
-              "id": "coal_1",
-              "type": "coal",
+              "id": "cotton_1",
+              "type": "cotton",
+              "level": 1,
+              "cost": 12,
+              "victoryPoints": 5,
+              "incomeSpaces": 5,
+              "linkScoringIcons": 1,
+              "coalRequired": 0,
+              "ironRequired": 0,
+              "beerRequired": 1,
+              "beerProduced": 0,
+              "coalProduced": 0,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": false,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 5,
+              "quantity": 3
+            },
+            "coalCubesOnTile": 0,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          },
+          {
+            "location": "coalbrookdale",
+            "type": "brewery",
+            "level": 1,
+            "flipped": false,
+            "tile": {
+              "id": "brewery_1",
+              "type": "brewery",
               "level": 1,
               "cost": 5,
-              "victoryPoints": 1,
+              "victoryPoints": 4,
               "incomeSpaces": 4,
               "linkScoringIcons": 2,
               "coalRequired": 0,
-              "ironRequired": 0,
+              "ironRequired": 1,
               "beerRequired": 0,
-              "beerProduced": 0,
-              "coalProduced": 2,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": false,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 4,
-              "quantity": 1
-            },
-            "coalCubesOnTile": 1,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "stoke",
-            "type": "cotton",
-            "level": 1,
-            "flipped": true,
-            "tile": {
-              "id": "cotton_1",
-              "type": "cotton",
-              "level": 1,
-              "cost": 12,
-              "victoryPoints": 5,
-              "incomeSpaces": 5,
-              "linkScoringIcons": 1,
-              "coalRequired": 0,
-              "ironRequired": 0,
-              "beerRequired": 1,
-              "beerProduced": 0,
+              "beerProduced": 1,
               "coalProduced": 0,
               "ironProduced": 0,
               "canBuildInCanalEra": true,
               "canBuildInRailEra": false,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 5,
-              "quantity": 3
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "kidderminster",
-            "type": "coal",
-            "level": 2,
-            "flipped": false,
-            "tile": {
-              "id": "coal_2",
-              "type": "coal",
-              "level": 2,
-              "cost": 7,
-              "victoryPoints": 2,
-              "incomeSpaces": 7,
-              "linkScoringIcons": 1,
-              "coalRequired": 0,
-              "ironRequired": 0,
-              "beerRequired": 0,
-              "beerProduced": 0,
-              "coalProduced": 3,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": true,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 7,
-              "quantity": 2
-            },
-            "coalCubesOnTile": 3,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "worcester",
-            "type": "cotton",
-            "level": 1,
-            "flipped": false,
-            "tile": {
-              "id": "cotton_1",
-              "type": "cotton",
-              "level": 1,
-              "cost": 12,
-              "victoryPoints": 5,
-              "incomeSpaces": 5,
-              "linkScoringIcons": 1,
-              "coalRequired": 0,
-              "ironRequired": 0,
-              "beerRequired": 1,
-              "beerProduced": 0,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": false,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 5,
-              "quantity": 3
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "kidderminster",
-            "type": "cotton",
-            "level": 2,
-            "flipped": false,
-            "tile": {
-              "id": "cotton_2",
-              "type": "cotton",
-              "level": 2,
-              "cost": 14,
-              "victoryPoints": 5,
-              "incomeSpaces": 4,
-              "linkScoringIcons": 2,
-              "coalRequired": 1,
-              "ironRequired": 0,
-              "beerRequired": 1,
-              "beerProduced": 0,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": true,
               "hasLightbulbIcon": false,
               "incomeAdvancement": 4,
               "quantity": 2
             },
             "coalCubesOnTile": 0,
             "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
+            "beerBarrelsOnTile": 1
           },
           {
             "location": "leek",
+            "type": "cotton",
+            "level": 1,
+            "flipped": false,
+            "tile": {
+              "id": "cotton_1",
+              "type": "cotton",
+              "level": 1,
+              "cost": 12,
+              "victoryPoints": 5,
+              "incomeSpaces": 5,
+              "linkScoringIcons": 1,
+              "coalRequired": 0,
+              "ironRequired": 0,
+              "beerRequired": 1,
+              "beerProduced": 0,
+              "coalProduced": 0,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": false,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 5,
+              "quantity": 3
+            },
+            "coalCubesOnTile": 0,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          },
+          {
+            "location": "wolverhampton",
             "type": "coal",
             "level": 2,
             "flipped": false,
@@ -893,7 +843,36 @@ export const demoSnapshotSell: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "tamworth",
+            "location": "redditch",
+            "type": "coal",
+            "level": 2,
+            "flipped": false,
+            "tile": {
+              "id": "coal_2",
+              "type": "coal",
+              "level": 2,
+              "cost": 7,
+              "victoryPoints": 2,
+              "incomeSpaces": 7,
+              "linkScoringIcons": 1,
+              "coalRequired": 0,
+              "ironRequired": 0,
+              "beerRequired": 0,
+              "beerProduced": 0,
+              "coalProduced": 3,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": true,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 7,
+              "quantity": 2
+            },
+            "coalCubesOnTile": 3,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          },
+          {
+            "location": "dudley",
             "type": "coal",
             "level": 3,
             "flipped": false,
@@ -922,10 +901,10 @@ export const demoSnapshotSell: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "redditch",
+            "location": "dudley",
             "type": "iron",
             "level": 2,
-            "flipped": true,
+            "flipped": false,
             "tile": {
               "id": "iron_2",
               "type": "iron",
@@ -947,36 +926,7 @@ export const demoSnapshotSell: unknown = {
               "quantity": 1
             },
             "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "stoke",
-            "type": "pottery",
-            "level": 1,
-            "flipped": false,
-            "tile": {
-              "id": "pottery_1",
-              "type": "pottery",
-              "level": 1,
-              "cost": 17,
-              "victoryPoints": 10,
-              "incomeSpaces": 5,
-              "linkScoringIcons": 1,
-              "coalRequired": 0,
-              "ironRequired": 1,
-              "beerRequired": 1,
-              "beerProduced": 0,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": true,
-              "hasLightbulbIcon": true,
-              "incomeAdvancement": 5,
-              "quantity": 1
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
+            "ironCubesOnTile": 1,
             "beerBarrelsOnTile": 0
           }
         ]
@@ -986,9 +936,9 @@ export const demoSnapshotSell: unknown = {
         "name": "Isambard",
         "color": "blue",
         "character": "Isambard Kingdom Brunel",
-        "money": 6,
+        "money": 1,
         "victoryPoints": 0,
-        "income": 18,
+        "income": -9,
         "industryTilesOnMat": {
           "cotton": [
             {
@@ -1129,7 +1079,7 @@ export const demoSnapshotSell: unknown = {
                 "incomeAdvancement": 7,
                 "quantity": 2
               },
-              "quantityAvailable": 0
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -1200,7 +1150,7 @@ export const demoSnapshotSell: unknown = {
                 "incomeAdvancement": 3,
                 "quantity": 1
               },
-              "quantityAvailable": 0
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -1223,7 +1173,7 @@ export const demoSnapshotSell: unknown = {
                 "incomeAdvancement": 3,
                 "quantity": 1
               },
-              "quantityAvailable": 0
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -1294,7 +1244,7 @@ export const demoSnapshotSell: unknown = {
                 "incomeAdvancement": 5,
                 "quantity": 1
               },
-              "quantityAvailable": 0
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -1317,7 +1267,7 @@ export const demoSnapshotSell: unknown = {
                 "incomeAdvancement": 1,
                 "quantity": 2
               },
-              "quantityAvailable": 0
+              "quantityAvailable": 2
             },
             {
               "tile": {
@@ -1480,7 +1430,7 @@ export const demoSnapshotSell: unknown = {
                 "incomeAdvancement": 5,
                 "quantity": 1
               },
-              "quantityAvailable": 0
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -1503,7 +1453,7 @@ export const demoSnapshotSell: unknown = {
                 "incomeAdvancement": 1,
                 "quantity": 1
               },
-              "quantityAvailable": 0
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -1620,7 +1570,7 @@ export const demoSnapshotSell: unknown = {
                 "incomeAdvancement": 5,
                 "quantity": 2
               },
-              "quantityAvailable": 1
+              "quantityAvailable": 0
             },
             {
               "tile": {
@@ -1643,7 +1593,7 @@ export const demoSnapshotSell: unknown = {
                 "incomeAdvancement": 5,
                 "quantity": 2
               },
-              "quantityAvailable": 2
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -1670,17 +1620,39 @@ export const demoSnapshotSell: unknown = {
             }
           ]
         },
-        "hand": [
-          {
-            "id": "coal_1",
-            "type": "industry",
-            "industries": [
-              "coal"
-            ]
-          }
-        ],
+        "incomeSpace": 1,
+        "hand": [],
         "links": [],
         "industries": [
+          {
+            "location": "cannock",
+            "type": "coal",
+            "level": 2,
+            "flipped": false,
+            "tile": {
+              "id": "coal_2",
+              "type": "coal",
+              "level": 2,
+              "cost": 7,
+              "victoryPoints": 2,
+              "incomeSpaces": 7,
+              "linkScoringIcons": 1,
+              "coalRequired": 0,
+              "ironRequired": 0,
+              "beerRequired": 0,
+              "beerProduced": 0,
+              "coalProduced": 3,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": true,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 7,
+              "quantity": 2
+            },
+            "coalCubesOnTile": 3,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          },
           {
             "location": "birmingham",
             "type": "cotton",
@@ -1711,46 +1683,17 @@ export const demoSnapshotSell: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "uttoxeter",
+            "location": "nuneaton",
             "type": "brewery",
-            "level": 1,
-            "flipped": true,
-            "tile": {
-              "id": "brewery_1",
-              "type": "brewery",
-              "level": 1,
-              "cost": 5,
-              "victoryPoints": 4,
-              "incomeSpaces": 4,
-              "linkScoringIcons": 2,
-              "coalRequired": 0,
-              "ironRequired": 1,
-              "beerRequired": 0,
-              "beerProduced": 1,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": false,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 4,
-              "quantity": 2
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "stafford",
-            "type": "brewery",
-            "level": 1,
+            "level": 3,
             "flipped": false,
             "tile": {
-              "id": "brewery_1",
+              "id": "brewery_3",
               "type": "brewery",
-              "level": 1,
-              "cost": 5,
-              "victoryPoints": 4,
-              "incomeSpaces": 4,
+              "level": 3,
+              "cost": 9,
+              "victoryPoints": 7,
+              "incomeSpaces": 5,
               "linkScoringIcons": 2,
               "coalRequired": 0,
               "ironRequired": 1,
@@ -1759,44 +1702,737 @@ export const demoSnapshotSell: unknown = {
               "coalProduced": 0,
               "ironProduced": 0,
               "canBuildInCanalEra": true,
-              "canBuildInRailEra": false,
+              "canBuildInRailEra": true,
               "hasLightbulbIcon": false,
-              "incomeAdvancement": 4,
+              "incomeAdvancement": 5,
               "quantity": 2
             },
             "coalCubesOnTile": 0,
             "ironCubesOnTile": 0,
             "beerBarrelsOnTile": 1
+          }
+        ]
+      },
+      {
+        "id": "3",
+        "name": "George",
+        "color": "green",
+        "character": "George Stephenson",
+        "money": 9,
+        "victoryPoints": 0,
+        "income": -10,
+        "industryTilesOnMat": {
+          "cotton": [
+            {
+              "tile": {
+                "id": "cotton_1",
+                "type": "cotton",
+                "level": 1,
+                "cost": 12,
+                "victoryPoints": 5,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": false,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 3
+              },
+              "quantityAvailable": 0
+            },
+            {
+              "tile": {
+                "id": "cotton_2",
+                "type": "cotton",
+                "level": 2,
+                "cost": 14,
+                "victoryPoints": 5,
+                "incomeSpaces": 4,
+                "linkScoringIcons": 2,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 4,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "cotton_3",
+                "type": "cotton",
+                "level": 3,
+                "cost": 16,
+                "victoryPoints": 9,
+                "incomeSpaces": 3,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 1,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 3,
+                "quantity": 3
+              },
+              "quantityAvailable": 3
+            },
+            {
+              "tile": {
+                "id": "cotton_4",
+                "type": "cotton",
+                "level": 4,
+                "cost": 18,
+                "victoryPoints": 12,
+                "incomeSpaces": 2,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 1,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 2,
+                "quantity": 3
+              },
+              "quantityAvailable": 3
+            }
+          ],
+          "coal": [
+            {
+              "tile": {
+                "id": "coal_1",
+                "type": "coal",
+                "level": 1,
+                "cost": 5,
+                "victoryPoints": 1,
+                "incomeSpaces": 4,
+                "linkScoringIcons": 2,
+                "coalRequired": 0,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 2,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": false,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 4,
+                "quantity": 1
+              },
+              "quantityAvailable": 0
+            },
+            {
+              "tile": {
+                "id": "coal_2",
+                "type": "coal",
+                "level": 2,
+                "cost": 7,
+                "victoryPoints": 2,
+                "incomeSpaces": 7,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 3,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 7,
+                "quantity": 2
+              },
+              "quantityAvailable": 0
+            },
+            {
+              "tile": {
+                "id": "coal_3",
+                "type": "coal",
+                "level": 3,
+                "cost": 8,
+                "victoryPoints": 3,
+                "incomeSpaces": 6,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 4,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 6,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "coal_4",
+                "type": "coal",
+                "level": 4,
+                "cost": 10,
+                "victoryPoints": 4,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 5,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            }
+          ],
+          "iron": [
+            {
+              "tile": {
+                "id": "iron_1",
+                "type": "iron",
+                "level": 1,
+                "cost": 5,
+                "victoryPoints": 3,
+                "incomeSpaces": 3,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 4,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": false,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 3,
+                "quantity": 1
+              },
+              "quantityAvailable": 0
+            },
+            {
+              "tile": {
+                "id": "iron_2",
+                "type": "iron",
+                "level": 2,
+                "cost": 7,
+                "victoryPoints": 5,
+                "incomeSpaces": 3,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 4,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 3,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "iron_3",
+                "type": "iron",
+                "level": 3,
+                "cost": 9,
+                "victoryPoints": 7,
+                "incomeSpaces": 2,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 5,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 2,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "iron_4",
+                "type": "iron",
+                "level": 4,
+                "cost": 12,
+                "victoryPoints": 9,
+                "incomeSpaces": 1,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 6,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 1,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            }
+          ],
+          "manufacturer": [
+            {
+              "tile": {
+                "id": "manufacturer_1",
+                "type": "manufacturer",
+                "level": 1,
+                "cost": 8,
+                "victoryPoints": 3,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 2,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": false,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 1
+              },
+              "quantityAvailable": 0
+            },
+            {
+              "tile": {
+                "id": "manufacturer_2",
+                "type": "manufacturer",
+                "level": 2,
+                "cost": 10,
+                "victoryPoints": 5,
+                "incomeSpaces": 1,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 1,
+                "quantity": 2
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "manufacturer_3",
+                "type": "manufacturer",
+                "level": 3,
+                "cost": 12,
+                "victoryPoints": 4,
+                "incomeSpaces": 4,
+                "linkScoringIcons": 0,
+                "coalRequired": 2,
+                "ironRequired": 0,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 4,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "manufacturer_4",
+                "type": "manufacturer",
+                "level": 4,
+                "cost": 8,
+                "victoryPoints": 3,
+                "incomeSpaces": 6,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 6,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "manufacturer_5",
+                "type": "manufacturer",
+                "level": 5,
+                "cost": 16,
+                "victoryPoints": 8,
+                "incomeSpaces": 2,
+                "linkScoringIcons": 2,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 2,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 2,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "manufacturer_6",
+                "type": "manufacturer",
+                "level": 6,
+                "cost": 20,
+                "victoryPoints": 7,
+                "incomeSpaces": 6,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 6,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "manufacturer_7",
+                "type": "manufacturer",
+                "level": 7,
+                "cost": 16,
+                "victoryPoints": 9,
+                "incomeSpaces": 4,
+                "linkScoringIcons": 0,
+                "coalRequired": 1,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 4,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "manufacturer_8",
+                "type": "manufacturer",
+                "level": 8,
+                "cost": 20,
+                "victoryPoints": 11,
+                "incomeSpaces": 1,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 2,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 1,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            }
+          ],
+          "pottery": [
+            {
+              "tile": {
+                "id": "pottery_1",
+                "type": "pottery",
+                "level": 1,
+                "cost": 17,
+                "victoryPoints": 10,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 1,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": true,
+                "incomeAdvancement": 5,
+                "quantity": 1
+              },
+              "quantityAvailable": 0
+            },
+            {
+              "tile": {
+                "id": "pottery_2",
+                "type": "pottery",
+                "level": 2,
+                "cost": 0,
+                "victoryPoints": 1,
+                "incomeSpaces": 1,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 1,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "pottery_3",
+                "type": "pottery",
+                "level": 3,
+                "cost": 22,
+                "victoryPoints": 11,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 1,
+                "coalRequired": 2,
+                "ironRequired": 0,
+                "beerRequired": 2,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": true,
+                "incomeAdvancement": 5,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "pottery_4",
+                "type": "pottery",
+                "level": 4,
+                "cost": 0,
+                "victoryPoints": 1,
+                "incomeSpaces": 1,
+                "linkScoringIcons": 1,
+                "coalRequired": 1,
+                "ironRequired": 0,
+                "beerRequired": 1,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 1,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "pottery_5",
+                "type": "pottery",
+                "level": 5,
+                "cost": 24,
+                "victoryPoints": 20,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 1,
+                "coalRequired": 2,
+                "ironRequired": 0,
+                "beerRequired": 2,
+                "beerProduced": 0,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": false,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            }
+          ],
+          "brewery": [
+            {
+              "tile": {
+                "id": "brewery_1",
+                "type": "brewery",
+                "level": 1,
+                "cost": 5,
+                "victoryPoints": 4,
+                "incomeSpaces": 4,
+                "linkScoringIcons": 2,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 1,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": false,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 4,
+                "quantity": 2
+              },
+              "quantityAvailable": 1
+            },
+            {
+              "tile": {
+                "id": "brewery_2",
+                "type": "brewery",
+                "level": 2,
+                "cost": 7,
+                "victoryPoints": 5,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 2,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 1,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "brewery_3",
+                "type": "brewery",
+                "level": 3,
+                "cost": 9,
+                "victoryPoints": 7,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 2,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 1,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": true,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 2
+              },
+              "quantityAvailable": 2
+            },
+            {
+              "tile": {
+                "id": "brewery_4",
+                "type": "brewery",
+                "level": 4,
+                "cost": 9,
+                "victoryPoints": 10,
+                "incomeSpaces": 5,
+                "linkScoringIcons": 2,
+                "coalRequired": 0,
+                "ironRequired": 1,
+                "beerRequired": 0,
+                "beerProduced": 1,
+                "coalProduced": 0,
+                "ironProduced": 0,
+                "canBuildInCanalEra": false,
+                "canBuildInRailEra": true,
+                "hasLightbulbIcon": false,
+                "incomeAdvancement": 5,
+                "quantity": 1
+              },
+              "quantityAvailable": 1
+            }
+          ]
+        },
+        "incomeSpace": 0,
+        "hand": [
+          {
+            "id": "brewery_3",
+            "type": "industry",
+            "industries": [
+              "brewery"
+            ]
           },
           {
-            "location": "coventry",
-            "type": "coal",
-            "level": 1,
-            "flipped": false,
-            "tile": {
-              "id": "coal_1",
-              "type": "coal",
-              "level": 1,
-              "cost": 5,
-              "victoryPoints": 1,
-              "incomeSpaces": 4,
-              "linkScoringIcons": 2,
-              "coalRequired": 0,
-              "ironRequired": 0,
-              "beerRequired": 0,
-              "beerProduced": 0,
-              "coalProduced": 2,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": false,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 4,
-              "quantity": 1
-            },
-            "coalCubesOnTile": 1,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
+            "id": "kidderminster_2",
+            "type": "location",
+            "location": "kidderminster",
+            "color": "other"
           },
+          {
+            "id": "brewery_5",
+            "type": "industry",
+            "industries": [
+              "brewery"
+            ]
+          },
+          {
+            "id": "walsall_1",
+            "type": "location",
+            "location": "walsall",
+            "color": "other"
+          }
+        ],
+        "links": [],
+        "industries": [
           {
             "location": "coventry",
             "type": "iron",
@@ -1827,152 +2463,7 @@ export const demoSnapshotSell: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "wolverhampton",
-            "type": "manufacturer",
-            "level": 1,
-            "flipped": false,
-            "tile": {
-              "id": "manufacturer_1",
-              "type": "manufacturer",
-              "level": 1,
-              "cost": 8,
-              "victoryPoints": 3,
-              "incomeSpaces": 5,
-              "linkScoringIcons": 2,
-              "coalRequired": 1,
-              "ironRequired": 0,
-              "beerRequired": 1,
-              "beerProduced": 0,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": false,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 5,
-              "quantity": 1
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
             "location": "burton",
-            "type": "brewery",
-            "level": 2,
-            "flipped": false,
-            "tile": {
-              "id": "brewery_2",
-              "type": "brewery",
-              "level": 2,
-              "cost": 7,
-              "victoryPoints": 5,
-              "incomeSpaces": 5,
-              "linkScoringIcons": 2,
-              "coalRequired": 0,
-              "ironRequired": 1,
-              "beerRequired": 0,
-              "beerProduced": 1,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": true,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 5,
-              "quantity": 2
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 1
-          },
-          {
-            "location": "uttoxeter",
-            "type": "cotton",
-            "level": 1,
-            "flipped": false,
-            "tile": {
-              "id": "cotton_1",
-              "type": "cotton",
-              "level": 1,
-              "cost": 12,
-              "victoryPoints": 5,
-              "incomeSpaces": 5,
-              "linkScoringIcons": 1,
-              "coalRequired": 0,
-              "ironRequired": 0,
-              "beerRequired": 1,
-              "beerProduced": 0,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": false,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 5,
-              "quantity": 3
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "nuneaton",
-            "type": "manufacturer",
-            "level": 2,
-            "flipped": false,
-            "tile": {
-              "id": "manufacturer_2",
-              "type": "manufacturer",
-              "level": 2,
-              "cost": 10,
-              "victoryPoints": 5,
-              "incomeSpaces": 1,
-              "linkScoringIcons": 1,
-              "coalRequired": 0,
-              "ironRequired": 1,
-              "beerRequired": 1,
-              "beerProduced": 0,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": true,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 1,
-              "quantity": 2
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "coalbrookdale",
-            "type": "coal",
-            "level": 2,
-            "flipped": false,
-            "tile": {
-              "id": "coal_2",
-              "type": "coal",
-              "level": 2,
-              "cost": 7,
-              "victoryPoints": 2,
-              "incomeSpaces": 7,
-              "linkScoringIcons": 1,
-              "coalRequired": 0,
-              "ironRequired": 0,
-              "beerRequired": 0,
-              "beerProduced": 0,
-              "coalProduced": 3,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": true,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 7,
-              "quantity": 2
-            },
-            "coalCubesOnTile": 2,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "dudley",
             "type": "coal",
             "level": 2,
             "flipped": false,
@@ -2002,930 +2493,6 @@ export const demoSnapshotSell: unknown = {
           },
           {
             "location": "coventry",
-            "type": "pottery",
-            "level": 2,
-            "flipped": false,
-            "tile": {
-              "id": "pottery_2",
-              "type": "pottery",
-              "level": 2,
-              "cost": 0,
-              "victoryPoints": 1,
-              "incomeSpaces": 1,
-              "linkScoringIcons": 1,
-              "coalRequired": 1,
-              "ironRequired": 0,
-              "beerRequired": 1,
-              "beerProduced": 0,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": true,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 1,
-              "quantity": 1
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "coalbrookdale",
-            "type": "iron",
-            "level": 2,
-            "flipped": true,
-            "tile": {
-              "id": "iron_2",
-              "type": "iron",
-              "level": 2,
-              "cost": 7,
-              "victoryPoints": 5,
-              "incomeSpaces": 3,
-              "linkScoringIcons": 1,
-              "coalRequired": 1,
-              "ironRequired": 0,
-              "beerRequired": 0,
-              "beerProduced": 0,
-              "coalProduced": 0,
-              "ironProduced": 4,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": true,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 3,
-              "quantity": 1
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "stoke",
-            "type": "manufacturer",
-            "level": 2,
-            "flipped": true,
-            "tile": {
-              "id": "manufacturer_2",
-              "type": "manufacturer",
-              "level": 2,
-              "cost": 10,
-              "victoryPoints": 5,
-              "incomeSpaces": 1,
-              "linkScoringIcons": 1,
-              "coalRequired": 0,
-              "ironRequired": 1,
-              "beerRequired": 1,
-              "beerProduced": 0,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": true,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 1,
-              "quantity": 2
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          }
-        ]
-      },
-      {
-        "id": "3",
-        "name": "George",
-        "color": "green",
-        "character": "George Stephenson",
-        "money": 38,
-        "victoryPoints": 0,
-        "income": 1,
-        "industryTilesOnMat": {
-          "cotton": [
-            {
-              "tile": {
-                "id": "cotton_1",
-                "type": "cotton",
-                "level": 1,
-                "cost": 12,
-                "victoryPoints": 5,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": false,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 3
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "cotton_2",
-                "type": "cotton",
-                "level": 2,
-                "cost": 14,
-                "victoryPoints": 5,
-                "incomeSpaces": 4,
-                "linkScoringIcons": 2,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 4,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "cotton_3",
-                "type": "cotton",
-                "level": 3,
-                "cost": 16,
-                "victoryPoints": 9,
-                "incomeSpaces": 3,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 1,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 3,
-                "quantity": 3
-              },
-              "quantityAvailable": 3
-            },
-            {
-              "tile": {
-                "id": "cotton_4",
-                "type": "cotton",
-                "level": 4,
-                "cost": 18,
-                "victoryPoints": 12,
-                "incomeSpaces": 2,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 1,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 2,
-                "quantity": 3
-              },
-              "quantityAvailable": 3
-            }
-          ],
-          "coal": [
-            {
-              "tile": {
-                "id": "coal_1",
-                "type": "coal",
-                "level": 1,
-                "cost": 5,
-                "victoryPoints": 1,
-                "incomeSpaces": 4,
-                "linkScoringIcons": 2,
-                "coalRequired": 0,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 2,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": false,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 4,
-                "quantity": 1
-              },
-              "quantityAvailable": 0
-            },
-            {
-              "tile": {
-                "id": "coal_2",
-                "type": "coal",
-                "level": 2,
-                "cost": 7,
-                "victoryPoints": 2,
-                "incomeSpaces": 7,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 3,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 7,
-                "quantity": 2
-              },
-              "quantityAvailable": 0
-            },
-            {
-              "tile": {
-                "id": "coal_3",
-                "type": "coal",
-                "level": 3,
-                "cost": 8,
-                "victoryPoints": 3,
-                "incomeSpaces": 6,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 4,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 6,
-                "quantity": 2
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "coal_4",
-                "type": "coal",
-                "level": 4,
-                "cost": 10,
-                "victoryPoints": 4,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 5,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            }
-          ],
-          "iron": [
-            {
-              "tile": {
-                "id": "iron_1",
-                "type": "iron",
-                "level": 1,
-                "cost": 5,
-                "victoryPoints": 3,
-                "incomeSpaces": 3,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 4,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": false,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 3,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "iron_2",
-                "type": "iron",
-                "level": 2,
-                "cost": 7,
-                "victoryPoints": 5,
-                "incomeSpaces": 3,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 4,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 3,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "iron_3",
-                "type": "iron",
-                "level": 3,
-                "cost": 9,
-                "victoryPoints": 7,
-                "incomeSpaces": 2,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 5,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 2,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "iron_4",
-                "type": "iron",
-                "level": 4,
-                "cost": 12,
-                "victoryPoints": 9,
-                "incomeSpaces": 1,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 6,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 1,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            }
-          ],
-          "manufacturer": [
-            {
-              "tile": {
-                "id": "manufacturer_1",
-                "type": "manufacturer",
-                "level": 1,
-                "cost": 8,
-                "victoryPoints": 3,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 2,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": false,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 1
-              },
-              "quantityAvailable": 0
-            },
-            {
-              "tile": {
-                "id": "manufacturer_2",
-                "type": "manufacturer",
-                "level": 2,
-                "cost": 10,
-                "victoryPoints": 5,
-                "incomeSpaces": 1,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 1,
-                "quantity": 2
-              },
-              "quantityAvailable": 0
-            },
-            {
-              "tile": {
-                "id": "manufacturer_3",
-                "type": "manufacturer",
-                "level": 3,
-                "cost": 12,
-                "victoryPoints": 4,
-                "incomeSpaces": 4,
-                "linkScoringIcons": 0,
-                "coalRequired": 2,
-                "ironRequired": 0,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 4,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "manufacturer_4",
-                "type": "manufacturer",
-                "level": 4,
-                "cost": 8,
-                "victoryPoints": 3,
-                "incomeSpaces": 6,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 6,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "manufacturer_5",
-                "type": "manufacturer",
-                "level": 5,
-                "cost": 16,
-                "victoryPoints": 8,
-                "incomeSpaces": 2,
-                "linkScoringIcons": 2,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 2,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 2,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "manufacturer_6",
-                "type": "manufacturer",
-                "level": 6,
-                "cost": 20,
-                "victoryPoints": 7,
-                "incomeSpaces": 6,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 6,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "manufacturer_7",
-                "type": "manufacturer",
-                "level": 7,
-                "cost": 16,
-                "victoryPoints": 9,
-                "incomeSpaces": 4,
-                "linkScoringIcons": 0,
-                "coalRequired": 1,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 4,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "manufacturer_8",
-                "type": "manufacturer",
-                "level": 8,
-                "cost": 20,
-                "victoryPoints": 11,
-                "incomeSpaces": 1,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 2,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 1,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            }
-          ],
-          "pottery": [
-            {
-              "tile": {
-                "id": "pottery_1",
-                "type": "pottery",
-                "level": 1,
-                "cost": 17,
-                "victoryPoints": 10,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 1,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": true,
-                "incomeAdvancement": 5,
-                "quantity": 1
-              },
-              "quantityAvailable": 0
-            },
-            {
-              "tile": {
-                "id": "pottery_2",
-                "type": "pottery",
-                "level": 2,
-                "cost": 0,
-                "victoryPoints": 1,
-                "incomeSpaces": 1,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 1,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "pottery_3",
-                "type": "pottery",
-                "level": 3,
-                "cost": 22,
-                "victoryPoints": 11,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 1,
-                "coalRequired": 2,
-                "ironRequired": 0,
-                "beerRequired": 2,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": true,
-                "incomeAdvancement": 5,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "pottery_4",
-                "type": "pottery",
-                "level": 4,
-                "cost": 0,
-                "victoryPoints": 1,
-                "incomeSpaces": 1,
-                "linkScoringIcons": 1,
-                "coalRequired": 1,
-                "ironRequired": 0,
-                "beerRequired": 1,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 1,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            },
-            {
-              "tile": {
-                "id": "pottery_5",
-                "type": "pottery",
-                "level": 5,
-                "cost": 24,
-                "victoryPoints": 20,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 1,
-                "coalRequired": 2,
-                "ironRequired": 0,
-                "beerRequired": 2,
-                "beerProduced": 0,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": false,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            }
-          ],
-          "brewery": [
-            {
-              "tile": {
-                "id": "brewery_1",
-                "type": "brewery",
-                "level": 1,
-                "cost": 5,
-                "victoryPoints": 4,
-                "incomeSpaces": 4,
-                "linkScoringIcons": 2,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 1,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": false,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 4,
-                "quantity": 2
-              },
-              "quantityAvailable": 0
-            },
-            {
-              "tile": {
-                "id": "brewery_2",
-                "type": "brewery",
-                "level": 2,
-                "cost": 7,
-                "victoryPoints": 5,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 2,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 1,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "brewery_3",
-                "type": "brewery",
-                "level": 3,
-                "cost": 9,
-                "victoryPoints": 7,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 2,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 1,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": true,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 2
-              },
-              "quantityAvailable": 2
-            },
-            {
-              "tile": {
-                "id": "brewery_4",
-                "type": "brewery",
-                "level": 4,
-                "cost": 9,
-                "victoryPoints": 10,
-                "incomeSpaces": 5,
-                "linkScoringIcons": 2,
-                "coalRequired": 0,
-                "ironRequired": 1,
-                "beerRequired": 0,
-                "beerProduced": 1,
-                "coalProduced": 0,
-                "ironProduced": 0,
-                "canBuildInCanalEra": false,
-                "canBuildInRailEra": true,
-                "hasLightbulbIcon": false,
-                "incomeAdvancement": 5,
-                "quantity": 1
-              },
-              "quantityAvailable": 1
-            }
-          ]
-        },
-        "hand": [
-          {
-            "id": "coventry_3",
-            "type": "location",
-            "location": "coventry",
-            "color": "other"
-          },
-          {
-            "id": "iron_2",
-            "type": "industry",
-            "industries": [
-              "iron"
-            ]
-          },
-          {
-            "id": "dudley_1",
-            "type": "location",
-            "location": "dudley",
-            "color": "other"
-          },
-          {
-            "id": "coal_2",
-            "type": "industry",
-            "industries": [
-              "coal"
-            ]
-          }
-        ],
-        "links": [],
-        "industries": [
-          {
-            "location": "worcester",
-            "type": "cotton",
-            "level": 1,
-            "flipped": false,
-            "tile": {
-              "id": "cotton_1",
-              "type": "cotton",
-              "level": 1,
-              "cost": 12,
-              "victoryPoints": 5,
-              "incomeSpaces": 5,
-              "linkScoringIcons": 1,
-              "coalRequired": 0,
-              "ironRequired": 0,
-              "beerRequired": 1,
-              "beerProduced": 0,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": false,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 5,
-              "quantity": 3
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "walsall",
-            "type": "brewery",
-            "level": 1,
-            "flipped": false,
-            "tile": {
-              "id": "brewery_1",
-              "type": "brewery",
-              "level": 1,
-              "cost": 5,
-              "victoryPoints": 4,
-              "incomeSpaces": 4,
-              "linkScoringIcons": 2,
-              "coalRequired": 0,
-              "ironRequired": 1,
-              "beerRequired": 0,
-              "beerProduced": 1,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": false,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 4,
-              "quantity": 2
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 1
-          },
-          {
-            "location": "wolverhampton",
-            "type": "coal",
-            "level": 1,
-            "flipped": false,
-            "tile": {
-              "id": "coal_1",
-              "type": "coal",
-              "level": 1,
-              "cost": 5,
-              "victoryPoints": 1,
-              "incomeSpaces": 4,
-              "linkScoringIcons": 2,
-              "coalRequired": 0,
-              "ironRequired": 0,
-              "beerRequired": 0,
-              "beerProduced": 0,
-              "coalProduced": 2,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": false,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 4,
-              "quantity": 1
-            },
-            "coalCubesOnTile": 1,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "stone",
-            "type": "cotton",
-            "level": 1,
-            "flipped": false,
-            "tile": {
-              "id": "cotton_1",
-              "type": "cotton",
-              "level": 1,
-              "cost": 12,
-              "victoryPoints": 5,
-              "incomeSpaces": 5,
-              "linkScoringIcons": 1,
-              "coalRequired": 0,
-              "ironRequired": 0,
-              "beerRequired": 1,
-              "beerProduced": 0,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": false,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 5,
-              "quantity": 3
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "stafford",
             "type": "pottery",
             "level": 1,
             "flipped": false,
@@ -2954,7 +2521,7 @@ export const demoSnapshotSell: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "burton",
+            "location": "coventry",
             "type": "coal",
             "level": 2,
             "flipped": false,
@@ -2983,123 +2550,7 @@ export const demoSnapshotSell: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "stone",
-            "type": "coal",
-            "level": 2,
-            "flipped": false,
-            "tile": {
-              "id": "coal_2",
-              "type": "coal",
-              "level": 2,
-              "cost": 7,
-              "victoryPoints": 2,
-              "incomeSpaces": 7,
-              "linkScoringIcons": 1,
-              "coalRequired": 0,
-              "ironRequired": 0,
-              "beerRequired": 0,
-              "beerProduced": 0,
-              "coalProduced": 3,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": true,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 7,
-              "quantity": 2
-            },
-            "coalCubesOnTile": 3,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "leek",
-            "type": "manufacturer",
-            "level": 1,
-            "flipped": false,
-            "tile": {
-              "id": "manufacturer_1",
-              "type": "manufacturer",
-              "level": 1,
-              "cost": 8,
-              "victoryPoints": 3,
-              "incomeSpaces": 5,
-              "linkScoringIcons": 2,
-              "coalRequired": 1,
-              "ironRequired": 0,
-              "beerRequired": 1,
-              "beerProduced": 0,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": false,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 5,
-              "quantity": 1
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "birmingham",
-            "type": "manufacturer",
-            "level": 2,
-            "flipped": false,
-            "tile": {
-              "id": "manufacturer_2",
-              "type": "manufacturer",
-              "level": 2,
-              "cost": 10,
-              "victoryPoints": 5,
-              "incomeSpaces": 1,
-              "linkScoringIcons": 1,
-              "coalRequired": 0,
-              "ironRequired": 1,
-              "beerRequired": 1,
-              "beerProduced": 0,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": true,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 1,
-              "quantity": 2
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "cannock",
-            "type": "manufacturer",
-            "level": 2,
-            "flipped": false,
-            "tile": {
-              "id": "manufacturer_2",
-              "type": "manufacturer",
-              "level": 2,
-              "cost": 10,
-              "victoryPoints": 5,
-              "incomeSpaces": 1,
-              "linkScoringIcons": 1,
-              "coalRequired": 0,
-              "ironRequired": 1,
-              "beerRequired": 1,
-              "beerProduced": 0,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": true,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 1,
-              "quantity": 2
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "coalbrookdale",
+            "location": "stafford",
             "type": "brewery",
             "level": 1,
             "flipped": false,
@@ -3128,31 +2579,147 @@ export const demoSnapshotSell: unknown = {
             "beerBarrelsOnTile": 1
           },
           {
-            "location": "cannock",
-            "type": "coal",
-            "level": 3,
+            "location": "wolverhampton",
+            "type": "manufacturer",
+            "level": 1,
             "flipped": false,
             "tile": {
-              "id": "coal_3",
-              "type": "coal",
-              "level": 3,
+              "id": "manufacturer_1",
+              "type": "manufacturer",
+              "level": 1,
               "cost": 8,
               "victoryPoints": 3,
-              "incomeSpaces": 6,
+              "incomeSpaces": 5,
+              "linkScoringIcons": 2,
+              "coalRequired": 1,
+              "ironRequired": 0,
+              "beerRequired": 1,
+              "beerProduced": 0,
+              "coalProduced": 0,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": false,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 5,
+              "quantity": 1
+            },
+            "coalCubesOnTile": 0,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          },
+          {
+            "location": "stoke",
+            "type": "cotton",
+            "level": 1,
+            "flipped": false,
+            "tile": {
+              "id": "cotton_1",
+              "type": "cotton",
+              "level": 1,
+              "cost": 12,
+              "victoryPoints": 5,
+              "incomeSpaces": 5,
+              "linkScoringIcons": 1,
+              "coalRequired": 0,
+              "ironRequired": 0,
+              "beerRequired": 1,
+              "beerProduced": 0,
+              "coalProduced": 0,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": false,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 5,
+              "quantity": 3
+            },
+            "coalCubesOnTile": 0,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          },
+          {
+            "location": "leek",
+            "type": "cotton",
+            "level": 1,
+            "flipped": false,
+            "tile": {
+              "id": "cotton_1",
+              "type": "cotton",
+              "level": 1,
+              "cost": 12,
+              "victoryPoints": 5,
+              "incomeSpaces": 5,
+              "linkScoringIcons": 1,
+              "coalRequired": 0,
+              "ironRequired": 0,
+              "beerRequired": 1,
+              "beerProduced": 0,
+              "coalProduced": 0,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": false,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 5,
+              "quantity": 3
+            },
+            "coalCubesOnTile": 0,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          },
+          {
+            "location": "stoke",
+            "type": "manufacturer",
+            "level": 2,
+            "flipped": false,
+            "tile": {
+              "id": "manufacturer_2",
+              "type": "manufacturer",
+              "level": 2,
+              "cost": 10,
+              "victoryPoints": 5,
+              "incomeSpaces": 1,
               "linkScoringIcons": 1,
               "coalRequired": 0,
               "ironRequired": 1,
-              "beerRequired": 0,
+              "beerRequired": 1,
               "beerProduced": 0,
-              "coalProduced": 4,
+              "coalProduced": 0,
               "ironProduced": 0,
               "canBuildInCanalEra": true,
               "canBuildInRailEra": true,
               "hasLightbulbIcon": false,
-              "incomeAdvancement": 6,
+              "incomeAdvancement": 1,
               "quantity": 2
             },
-            "coalCubesOnTile": 4,
+            "coalCubesOnTile": 0,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          },
+          {
+            "location": "stone",
+            "type": "cotton",
+            "level": 1,
+            "flipped": false,
+            "tile": {
+              "id": "cotton_1",
+              "type": "cotton",
+              "level": 1,
+              "cost": 12,
+              "victoryPoints": 5,
+              "incomeSpaces": 5,
+              "linkScoringIcons": 1,
+              "coalRequired": 0,
+              "ironRequired": 0,
+              "beerRequired": 1,
+              "beerProduced": 0,
+              "coalProduced": 0,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": false,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 5,
+              "quantity": 3
+            },
+            "coalCubesOnTile": 0,
             "ironCubesOnTile": 0,
             "beerBarrelsOnTile": 0
           }
@@ -3246,457 +2813,448 @@ export const demoSnapshotSell: unknown = {
       {
         "message": "Game started",
         "type": "system",
-        "timestamp": "2026-07-14T22:07:06.485Z"
+        "timestamp": "2026-07-15T00:08:26.674Z"
       },
       {
-        "message": "Eliza built coal Level 1 at redditch for £5 using redditch (other)",
+        "message": "Eliza built cotton Level 1 at birmingham for £12 using cotton/manufacturer industry",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.486Z"
-      },
-      {
-        "message": "Isambard built cotton Level 1 at birmingham for £12 using birmingham (other)",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.486Z"
-      },
-      {
-        "message": "George built cotton Level 1 at worcester for £12 using cotton/manufacturer industry",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.486Z"
-      },
-      {
-        "message": "Eliza collected £10 income",
-        "type": "info",
-        "timestamp": "2026-07-14T22:07:06.486Z"
-      },
-      {
-        "message": "Isambard collected £10 income",
-        "type": "info",
-        "timestamp": "2026-07-14T22:07:06.486Z"
-      },
-      {
-        "message": "George collected £10 income",
-        "type": "info",
-        "timestamp": "2026-07-14T22:07:06.486Z"
-      },
-      {
-        "message": "Round 1 completed",
-        "type": "system",
-        "timestamp": "2026-07-14T22:07:06.486Z"
-      },
-      {
-        "message": "Eliza built cotton Level 1 at stoke for £12 using stoke (other)",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.486Z"
-      },
-      {
-        "message": "Eliza built coal Level 2 at kidderminster for £7 using kidderminster (other)",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.486Z"
+        "timestamp": "2026-07-15T00:08:26.674Z"
       },
       {
         "message": "Isambard built brewery Level 1 at uttoxeter for £7 (consumed consumed 1 iron from market for £2) using uttoxeter (other)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.487Z"
+        "timestamp": "2026-07-15T00:08:26.675Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at stafford for £7 (consumed consumed 1 iron from market for £2) using stafford (other)",
+        "message": "George built coal Level 1 at coventry for £5 using coventry (other)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.487Z"
+        "timestamp": "2026-07-15T00:08:26.675Z"
       },
       {
-        "message": "George built brewery Level 1 at walsall for £8 (consumed consumed 1 iron from market for £3) using walsall (other)",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.487Z"
-      },
-      {
-        "message": "George took a loan (£30, -3 income) using cotton_manufacturer_1",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.487Z"
-      },
-      {
-        "message": "Eliza collected £10 income",
+        "message": "Eliza collected £0 income",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.487Z"
+        "timestamp": "2026-07-15T00:08:26.675Z"
       },
       {
-        "message": "Isambard collected £10 income",
+        "message": "Isambard collected £0 income",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.487Z"
+        "timestamp": "2026-07-15T00:08:26.675Z"
       },
       {
-        "message": "George collected £7 income",
+        "message": "George collected £0 income",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.487Z"
+        "timestamp": "2026-07-15T00:08:26.675Z"
       },
       {
-        "message": "Round 2 completed",
+        "message": "Round 1 completed",
         "type": "system",
-        "timestamp": "2026-07-14T22:07:06.487Z"
+        "timestamp": "2026-07-15T00:08:26.675Z"
       },
       {
-        "message": "George built coal Level 1 at wolverhampton for £5 using wolverhampton (other)",
+        "message": "George built iron Level 1 at coventry for £5 (consumed 1 coal from connected coal mine (free)) (sold 1 iron to market for £2, sold 2 iron to market for £2) using iron industry",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.488Z"
-      },
-      {
-        "message": "George built cotton Level 1 at stone for £12 using stone (other)",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.488Z"
-      },
-      {
-        "message": "Isambard built coal Level 1 at coventry for £5 using coventry (other)",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.488Z"
-      },
-      {
-        "message": "Isambard took a loan (£30, -3 income) using cotton_manufacturer_3",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.489Z"
-      },
-      {
-        "message": "Eliza built cotton Level 1 at worcester for £12 using worcester (other)",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.489Z"
-      },
-      {
-        "message": "Eliza took a loan (£30, -3 income) using birmingham_2",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.489Z"
-      },
-      {
-        "message": "Eliza collected £7 income",
-        "type": "info",
-        "timestamp": "2026-07-14T22:07:06.489Z"
-      },
-      {
-        "message": "Isambard collected £7 income",
-        "type": "info",
-        "timestamp": "2026-07-14T22:07:06.489Z"
-      },
-      {
-        "message": "George collected £7 income",
-        "type": "info",
-        "timestamp": "2026-07-14T22:07:06.489Z"
-      },
-      {
-        "message": "Round 3 completed",
-        "type": "system",
-        "timestamp": "2026-07-14T22:07:06.489Z"
-      },
-      {
-        "message": "Isambard built pottery Level 1 at coventry for £20 (consumed consumed 1 iron from market for £3) using pottery industry",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.489Z"
-      },
-      {
-        "message": "Isambard built iron Level 1 at coventry for £5 (consumed 1 coal from connected coal mine (free)) (sold 2 iron to market for £6, sold 2 iron to market for £4) (tile flipped, +3 income) using iron industry",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.490Z"
-      },
-      {
-        "message": "Eliza built cotton Level 1 at kidderminster for £12 using cotton/manufacturer industry",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.490Z"
-      },
-      {
-        "message": "Eliza built cotton Level 2 at kidderminster for £14 (consumed 1 coal from connected coal mine (free)) (overbuilt own level 1) using cotton/manufacturer industry",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.490Z"
-      },
-      {
-        "message": "George built pottery Level 1 at stafford for £19 (consumed consumed 1 iron from market for £2) using stafford (other)",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.491Z"
+        "timestamp": "2026-07-15T00:08:26.675Z"
       },
       {
         "message": "George built coal Level 2 at burton for £7 using burton (other)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.491Z"
+        "timestamp": "2026-07-15T00:08:26.676Z"
       },
       {
-        "message": "Eliza collected £7 income",
-        "type": "info",
-        "timestamp": "2026-07-14T22:07:06.491Z"
+        "message": "Isambard built brewery Level 1 at nuneaton for £5 (consumed 1 iron from iron works (free), George's iron at coventry flipped (income +3, now 2)) using nuneaton (other)",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.676Z"
       },
       {
-        "message": "Isambard collected £10 income",
-        "type": "info",
-        "timestamp": "2026-07-14T22:07:06.491Z"
+        "message": "Isambard took a loan (£30, -3 income) using stoke_1",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.676Z"
       },
       {
-        "message": "George collected £7 income",
+        "message": "Eliza took a loan (£30, -3 income) using coalbrookdale_3",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.676Z"
+      },
+      {
+        "message": "Eliza built cotton Level 1 at tamworth for £12 using tamworth (other)",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.677Z"
+      },
+      {
+        "message": "Eliza paid £3 negative income",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.491Z"
+        "timestamp": "2026-07-15T00:08:26.677Z"
+      },
+      {
+        "message": "Isambard paid £3 negative income",
+        "type": "info",
+        "timestamp": "2026-07-15T00:08:26.677Z"
+      },
+      {
+        "message": "George collected £2 income",
+        "type": "info",
+        "timestamp": "2026-07-15T00:08:26.677Z"
+      },
+      {
+        "message": "Round 2 completed",
+        "type": "system",
+        "timestamp": "2026-07-15T00:08:26.677Z"
+      },
+      {
+        "message": "Isambard built coal Level 1 at cannock for £5 using cannock (other)",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.677Z"
+      },
+      {
+        "message": "Isambard built brewery Level 2 at burton for £8 (consumed consumed 1 iron from market for £1) using burton (other)",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.677Z"
+      },
+      {
+        "message": "George took a loan (£30, -3 income) using birmingham_2",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.677Z"
+      },
+      {
+        "message": "George built pottery Level 1 at coventry for £18 (consumed consumed 1 iron from market for £1) using pottery industry",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.678Z"
+      },
+      {
+        "message": "Eliza built brewery Level 1 at coalbrookdale for £7 (consumed consumed 1 iron from market for £2) using coalbrookdale (other)",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.678Z"
+      },
+      {
+        "message": "Eliza built coal Level 1 at dudley for £5 using dudley (other)",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.678Z"
+      },
+      {
+        "message": "Eliza paid £3 negative income",
+        "type": "info",
+        "timestamp": "2026-07-15T00:08:26.678Z"
+      },
+      {
+        "message": "Isambard paid £3 negative income",
+        "type": "info",
+        "timestamp": "2026-07-15T00:08:26.678Z"
+      },
+      {
+        "message": "George paid £1 negative income",
+        "type": "info",
+        "timestamp": "2026-07-15T00:08:26.678Z"
+      },
+      {
+        "message": "Round 3 completed",
+        "type": "system",
+        "timestamp": "2026-07-15T00:08:26.678Z"
+      },
+      {
+        "message": "Eliza took a loan (£30, -3 income) using coal_1",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.678Z"
+      },
+      {
+        "message": "Eliza built cotton Level 1 at leek for £12 using leek (other)",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.679Z"
+      },
+      {
+        "message": "Isambard built brewery Level 2 at nuneaton for £9 (consumed consumed 1 iron from market for £2) (overbuilt own level 1) using brewery industry",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.679Z"
+      },
+      {
+        "message": "Isambard took a loan (£30, -3 income) using birmingham_3",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.679Z"
+      },
+      {
+        "message": "George built coal Level 2 at coventry for £7 (overbuilt own level 1) using coal industry",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.680Z"
+      },
+      {
+        "message": "George built brewery Level 1 at stafford for £8 (consumed consumed 1 iron from market for £3) using stafford (other)",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.680Z"
+      },
+      {
+        "message": "Eliza paid £6 negative income",
+        "type": "info",
+        "timestamp": "2026-07-15T00:08:26.680Z"
+      },
+      {
+        "message": "Isambard paid £6 negative income",
+        "type": "info",
+        "timestamp": "2026-07-15T00:08:26.680Z"
+      },
+      {
+        "message": "George paid £1 negative income",
+        "type": "info",
+        "timestamp": "2026-07-15T00:08:26.680Z"
       },
       {
         "message": "Round 4 completed",
         "type": "system",
-        "timestamp": "2026-07-14T22:07:06.491Z"
+        "timestamp": "2026-07-15T00:08:26.680Z"
       },
       {
-        "message": "Isambard built manufacturer Level 1 at wolverhampton for £8 (consumed 1 coal from connected coal mine (free)) using wolverhampton (other)",
+        "message": "Isambard built cotton Level 1 at kidderminster for £12 using kidderminster (other)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.491Z"
+        "timestamp": "2026-07-15T00:08:26.681Z"
       },
       {
-        "message": "Isambard built brewery Level 2 at burton for £9 (consumed consumed 1 iron from market for £2) using burton (other)",
+        "message": "Isambard built coal Level 2 at cannock for £7 using cannock (other)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.492Z"
+        "timestamp": "2026-07-15T00:08:26.681Z"
       },
       {
-        "message": "Eliza built coal Level 2 at leek for £7 using leek (other)",
+        "message": "Eliza built coal Level 2 at wolverhampton for £7 using wolverhampton (other)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.492Z"
+        "timestamp": "2026-07-15T00:08:26.681Z"
       },
       {
-        "message": "Eliza built coal Level 3 at tamworth for £11 (consumed consumed 1 iron from market for £3) using tamworth (other)",
+        "message": "Eliza built coal Level 2 at redditch for £7 using redditch (other)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.493Z"
+        "timestamp": "2026-07-15T00:08:26.682Z"
       },
       {
-        "message": "George built coal Level 2 at stone for £7 using stone (other)",
+        "message": "George took a loan (£30, -3 income) using cotton_manufacturer_1",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.493Z"
+        "timestamp": "2026-07-15T00:08:26.682Z"
       },
       {
-        "message": "George built manufacturer Level 1 at leek for £8 (consumed 1 coal from connected coal mine (free)) using leek (other)",
+        "message": "George built manufacturer Level 1 at wolverhampton for £8 (consumed 1 coal from connected coal mine (free)) using wolverhampton (other)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.494Z"
+        "timestamp": "2026-07-15T00:08:26.682Z"
       },
       {
-        "message": "Eliza collected £7 income",
+        "message": "Eliza sold cotton industry for £6",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.494Z"
+        "timestamp": "2026-07-15T00:08:26.682Z"
       },
       {
-        "message": "Isambard collected £10 income",
+        "message": "Eliza paid £6 negative income (shortfall: £3)",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.494Z"
+        "timestamp": "2026-07-15T00:08:26.682Z"
       },
       {
-        "message": "George collected £7 income",
+        "message": "Isambard paid £6 negative income",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.494Z"
+        "timestamp": "2026-07-15T00:08:26.682Z"
+      },
+      {
+        "message": "George paid £4 negative income",
+        "type": "info",
+        "timestamp": "2026-07-15T00:08:26.682Z"
       },
       {
         "message": "Round 5 completed",
         "type": "system",
-        "timestamp": "2026-07-14T22:07:06.494Z"
+        "timestamp": "2026-07-15T00:08:26.682Z"
       },
       {
-        "message": "George took a loan (£30, -3 income) using kidderminster_1",
+        "message": "George built cotton Level 1 at stoke for £12 using stoke (other)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.494Z"
+        "timestamp": "2026-07-15T00:08:26.682Z"
       },
       {
-        "message": "George built manufacturer Level 2 at birmingham for £13 (consumed consumed 1 iron from market for £3) using birmingham (other)",
+        "message": "George took a loan (£30, -3 income) using stone_1",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.494Z"
+        "timestamp": "2026-07-15T00:08:26.683Z"
       },
       {
-        "message": "Isambard built cotton Level 1 at uttoxeter for £12 using cotton/manufacturer industry",
+        "message": "Eliza took a loan (£30, -3 income) using brewery_4",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.495Z"
+        "timestamp": "2026-07-15T00:08:26.683Z"
       },
       {
-        "message": "Isambard built manufacturer Level 2 at nuneaton for £14 (consumed consumed 1 iron from market for £4) using nuneaton (other)",
+        "message": "Eliza built iron Level 1 at dudley for £5 (consumed 1 coal from connected coal mine (free)) (sold 1 iron to market for £3, sold 2 iron to market for £4, sold 1 iron to market for £1) (tile flipped, +3 income) using iron industry",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.495Z"
+        "timestamp": "2026-07-15T00:08:26.683Z"
       },
       {
-        "message": "Eliza built iron Level 1 at redditch for £5 (consumed 1 coal from connected coal mine (free)) (sold 1 iron to market for £4, sold 2 iron to market for £6, sold 1 iron to market for £2) (tile flipped, +3 income) using iron industry",
+        "message": "Isambard took a loan (£30, -3 income) using iron_3",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.496Z"
+        "timestamp": "2026-07-15T00:08:26.684Z"
       },
       {
-        "message": "Eliza built iron Level 2 at redditch for £7 (consumed 1 coal from connected coal mine (free), Eliza's coal at redditch flipped (income +4, now 14)) (sold 1 iron to market for £2, sold 2 iron to market for £2) (overbuilt own level 1) using iron industry",
+        "message": "Isambard built cotton Level 1 at birmingham for £12 using birmingham (other)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.496Z"
+        "timestamp": "2026-07-15T00:08:26.684Z"
       },
       {
-        "message": "Eliza collected £10 income",
+        "message": "Eliza paid £6 negative income",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.496Z"
+        "timestamp": "2026-07-15T00:08:26.684Z"
       },
       {
-        "message": "Isambard collected £10 income",
+        "message": "Isambard paid £9 negative income",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.496Z"
+        "timestamp": "2026-07-15T00:08:26.684Z"
       },
       {
-        "message": "George collected £4 income",
+        "message": "George paid £7 negative income",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.496Z"
+        "timestamp": "2026-07-15T00:08:26.684Z"
       },
       {
         "message": "Round 6 completed",
         "type": "system",
-        "timestamp": "2026-07-14T22:07:06.496Z"
+        "timestamp": "2026-07-15T00:08:26.684Z"
       },
       {
-        "message": "Eliza built pottery Level 1 at stoke for £17 (consumed 1 iron from iron works (free), Eliza's iron at redditch flipped (income +3, now 13)) using stoke (other)",
+        "message": "Eliza built coal Level 3 at dudley for £9 (consumed consumed 1 iron from market for £1) (overbuilt own level 1) using dudley (other)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.497Z"
+        "timestamp": "2026-07-15T00:08:26.684Z"
       },
       {
-        "message": "Eliza took a loan (£30, -3 income) using brewery_5",
+        "message": "Eliza built iron Level 2 at dudley for £7 (consumed 1 coal from connected coal mine (free)) (sold 2 iron to market for £2) (overbuilt own level 1) using iron industry",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.497Z"
+        "timestamp": "2026-07-15T00:08:26.686Z"
       },
       {
-        "message": "George built manufacturer Level 2 at cannock for £11 (consumed consumed 1 iron from market for £1) using cannock (other)",
+        "message": "George built cotton Level 1 at leek for £12 using leek (other)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.498Z"
+        "timestamp": "2026-07-15T00:08:26.686Z"
       },
       {
-        "message": "George built brewery Level 1 at coalbrookdale for £6 (consumed consumed 1 iron from market for £1) using coalbrookdale (other)",
+        "message": "George built manufacturer Level 2 at stoke for £10 (consumed 1 iron from iron works (free)) using stoke (other)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.498Z"
+        "timestamp": "2026-07-15T00:08:26.686Z"
       },
       {
-        "message": "Isambard built coal Level 2 at coalbrookdale for £7 using coalbrookdale (other)",
+        "message": "Isambard built brewery Level 3 at nuneaton for £9 (consumed 1 iron from iron works (free), Eliza's iron at dudley flipped (income +3, now -3)) (overbuilt own level 2) using brewery industry",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.498Z"
+        "timestamp": "2026-07-15T00:08:26.687Z"
       },
       {
-        "message": "Isambard built coal Level 2 at dudley for £7 using dudley (other)",
+        "message": "Isambard passed (discarded worcester (other))",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.499Z"
+        "timestamp": "2026-07-15T00:08:26.687Z"
       },
       {
-        "message": "Eliza collected £10 income",
+        "message": "Eliza paid £6 negative income",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.499Z"
+        "timestamp": "2026-07-15T00:08:26.687Z"
       },
       {
-        "message": "Isambard collected £10 income",
+        "message": "Isambard sold brewery industry for £2",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.499Z"
+        "timestamp": "2026-07-15T00:08:26.687Z"
       },
       {
-        "message": "George collected £4 income",
+        "message": "Isambard sold coal industry for £2",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.499Z"
+        "timestamp": "2026-07-15T00:08:26.687Z"
+      },
+      {
+        "message": "Isambard paid £9 negative income (shortfall: £3)",
+        "type": "info",
+        "timestamp": "2026-07-15T00:08:26.687Z"
+      },
+      {
+        "message": "George paid £7 negative income",
+        "type": "info",
+        "timestamp": "2026-07-15T00:08:26.687Z"
       },
       {
         "message": "Round 7 completed",
         "type": "system",
-        "timestamp": "2026-07-14T22:07:06.499Z"
+        "timestamp": "2026-07-15T00:08:26.687Z"
       },
       {
-        "message": "Isambard built pottery Level 2 at coventry for £0 (consumed 1 coal from connected coal mine (free), Isambard's coal at coventry flipped (income +4, now 14)) (overbuilt own level 1) using coventry (other)",
+        "message": "Isambard passed (discarded coventry (other))",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.499Z"
+        "timestamp": "2026-07-15T00:08:26.687Z"
       },
       {
-        "message": "Isambard built iron Level 2 at coalbrookdale for £7 (consumed 1 coal from connected coal mine (free)) (sold 2 iron to market for £2) using coalbrookdale (other)",
+        "message": "Isambard passed (discarded pottery industry)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.500Z"
+        "timestamp": "2026-07-15T00:08:26.688Z"
       },
       {
         "message": "Eliza built a canal link between leek and stoke",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.500Z"
+        "timestamp": "2026-07-15T00:08:26.688Z"
       },
       {
-        "message": "Eliza built a canal link between stoke and stone",
+        "message": "Eliza took a loan (£30, -3 income) using cotton_manufacturer_5",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.501Z"
+        "timestamp": "2026-07-15T00:08:26.689Z"
       },
       {
-        "message": "George built coal Level 3 at cannock for £8 (consumed 1 iron from iron works (free)) using cannock (other)",
+        "message": "George took a loan (£30, -3 income) using cotton_manufacturer_2",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.501Z"
+        "timestamp": "2026-07-15T00:08:26.689Z"
       },
       {
-        "message": "George took a loan (£30, -3 income) using pottery_2",
+        "message": "George built cotton Level 1 at stone for £12 using stone (other)",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.502Z"
+        "timestamp": "2026-07-15T00:08:26.689Z"
       },
       {
-        "message": "Eliza collected £10 income",
+        "message": "Eliza paid £9 negative income",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.502Z"
+        "timestamp": "2026-07-15T00:08:26.689Z"
       },
       {
-        "message": "Isambard collected £10 income",
+        "message": "Isambard sold brewery industry for £3",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.502Z"
+        "timestamp": "2026-07-15T00:08:26.689Z"
       },
       {
-        "message": "George collected £1 income",
+        "message": "Isambard sold cotton industry for £6",
         "type": "info",
-        "timestamp": "2026-07-14T22:07:06.502Z"
+        "timestamp": "2026-07-15T00:08:26.689Z"
+      },
+      {
+        "message": "Isambard paid £9 negative income (shortfall: £8)",
+        "type": "info",
+        "timestamp": "2026-07-15T00:08:26.689Z"
+      },
+      {
+        "message": "George paid £10 negative income",
+        "type": "info",
+        "timestamp": "2026-07-15T00:08:26.689Z"
       },
       {
         "message": "Round 8 completed",
         "type": "system",
-        "timestamp": "2026-07-14T22:07:06.502Z"
+        "timestamp": "2026-07-15T00:08:26.689Z"
+      },
+      {
+        "message": "Isambard passed (discarded coalbrookdale (other))",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.690Z"
+      },
+      {
+        "message": "Isambard passed (discarded stafford (other))",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.690Z"
+      },
+      {
+        "message": "Eliza built a canal link between stoke and stone",
+        "type": "action",
+        "timestamp": "2026-07-15T00:08:26.691Z"
       },
       {
         "message": "Eliza built a canal link between stoke and warrington",
         "type": "action",
-        "timestamp": "2026-07-14T22:07:06.502Z"
-      },
-      {
-        "message": "Eliza sold cotton at stoke to merchant at warrington (flipped, income +5, 1 beer from merchant at warrington (money +5))",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.503Z"
-      },
-      {
-        "message": "Eliza completed Sell action (1 industry sold) using brewery industry",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.503Z"
-      },
-      {
-        "message": "Isambard built manufacturer Level 2 at stoke for £10 (consumed 1 iron from iron works (free), Isambard's iron at coalbrookdale flipped (income +3, now 13)) using stoke (other)",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.503Z"
-      },
-      {
-        "message": "Isambard sold manufacturer at stoke to merchant at warrington (flipped, income +1, 1 beer from own brewery at uttoxeter (free), Isambard's brewery at uttoxeter flipped (income +4, now 17))",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.503Z"
-      },
-      {
-        "message": "Isambard completed Sell action (1 industry sold) using worcester (other)",
-        "type": "action",
-        "timestamp": "2026-07-14T22:07:06.503Z"
+        "timestamp": "2026-07-15T00:08:26.691Z"
       }
     ],
     "drawPile": [],
     "discardPile": [
       {
-        "id": "redditch_1",
-        "type": "location",
-        "location": "redditch",
-        "color": "other"
-      },
-      {
-        "id": "birmingham_1",
-        "type": "location",
-        "location": "birmingham",
-        "color": "other"
-      },
-      {
-        "id": "cotton_manufacturer_2",
+        "id": "cotton_manufacturer_3",
         "type": "industry",
         "industries": [
           "cotton",
           "manufacturer"
         ]
-      },
-      {
-        "id": "stoke_2",
-        "type": "location",
-        "location": "stoke",
-        "color": "other"
-      },
-      {
-        "id": "kidderminster_2",
-        "type": "location",
-        "location": "kidderminster",
-        "color": "other"
       },
       {
         "id": "uttoxeter_1",
@@ -3705,15 +3263,146 @@ export const demoSnapshotSell: unknown = {
         "color": "other"
       },
       {
+        "id": "coventry_2",
+        "type": "location",
+        "location": "coventry",
+        "color": "other"
+      },
+      {
+        "id": "iron_4",
+        "type": "industry",
+        "industries": [
+          "iron"
+        ]
+      },
+      {
+        "id": "burton_1",
+        "type": "location",
+        "location": "burton",
+        "color": "other"
+      },
+      {
+        "id": "nuneaton_1",
+        "type": "location",
+        "location": "nuneaton",
+        "color": "other"
+      },
+      {
+        "id": "stoke_1",
+        "type": "location",
+        "location": "stoke",
+        "color": "other"
+      },
+      {
+        "id": "coalbrookdale_3",
+        "type": "location",
+        "location": "coalbrookdale",
+        "color": "other"
+      },
+      {
+        "id": "tamworth_1",
+        "type": "location",
+        "location": "tamworth",
+        "color": "other"
+      },
+      {
+        "id": "cannock_1",
+        "type": "location",
+        "location": "cannock",
+        "color": "other"
+      },
+      {
+        "id": "burton_2",
+        "type": "location",
+        "location": "burton",
+        "color": "other"
+      },
+      {
+        "id": "birmingham_2",
+        "type": "location",
+        "location": "birmingham",
+        "color": "other"
+      },
+      {
+        "id": "pottery_2",
+        "type": "industry",
+        "industries": [
+          "pottery"
+        ]
+      },
+      {
+        "id": "coalbrookdale_1",
+        "type": "location",
+        "location": "coalbrookdale",
+        "color": "other"
+      },
+      {
+        "id": "dudley_1",
+        "type": "location",
+        "location": "dudley",
+        "color": "other"
+      },
+      {
+        "id": "coal_1",
+        "type": "industry",
+        "industries": [
+          "coal"
+        ]
+      },
+      {
+        "id": "leek_2",
+        "type": "location",
+        "location": "leek",
+        "color": "other"
+      },
+      {
+        "id": "brewery_2",
+        "type": "industry",
+        "industries": [
+          "brewery"
+        ]
+      },
+      {
+        "id": "birmingham_3",
+        "type": "location",
+        "location": "birmingham",
+        "color": "other"
+      },
+      {
+        "id": "coal_2",
+        "type": "industry",
+        "industries": [
+          "coal"
+        ]
+      },
+      {
         "id": "stafford_2",
         "type": "location",
         "location": "stafford",
         "color": "other"
       },
       {
-        "id": "walsall_1",
+        "id": "kidderminster_1",
         "type": "location",
-        "location": "walsall",
+        "location": "kidderminster",
+        "color": "other"
+      },
+      {
+        "id": "cannock_2",
+        "type": "location",
+        "location": "cannock",
+        "color": "other"
+      },
+      {
+        "id": "wolverhampton_2",
+        "type": "location",
+        "location": "wolverhampton",
+        "color": "other"
+      },
+      {
+        "id": "redditch_1",
+        "type": "location",
+        "location": "redditch",
         "color": "other"
       },
       {
@@ -3725,9 +3414,15 @@ export const demoSnapshotSell: unknown = {
         ]
       },
       {
-        "id": "wolverhampton_2",
+        "id": "wolverhampton_1",
         "type": "location",
         "location": "wolverhampton",
+        "color": "other"
+      },
+      {
+        "id": "stoke_2",
+        "type": "location",
+        "location": "stoke",
         "color": "other"
       },
       {
@@ -3737,29 +3432,74 @@ export const demoSnapshotSell: unknown = {
         "color": "other"
       },
       {
-        "id": "coventry_2",
-        "type": "location",
-        "location": "coventry",
-        "color": "other"
-      },
-      {
-        "id": "cotton_manufacturer_3",
+        "id": "brewery_4",
         "type": "industry",
         "industries": [
-          "cotton",
-          "manufacturer"
+          "brewery"
         ]
       },
       {
-        "id": "worcester_2",
+        "id": "iron_1",
+        "type": "industry",
+        "industries": [
+          "iron"
+        ]
+      },
+      {
+        "id": "iron_3",
+        "type": "industry",
+        "industries": [
+          "iron"
+        ]
+      },
+      {
+        "id": "birmingham_1",
+        "type": "location",
+        "location": "birmingham",
+        "color": "other"
+      },
+      {
+        "id": "dudley_2",
+        "type": "location",
+        "location": "dudley",
+        "color": "other"
+      },
+      {
+        "id": "iron_2",
+        "type": "industry",
+        "industries": [
+          "iron"
+        ]
+      },
+      {
+        "id": "leek_1",
+        "type": "location",
+        "location": "leek",
+        "color": "other"
+      },
+      {
+        "id": "stoke_3",
+        "type": "location",
+        "location": "stoke",
+        "color": "other"
+      },
+      {
+        "id": "brewery_1",
+        "type": "industry",
+        "industries": [
+          "brewery"
+        ]
+      },
+      {
+        "id": "worcester_1",
         "type": "location",
         "location": "worcester",
         "color": "other"
       },
       {
-        "id": "birmingham_2",
+        "id": "coventry_1",
         "type": "location",
-        "location": "birmingham",
+        "location": "coventry",
         "color": "other"
       },
       {
@@ -3767,13 +3507,6 @@ export const demoSnapshotSell: unknown = {
         "type": "industry",
         "industries": [
           "pottery"
-        ]
-      },
-      {
-        "id": "iron_4",
-        "type": "industry",
-        "industries": [
-          "iron"
         ]
       },
       {
@@ -3793,40 +3526,12 @@ export const demoSnapshotSell: unknown = {
         ]
       },
       {
-        "id": "stafford_1",
-        "type": "location",
-        "location": "stafford",
-        "color": "other"
-      },
-      {
-        "id": "burton_2",
-        "type": "location",
-        "location": "burton",
-        "color": "other"
-      },
-      {
-        "id": "wolverhampton_1",
-        "type": "location",
-        "location": "wolverhampton",
-        "color": "other"
-      },
-      {
-        "id": "burton_1",
-        "type": "location",
-        "location": "burton",
-        "color": "other"
-      },
-      {
-        "id": "leek_2",
-        "type": "location",
-        "location": "leek",
-        "color": "other"
-      },
-      {
-        "id": "tamworth_1",
-        "type": "location",
-        "location": "tamworth",
-        "color": "other"
+        "id": "cotton_manufacturer_2",
+        "type": "industry",
+        "industries": [
+          "cotton",
+          "manufacturer"
+        ]
       },
       {
         "id": "stone_2",
@@ -3835,21 +3540,15 @@ export const demoSnapshotSell: unknown = {
         "color": "other"
       },
       {
-        "id": "leek_1",
+        "id": "coalbrookdale_2",
         "type": "location",
-        "location": "leek",
+        "location": "coalbrookdale",
         "color": "other"
       },
       {
-        "id": "kidderminster_1",
+        "id": "stafford_1",
         "type": "location",
-        "location": "kidderminster",
-        "color": "other"
-      },
-      {
-        "id": "birmingham_3",
-        "type": "location",
-        "location": "birmingham",
+        "location": "stafford",
         "color": "other"
       },
       {
@@ -3861,125 +3560,9 @@ export const demoSnapshotSell: unknown = {
         ]
       },
       {
-        "id": "nuneaton_1",
-        "type": "location",
-        "location": "nuneaton",
-        "color": "other"
-      },
-      {
-        "id": "iron_1",
-        "type": "industry",
-        "industries": [
-          "iron"
-        ]
-      },
-      {
-        "id": "iron_3",
-        "type": "industry",
-        "industries": [
-          "iron"
-        ]
-      },
-      {
-        "id": "stoke_3",
-        "type": "location",
-        "location": "stoke",
-        "color": "other"
-      },
-      {
-        "id": "brewery_5",
-        "type": "industry",
-        "industries": [
-          "brewery"
-        ]
-      },
-      {
-        "id": "cannock_2",
-        "type": "location",
-        "location": "cannock",
-        "color": "other"
-      },
-      {
-        "id": "coalbrookdale_1",
-        "type": "location",
-        "location": "coalbrookdale",
-        "color": "other"
-      },
-      {
-        "id": "coalbrookdale_3",
-        "type": "location",
-        "location": "coalbrookdale",
-        "color": "other"
-      },
-      {
-        "id": "dudley_2",
-        "type": "location",
-        "location": "dudley",
-        "color": "other"
-      },
-      {
-        "id": "coventry_1",
+        "id": "coventry_3",
         "type": "location",
         "location": "coventry",
-        "color": "other"
-      },
-      {
-        "id": "coalbrookdale_2",
-        "type": "location",
-        "location": "coalbrookdale",
-        "color": "other"
-      },
-      {
-        "id": "brewery_1",
-        "type": "industry",
-        "industries": [
-          "brewery"
-        ]
-      },
-      {
-        "id": "brewery_2",
-        "type": "industry",
-        "industries": [
-          "brewery"
-        ]
-      },
-      {
-        "id": "cannock_1",
-        "type": "location",
-        "location": "cannock",
-        "color": "other"
-      },
-      {
-        "id": "pottery_2",
-        "type": "industry",
-        "industries": [
-          "pottery"
-        ]
-      },
-      {
-        "id": "brewery_3",
-        "type": "industry",
-        "industries": [
-          "brewery"
-        ]
-      },
-      {
-        "id": "brewery_4",
-        "type": "industry",
-        "industries": [
-          "brewery"
-        ]
-      },
-      {
-        "id": "stoke_1",
-        "type": "location",
-        "location": "stoke",
-        "color": "other"
-      },
-      {
-        "id": "worcester_1",
-        "type": "location",
-        "location": "worcester",
         "color": "other"
       }
     ],
@@ -4005,14 +3588,13 @@ export const demoSnapshotSell: unknown = {
     ],
     "selectedCard": null,
     "selectedCardsForScout": [],
-    "spentMoney": 13,
+    "spentMoney": 6,
     "playerSpending": {
-      "1": 3,
-      "2": 10
+      "1": 6
     },
     "turnOrder": [
-      "1",
       "2",
+      "1",
       "3"
     ],
     "isFinalRound": false,
@@ -4031,18 +3613,14 @@ export const demoSnapshotSell: unknown = {
       },
       {
         "location": "gloucester",
-        "industryIcons": [
-          "pottery"
-        ],
+        "industryIcons": [],
         "bonusType": "develop",
         "bonusValue": 1,
-        "hasBeer": true
+        "hasBeer": false
       },
       {
         "location": "gloucester",
         "industryIcons": [
-          "cotton",
-          "manufacturer",
           "pottery"
         ],
         "bonusType": "develop",
@@ -4051,10 +3629,14 @@ export const demoSnapshotSell: unknown = {
       },
       {
         "location": "oxford",
-        "industryIcons": [],
+        "industryIcons": [
+          "cotton",
+          "manufacturer",
+          "pottery"
+        ],
         "bonusType": "income",
         "bonusValue": 2,
-        "hasBeer": false
+        "hasBeer": true
       },
       {
         "location": "oxford",
@@ -4074,7 +3656,7 @@ export const demoSnapshotSell: unknown = {
         ],
         "bonusType": "money",
         "bonusValue": 5,
-        "hasBeer": false
+        "hasBeer": true
       },
       {
         "location": "warrington",
@@ -4089,8 +3671,8 @@ export const demoSnapshotSell: unknown = {
     "salesMadeThisAction": 0,
     "eraEndPending": false,
     "winners": null,
-    "lastError": null,
-    "errorContext": null
+    "lastError": "Insufficient coal available. Required: 1, available: 0. Need connection to coal mines or markets.",
+    "errorContext": "build"
   },
   "children": {}
 }

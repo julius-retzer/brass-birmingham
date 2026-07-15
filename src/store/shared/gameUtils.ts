@@ -11,6 +11,10 @@ import type {
   WildIndustryCard,
   WildLocationCard,
 } from '../../data/cards'
+import {
+  advanceIncomeSpaces,
+  incomeLevelForSpace,
+} from '../../data/incomeTrack'
 import { GAME_CONSTANTS } from '../constants'
 import type {
   GameState,
@@ -248,18 +252,21 @@ export function checkAndFlipIndustryTilesLogic(context: GameState): {
         const newIndustries = [...player.industries]
         newIndustries[industryIndex] = updatedIndustry
 
-        // Advance player income (capped at level 30)
+        // Advance the marker by SPACES on the Progress Track (audited
+        // 2026-07-15); the level is the coin beside the landing space.
         const incomeAdvancement = industry.tile.incomeAdvancement || 0
-        const newIncome = Math.min(
-          player.income + incomeAdvancement,
-          GAME_CONSTANTS.MAX_INCOME,
+        const newSpace = advanceIncomeSpaces(
+          player.incomeSpace,
+          incomeAdvancement,
         )
+        const newIncome = incomeLevelForSpace(newSpace)
 
         // Update player with flipped industry and new income
         updatedPlayers[playerIndex] = {
           ...player,
           industries: newIndustries,
           income: newIncome,
+          incomeSpace: newSpace,
         }
 
         logMessages.push(

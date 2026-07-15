@@ -162,10 +162,13 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   `ai-docs/reference/`; every value pinned by `src/data/industryTiles.test.ts`
   — do not change a stat without re-verifying against the component; the
   rulebook PDF's mat photos are a PROTOTYPE and deviate on Manufacturer IV).
-  Known remaining data gaps: the income track models levels as a flat number
-  (levels vs spaces distinction not implemented); link building does not
-  validate against the board graph `connections` (the UI enforces era +
-  graph).
+  The income track was AUDITED 2026-07-15 (photos in `ai-docs/reference/`):
+  the marker lives on Progress Track SPACES (0-99, `src/data/incomeTrack.ts`,
+  `Player.incomeSpace`); flips/Oxford advance SPACES, loans drop 3 LEVELS to
+  the highest space of the new level, setup = space 10 = level 0 (NOT level
+  10). Mapping + engine behaviour pinned in incomeTrack tests. Known
+  remaining data gap: link building does not validate against the board
+  graph `connections` (the UI enforces era + graph).
 - Build slot semantics are FREE-SLOT-FIRST (2026-07-13 bug hunt): a build
   goes into a free compatible slot when one exists — overbuild (replace,
   via `performOverbuild`) happens ONLY when no compatible slot is free.

@@ -6,6 +6,7 @@
 // numbers. This migration refreshes every embedded tile from the current
 // definitions by tile id, appends tiles the audit added (pottery_5), and
 // caps mat quantities at the corrected print run.
+import { highestSpaceForLevel } from '../data/incomeTrack'
 import {
   type IndustryTile,
   industryTileDefinitions,
@@ -25,6 +26,8 @@ interface TileWithQuantityShape {
 interface SnapshotShape {
   context?: {
     players?: Array<{
+      income?: number
+      incomeSpace?: number
       industries?: Array<{ tile?: { id?: string } }>
       industryTilesOnMat?: Record<string, TileWithQuantityShape[]>
     }>
@@ -42,6 +45,14 @@ export function refreshEmbeddedTileStats(snapshot: unknown): unknown {
   if (!ctx?.players) return snapshot
 
   for (const player of ctx.players) {
+    // Saves from before the income-track audit carry only the level —
+    // seat the marker on the highest space of that level.
+    if (
+      typeof player.incomeSpace !== 'number' &&
+      typeof player.income === 'number'
+    ) {
+      player.incomeSpace = highestSpaceForLevel(player.income)
+    }
     for (const industry of player.industries ?? []) {
       const current = industry.tile?.id && TILE_BY_ID.get(industry.tile.id)
       if (current) industry.tile = { ...current }

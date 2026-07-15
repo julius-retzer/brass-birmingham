@@ -32,6 +32,8 @@ const oldSave = () => ({
   context: {
     players: [
       {
+        income: 10, // pre-audit saves have no incomeSpace
+
         industries: [
           {
             location: 'uttoxeter',
@@ -72,6 +74,15 @@ describe('refreshEmbeddedTileStats', () => {
     const built = save.context.players[0]!.industries[0]!
     expect(built.tile.linkScoringIcons).toBe(2)
     expect(built.tile.ironRequired).toBe(1)
+  })
+
+  it('derives the income-track marker for saves that predate it', () => {
+    const save = oldSave()
+    refreshEmbeddedTileStats(save)
+    // level 10 sits on space 30 (highest space of the level)
+    expect(
+      (save.context.players[0] as { incomeSpace?: number }).incomeSpace,
+    ).toBe(30)
   })
 
   it('refreshes mat tiles and caps quantities at the corrected print run', () => {

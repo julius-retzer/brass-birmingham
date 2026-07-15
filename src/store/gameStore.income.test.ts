@@ -255,10 +255,10 @@ describe('Game Store - Income Collection', () => {
       // Player should have sold the industry tile
       expect(player.industries.length).toBe(0)
 
-      // Player should have money from selling
-      // They paid £5 initially (all they had), then sold for £9
-      // Final money is £9 (not £4, because they already paid the £5)
-      expect(player.money).toBe(9)
+      // Sale proceeds settle the debt; only the EXCESS is kept (rules:
+      // "You keep any excess money"). They owed £10, paid £5 in cash,
+      // sold for £9 against the £5 shortfall → £4 excess remains.
+      expect(player.money).toBe(4)
 
       // Check logs
       expect(
@@ -308,8 +308,8 @@ describe('Game Store - Income Collection', () => {
       actor.send({
         type: 'TEST_SET_PLAYER_STATE',
         playerId: 0,
-        income: -20,
-        money: 5, // Can only pay £5 of the £20 owed, needs £15 more
+        income: -10, // the track floor (space 0) — audited income track
+        money: 0, // owes £10 with nothing in hand: must sell industries
         industries,
       })
 
@@ -318,12 +318,13 @@ describe('Game Store - Income Collection', () => {
       const snapshot = actor.getSnapshot()
       const player = snapshot.context.players[0]!
 
-      // Should have sold enough industries to cover shortfall
-      // Need £15 (shortfall after paying £5), industries give £5 + £7 + £4 = £16 total
-      expect(player.industries.length).toBe(0) // All sold
+      // Shortfall £10 with £0 in hand: sells in list order — coal (£5)
+      // then cotton (£7) covers it; iron stays on the board.
+      expect(player.industries.length).toBe(1)
+      expect(player.industries[0]!.type).toBe('iron')
 
-      // Player should have £16 (they already paid the £5 they had initially)
-      expect(player.money).toBe(16)
+      // £12 raised − £10 owed = £2 kept ("you keep any excess money")
+      expect(player.money).toBe(2)
 
       // Check that multiple sales are logged
       const saleLogs = snapshot.context.logs.filter(
@@ -483,7 +484,8 @@ describe('Game Store - Income Collection', () => {
 
       // Should have sold only the first industry (£10 covers the £8 shortfall)
       expect(player.industries.length).toBe(2) // Two industries remain
-      expect(player.money).toBe(10) // £10 from sale (they already paid £0 initially since money was 0)
+      // £10 raised − £8 shortfall = £2 excess kept (rules: excess only)
+      expect(player.money).toBe(2)
 
       // Verify the remaining industries are the expected ones
       expect(player.industries.some((i) => i.type === 'cotton')).toBe(true)

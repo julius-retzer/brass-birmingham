@@ -188,7 +188,9 @@ const greedyPolicy = (actor: AnyActor): boolean => {
   if (trySell(actor)) return true
   if (tryBuild(actor)) return true
   if (tryNetwork(actor)) return true
-  if (player.money < 10 && tryLoan(actor)) return true
+  // The audited income economy is tight (start = level 0): loan like a
+  // real ironmaster whenever cash runs low and the -10 floor allows it.
+  if (player.money < 14 && tryLoan(actor)) return true
   return pass(actor)
 }
 
@@ -324,29 +326,63 @@ const writeFixture = (name: string, header: string, actor: AnyActor) => {
 
 // Probe (without committing) whether the current player could reach the
 // double-link rail build from this exact state.
-const canReachDoubleLink = (actor: AnyActor): boolean => {
+// A double build is only usable if some (first, second) PAIR completes —
+// merely offering CHOOSE_DOUBLE_LINK_BUILD is not enough (the second rail
+// needs its own coal reach and the £15 + beer must be payable). Dry-run
+// the full flow on clones; return the first completable pair.
+const findCompletableDoublePair = (
+  actor: AnyActor,
+): { first: [string, string]; second: [string, string] } | null => {
   const player = currentPlayer(actor)
-  if (player.hand.length === 0) return false
-  actor.send({ type: 'NETWORK' } as any)
-  actor.send({ type: 'SELECT_CARD', cardId: player.hand[0].id } as any)
-  let found = false
-  for (const conn of connections) {
-    if (!(conn.types as readonly string[]).includes('rail')) continue
-    actor.send({ type: 'SELECT_LINK', from: conn.from, to: conn.to } as any)
-    const snap = actor.getSnapshot() as any
-    if (
-      snap.matches({ playing: { action: { networking: 'confirmingLink' } } })
-    ) {
-      if (snap.can({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })) {
-        found = true
+  if (player.hand.length === 0) return null
+  const rails = connections.filter((c) =>
+    (c.types as readonly string[]).includes('rail'),
+  )
+  for (const first of rails) {
+    for (const second of rails) {
+      if (first === second) continue
+      const probe = cloneActor(actor)
+      probe.send({ type: 'NETWORK' } as any)
+      probe.send({
+        type: 'SELECT_CARD',
+        cardId: currentPlayer(probe).hand[0].id,
+      } as any)
+      probe.send({
+        type: 'SELECT_LINK',
+        from: first.from,
+        to: first.to,
+      } as any)
+      probe.send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' } as any)
+      probe.send({
+        type: 'SELECT_SECOND_LINK',
+        from: second.from,
+        to: second.to,
+      } as any)
+      const snap = probe.getSnapshot() as any
+      let ok = false
+      if (
+        snap.matches({
+          playing: { action: { networking: 'confirmingDoubleLink' } },
+        }) &&
+        snap.can({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
+      ) {
+        probe.send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' } as any)
+        ok = ctx(probe).lastError === null
       }
-      actor.send({ type: 'CANCEL' } as any)
-      if (found) break
+      probe.stop()
+      if (ok) {
+        return {
+          first: [first.from, first.to],
+          second: [second.from, second.to],
+        }
+      }
     }
   }
-  unwind(actor)
-  return found
+  return null
 }
+
+const canReachDoubleLink = (actor: AnyActor): boolean =>
+  findCompletableDoublePair(actor) !== null
 
 describe('v2 demo snapshot generator', () => {
   test.skipIf(!process.env.GENERATE_DEMO)('generate rail-era fixture', () => {
@@ -404,6 +440,10 @@ describe('v2 demo snapshot generator', () => {
     expect(best).not.toBeNull()
     if (!best) return
     expect(ctx(best.actor).era).toBe('rail')
+    console.log(
+      'rail fixture completable double pair:',
+      JSON.stringify(findCompletableDoublePair(best.actor)),
+    )
 
     const persisted = best.actor.getPersistedSnapshot()
     const json = JSON.stringify(persisted, null, 2)
@@ -456,14 +496,15 @@ describe('v2 demo snapshot generator', () => {
         const built = c.players.flatMap((p: any) => p.industries)
         const links = c.players.flatMap((p: any) => p.links)
         return (
-          built.length >= 12 &&
-          links.length >= 3 &&
+          // thresholds tuned for the audited (tighter) income economy
+          built.length >= 8 &&
+          links.length >= 1 &&
           built.some((i: any) => i.flipped)
         )
       }
       while (
         !richEnough() &&
-        actions < 46 &&
+        actions < 70 &&
         !actor.getSnapshot().matches('gameOver')
       ) {
         if (!isSelectingAction(actor)) unwind(actor)
@@ -476,7 +517,7 @@ describe('v2 demo snapshot generator', () => {
         richEnough() &&
         c.era === 'canal' &&
         isSelectingAction(actor) &&
-        c.players[c.currentPlayerIndex].hand.length >= 6
+        c.players[c.currentPlayerIndex].hand.length >= 5
       ) {
         best = { actor, actions }
       } else {
@@ -500,11 +541,21 @@ describe('v2 demo snapshot generator', () => {
   test.skipIf(!process.env.GENERATE_DEMO)('generate sell fixture', () => {
     // Freeze at a state where the current player can flip TWO industries in
     // one Sell action (multi-sale) — probed through the machine's own guards.
+    // Defer selling so sellable industries can ACCUMULATE — the greedy
+    // policy would flip them one at a time and never reach a multi-sale.
+    const hoardingPolicy = (actor: AnyActor): boolean => {
+      const player = currentPlayer(actor)
+      if (tryBuild(actor)) return true
+      if (tryNetwork(actor)) return true
+      if (player.money < 14 && tryLoan(actor)) return true
+      if (trySell(actor)) return true
+      return pass(actor)
+    }
     let found: AnyActor | null = null
-    for (let attempt = 0; attempt < 40 && !found; attempt++) {
+    for (let attempt = 0; attempt < 100 && !found; attempt++) {
       const actor = startFreshGame()
       let actions = 0
-      while (actions < 200 && !actor.getSnapshot().matches('gameOver')) {
+      while (actions < 260 && !actor.getSnapshot().matches('gameOver')) {
         if (!isSelectingAction(actor)) unwind(actor)
         if (
           isSelectingAction(actor) &&
@@ -514,7 +565,7 @@ describe('v2 demo snapshot generator', () => {
           found = actor
           break
         }
-        greedyPolicy(actor)
+        hoardingPolicy(actor)
         actions++
       }
       if (!found) actor.stop()
@@ -637,8 +688,22 @@ describe('v2 demo snapshot generator', () => {
         if (isSelectingAction(actor) && ctx(actor).era === 'rail') {
           const passes = passesToGameOver(actor)
           if (passes !== null && passes >= 3) {
-            found = { actor, passes }
-            break
+            // Require a DECISIVE ending: a unique winner with real points
+            // (a barren all-zero tie makes a useless capstone journey).
+            const probe = cloneActor(actor)
+            for (let i = 0; i < passes; i++) {
+              probe.send({ type: 'PASS' } as any)
+            }
+            const end = ctx(probe)
+            const winners = end.winners ?? []
+            const topVp = Math.max(
+              ...end.players.map((p: any) => p.victoryPoints),
+            )
+            probe.stop()
+            if (winners.length === 1 && topVp > 0) {
+              found = { actor, passes }
+              break
+            }
           }
         }
         greedyPolicy(actor)

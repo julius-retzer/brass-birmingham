@@ -128,6 +128,9 @@ describe('Game loop - automatic era end and game over', () => {
       hand: [s.context.players[1].hand[0]],
     } as any)
 
+    // Give P1 a visible income level (start is level 0 since the income
+    // track audit) so the era-end collection can be asserted.
+    actor.send({ type: 'TEST_SET_PLAYER_STATE', playerId: 0, income: 10 } as any)
     const moneyBefore = (actor.getSnapshot() as any).context.players[0].money
 
     // Complete the final canal round

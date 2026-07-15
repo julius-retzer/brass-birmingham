@@ -86,7 +86,10 @@ describe('Game Store - Basic Setup', () => {
 
     snapshot.context.players.forEach((player) => {
       expect(player.money).toBe(17)
-      expect(player.income).toBe(10)
+      // Audited 2026-07-15: the marker starts on Progress Track SPACE 10,
+      // which is income LEVEL 0 (the '10' in the rulebook names the space).
+      expect(player.income).toBe(0)
+      expect(player.incomeSpace).toBe(10)
       expect(player.victoryPoints).toBe(0)
       expect(player.hand.length).toBeGreaterThan(0)
       expect(player.links).toHaveLength(0)

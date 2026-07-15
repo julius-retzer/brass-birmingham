@@ -14,6 +14,12 @@ import {
   getInitialCards,
 } from '../data/cards'
 import {
+  STARTING_INCOME_SPACE,
+  advanceIncomeSpaces,
+  highestSpaceForLevel,
+  incomeLevelForSpace,
+} from '../data/incomeTrack'
+import {
   type IndustryTile,
   type IndustryTileWithQuantity,
   decrementTileQuantity,
@@ -99,7 +105,10 @@ export interface Player {
     | 'Henry Bessemer'
   money: number
   victoryPoints: number
+  /** Income LEVEL (-10..30) — the coin beside the marker; what a round pays. */
   income: number
+  /** Marker position on the Progress Track (0..99). Flips advance SPACES. */
+  incomeSpace: number
   hand: Card[]
   // Industry tiles on player mat (available to build) - now with quantities
   industryTilesOnMat: Record<IndustryType, IndustryTileWithQuantity[]>
@@ -175,7 +184,12 @@ export interface GameState {
 type GameEvent =
   | {
       type: 'START_GAME'
-      players: Array<Omit<Player, 'hand' | 'links' | 'industries'>>
+      // income/incomeSpace are overwritten by setup (marker on space 10),
+      // so callers need not provide the marker position.
+      players: Array<
+        Omit<Player, 'hand' | 'links' | 'industries' | 'incomeSpace'> &
+          Partial<Pick<Player, 'incomeSpace'>>
+      >
     }
   | {
       type: 'JOIN_GAME'
@@ -504,7 +518,10 @@ export const gameStore = setup({
       const players: Player[] = event.players.map((playerData, index) => ({
         ...playerData,
         money: GAME_CONSTANTS.STARTING_MONEY,
-        income: GAME_CONSTANTS.STARTING_INCOME,
+        // Setup (audited 2026-07-15): the marker starts on Progress Track
+        // SPACE 10, which carries income LEVEL 0 — not level 10.
+        income: incomeLevelForSpace(STARTING_INCOME_SPACE),
+        incomeSpace: STARTING_INCOME_SPACE,
         victoryPoints: 0,
         hand: hands[index] ?? [],
         industryTilesOnMat: getInitialPlayerIndustryTilesWithQuantities(),
@@ -669,13 +686,17 @@ export const gameStore = setup({
         currentPlayer,
         context.selectedCard.id,
       )
+      // Loan: drop 3 income LEVELS (not spaces); the marker moves to the
+      // highest space within the new level (rulebook p.6 / audited board).
+      const loanLevel = Math.max(
+        GAME_CONSTANTS.MIN_INCOME,
+        currentPlayer.income - GAME_CONSTANTS.LOAN_INCOME_PENALTY,
+      )
       const updatedPlayer = {
         ...currentPlayer,
         money: currentPlayer.money + GAME_CONSTANTS.LOAN_AMOUNT,
-        income: Math.max(
-          GAME_CONSTANTS.MIN_INCOME,
-          currentPlayer.income - GAME_CONSTANTS.LOAN_INCOME_PENALTY,
-        ),
+        income: loanLevel,
+        incomeSpace: highestSpaceForLevel(loanLevel),
         hand: updatedHand,
       }
 
@@ -1214,18 +1235,22 @@ export const gameStore = setup({
             const newIndustries = [...player.industries]
             newIndustries[industryIndex] = updatedIndustry
 
-            // Advance player income (capped at level 30)
+            // Advance the income marker by SPACES on the Progress Track
+            // (audited 2026-07-15: the tile's arrow value is spaces, not
+            // levels); the level is the coin beside the landing space.
             const incomeAdvancement = industry.tile.incomeAdvancement || 0
-            const newIncome = Math.min(
-              player.income + incomeAdvancement,
-              GAME_CONSTANTS.MAX_INCOME,
+            const newSpace = advanceIncomeSpaces(
+              player.incomeSpace,
+              incomeAdvancement,
             )
+            const newIncome = incomeLevelForSpace(newSpace)
 
             // Update player with flipped industry and new income
             updatedPlayers[playerIndex] = {
               ...player,
               industries: newIndustries,
               income: newIncome,
+              incomeSpace: newSpace,
             }
 
             logMessages.push(
@@ -1430,16 +1455,19 @@ export const gameStore = setup({
           : industry,
       )
 
+      // Selling advances the marker by SPACES (the tile's arrow value).
       const incomeAdvancement = industryToSell.tile.incomeAdvancement || 0
-      const newIncome = Math.min(
-        playerAfterBeer.income + incomeAdvancement,
-        GAME_CONSTANTS.MAX_INCOME,
+      const soldSpace = advanceIncomeSpaces(
+        playerAfterBeer.incomeSpace,
+        incomeAdvancement,
       )
+      const newIncome = incomeLevelForSpace(soldSpace)
 
       const updatedPlayer = {
         ...playerAfterBeer,
         industries: updatedIndustries,
         income: newIncome,
+        incomeSpace: soldSpace,
       }
 
       // Apply merchant bonuses
@@ -1449,9 +1477,14 @@ export const gameStore = setup({
             updatedPlayer.money += bonus.value
             break
           case 'income':
-            updatedPlayer.income = Math.min(
-              updatedPlayer.income + bonus.value,
-              GAME_CONSTANTS.MAX_INCOME,
+            // Oxford's bonus advances the marker 2 SPACES (rules reference:
+            // "Advance your income marker 2 spaces along the progress track")
+            updatedPlayer.incomeSpace = advanceIncomeSpaces(
+              updatedPlayer.incomeSpace,
+              bonus.value,
+            )
+            updatedPlayer.income = incomeLevelForSpace(
+              updatedPlayer.incomeSpace,
             )
             break
           case 'victoryPoints':
@@ -1808,7 +1841,6 @@ export const gameStore = setup({
 
                   if (saleValue > 0) {
                     industriesToRemove.push(i)
-                    updatedPlayer.money += saleValue
                     remainingShortfall -= saleValue
 
                     logs.push(
@@ -1818,6 +1850,14 @@ export const gameStore = setup({
                       ),
                     )
                   }
+                }
+
+                // Sale proceeds settle the debt; the player keeps only the
+                // excess (rules: "You keep any excess money") — audited
+                // 2026-07-15, the proceeds were previously kept in full.
+                if (remainingShortfall < 0) {
+                  updatedPlayer.money = -remainingShortfall
+                  remainingShortfall = 0
                 }
 
                 // Remove sold industries (in reverse order to maintain indices)
@@ -2007,7 +2047,12 @@ export const gameStore = setup({
       updatedPlayers[event.playerId] = {
         ...currentPlayer,
         ...(event.money !== undefined && { money: event.money }),
-        ...(event.income !== undefined && { income: event.income }),
+        // Tests set income by LEVEL; keep the marker consistent by placing
+        // it on the highest space of that level.
+        ...(event.income !== undefined && {
+          income: event.income,
+          incomeSpace: highestSpaceForLevel(event.income),
+        }),
         ...(event.industries !== undefined && { industries: event.industries }),
       }
 

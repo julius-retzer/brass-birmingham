@@ -31,9 +31,18 @@ export interface EphemeralBranch {
   connectionUri: string
 }
 
-// Minimal `.env.local` reader — the repo's env convention (T3/Next) with no
-// dotenv dependency. Parsed once; only sources the optional NEON_API_KEY /
-// NEON_PROJECT_ID — the app's real DATABASE_URL still flows via `~/env`.
+// Minimal, scoped `.env.local` reader for the test harness.
+//
+// NOT `~/env`: that module is a *validator/accessor* over `process.env` (T3
+// `createEnv`), not a file loader — in the app, Next's `@next/env` populates
+// `process.env` from `.env.local` before `~/env` reads it. This vitest
+// globalSetup runs OUTSIDE Next's pipeline, so nothing has loaded `.env.local`
+// here. Adding NEON_API_KEY / TEST_DATABASE_URL to `~/env`'s schema would also
+// pollute the app's validated env contract with test-only keys. And a global
+// loader (Next's `loadEnvConfig`) would mutate `process.env` for the whole run
+// — pulling `.env`'s DATABASE_URL in and undermining the non-test-DB guard in
+// global-db-branch.ts. So we read the two test-only keys ourselves, scoped,
+// without touching global env. Parsed once.
 let envLocalCache: Record<string, string> | null = null
 function readEnvLocal(): Record<string, string> {
   if (envLocalCache) return envLocalCache

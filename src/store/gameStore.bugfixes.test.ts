@@ -151,21 +151,25 @@ describe('bugfix: wild industry card can complete a build', () => {
 })
 
 describe('bugfix: free same-type slots are usable (no forced overbuild)', () => {
-  test('worcester has two cotton slots — two L1 cotton mills coexist', () => {
+  test('worcester has two cotton slots — one mill per player coexists', () => {
+    // Canal rule (2026-07-15): a single player may hold only ONE tile per
+    // location, so the two slots are filled by DIFFERENT players; the
+    // point pinned here is that P2's build lands in the FREE slot instead
+    // of overbuilding P1's mill.
     const a = startGame()
-    // P1 builds cotton at worcester twice (across two rounds).
     let builds = 0
     for (let i = 0; i < 10 && builds < 2; i++) {
-      if (cur(a).name === 'P1') {
-        setHand(a, 0, [locCard('worcester', i), locCard('worcester', i + 10)])
-        const err = buildViaLocationCard(a, 'worcester', 'cotton')
-        expect(err).toBeNull()
-        builds++
-      } else passTurn(a)
+      const idx = cur(a).name === 'P1' ? 0 : 1
+      setHand(a, idx, [locCard('worcester', i)])
+      const err = buildViaLocationCard(a, 'worcester', 'cotton')
+      expect(err).toBeNull()
+      builds++
     }
-    expect(industriesAt(a, 'worcester')).toEqual([
+    expect(industriesAt(a, 'worcester').sort((x: any, y: any) =>
+      x.who.localeCompare(y.who),
+    )).toEqual([
       { who: 'P1', type: 'cotton', level: 1 },
-      { who: 'P1', type: 'cotton', level: 1 },
+      { who: 'P2', type: 'cotton', level: 1 },
     ])
     a.stop()
   })
@@ -205,24 +209,55 @@ describe('bugfix: own overbuild works when no free slot remains', () => {
 
 describe('unchanged: illegal overbuilds still rejected', () => {
   test("opponent's cotton cannot be overbuilt when the city is full", () => {
-    const a = startGame()
-    let p1Builds = 0
-    let p2Err: string | null | undefined
-    for (let i = 0; i < 14 && p2Err === undefined; i++) {
-      if (cur(a).name === 'P1' && p1Builds < 2) {
-        setHand(a, 0, [locCard('worcester', i)])
-        buildViaLocationCard(a, 'worcester', 'cotton')
-        p1Builds++
-      } else if (cur(a).name === 'P2' && p1Builds >= 2) {
-        setHand(a, 1, [locCard('worcester', i + 40)])
-        p2Err = buildViaLocationCard(a, 'worcester', 'cotton')
+    // Under the canal one-tile rule the two worcester slots are filled by
+    // P1 and P2; P3 (holding a HIGHER cotton after spending their L1)
+    // attacks a full city — refused: only coal/iron may overbuild an
+    // opponent.
+    const a = createActor(gameStore)
+    a.start()
+    a.send({
+      type: 'START_GAME',
+      players: [
+        { id: '1', name: 'P1', color: 'red', character: 'Eliza Tinsley' },
+        { id: '2', name: 'P2', color: 'blue', character: 'Richard Arkwright' },
+        { id: '3', name: 'P3', color: 'green', character: 'George Stephenson' },
+      ].map((p) => ({
+        ...p,
+        money: 17,
+        victoryPoints: 0,
+        income: 10,
+        industryTilesOnMat: {},
+      })),
+    } as any)
+    for (let i = 0; i < 3; i++) {
+      a.send({ type: 'TEST_SET_PLAYER_STATE', playerId: i, money: 500 } as any)
+    }
+
+    const playerIdx = () => ctx(a).currentPlayerIndex
+    let filled = 0
+    let p3Spent = false
+    let p3Err: string | null | undefined
+    for (let i = 0; i < 30 && p3Err === undefined; i++) {
+      const idx = playerIdx()
+      if (idx < 2 && filled < 2) {
+        setHand(a, idx, [locCard('worcester', i)])
+        expect(buildViaLocationCard(a, 'worcester', 'cotton')).toBeNull()
+        filled++
+      } else if (idx === 2 && !p3Spent) {
+        // burn P3's cotton L1 elsewhere so their next cotton is L2
+        setHand(a, 2, [locCard('leek', i)])
+        expect(buildViaLocationCard(a, 'leek', 'cotton')).toBeNull()
+        p3Spent = true
+      } else if (idx === 2 && filled >= 2) {
+        setHand(a, 2, [locCard('worcester', i + 40)])
+        p3Err = buildViaLocationCard(a, 'worcester', 'cotton')
       } else passTurn(a)
     }
-    expect(p2Err).toBeTruthy() // rejected with a reason
-    expect(industriesAt(a, 'worcester')).toHaveLength(2) // both P1 mills intact
-    expect(industriesAt(a, 'worcester').every((x: any) => x.who === 'P1')).toBe(
-      true,
-    )
+    expect(p3Err).toBeTruthy() // rejected with a reason
+    expect(industriesAt(a, 'worcester')).toHaveLength(2) // both mills intact
+    expect(
+      industriesAt(a, 'worcester').every((x: any) => x.who !== 'P3'),
+    ).toBe(true)
     a.stop()
   })
 })

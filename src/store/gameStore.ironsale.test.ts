@@ -97,25 +97,30 @@ const tileAt = (a: AnyActor, playerIdx: number, city: string, type: string) =>
 describe('VERIFY: iron auto-sale to market on build', () => {
   test('A. partial fit: iron L1 (4 cubes) with 2 empty £1 spaces', () => {
     const a = start()
-    // P1 first builds a coal mine at dudley so the iron works' 1 coal
-    // requirement is satisfiable without any market connection.
-    let done = 0
+    // P2 builds the coal mine at dudley (canal one-tile rule: P1 may not
+    // stack a second own tile there); P1's iron works then consumes from
+    // the opponent's mine at the same location — no market connection.
+    let coalDone = false
+    let ironDone = false
     const log: string[] = []
-    while (done < 2) {
-      if (cur(a).name === 'P1') {
-        setHand(a, 0, [locCard('dudley', done)])
+    while (!ironDone) {
+      if (cur(a).name === 'P2' && !coalDone) {
+        setHand(a, 1, [locCard('dudley', 90)])
+        const err = build(a, 'dudley', 'coal')
+        log.push(`build#0 (coal, P2): err=${err}`)
+        coalDone = true
+      } else if (cur(a).name === 'P1' && coalDone) {
+        setHand(a, 0, [locCard('dudley', 1)])
         const before = ctx(a).players[0].money
         const marketBefore = ironRow(a)
-        const err = build(a, 'dudley', done === 0 ? 'coal' : 'iron')
+        const err = build(a, 'dudley', 'iron')
         const after = ctx(a).players[0].money
         log.push(
-          `build#${done} (${done === 0 ? 'coal' : 'iron'}): err=${err} money £${before}→£${after} (Δ${after - before})`,
+          `build#1 (iron): err=${err} money £${before}→£${after} (Δ${after - before})`,
         )
-        if (done === 1) {
-          log.push(`iron market before: ${marketBefore.join(' ')}`)
-          log.push(`iron market after : ${ironRow(a).join(' ')}`)
-        }
-        done++
+        log.push(`iron market before: ${marketBefore.join(' ')}`)
+        log.push(`iron market after : ${ironRow(a).join(' ')}`)
+        ironDone = true
       } else passTurn(a)
     }
     const tile = tileAt(a, 0, 'dudley', 'iron')
@@ -146,37 +151,39 @@ describe('VERIFY: iron auto-sale to market on build', () => {
     const a = start()
     // Two develops consume 2 iron from the market (cheapest occupied = £2
     // row) → empties: 2×£1 + 2×£2 = room for all 4 cubes of iron L1.
-    let step = 0
+    // Interleaved with P2's turns (no passes — the scripted deck is small):
+    // P2 builds the coal mine at dudley, and P1's iron works consumes from
+    // that opponent mine (the canal one-tile rule forbids P1 stacking an
+    // own mine + iron works there).
+    let develops = 0
+    let coalDone = false
+    let ironDone = false
     const log: string[] = []
-    while (step < 3) {
-      if (cur(a).name === 'P1') {
-        setHand(a, 0, [locCard('dudley', step + 10)])
-        if (step < 2) {
-          const err = develop(a, 'cotton')
-          log.push(
-            `develop#${step}: err=${err} market: ${ironRow(a).join(' ')}`,
-          )
-        } else {
-          // coal for the iron works comes from the market via... no link —
-          // build a coal mine the turn before instead: use P2's turns to
-          // pass; P1: develop, develop, build coal, build iron (4 steps)
-        }
-        step++
-      } else passTurn(a)
-    }
-    // P1 builds coal then iron at dudley
-    let built = 0
     const incomeBefore = ctx(a).players[0].income
-    while (built < 2) {
-      if (cur(a).name === 'P1') {
-        setHand(a, 0, [locCard('dudley', built + 20)])
+    while (!ironDone) {
+      if (cur(a).name === 'P2') {
+        if (!coalDone) {
+          setHand(a, 1, [locCard('dudley', 91)])
+          const err = build(a, 'dudley', 'coal')
+          log.push(`build#0 (coal, P2): err=${err}`)
+          coalDone = true
+        } else passTurn(a)
+      } else if (develops < 2) {
+        setHand(a, 0, [locCard('dudley', develops + 10)])
+        const err = develop(a, 'cotton')
+        log.push(
+          `develop#${develops}: err=${err} market: ${ironRow(a).join(' ')}`,
+        )
+        develops++
+      } else if (coalDone) {
+        setHand(a, 0, [locCard('dudley', 21)])
         const before = ctx(a).players[0].money
-        const err = build(a, 'dudley', built === 0 ? 'coal' : 'iron')
+        const err = build(a, 'dudley', 'iron')
         const after = ctx(a).players[0].money
         log.push(
-          `build#${built} (${built === 0 ? 'coal' : 'iron'}): err=${err} money £${before}→£${after} (Δ${after - before})`,
+          `build#1 (iron): err=${err} money £${before}→£${after} (Δ${after - before})`,
         )
-        built++
+        ironDone = true
       } else passTurn(a)
     }
     const tile = tileAt(a, 0, 'dudley', 'iron')

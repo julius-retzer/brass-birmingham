@@ -610,6 +610,33 @@ export function canPlaceOrOverbuildIndustry(
   industryType: IndustryType,
   tileLevel: number,
 ): boolean {
+  // Canal Era: "each player may place a maximum of 1 of their Industry
+  // tiles in each location" (rules p.4 & p.7). If the current player
+  // already has a tile here, the ONLY legal build is an overbuild that
+  // REPLACES that same tile (net count stays 1). The Rail Era allows
+  // multiple tiles per location. Fixed 2026-07-15 (captain playtest:
+  // coal L1 + iron L1 both landed at coalbrookdale in the Canal Era).
+  if (context.era === 'canal') {
+    const me = context.currentPlayerIndex
+    const mineHere = context.players[me]!.industries.some(
+      (industry) => industry.location === location,
+    )
+    if (mineHere) {
+      const overbuildCheck = canOverbuildIndustry(
+        context,
+        me,
+        location,
+        industryType,
+        tileLevel,
+      )
+      return (
+        overbuildCheck.canOverbuild &&
+        !!overbuildCheck.existingIndustry &&
+        overbuildCheck.existingIndustry.playerIndex === me
+      )
+    }
+  }
+
   if (canCityAccommodateIndustryType(context, location, industryType)) {
     return true
   }

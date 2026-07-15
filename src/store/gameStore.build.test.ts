@@ -193,11 +193,15 @@ describe('Game Store - Build Actions', () => {
       expect(snapshot.context.era).toBe('canal')
 
       const currentPlayerId = snapshot.context.currentPlayerIndex
+      // The mine belongs to the OPPONENT: coal is consumed from any
+      // player's mine at the location, and the canal one-tile rule
+      // (2026-07-15) forbids the builder having their own tile there.
+      const mineOwner = 1 - currentPlayerId
 
       // Add coal mine to provide coal for building
       actor.send({
         type: 'TEST_SET_PLAYER_STATE',
-        playerId: currentPlayerId,
+        playerId: mineOwner,
         industries: [
           {
             location: location as CityId, // Coal mine at same location
@@ -234,16 +238,17 @@ describe('Game Store - Build Actions', () => {
       const { playerWhoBuilt } = buildIndustryAction(actor, type, location)
       snapshot = actor.getSnapshot()
 
-      // Coal mine should be at index 0, new industry at index 1
+      // The build lands for the current player…
       const builtIndustry =
-        snapshot.context.players[playerWhoBuilt]!.industries[1]
+        snapshot.context.players[playerWhoBuilt]!.industries[0]
       expect(builtIndustry).toBeDefined()
       expect(builtIndustry!.type).toBe(type)
       // Should build Level 1 tile in Canal Era
       expect(builtIndustry!.level).toBe(1)
 
-      // Verify coal was consumed from the coal mine
-      const coalMine = snapshot.context.players[playerWhoBuilt]!.industries[0]
+      // …and the coal came from the OPPONENT's mine at the location
+      const coalMine =
+        snapshot.context.players[1 - playerWhoBuilt]!.industries[0]
       expect(coalMine!.coalCubesOnTile).toBe(1) // Should have consumed 1 coal
 
       actor.stop()

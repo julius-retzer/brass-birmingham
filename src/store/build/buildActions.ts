@@ -230,15 +230,26 @@ export function buildIndustryTile(
   let ironCost = 0
   const resourceLogDetails: string[] = []
 
+  // Canal Era: max ONE of the player's tiles per location — when they
+  // already have a tile here the build MUST replace it (own overbuild),
+  // even if another compatible slot is free (rules p.4 & p.7).
+  const canalOneTileForced =
+    context.era === 'canal' &&
+    context.players[context.currentPlayerIndex]!.industries.some(
+      (industry) => industry.location === context.selectedLocation,
+    )
+
   // Free-slot-first: if the city still has a free compatible slot, the tile
   // is placed there and NO overbuild happens — an existing same-type tile
   // (any player's) stays on the board. Overbuild semantics apply only when
   // no compatible slot is free (rules: overbuild replaces an existing tile).
-  const hasFreeSlot = canCityAccommodateIndustryType(
-    context,
-    context.selectedLocation!,
-    tile.type,
-  )
+  const hasFreeSlot =
+    !canalOneTileForced &&
+    canCityAccommodateIndustryType(
+      context,
+      context.selectedLocation!,
+      tile.type,
+    )
 
   const overbuildCheck = hasFreeSlot
     ? ({ canOverbuild: true } as ReturnType<typeof canOverbuildIndustry>)
@@ -252,6 +263,16 @@ export function buildIndustryTile(
 
   if (!overbuildCheck.canOverbuild && overbuildCheck.reason) {
     throw new Error(overbuildCheck.reason)
+  }
+  if (
+    canalOneTileForced &&
+    (!overbuildCheck.existingIndustry ||
+      overbuildCheck.existingIndustry.playerIndex !==
+        context.currentPlayerIndex)
+  ) {
+    throw new Error(
+      `Cannot build at ${context.selectedLocation}: in the Canal Era each player may have only ONE tile per location.`,
+    )
   }
 
   // Consume coal if required

@@ -61,8 +61,10 @@ test('wild industry card: pick industry type, then a city, build', async ({
   await page.getByTestId('card-wild_industry_2').click()
 
   // Wild industry has no printed industries — the type step must appear.
-  await page.locator('button', { hasText: 'Brewery' }).first().click()
-  await expect(page.getByText(/Choose a site for your brewery/)).toBeVisible()
+  // (Coal: Isambard owns coal L1 at burton, so this is also a live check
+  // of the canal one-tile rule — the build must OVERBUILD his own mine.)
+  await page.locator('button', { hasText: 'Coal' }).first().click()
+  await expect(page.getByText(/Choose a site for your coal/)).toBeVisible()
   await page.locator('g[data-city="burton"]').click()
 
   const confirm = page.getByTestId('confirm-action')
@@ -71,7 +73,7 @@ test('wild industry card: pick industry type, then a city, build', async ({
 
   await expect(
     page.getByText(
-      /Isambard built brewery Level \d+ at burton.*using wild industry/,
+      /Isambard built coal Level 2 at burton.*\(overbuilt own level 1\) using wild industry/,
     ),
   ).toBeVisible()
 })

@@ -172,6 +172,15 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
 - Build slot semantics are FREE-SLOT-FIRST (2026-07-13 bug hunt): a build
   goes into a free compatible slot when one exists — overbuild (replace,
   via `performOverbuild`) happens ONLY when no compatible slot is free.
+  EXCEPTION (canal one-tile rule, fixed 2026-07-15): in the Canal Era each
+  player may hold only ONE tile per location (rules p.4/p.7) — if the
+  builder already has a tile there, the build MUST replace it (own
+  overbuild) even when another slot is free; enforced in
+  `canPlaceOrOverbuildIndustry` + `buildIndustryTile`, pinned by
+  `gameStore.canalrule.test.ts`. Known adjacent gap: in the Rail Era the
+  guard auto-SKIPS unbuildable canal-only L1 mat tiles to the next level,
+  but rules p.7 say those tiles must be removed via Develop first (and the
+  era-ignorant `selectIndustryType` action can disagree with the guard).
   Wild cards route through the full build flow: wild location picks
   industry then ANY city; wild industry picks industry then a network
   city. Regression tests: `gameStore.bugfixes.test.ts`, `e2e/bugfixes.spec.ts`.

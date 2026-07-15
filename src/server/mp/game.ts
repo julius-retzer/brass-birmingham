@@ -554,6 +554,10 @@ async function runAiTurns(token: string): Promise<void> {
   let stepsThisTurn = 0
   let modelCallsThisTurn = 0
   let lastSeat = -1
+  // Turn-local memory for the model: each decision is a fresh
+  // conversation, so without these notes the AI forgets a plan it just
+  // cancelled and loops on it (captain playtest finding).
+  let turnNotes: string[] = []
   for (;;) {
     // Peek outside the lock: is it an AI's turn at all?
     const peek = await loadGame(token)
@@ -567,6 +571,7 @@ async function runAiTurns(token: string): Promise<void> {
       lastSeat = seat.seatId
       stepsThisTurn = 0
       modelCallsThisTurn = 0
+      turnNotes = []
     }
     stepsThisTurn += 1
 
@@ -585,11 +590,22 @@ async function runAiTurns(token: string): Promise<void> {
         seatIndex: seat.seatId,
         provider: providerFor(tier),
         tier,
+        turnNotes,
         forceSafe:
           stepsThisTurn > STEP_SAFETY_BUDGET ||
           modelCallsThisTurn > MODEL_CALL_TURN_BUDGET,
       })
       modelCallsThisTurn += outcome.usage.calls
+      turnNotes.push(
+        `${outcome.move.label}${
+          outcome.rationale ? ` — your reasoning: "${outcome.rationale}"` : ''
+        }${
+          outcome.fallback
+            ? ' [your picks were refused by the rules; a safe default was played]'
+            : ''
+        }`,
+      )
+      if (turnNotes.length > 16) turnNotes = turnNotes.slice(-16)
     } catch (err) {
       // Surface driver failures in the server log — the game itself stays
       // consistent (nothing was applied) and a reconnect re-kicks the turn.

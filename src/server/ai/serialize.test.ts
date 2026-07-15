@@ -87,3 +87,19 @@ describe('serializeGameState', () => {
     expect(text.length).toBeLessThan(4000)
   })
 })
+
+describe('affordability & placement grounding (captain playtest fixes)', () => {
+  test('mat lists tile economics: cost, resource needs, flip rewards', () => {
+    const text = serializeGameState(freshSnapshot(), 0)
+    // coal L1 is £5 and flips for 1VP/+4 income (audited tile data)
+    expect(text).toMatch(/coal L1: £5.*flips for 1VP\/\+4 income/)
+    // iron L1 needs coal to build — the requirement must be visible
+    expect(text).toMatch(/iron L1: £5 \+ 1 coal/)
+  })
+
+  test('network cities line exists and explains the empty-network rule', () => {
+    const text = serializeGameState(freshSnapshot(), 0)
+    expect(text).toContain('Your network cities')
+    expect(text).toContain('none yet — your industry cards may build anywhere')
+  })
+})

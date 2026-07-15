@@ -42,18 +42,42 @@ function playerLinks(p: PlayerT): string {
     .join('; ')
 }
 
+// Next buildable tile per industry WITH its economics — the model must be
+// able to judge affordability before starting a Build (playtest finding:
+// without costs it walked into unaffordable builds and looped).
 function matSummary(p: PlayerT): string {
   const parts: string[] = []
   for (const [type, tiles] of Object.entries(p.industryTilesOnMat)) {
     if (!tiles || tiles.length === 0) continue
     const next = tiles.reduce(
-      (min, t) => (t.tile.level < min ? t.tile.level : min),
-      Infinity,
+      (best, t) => (t.tile.level < best.tile.level ? t : best),
+      tiles[0]!,
+    ).tile
+    const needs = [
+      next.coalRequired > 0 ? `${next.coalRequired} coal` : null,
+      next.ironRequired > 0 ? `${next.ironRequired} iron` : null,
+    ]
+      .filter(Boolean)
+      .join(' + ')
+    parts.push(
+      `${type} L${next.level}: £${next.cost}${needs ? ` + ${needs}` : ''}, flips for ${next.victoryPoints}VP/+${next.incomeSpaces} income`,
     )
-    const count = tiles.reduce((n, t) => n + t.quantityAvailable, 0)
-    parts.push(`${type}: next L${next} (${count} left)`)
   }
   return parts.length > 0 ? parts.join('; ') : 'empty'
+}
+
+/** Cities in the player's network (own tiles + own link endpoints). */
+function networkCities(p: PlayerT): string {
+  const set = new Set<CityId>()
+  for (const ind of p.industries) set.add(ind.location)
+  for (const link of p.links) {
+    set.add(link.from)
+    set.add(link.to)
+  }
+  if (set.size === 0) {
+    return 'none yet — your industry cards may build anywhere with a free slot'
+  }
+  return [...set].map((c) => cityName(c)).join(', ')
 }
 
 /** Which multi-step action is in flight, and what has been picked so far. */
@@ -140,6 +164,9 @@ export function serializeGameState(
     }`,
   )
   out.push(`Your mat (next buildable tile per industry): ${matSummary(me)}`)
+  out.push(
+    `Your network cities (where your industry cards can build): ${networkCities(me)}`,
+  )
   out.push(`Your industries on the board: ${playerIndustries(me)}`)
   out.push(`Your links: ${playerLinks(me)}`)
 

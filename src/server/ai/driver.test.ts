@@ -276,3 +276,74 @@ describe('aiDecideAndApply', () => {
     expect(outcomes.some((o) => o.fallback)).toBe(true)
   })
 })
+
+describe('smartness upgrades (captain playtest fixes)', () => {
+  test('turn notes are injected into the decision message', async () => {
+    const { persisted, seatIndex } = freshPersisted()
+    const provider = scriptedProvider([
+      { choice: { moveIndex: 6, rationale: 'pass' } },
+    ])
+    await aiDecideAndApply({
+      persisted,
+      seatIndex,
+      provider,
+      tier,
+      turnNotes: [
+        'Build — place an industry tile — your reasoning: "iron plan"',
+        'Cancel and choose a different action — your reasoning: "cannot afford it"',
+      ],
+    })
+    const first = provider.seen[0]![0]!.content
+    expect(first).toContain('== YOUR STEPS SO FAR THIS TURN ==')
+    expect(first).toContain('cannot afford it')
+    expect(first).toContain('Do not retry a plan you cancelled')
+  })
+
+  test('a broke player: card picks in BUILD are rejected as dead ends, fallback cancels out', async () => {
+    // Reproduces the captain-playtest cancel-loop: £0 in the treasury means
+    // NO build can complete anywhere — the driver must refuse the card pick
+    // up front (with the engine's reason) instead of letting the model walk
+    // in and cancel-loop.
+    const actor = createActor(gameStore)
+    actor.start()
+    actor.send({ type: 'START_GAME', players: startPlayers })
+    const seatIndex = actor.getSnapshot().context.currentPlayerIndex
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: seatIndex,
+      money: 0,
+    })
+    // Scripted hand WITHOUT iron: an iron works can self-fund (its excess
+    // cubes sell to the market during the build), so it stays viable even
+    // at £0 — cotton/pottery/brewery builds all need real money.
+    actor.send({
+      type: 'TEST_SET_PLAYER_HAND',
+      playerId: seatIndex,
+      hand: [
+        { id: 'cotton_t1', type: 'industry', industries: ['cotton'] },
+        { id: 'pottery_t1', type: 'industry', industries: ['pottery'] },
+      ] as never,
+    })
+    actor.send({ type: 'BUILD' })
+    const persisted = actor.getPersistedSnapshot()
+    actor.stop()
+
+    // the model stubbornly picks the first card every time
+    const provider = scriptedProvider([
+      { choice: { moveIndex: 0, rationale: 'building anyway' } },
+    ])
+    const outcome = await aiDecideAndApply({
+      persisted,
+      seatIndex,
+      provider,
+      tier,
+    })
+    // every model attempt was rejected with a dead-end explanation…
+    expect(outcome.attempts).toBe(MAX_MODEL_CALLS_PER_DECISION)
+    const retry = provider.seen[1]!.map((m) => m.content).join('\n')
+    expect(retry).toMatch(/cannot be completed|leads to a build/)
+    // …and the fallback backed out of the doomed flow instead of descending
+    expect(outcome.fallback).toBe(true)
+    expect(outcome.move.event.type).toBe('CANCEL')
+  })
+})

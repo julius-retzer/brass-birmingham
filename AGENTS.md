@@ -274,10 +274,14 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   serializes the state (`serialize.ts`), enumerates the machine's legal
   events (`legal-moves.ts` — faithful to `can()`, era-filters links), asks
   the model for one numbered choice, validates BY EXECUTING on a scratch
-  actor (plus a confirm dead-end probe), retries ≤3 with the exact refusal
+  actor (plus a one-step-lookahead dead-end probe: doomed build/link/sell
+  flows are refused at the pick with the engine’s real reason), retries ≤3 with the exact refusal
   appended, then falls back deterministically — a turn can never stall
   (step + model-call budgets force PASS/CANCEL as the last resort).
-  Single-legal-move and pure CONFIRM/CANCEL steps skip the model.
+  Single-legal-move and pure CONFIRM/CANCEL steps skip the model. Each
+  decision is a FRESH conversation — the runner passes turn-local notes
+  (steps + rationales incl. cancels) or the model forgets a plan it just
+  abandoned and loops (captain playtest finding).
 - Tiers live in `src/server/ai/types.ts` (model, wire, prices, strategy
   prompt). Two wire formats behind the pluggable provider
   (`provider.ts`): 'anthropic' (SDK; honours ANTHROPIC_BASE_URL for

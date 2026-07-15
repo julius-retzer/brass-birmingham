@@ -18,7 +18,7 @@ export interface LegalMove {
   label: string
 }
 
-const INDUSTRY_TYPES: IndustryType[] = [
+export const INDUSTRY_TYPES: IndustryType[] = [
   'cotton',
   'coal',
   'iron',

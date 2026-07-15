@@ -6,12 +6,17 @@
 // back to a deterministic heuristic so the game NEVER stalls. Every step
 // reports usage so the per-game cost counter stays honest.
 import { createActor } from 'xstate'
+import { type CityId, cities, connections } from '../../data/board'
 import {
   type GameEvent,
   type GameStoreSnapshot,
   gameStore,
 } from '../../store/gameStore'
-import { type LegalMove, enumerateLegalMoves } from './legal-moves'
+import {
+  INDUSTRY_TYPES,
+  type LegalMove,
+  enumerateLegalMoves,
+} from './legal-moves'
 import { buildDecisionMessage, buildSystemPrompt } from './prompts'
 import { serializeGameState } from './serialize'
 import {
@@ -96,25 +101,106 @@ export function tryApplyEvent(
 }
 
 /**
- * A SELECT that lands on the build-confirm step can still be a dead end
- * (no coal reach / can't pay — validated only at CONFIRM execution). Probe
- * the confirm so the model gets the real refusal for THIS pick instead of
- * walking into it a step later.
+ * One-step-lookahead viability: does the flow the applied event leads into
+ * still have SOME way to complete? The engine validates costs, coal reach
+ * and payment only at confirm execution, so a pick can be guard-legal yet
+ * doomed — without this probe the model walks into the dead end, cancels,
+ * forgets (each decision is a fresh conversation) and loops. Rejecting the
+ * doomed pick WITH the engine's real refusal keeps the model on live
+ * branches. (Captain playtest finding, 2026-07-15.)
  */
-function confirmDeadEnd(applied: ApplyResult): string | null {
+function flowDeadEnd(applied: ApplyResult, depth = 0): string | null {
   const after = applied.after
-  if (!after) return null
-  const inConfirm =
-    after.matches({
-      playing: { action: { building: 'confirmingBuild' } },
-    } as never) ||
-    after.matches({
-      playing: { action: { networking: 'confirmingLink' } },
-    } as never)
-  if (!inConfirm) return null
-  if (!after.can({ type: 'CONFIRM' } as never)) return null
-  const probe = tryApplyEvent(applied.next, { type: 'CONFIRM' })
-  return probe.ok ? null : (probe.error ?? 'The confirm would fail.')
+  if (!after || depth > 3) return null
+  const m = (path: unknown) => after.matches(path as never)
+  const probeConfirm = (event: GameEvent): string | null => {
+    const probe = tryApplyEvent(applied.next, event)
+    return probe.ok ? null : (probe.error ?? 'The confirm would fail.')
+  }
+
+  // Confirm checkpoints — dry-run the confirm itself.
+  if (
+    m({ playing: { action: { building: 'confirmingBuild' } } }) ||
+    m({ playing: { action: { networking: 'confirmingLink' } } })
+  ) {
+    if (!after.can({ type: 'CONFIRM' } as never)) return null
+    return probeConfirm({ type: 'CONFIRM' })
+  }
+  if (m({ playing: { action: { networking: 'confirmingDoubleLink' } } })) {
+    if (!after.can({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' } as never)) {
+      return null
+    }
+    return probeConfirm({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
+  }
+
+  // Site scan: is there ANY city where this build completes?
+  if (m({ playing: { action: { building: 'selectingLocation' } } })) {
+    for (const cityId of Object.keys(cities) as CityId[]) {
+      const event: GameEvent = { type: 'SELECT_LOCATION', cityId }
+      if (!after.can(event as never)) continue
+      const next = tryApplyEvent(applied.next, event)
+      if (next.ok && flowDeadEnd(next, depth + 1) === null) return null
+    }
+    return 'there is NO city where this build can be completed (slot, tile cost, coal reach or payment fails everywhere)'
+  }
+
+  // Industry scan (location / wild cards).
+  if (m({ playing: { action: { building: 'selectingIndustryType' } } })) {
+    for (const industryType of INDUSTRY_TYPES) {
+      const event: GameEvent = { type: 'SELECT_INDUSTRY_TYPE', industryType }
+      if (!after.can(event as never)) continue
+      const next = tryApplyEvent(applied.next, event)
+      if (next.ok && flowDeadEnd(next, depth + 1) === null) return null
+    }
+    return 'NO industry playable from this card leads to a completable build'
+  }
+
+  // Link scan: any link that can actually be built and paid for?
+  if (
+    m({ playing: { action: { networking: 'selectingLink' } } }) ||
+    m({ playing: { action: { networking: 'selectingSecondLink' } } })
+  ) {
+    const second = m({
+      playing: { action: { networking: 'selectingSecondLink' } },
+    })
+    for (const conn of connections) {
+      if (!(conn.types as readonly string[]).includes(after.context.era)) {
+        continue
+      }
+      const event: GameEvent = second
+        ? { type: 'SELECT_SECOND_LINK', from: conn.from, to: conn.to }
+        : { type: 'SELECT_LINK', from: conn.from, to: conn.to }
+      if (!after.can(event as never)) continue
+      const next = tryApplyEvent(applied.next, event)
+      if (next.ok && flowDeadEnd(next, depth + 1) === null) return null
+    }
+    return 'NO link in your network can actually be built right now (cost or connection fails everywhere)'
+  }
+
+  // Sale scan: with this card, can anything be sold at all?
+  if (m({ playing: { action: { selling: 'selectingSale' } } })) {
+    if (after.can({ type: 'CONFIRM' } as never)) return null // ≥1 sale done
+    const ctx = after.context
+    const me = ctx.players[ctx.currentPlayerIndex]
+    const merchantLocations = [
+      ...new Set(ctx.merchants.map((mm) => mm.location)),
+    ]
+    for (const ind of me?.industries ?? []) {
+      if (ind.flipped) continue
+      for (const merchant of merchantLocations) {
+        const event: GameEvent = {
+          type: 'SELECT_SALE',
+          location: ind.location,
+          industryType: ind.type,
+          merchant,
+        }
+        if (after.can(event as never)) return null
+      }
+    }
+    return 'NOTHING you own can be sold to any merchant right now (no connected merchant buys it, or the beer is missing)'
+  }
+
+  return null
 }
 
 /* ---------------- deterministic fallback ---------------- */
@@ -154,7 +240,7 @@ function fallbackApply(
   )
   for (const move of ranked) {
     const result = tryApplyEvent(persisted, move.event)
-    if (result.ok && !confirmDeadEnd(result)) return { move, result }
+    if (result.ok && !flowDeadEnd(result)) return { move, result }
   }
   // even a dead-end confirm target is progress if nothing else applies
   for (const move of ranked) {
@@ -200,6 +286,12 @@ export interface AiStepOptions {
   tier: AiTier
   /** true once the turn's step budget is spent — stop consulting the model */
   forceSafe?: boolean
+  /**
+   * What the AI already did THIS turn (one line per step, cancels
+   * included). Each decision is a fresh conversation — without these notes
+   * the model has no memory of a plan it just abandoned and will loop.
+   */
+  turnNotes?: string[]
 }
 
 export async function aiDecideAndApply(
@@ -298,6 +390,7 @@ export async function aiDecideAndApply(
       content: buildDecisionMessage(
         serializeGameState(snapshot, seatIndex),
         moves,
+        opts.turnNotes ?? [],
       ),
     },
   ]
@@ -340,7 +433,7 @@ export async function aiDecideAndApply(
       )
       continue
     }
-    const deadEnd = confirmDeadEnd(applied)
+    const deadEnd = flowDeadEnd(applied)
     if (deadEnd) {
       reject(
         `Move ${idx} ("${move.label}") leads to a build that cannot be completed: ${deadEnd}. Choose a different move.`,

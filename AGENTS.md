@@ -304,9 +304,12 @@ When updating this file, preserve this bar for all agents and keep entries conci
 
 ## E2E suite (Playwright, added 2026-07-12)
 
-- `pnpm exec playwright test` — self-contained: `webServer` boots the dev
-  server on :3199 with `SKIP_ENV_VALIDATION=1`. 13 journey tests in `e2e/`,
-  ~13s, `retries: 0` — if a test needs retries, fix or delete it.
+- `pnpm exec playwright test` — `webServer` boots the dev server on :3199
+  with `SKIP_ENV_VALIDATION=1`. 13 journey tests in `e2e/`, ~13s,
+  `retries: 0` — if a test needs retries, fix or delete it. All specs are
+  offline EXCEPT `multiplayer.spec.ts` + `ai-opponent.spec.ts`, which drive
+  the real DB-backed mp service and need a live DATABASE_URL in `.env`
+  (they skip, visibly, when none is present — guard in `e2e/db-available.ts`).
 - Selector policy: `data-testid` spine for structure (action-*, confirm-
   action, cancel-action, mat-<id>/treasury, journal-entry, pass-curtain,
   reveal-hand, card-<id>, era-plate, round-chip, sale-option; map uses
@@ -352,8 +355,13 @@ When updating this file, preserve this bar for all agents and keep entries conci
   Neon/Postgres), one row per game keyed by token: jsonb `snapshot`/`seats`/
   `messages`/`ai`, atomic upsert, 7-day TTL sweep (a DELETE) — so game state
   and chat SURVIVE a redeploy (`.bb-games/` files, or any ephemeral-disk file,
-  did not). `store.ts` is the single seam (load/save/sweep by token); the DB
-  engine is a config swap in `drizzle.config.ts` + `src/server/db/index.ts`.
+  did not). `saveGame` is version-guarded (upsert applies only when the stored
+  `version` is lower; a stale writer throws 'Concurrent write') because the
+  game lock + SSE bus + AI runner are PER-PROCESS singletons — the app is
+  single-instance: a second instance's writes would be rejected but its SSE
+  clients would hear nothing. `store.ts` is the single seam (load/save/sweep
+  by token); the DB engine is a config swap in `drizzle.config.ts` +
+  `src/server/db/index.ts`.
   DATABASE_URL is now REQUIRED (a libsql `file:` URL will NOT connect through
   neon-http). Migrations in `./drizzle`; apply with `pnpm db:migrate`/`db:push`.
   Store-touching tests need a live DB (a Neon dev branch) — they self-provision

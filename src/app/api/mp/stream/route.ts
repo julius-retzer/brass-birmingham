@@ -1,6 +1,8 @@
 // SSE stream: the client's live window onto its per-seat filtered view.
 // Sends the current view on connect and on every game change; EventSource
-// reconnects automatically after dev-server restarts (the store is on disk).
+// reconnects automatically after dev-server restarts (the store is in the
+// DB, so the fresh process reloads the game). NOTE the change bus below is
+// per-process: this only fans out writes made by THIS instance.
 import { type NextRequest } from 'next/server'
 import { getGameView, kickAiTurns, subscribe } from '~/server/mp/game'
 import { loadGame } from '~/server/mp/store'

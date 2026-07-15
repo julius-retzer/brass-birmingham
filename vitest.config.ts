@@ -15,8 +15,8 @@ export default defineConfig({
     teardownTimeout: 3000,
     globals: true,
     environment: 'node',
-    // Boots an isolated in-memory SQLite DB (migrated from ./drizzle) for any
-    // test that touches the multiplayer store; a no-op for tests that don't.
+    // Relaxes env validation so suites that import the DB layer can load;
+    // DB-backed suites provision their own schema via ensureTestSchema().
     setupFiles: ['./src/test/setup-db.ts'],
   },
 })

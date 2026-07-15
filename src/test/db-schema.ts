@@ -41,8 +41,13 @@ async function apply(): Promise<void> {
   }
 }
 
-/** Idempotent, memoized per worker: ensure the `games` table exists. */
+/** Idempotent, memoized per worker: ensure the `games` table exists.
+ * A failed attempt (e.g. a transient network error) is NOT memoized, so the
+ * next test retries instead of inheriting the stale rejection. */
 export function ensureTestSchema(): Promise<void> {
-  applied ??= apply()
+  applied ??= apply().catch((err: unknown) => {
+    applied = null
+    throw err
+  })
   return applied
 }

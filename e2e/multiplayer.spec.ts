@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test'
+import { NEEDS_DB_MESSAGE, hasDatabaseUrl } from './db-available'
 
 /**
  * Networked multiplayer journey: two REAL browser contexts (separate
@@ -12,6 +13,8 @@ import { type Page, expect, test } from '@playwright/test'
  *  - WIRE-LEVEL hidden-information check: the guest's own SSE stream bytes
  *    contain no real card of the host's hand and no real draw-pile card
  */
+
+test.skip(!hasDatabaseUrl, `multiplayer e2e ${NEEDS_DB_MESSAGE}`)
 
 function treasuryOf(page: Page, name: string) {
   return page
@@ -67,9 +70,7 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
   await expect(host).toHaveTitle(/^Brass: Birmingham$/)
   // the permission bell shows only while permission is undecided — the
   // test browser may auto-grant/deny, so gate the assertion on it
-  const notifyPermission = await guest.evaluate(
-    () => Notification.permission,
-  )
+  const notifyPermission = await guest.evaluate(() => Notification.permission)
   if (notifyPermission === 'default') {
     await expect(guest.getByTestId('notify-enable')).toBeVisible()
   } else {

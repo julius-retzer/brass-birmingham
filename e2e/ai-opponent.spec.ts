@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { NEEDS_DB_MESSAGE, hasDatabaseUrl } from './db-available'
 
 /**
  * Versus-AI journey against the MOCKED provider (BB_AI_MOCK=1 in the
@@ -10,6 +11,8 @@ import { expect, test } from '@playwright/test'
  *    in the journal, its rationale and the cost counter in the AI panel
  *  - play returns to the human in round 2
  */
+
+test.skip(!hasDatabaseUrl, `versus-AI e2e ${NEEDS_DB_MESSAGE}`)
 
 test('found a company against an AI rival and watch it take its turn', async ({
   page,
@@ -42,9 +45,9 @@ test('found a company against an AI rival and watch it take its turn', async ({
   // The mock rival also prefers a loan — its move lands in the journal…
   await expect(page.getByText(/The Apprentice took a loan/)).toBeVisible()
   // …its one-line rationale (and the spend meter) in the rival's journal…
-  await expect(
-    page.getByTestId('ai-rationale').first(),
-  ).toContainText('Mock rationale.')
+  await expect(page.getByTestId('ai-rationale').first()).toContainText(
+    'Mock rationale.',
+  )
   await expect(page.getByTestId('ai-cost')).toContainText('model call')
   // …and play returns to Ada for round 2.
   await expect(page.getByTestId('round-chip')).toHaveText('Round 2')

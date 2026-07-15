@@ -420,14 +420,34 @@ When updating this file, preserve this bar for all agents and keep entries conci
   DB engine is a config swap in `drizzle.config.ts` + `src/server/db/index.ts`.
   DATABASE_URL is now REQUIRED (a libsql `file:` URL will NOT connect through
   neon-http). Migrations in `./drizzle`; apply with `pnpm db:migrate`/`db:push`.
-  Store-touching tests need a live DB (a Neon dev branch) — they self-provision
-  the schema via `src/test/db-schema.ts`; the engine suite still runs offline.
+  Store-touching tests need a live DB — they self-provision the schema via
+  `src/test/db-schema.ts`; the engine suite still runs offline.
   Neon project `muddy-night-85782525` (name "brass"); branches: `main`=prod,
-  `dev`, `preview`. Point `.env` DATABASE_URL at the branch you want
-  (`neonctl connection-string <branch> --project-id muddy-night-85782525`) —
-  tests + local dev use `dev`. Those DB-backed suites run ~30s over the
-  network (vs instant files), so they set a 30s per-file timeout via
-  `vi.setConfig`; leave the global 5s for the in-memory engine suite.
+  `dev`, `preview`, and the long-lived pre-migrated `ci` parent. Those
+  DB-backed suites run ~30s over the network (vs instant files), so they set a
+  30s per-file timeout via `vi.setConfig`; leave the global 5s for the
+  in-memory engine suite.
+- LOCAL TEST DB ISOLATION (added 2026-07-16): every local test run gets its
+  OWN throwaway Neon branch — no more sharing `dev`, and parallel runs can't
+  collide. Wired via vitest `globalSetup` (`src/test/global-db-branch.ts` +
+  `src/test/neon-branch.ts`), driven by the official Neon TS SDK
+  (`@neondatabase/api-client`, `createProjectBranch`/`deleteProjectBranch`
+  against project `muddy-night-85782525`): before the run it branches off the
+  pre-migrated `ci` parent (copy-on-write → schema inherited instantly), names
+  it `local-test-<rand>` with a 2h `expires_at` TTL (orphan backstop), exports
+  its connection string as `DATABASE_URL` (set in the main process BEFORE
+  workers spawn, so it propagates), and DELETES the branch in teardown (pass or
+  fail). This mirrors the CI workflow (`.github/workflows/ci.yml`, per-run
+  branch off `ci`). Credential `NEON_API_KEY` (brass-project-scoped Neon key):
+  LOCAL — put it in `.env.local` (gitignored via `.env*.local`; never committed
+  / printed); CI — the `NEON_API_KEY` repo secret (a plain env var, which also
+  overrides `.env.local` in disposable worktrees). `NEON_PROJECT_ID` is likewise
+  overridable but defaults to the brass project. FALLBACK (offline never
+  hard-fails): `TEST_DB_BRANCH=0` skips branching and keeps the current
+  `DATABASE_URL`; a missing `NEON_API_KEY` skips branching with a one-line
+  `[test-db]` notice; a create failure warns and falls back. Point `.env`
+  DATABASE_URL at a branch (`neonctl connection-string <branch> --project-id
+  muddy-night-85782525`) only for the fallback / `TEST_DB_BRANCH=0` path.
 - DEPLOY (Vercel, wired 2026-07-15): ship is direct-PR → Vercel Git
   integration (project `brass-birmingham`, prod branch = `main`, PR previews
   on). The Neon<->Vercel native integration (store "brass") manages the

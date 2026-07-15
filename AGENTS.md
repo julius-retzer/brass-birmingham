@@ -204,19 +204,20 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   imported somewhere — this codebase has a history of scaffold files
   left unwired.
 
-## UI — "The Ironmaster's Atlas" (v2, promoted to `/` on 2026-07-12)
+## UI — "The Ironmaster's Atlas" (the game surface, promoted to `/` on 2026-07-12)
 
-- The home route `/` (`src/app/page.tsx`) renders `V2Game`
-  (`src/components/v2/`), a fully **client-side** hotseat surface driving
+- The home route `/` (`src/app/page.tsx`) renders `Game`
+  (`src/components/game.tsx`), a fully **client-side** hotseat surface driving
   `gameStore` directly with `@xstate/react`'s `useMachine`. No DB, no
-  polling — all 2-4 players share one screen. `/v2` is a redirect kept for
-  old links (query params forwarded). The former v1 hotseat surface and the
-  legacy networked flow (`gameManager`/`GameInterface`/`/game/[gameId]`)
-  were deleted when v2 replaced them; `pnpm build` passes cleanly.
+  polling — all 2-4 players share one screen. (Flattened out of the former
+  `src/components/v2/` tree on 2026-07-15; the old `/v2` redirect route was
+  removed then, so `/v2` no longer resolves.) The former v1 hotseat surface
+  and the legacy networked flow (`gameManager`/`GameInterface`/`/game/[gameId]`)
+  were deleted when this surface replaced them; `pnpm build` passes cleanly.
 - The action UI is generated from the machine, not hand-coded state:
   `ActionDock` branches on `snapshot.matches('playing.action.<...>')` and
   gates every choice with `snapshot.can(event)`. Board city/link clicks are
-  validated with `state.can(...)` in `v2-game.tsx` and rejected with a
+  validated with `state.can(...)` in `game.tsx` and rejected with a
   sonner toast. Recoverable `context.lastError` is toasted then cleared via
   `CLEAR_ERROR`.
 - XState v5 `matches` accepts a dotted path string at runtime, but its
@@ -229,9 +230,9 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   game itself never touches the DB.
 - All styles are scoped under `.bb2` (`theme.css`) with Fraunces + Barlow
   Semi Condensed via `next/font` in `src/app/page.tsx`.
-- The board is a custom SVG (`v2/board/board-map.tsx`, geometry hand-tuned in
+- The board is a custom SVG (`board/board-map.tsx`, geometry hand-tuned in
   `board-data.ts`) — NOT React Flow. Legal targets come from `state.can(...)`
-  sets computed in `v2-game.tsx`; the map dims illegal plates/routes and
+  sets computed in `game.tsx`; the map dims illegal plates/routes and
   pulses legal ones. Pan = pointer drag, zoom = wheel/pinch/buttons.
   GOTCHA: never `setPointerCapture` on pointerdown — capture retargets the
   browser's `click` to the svg, silently killing every city/route onClick
@@ -241,8 +242,8 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   not `dispatchEvent`.
 - The engine's `canBuildLink` guard does NOT check era or the board graph
   (documented rules gap) — the UI enforces era in `legalLinks`/`onLinkClick`
-  (`v2-game.tsx`), so keep that filter if the guard ever changes.
-- Boot order in `v2-game.tsx` (client-side, behind a mount gate):
+  (`game.tsx`), so keep that filter if the guard ever changes.
+- Boot order in `game.tsx` (client-side, behind a mount gate):
   `/?preview=gameover` → `/?era=rail` (rail fixture) → `/?demo` (canal
   fixture) → `/?fresh=1` → localStorage save (`bb2-save-v1`) → setup
   charter. Saves persist on every transition, clear on game over / new
@@ -250,12 +251,12 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   pass through `rehydrateSnapshot` before `createActor` — JSON turns the
   markets' `maxCubes: Infinity` into `null`, which breaks both rendering
   and the engine's refill checks.
-- Demo fixtures (`v2/demo/demo-snapshot*.ts`) are REAL engine-driven games;
+- Demo fixtures (`demo/demo-snapshot*.ts`) are REAL engine-driven games;
   regenerate both with
-  `GENERATE_DEMO=1 pnpm vitest run src/components/v2/demo/generate-demo.test.ts`
+  `GENERATE_DEMO=1 pnpm vitest run src/components/demo/generate-demo.test.ts`
   (guarded so `pnpm test:all` never rewrites them). The rail fixture is
   frozen at a state where the double-link build is reachable.
-- Legality/preview signals come from shadow-actor probes in `v2-game.tsx`
+- Legality/preview signals come from shadow-actor probes in `game.tsx`
   (`canSellAnything`, `viableIndustries`, `confirmOutcome`) — never
   replicate rules in the UI by hand. Probe GOTCHAS: (1) always spin probes
   through `createProbeActor` (deep clone via `rehydrateSnapshot`) —
@@ -331,13 +332,13 @@ When updating this file, preserve this bar for all agents and keep entries conci
 - Fixtures: e2e boots `?demo` / `?demo=sell` / `?demo=eraend` /
   `?demo=gameend` / `?demo=wilds` / `?era=rail`. Regenerating ANY fixture invalidates
   pinned test literals — regenerate ONE at a time with
-  `GENERATE_DEMO=1 pnpm vitest run src/components/v2/demo/generate-demo.test.ts -t "<name> fixture"`
+  `GENERATE_DEMO=1 pnpm vitest run src/components/demo/generate-demo.test.ts -t "<name> fixture"`
   and re-pin the affected spec (£ values, card ids, route pairs, winner).
 - The new-fixture pattern: probe a CLONED actor (see cloneActor /
   passesToGameOver in generate-demo.test.ts) so a freeze condition is
   asserted by the machine's own guards, never re-implemented.
 
-- UNDO (2026-07-15) is HOTSEAT-ONLY and shell-level: v2-game snapshots the
+- UNDO (2026-07-15) is HOTSEAT-ONLY and shell-level: `game.tsx` snapshots the
   machine at turn start (`turnAnchor`) and remounts from it; one action
   undoable while the same player still has an action left. Multiplayer undo
   needs a server intent + rebroadcast — deliberately out of scope
@@ -345,7 +346,7 @@ When updating this file, preserve this bar for all agents and keep entries conci
 
 ## Networked multiplayer (added 2026-07-13)
 
-- `/g/<token>` (`src/components/v2/mp/mp-game.tsx` + `src/server/mp/`) is
+- `/g/<token>` (`src/components/mp/mp-game.tsx` + `src/server/mp/`) is
   token-URL multiplayer: no accounts; token (128-bit) identifies the game,
   token + per-seat secret (localStorage `bb-mp-<token>`) identifies the
   player. Created from the charter's "Play online" mode.

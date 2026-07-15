@@ -1,4 +1,4 @@
-// Shared hover-preview highlight-set computation for the v2 board map.
+// Shared hover-preview highlight-set computation for the board map.
 //
 // Hovering a hand card previews its build targets on the map: a location
 // card spotlights its printed city; an industry card spotlights every city
@@ -6,10 +6,10 @@
 // (anywhere while they have no presence yet). This is a soft ORIENTATION
 // hint — final build legality is still decided by the machine when the flow
 // actually starts. The logic is shared verbatim by the hotseat surface
-// (`v2-game.tsx`) and the networked surface (`mp/mp-game.tsx`) so the two
+// (`game.tsx`) and the networked surface (`mp/mp-game.tsx`) so the two
 // never drift.
-import { type CityId, cityIndustrySlots } from '../../data/board'
-import type { Card } from '../../data/cards'
+import { type CityId, cityIndustrySlots } from '../data/board'
+import type { Card } from '../data/cards'
 
 /**
  * Cities to spotlight while `hoveredCard` is hovered, given the hovering

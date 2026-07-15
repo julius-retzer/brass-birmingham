@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'vitest'
-import { type CityId, cityIndustrySlots } from '../../data/board'
+import { type CityId, cityIndustrySlots } from '../data/board'
 import type {
   IndustryCard,
   LocationCard,
   WildIndustryCard,
   WildLocationCard,
-} from '../../data/cards'
+} from '../data/cards'
 import { computeHoverCities } from './hover-highlight'
 
 const locationCard = (location: CityId): LocationCard => ({

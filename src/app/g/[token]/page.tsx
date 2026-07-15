@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Barlow_Semi_Condensed, Fraunces } from 'next/font/google'
-import { MpGame } from '~/components/v2/mp/mp-game'
-import '~/components/v2/theme.css'
+import { MpGame } from '~/components/mp/mp-game'
+import '~/components/theme.css'
 
 const display = Fraunces({
   subsets: ['latin'],

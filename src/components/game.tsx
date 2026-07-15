@@ -1,6 +1,6 @@
 'use client'
 
-// v2 hotseat shell — drives the proven gameStore machine directly.
+// Hotseat shell — drives the proven gameStore machine directly.
 //
 // Boot order (decided client-side so localStorage is available):
 //   ?preview=gameover  → styled final-scoring preview (dev aid)
@@ -158,7 +158,7 @@ interface Boot {
   resumed: boolean
 }
 
-export function V2Game() {
+export function Game() {
   const [boot, setBoot] = useState<Boot | null>(null)
   const [generation, setGeneration] = useState(0)
 
@@ -271,7 +271,7 @@ export function V2Game() {
 
   return (
     <SaveRecoveryBoundary onRecover={newGame}>
-      <V2GameInner
+      <GameInner
         key={`${boot.kind}-${boot.resumed}-${generation}`}
         boot={boot}
         onNewGame={newGame}
@@ -281,7 +281,7 @@ export function V2Game() {
   )
 }
 
-/** If a stale save can't drive the machine, clear it instead of bricking /v2. */
+/** If a stale save can't drive the machine, clear it instead of bricking the app. */
 class SaveRecoveryBoundary extends Component<
   { children: React.ReactNode; onRecover: () => void },
   { errored: boolean }
@@ -323,7 +323,7 @@ class SaveRecoveryBoundary extends Component<
   }
 }
 
-function V2GameInner({
+function GameInner({
   boot,
   onNewGame,
   onRestoreSnapshot,

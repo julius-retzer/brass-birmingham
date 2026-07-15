@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Barlow_Semi_Condensed, Fraunces } from 'next/font/google'
-import { V2Game } from '~/components/v2/v2-game'
-import '~/components/v2/theme.css'
+import { Game } from '~/components/game'
+import '~/components/theme.css'
 
 const display = Fraunces({
   subsets: ['latin'],
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 export default function HomePage() {
   return (
     <div className={`bb2 bb2-canvas ${display.variable} ${body.variable}`}>
-      <V2Game />
+      <Game />
     </div>
   )
 }

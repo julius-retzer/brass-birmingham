@@ -1,4 +1,4 @@
-// Hand-tuned survey-map geometry for the v2 board.
+// Hand-tuned survey-map geometry for the board.
 // Coordinates live in a 1600x1150 viewBox, laid out to match the physical
 // board's geography (Stoke in the north, Gloucester in the south-west,
 // Oxford in the south-east) while giving every city plate breathing room.

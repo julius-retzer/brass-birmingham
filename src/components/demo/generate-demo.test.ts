@@ -1,9 +1,9 @@
-// One-off generator for the v2 UI draft: drives a real 3-player game with
+// One-off generator for the UI demo fixtures: drives a real 3-player game with
 // the integration-test greedy policy until the board looks convincingly
 // mid-game, then freezes the persisted snapshot into demo-snapshot.ts.
 //
 // Run manually with:
-//   GENERATE_DEMO=1 pnpm vitest run src/components/v2/demo/generate-demo.test.ts
+//   GENERATE_DEMO=1 pnpm vitest run src/components/demo/generate-demo.test.ts
 //
 // Guarded by GENERATE_DEMO so `pnpm test:all` never rewrites the fixture.
 import { writeFileSync } from 'node:fs'
@@ -11,9 +11,9 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import { createActor } from 'xstate'
-import { cities, cityIndustrySlots, connections } from '../../../data/board'
-import type { CityId } from '../../../data/board'
-import { gameStore } from '../../../store/gameStore'
+import { cities, cityIndustrySlots, connections } from '../../data/board'
+import type { CityId } from '../../data/board'
+import { gameStore } from '../../store/gameStore'
 
 type AnyActor = ReturnType<typeof createActor>
 
@@ -384,7 +384,7 @@ const findCompletableDoublePair = (
 const canReachDoubleLink = (actor: AnyActor): boolean =>
   findCompletableDoublePair(actor) !== null
 
-describe('v2 demo snapshot generator', () => {
+describe('demo snapshot generator', () => {
   test.skipIf(!process.env.GENERATE_DEMO)('generate rail-era fixture', () => {
     // Freeze a rail-era mid-game frame where the double-link network flow is
     // actually reachable, so the UI can be hand-verified in a browser.

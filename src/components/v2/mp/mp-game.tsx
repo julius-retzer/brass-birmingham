@@ -830,7 +830,7 @@ function MpTable({
             coalMarket={ctx.coalMarket}
             ironMarket={ctx.ironMarket}
           />
-          <JournalPanel logs={ctx.logs} />
+          <JournalPanel logs={ctx.logs} players={ctx.players} />
         </aside>
       </div>
 

@@ -1,7 +1,8 @@
 'use client'
 
 // Right-dock reference panels: the coal & iron exchanges and the journal.
-import { type GameState, type LogEntry } from '~/store/gameStore'
+import { type GameState, type LogEntry, type Player } from '~/store/gameStore'
+import { PLAYER_FILL } from './board/board-map'
 
 /* ---------------- markets ---------------- */
 
@@ -119,7 +120,69 @@ export function MarketsPanel({
 
 /* ---------------- journal ---------------- */
 
-export function JournalPanel({ logs }: { logs: LogEntry[] }) {
+// Emphasis for scanning: player names glow in their colour, amounts
+// (£, income, VP, levels, resources) in bold parchment. Pure inline
+// wrapping — the TEXT CONTENT is unchanged, so e2e journal-text pins and
+// copy/paste behave exactly as before.
+const AMOUNT_RE =
+  /£\d+|[+-]\d+ income|\d+ (?:VP|income levels?|beers?|coal|iron|cards?|wilds?|spaces?|industries)|Level \d+|\(\d+ industries sold\)/g
+
+function emphasize(
+  message: string,
+  players: Array<{ name: string; color: Player['color'] }>,
+): React.ReactNode[] {
+  // Split on player names first (longest first so "Georgeanne" wins over
+  // "George"), then bold amounts inside the remaining text runs.
+  const names = [...players].sort((a, b) => b.name.length - a.name.length)
+  const nodes: React.ReactNode[] = []
+  let key = 0
+
+  const pushText = (text: string) => {
+    let last = 0
+    for (const m of text.matchAll(AMOUNT_RE)) {
+      if (m.index! > last) nodes.push(text.slice(last, m.index))
+      nodes.push(
+        <b key={key++} style={{ color: 'var(--bb-parchment-bright)' }}>
+          {m[0]}
+        </b>,
+      )
+      last = m.index! + m[0].length
+    }
+    if (last < text.length) nodes.push(text.slice(last))
+  }
+
+  let rest = message
+  while (rest.length > 0) {
+    let earliest: { idx: number; name: string; color: Player['color'] } | null =
+      null
+    for (const p of names) {
+      const idx = rest.indexOf(p.name)
+      if (idx !== -1 && (earliest === null || idx < earliest.idx)) {
+        earliest = { idx, name: p.name, color: p.color }
+      }
+    }
+    if (!earliest) {
+      pushText(rest)
+      break
+    }
+    if (earliest.idx > 0) pushText(rest.slice(0, earliest.idx))
+    nodes.push(
+      <b key={key++} style={{ color: PLAYER_FILL[earliest.color] }}>
+        {earliest.name}
+      </b>,
+    )
+    rest = rest.slice(earliest.idx + earliest.name.length)
+  }
+  return nodes
+}
+
+export function JournalPanel({
+  logs,
+  players = [],
+}: {
+  logs: LogEntry[]
+  players?: Array<{ name: string; color: Player['color'] }>
+}) {
   const recent = logs.slice(-40).reverse()
   return (
     <div className="bb2-panel flex min-h-0 flex-1 flex-col gap-2 p-3">
@@ -132,7 +195,9 @@ export function JournalPanel({ logs }: { logs: LogEntry[] }) {
             data-testid="journal-entry"
             data-type={entry.type}
           >
-            {entry.message}
+            {players.length > 0
+              ? emphasize(entry.message, players)
+              : entry.message}
           </div>
         ))}
         {recent.length === 0 && (

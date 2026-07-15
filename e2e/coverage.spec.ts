@@ -287,3 +287,36 @@ test('capstone: play the final turns through the UI to the winner', async ({
     page.getByRole('button', { name: 'Found a new company' }),
   ).toBeVisible()
 })
+
+test('Undo: the first action of a turn can be taken back in full', async ({
+  page,
+}) => {
+  await page.goto('/?demo=sell')
+  await expect(treasuryOf(page, 'George')).toHaveText('£9')
+  await expect(page.getByTestId('undo-action')).toHaveCount(0)
+
+  // First action: sell one industry.
+  await page.getByTestId('action-sell').click()
+  await page.locator('button.bb2-card:not([disabled])').first().click()
+  await page.getByTestId('sale-option').first().click()
+  await expect(page.getByText(/Flipped 1 industry this action/)).toBeVisible()
+  await page.getByTestId('confirm-action').click()
+  await expect(
+    page.getByText(/George completed Sell action/).first(),
+  ).toBeVisible()
+
+  // Second action pending — the undo affordance appears…
+  await expect(page.getByTestId('actions-left')).toHaveText(
+    'Last action this turn',
+  )
+  await page.getByTestId('undo-action').click()
+
+  // …and the whole action is unwound: two actions again, the journal
+  // entry is gone (it lives in the snapshot), nothing was spent.
+  await expect(page.getByTestId('actions-left')).toHaveText(
+    '2 of 2 actions left',
+  )
+  await expect(page.getByText(/George completed Sell action/)).toHaveCount(0)
+  await expect(treasuryOf(page, 'George')).toHaveText('£9')
+  await expect(page.getByTestId('undo-action')).toHaveCount(0)
+})

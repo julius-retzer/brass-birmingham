@@ -66,6 +66,8 @@ interface ActionDockProps {
   actionsLeft?: { remaining: number; max: number } | null
   /** Deep-probed count of cities where the pending build can complete. */
   legalSiteCount?: number | null
+  /** Undo the first action of this turn (null = not available). */
+  onUndo?: (() => void) | null
 }
 
 /* ----- hand-selection contract for the shell / HandTray ----- */
@@ -403,6 +405,7 @@ export function ActionDock({
   confirmOutcome = null,
   actionsLeft = null,
   legalSiteCount = null,
+  onUndo = null,
 }: ActionDockProps) {
   const is = (path: string) => snapshot.matches(path as never)
   const can = (event: GameEvent) => snapshot.can(event)
@@ -496,6 +499,17 @@ export function ActionDock({
           disabled={!can({ type: 'PASS' })}
           onPass={() => send({ type: 'PASS' })}
         />
+        {onUndo && (
+          <button
+            type="button"
+            className="bb2-ghost-btn"
+            data-testid="undo-action"
+            onClick={onUndo}
+            title="Rewind to the start of your turn — your first action is taken back in full (money, cards and markets included)"
+          >
+            ↩ Undo first action
+          </button>
+        )}
       </div>
     )
   }

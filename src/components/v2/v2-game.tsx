@@ -261,12 +261,25 @@ export function V2Game() {
     setGeneration((g) => g + 1)
   }
 
+  // Undo (first action of the turn): remount the machine from the
+  // turn-start snapshot. resumed:false + snapshot auto-reveals the same
+  // player — no pass curtain for the person already holding the device.
+  const restoreSnapshot = (snapshot: unknown) => {
+    setBoot((prev) => ({
+      kind: prev && prev.kind !== 'preview-gameover' ? prev.kind : 'fresh',
+      snapshot,
+      resumed: false,
+    }))
+    setGeneration((g) => g + 1)
+  }
+
   return (
     <SaveRecoveryBoundary onRecover={newGame}>
       <V2GameInner
         key={`${boot.kind}-${boot.resumed}-${generation}`}
         boot={boot}
         onNewGame={newGame}
+        onRestoreSnapshot={restoreSnapshot}
       />
     </SaveRecoveryBoundary>
   )
@@ -317,9 +330,11 @@ class SaveRecoveryBoundary extends Component<
 function V2GameInner({
   boot,
   onNewGame,
+  onRestoreSnapshot,
 }: {
   boot: Boot
   onNewGame: () => void
+  onRestoreSnapshot: (snapshot: unknown) => void
 }) {
   const [state, send, actorRef] = useMachine(
     gameStore,
@@ -392,6 +407,53 @@ function V2GameInner({
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [ledgerFor, actorRef, send])
+
+  // ---------- undo (first action of the turn, hotseat) ----------
+  // Snapshot the machine when a player's turn begins; while they still
+  // have an action remaining they may undo their FIRST action by
+  // restoring that snapshot (atomic by construction — money, markets,
+  // cards and mats all live in the one snapshot).
+  const turnAnchor = useRef<{
+    playerId: string
+    round: number
+    era: string
+    actionsRemaining: number
+    snapshot: unknown
+  } | null>(null)
+  useEffect(() => {
+    if (!currentPlayer || state.matches('setup') || state.matches('gameOver'))
+      return
+    const anchor = turnAnchor.current
+    if (
+      !anchor ||
+      anchor.playerId !== currentPlayer.id ||
+      anchor.round !== ctx.round ||
+      anchor.era !== ctx.era
+    ) {
+      turnAnchor.current = {
+        playerId: currentPlayer.id,
+        round: ctx.round,
+        era: ctx.era,
+        actionsRemaining: ctx.actionsRemaining,
+        snapshot: actorRef.getPersistedSnapshot(),
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPlayer?.id, ctx.round, ctx.era])
+
+  const canUndo =
+    turnAnchor.current !== null &&
+    currentPlayer !== undefined &&
+    turnAnchor.current.playerId === currentPlayer.id &&
+    turnAnchor.current.round === ctx.round &&
+    turnAnchor.current.era === ctx.era &&
+    ctx.actionsRemaining === turnAnchor.current.actionsRemaining - 1 &&
+    is('playing.action.selectingAction')
+
+  const onUndo = () => {
+    const anchor = turnAnchor.current
+    if (anchor) onRestoreSnapshot(anchor.snapshot)
+  }
 
   /* ---------- board interaction state ---------- */
 
@@ -837,6 +899,7 @@ function V2GameInner({
                   max: maxActions,
                 }}
                 legalSiteCount={pickingSite ? (legalCities?.size ?? 0) : null}
+                onUndo={canUndo ? onUndo : null}
               />
             )}
           </div>

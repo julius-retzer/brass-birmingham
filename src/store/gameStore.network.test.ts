@@ -102,6 +102,39 @@ describe('Game Store - Network Actions', () => {
     expect(snapshot.context.discardPile).toContainEqual(cardUsed)
   })
 
+  test('canal era does NOT offer the double rail-link option', () => {
+    const { actor } = setupGame()
+
+    // Drive a canal-era network action up to the confirm step (no CONFIRM yet).
+    const snapshotBefore = actor.getSnapshot()
+    expect(snapshotBefore.context.era).toBe('canal')
+    const cardToUse = snapshotBefore.context.players[0]!.hand[0]!
+
+    actor.send({ type: 'NETWORK' })
+    actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
+    actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'coventry' })
+
+    let snapshot = actor.getSnapshot()
+    expect(
+      snapshot.matches({
+        playing: { action: { networking: 'confirmingLink' } },
+      }),
+    ).toBe(true)
+
+    // The double-link branch is a rail-era-only rule: the guard must reject it
+    // in the canal era, and the UI only renders the button when `can` is true.
+    expect(snapshot.can({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })).toBe(false)
+
+    // Sending it anyway must be a no-op (stays in confirmingLink).
+    actor.send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })
+    snapshot = actor.getSnapshot()
+    expect(
+      snapshot.matches({
+        playing: { action: { networking: 'confirmingLink' } },
+      }),
+    ).toBe(true)
+  })
+
   test('rail era - coal consumption for links', () => {
     const { actor } = setupGame()
 

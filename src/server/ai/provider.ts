@@ -1,10 +1,18 @@
-// Model backends. Anthropic is the MVP provider (server-side API key);
-// the interface in types.ts keeps other providers pluggable. BB_AI_MOCK=1
-// swaps in a deterministic mock for tests/e2e — no network, no key.
+// Model backends behind the pluggable AiProvider interface:
+//  - anthropicProvider: the Anthropic SDK (api.anthropic.com, or an
+//    Anthropic-compatible gateway via ANTHROPIC_BASE_URL)
+//  - openAiCompatProvider: chat/completions on the SAME gateway, for
+//    gateway-only models (DeepSeek) that don't speak the Anthropic wire
+//  - mockProvider: deterministic, offline (BB_AI_MOCK=1; tests/e2e)
 import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import { CHOICE_SCHEMA } from './prompts'
-import { type AiProvider, type AiProviderResult, type AiUsage } from './types'
+import {
+  type AiProvider,
+  type AiProviderResult,
+  type AiTier,
+  type AiUsage,
+} from './types'
 
 const choiceSchema = z.object({
   moveIndex: z.number().int(),
@@ -15,8 +23,25 @@ export function hasAnthropicKey(): boolean {
   return !!process.env.ANTHROPIC_API_KEY
 }
 
+export function gatewayBaseUrl(): string | null {
+  return process.env.ANTHROPIC_BASE_URL?.replace(/\/+$/, '') ?? null
+}
+
 export function isMockMode(): boolean {
   return process.env.BB_AI_MOCK === '1'
+}
+
+/** Strip markdown fences and parse the {"moveIndex","rationale"} answer. */
+function parseChoice(text: string): AiProviderResult['choice'] {
+  const cleaned = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
+  try {
+    return choiceSchema.parse(JSON.parse(cleaned))
+  } catch {
+    return null
+  }
 }
 
 /* ---------------- Anthropic ---------------- */
@@ -67,17 +92,80 @@ export const anthropicProvider: AiProvider = {
         raw: text,
       }
     }
-    try {
-      const parsed = choiceSchema.parse(JSON.parse(text))
-      return { choice: parsed, usage, raw: text }
-    } catch {
+    // Gateways (opencode zen) report the exact per-call cost as an extra
+    // top-level field; the first-party API simply omits it.
+    const reported = (response as unknown as { cost?: string }).cost
+    const costUsd = reported ? Number.parseFloat(reported) : undefined
+    const choice = parseChoice(text)
+    return choice
+      ? { choice, usage, costUsd, raw: text }
+      : {
+          choice: null,
+          error: 'The response was not valid {"moveIndex", "rationale"} JSON.',
+          usage,
+          costUsd,
+          raw: text,
+        }
+  },
+}
+
+/* ---------------- OpenAI-compatible gateway wire ---------------- */
+
+// For gateway-only models (tier.wire === 'openai'): POST chat/completions
+// to the configured ANTHROPIC_BASE_URL with the same key. No SDK — the
+// call shape is tiny and the driver's retry loop handles the rough edges.
+export const openAiCompatProvider: AiProvider = {
+  async decide({ tier, system, messages }): Promise<AiProviderResult> {
+    const base = gatewayBaseUrl()
+    if (!base) {
       return {
         choice: null,
-        error: 'The response was not valid {"moveIndex", "rationale"} JSON.',
-        usage,
-        raw: text,
+        error: `Model ${tier.model} needs an Anthropic-compatible gateway (set ANTHROPIC_BASE_URL).`,
+        usage: { inputTokens: 0, outputTokens: 0 },
+        raw: '',
       }
     }
+    const res = await fetch(`${base}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${process.env.ANTHROPIC_API_KEY ?? ''}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: tier.model,
+        max_tokens: tier.maxTokens,
+        messages: [{ role: 'system', content: system }, ...messages],
+      }),
+    })
+    if (!res.ok) {
+      return {
+        choice: null,
+        error: `The model gateway answered ${res.status}.`,
+        usage: { inputTokens: 0, outputTokens: 0 },
+        raw: '',
+      }
+    }
+    const data = (await res.json()) as {
+      choices?: Array<{ message?: { content?: string } }>
+      usage?: { prompt_tokens?: number; completion_tokens?: number }
+      cost?: string
+    }
+    const usage: AiUsage = {
+      inputTokens: data.usage?.prompt_tokens ?? 0,
+      outputTokens: data.usage?.completion_tokens ?? 0,
+    }
+    const costUsd = data.cost ? Number.parseFloat(data.cost) : undefined
+    const text = data.choices?.[0]?.message?.content ?? ''
+    const choice = parseChoice(text)
+    return choice
+      ? { choice, usage, costUsd, raw: text }
+      : {
+          choice: null,
+          error: 'The response was not valid {"moveIndex", "rationale"} JSON.',
+          usage,
+          costUsd,
+          raw: text,
+        }
   },
 }
 
@@ -119,7 +207,8 @@ export const mockProvider: AiProvider = {
   },
 }
 
-/** Provider used by the live server: mock in BB_AI_MOCK, else Anthropic. */
-export function defaultProvider(): AiProvider {
-  return isMockMode() ? mockProvider : anthropicProvider
+/** Provider for a tier: mock in BB_AI_MOCK, else picked by wire format. */
+export function providerFor(tier: AiTier): AiProvider {
+  if (isMockMode()) return mockProvider
+  return tier.wire === 'openai' ? openAiCompatProvider : anthropicProvider
 }

@@ -19,6 +19,7 @@ const CHARACTERS: Player['character'][] = [
 const DEFAULT_NAMES = ['Eliza', 'Isambard', 'George', 'Richard']
 
 const TIER_ORDER: AiTierId[] = [
+  'clerk',
   'apprentice',
   'foreman',
   'magnate',
@@ -39,11 +40,7 @@ export function SetupScreen({
   const [mode, setMode] = useState<'local' | 'online' | 'ai'>('local')
   const [count, setCount] = useState(3)
   const [names, setNames] = useState<string[]>(DEFAULT_NAMES)
-  const [tiers, setTiers] = useState<AiTierId[]>([
-    'foreman',
-    'foreman',
-    'foreman',
-  ])
+  const [tiers, setTiers] = useState<AiTierId[]>(['clerk', 'clerk', 'clerk'])
   const [creating, setCreating] = useState(false)
 
   const createOnline = async () => {
@@ -212,7 +209,7 @@ export function SetupScreen({
                   className="h-8 w-2 flex-none rounded-full"
                   style={{ background: PLAYER_FILL[COLORS[i + 1]!] }}
                 />
-                <div className="grid w-full grid-cols-4 gap-1.5">
+                <div className="grid w-full grid-cols-5 gap-1">
                   {TIER_ORDER.map((tierId) => {
                     const tier = AI_TIERS[tierId]
                     return (

@@ -265,6 +265,32 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   discard step; which steps select cards is centralized in
   `getHandSelection()` (`action-dock.tsx`).
 
+## AI opponents (added 2026-07-15)
+
+- The charter's "Versus AI" mode seats server-driven LLM opponents through
+  the SAME mp service — `kickAiTurns()` in `src/server/mp/game.ts` runs a
+  per-game turn loop; AI seats have `secretHash: null` so they can never be
+  driven off the wire or released. Per decision, `src/server/ai/driver.ts`
+  serializes the state (`serialize.ts`), enumerates the machine's legal
+  events (`legal-moves.ts` — faithful to `can()`, era-filters links), asks
+  the model for one numbered choice, validates BY EXECUTING on a scratch
+  actor (plus a confirm dead-end probe), retries ≤3 with the exact refusal
+  appended, then falls back deterministically — a turn can never stall
+  (step + model-call budgets force PASS/CANCEL as the last resort).
+  Single-legal-move and pure CONFIRM/CANCEL steps skip the model.
+- Tiers live in `src/server/ai/types.ts` (model, wire, prices, strategy
+  prompt). Two wire formats behind the pluggable provider
+  (`provider.ts`): 'anthropic' (SDK; honours ANTHROPIC_BASE_URL for
+  compatible gateways like opencode zen — model ALIASES only, dated ids
+  400 there) and 'openai' (chat/completions on the same gateway, for
+  gateway-only models like the clerk tier). Gateways report exact per-call
+  cost; it lands in `GameRecord.ai.usage` and the UI spend meter.
+- BB_AI_MOCK=1 swaps a deterministic offline mock (set in the playwright
+  webServer and the unit tests) — never needs a key. Creating an AI game
+  without ANTHROPIC_API_KEY (or without a gateway for openai-wire tiers)
+  refuses with a clear error. Rationales + cost are PUBLIC in
+  `GameView.ai`; the AI's hand stays as hidden as any other seat's.
+
 ## Maintaining this file
 
 Keep this file for knowledge useful to almost every future agent session in this project.

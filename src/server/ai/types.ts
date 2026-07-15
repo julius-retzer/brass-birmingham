@@ -2,17 +2,29 @@
 // provider interface, and usage/cost accounting.
 import { type GameEvent } from '../../store/gameStore'
 
-/** Difficulty ladder — each tier is an Anthropic model + prompt flavour. */
-export type AiTierId = 'apprentice' | 'foreman' | 'magnate' | 'ironmaster'
+/** Difficulty ladder — each tier is one model + a prompt flavour. */
+export type AiTierId =
+  | 'clerk'
+  | 'apprentice'
+  | 'foreman'
+  | 'magnate'
+  | 'ironmaster'
 
 export interface AiTier {
   id: AiTierId
   /** Display name shown on the seat and in the setup charter. */
   label: string
   /** Short difficulty word for the UI. */
-  difficulty: 'easy' | 'medium' | 'hard' | 'expert'
+  difficulty: 'budget' | 'easy' | 'medium' | 'hard' | 'expert'
   model: string
-  /** USD per million tokens — used by the per-game cost counter. */
+  /**
+   * Which wire format the model speaks. 'anthropic' (default) uses the
+   * Anthropic SDK; 'openai' uses chat/completions on the configured
+   * ANTHROPIC_BASE_URL gateway (gateway-only models like DeepSeek).
+   */
+  wire?: 'anthropic' | 'openai'
+  /** USD per million tokens — fallback for the cost counter when the
+   *  gateway does not report an exact per-call cost. */
   inputPerMTok: number
   outputPerMTok: number
   /** Output cap per decision (thinking models need headroom). */
@@ -22,6 +34,21 @@ export interface AiTier {
 }
 
 export const AI_TIERS: Record<AiTierId, AiTier> = {
+  clerk: {
+    id: 'clerk',
+    label: 'The Clerk',
+    difficulty: 'budget',
+    // Captain's pick for the cheap-but-good starter rival. Gateway-only
+    // (opencode zen serves it on the OpenAI wire; the Anthropic-style
+    // /messages proxy rejects it — same for deepseek-*).
+    model: 'minimax-m3',
+    wire: 'openai',
+    inputPerMTok: 0.3,
+    outputPerMTok: 1.2,
+    maxTokens: 4096,
+    strategy:
+      'You are a competent industrialist. Balance income, victory points and network growth; avoid obviously wasteful moves.',
+  },
   apprentice: {
     id: 'apprentice',
     label: 'The Apprentice',
@@ -97,6 +124,8 @@ export interface AiProviderResult {
   /** why choice is null (parse failure, refusal, …) — fed into the retry */
   error?: string
   usage: AiUsage
+  /** exact cost reported by the gateway; falls back to the tier table */
+  costUsd?: number
   /** raw assistant text, echoed back into the retry conversation */
   raw: string
 }

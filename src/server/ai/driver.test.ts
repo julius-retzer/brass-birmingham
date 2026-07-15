@@ -233,6 +233,20 @@ describe('aiDecideAndApply', () => {
     )
   })
 
+  test('a gateway-reported cost overrides the static tier table', async () => {
+    const { persisted, seatIndex } = freshPersisted()
+    const provider = scriptedProvider([
+      { choice: { moveIndex: 6, rationale: 'pass' }, costUsd: 0.00123 },
+    ])
+    const outcome = await aiDecideAndApply({
+      persisted,
+      seatIndex,
+      provider,
+      tier,
+    })
+    expect(outcome.usage.costUsd).toBeCloseTo(0.00123, 10)
+  })
+
   test('forceSafe never consults the model and ends the turn safely', async () => {
     const { persisted, seatIndex } = freshPersisted()
     const provider = scriptedProvider([]) // would blow up if called

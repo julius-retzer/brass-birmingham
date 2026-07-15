@@ -11,7 +11,12 @@ import { createActor } from 'xstate'
 import { gameStore } from '../../store/gameStore'
 import { refreshEmbeddedTileStats } from '../../store/saveMigration'
 import { STEP_SAFETY_BUDGET, aiDecideAndApply } from '../ai/driver'
-import { defaultProvider, hasAnthropicKey, isMockMode } from '../ai/provider'
+import {
+  gatewayBaseUrl,
+  hasAnthropicKey,
+  isMockMode,
+  providerFor,
+} from '../ai/provider'
 import {
   AI_TIERS,
   type AiLogEntry,
@@ -304,6 +309,14 @@ export async function createGame(
       'AI opponents are not available: the server has no ANTHROPIC_API_KEY.',
     )
   }
+  const needsGateway = opponents.some(
+    (o) => o !== 'human' && isAiTierId(o) && AI_TIERS[o].wire === 'openai',
+  )
+  if (needsGateway && !gatewayBaseUrl() && !isMockMode()) {
+    throw new Error(
+      'That AI rival is served by a model gateway: set ANTHROPIC_BASE_URL on the server.',
+    )
+  }
   const token = newToken()
   const secret = newSecret()
   const now = new Date().toISOString()
@@ -570,14 +583,17 @@ async function runAiTurns(token: string): Promise<void> {
       outcome = await aiDecideAndApply({
         persisted: peek.snapshot,
         seatIndex: seat.seatId,
-        provider: defaultProvider(),
+        provider: providerFor(tier),
         tier,
         forceSafe:
           stepsThisTurn > STEP_SAFETY_BUDGET ||
           modelCallsThisTurn > MODEL_CALL_TURN_BUDGET,
       })
       modelCallsThisTurn += outcome.usage.calls
-    } catch {
+    } catch (err) {
+      // Surface driver failures in the server log — the game itself stays
+      // consistent (nothing was applied) and a reconnect re-kicks the turn.
+      console.error('[ai] turn runner stopped:', err)
       aiThinking.delete(token)
       broadcast(token)
       return

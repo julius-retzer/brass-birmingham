@@ -308,7 +308,8 @@ export async function aiDecideAndApply(
     usage.calls += 1
     usage.inputTokens += result.usage.inputTokens
     usage.outputTokens += result.usage.outputTokens
-    usage.costUsd += costOf(tier, result.usage)
+    // prefer the gateway's exact per-call cost over the static tier table
+    usage.costUsd += result.costUsd ?? costOf(tier, result.usage)
 
     const reject = (why: string) => {
       messages.push(

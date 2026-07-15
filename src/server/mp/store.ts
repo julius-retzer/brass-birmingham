@@ -4,15 +4,16 @@
 // token). This is the single seam between the multiplayer service and
 // persistence: load/save/sweep the whole `GameRecord` by token. Moving off
 // per-file JSON to the DB is what lets game state — including chat — survive
-// a redeploy on an ephemeral box. The chat `messages` and the AI log live IN
-// the row (JSON columns), so a single upsert writes the whole record
-// atomically, replacing the old tmp+rename file trick. Swapping the DB engine
-// later is a config change in `drizzle.config.ts` + `src/server/db/index.ts`,
-// not a rewrite of this module.
-import { eq, lt } from 'drizzle-orm'
+// a redeploy on an ephemeral box. The AI log lives IN the row (a JSON column),
+// so a single upsert writes the whole record atomically, replacing the old
+// tmp+rename file trick. CHAT is the exception: it lives in its OWN append-only
+// `chat_messages` table (see below) so a message never rewrites the game row
+// nor bumps `version`. Swapping the DB engine later is a config change in
+// `drizzle.config.ts` + `src/server/db/index.ts`, not a rewrite of this module.
+import { and, asc, desc, eq, gt, lt, notInArray, sql } from 'drizzle-orm'
 import { type AiLogEntry, type AiTierId, type AiUsageTotals } from '../ai/types'
 import { db } from '../db'
-import { games } from '../db/schema'
+import { chatMessages, games } from '../db/schema'
 
 export interface SeatRecord {
   seatId: number
@@ -28,10 +29,8 @@ export interface SeatRecord {
   aiTier?: AiTierId
 }
 
-/** One chat line — game id = the enclosing record, plus sender + text +
- * timestamp. Stored as a JSON column on the game row (loaded/saved with the
- * whole record); no separate table because there is exactly one access
- * pattern: the entire record at once. */
+/** One chat line. `id` is the per-game monotonic `seq` from `chat_messages`
+ * (the wire id the client dedupes/orders on); `at` is the ISO created_at. */
 export interface ChatMessage {
   id: number
   seatId: number
@@ -49,8 +48,6 @@ export interface GameRecord {
   seats: SeatRecord[]
   /** persisted XState snapshot of the authoritative engine (null in lobby) */
   snapshot: unknown | null
-  /** per-game table talk (absent in records from before the feature) */
-  messages?: ChatMessage[]
   /** present when the table has AI seats: their move log + spend counter */
   ai?: {
     log: AiLogEntry[]
@@ -74,8 +71,10 @@ function rowToRecord(row: GameRow): GameRecord {
     version: row.version,
     seats: row.seats,
     snapshot: row.snapshot ?? null,
+    // `messages` is the vestigial jsonb column — never surfaced on the record
+    // anymore (chat lives in `chat_messages`); it exists only for the 0001
+    // backfill of pre-migration rows.
     // JSON NULL comes back as null; the record shape uses optional/undefined
-    ...(row.messages != null ? { messages: row.messages } : {}),
     ...(row.ai != null ? { ai: row.ai } : {}),
   }
 }
@@ -89,7 +88,9 @@ function recordToRow(game: GameRecord): GameRow {
     version: game.version,
     seats: game.seats,
     snapshot: game.snapshot ?? null,
-    messages: game.messages ?? null,
+    // Never write chat back into the game row — it is normalized out. Leaving
+    // this null lets any stale backfilled jsonb clear on the next save.
+    messages: null,
     ai: game.ai ?? null,
   }
 }
@@ -106,21 +107,129 @@ export async function loadGame(token: string): Promise<GameRecord | null> {
 }
 
 /**
- * Read ONLY the monotonic `version` for a game — the cheap DB poll that lets
- * the SSE stream act as a "server-side polling loop with an open pipe". This
- * is the delivery guarantee for cross-instance updates on serverless (the
- * in-process bus in `game.ts` is only a same-instance fast path): the stream
- * selects this every ~1.2s and re-derives the full per-seat view on change.
- * Returns null for an unknown/malformed token.
+ * Read the cheap poll pair `(version, maxSeq)` for a game in ONE round trip —
+ * the game's engine `version` and the highest chat `seq`. This is the delivery
+ * guarantee that lets the SSE stream act as a "server-side polling loop with an
+ * open pipe" (the in-process bus in `game.ts` is only a same-instance fast
+ * path): the stream selects this every ~1.2s and, on change, pushes a full
+ * per-seat view when `version` moved or a bounded chat increment when only
+ * `maxSeq` moved. Returns null for an unknown/malformed token.
  */
-export async function loadVersion(token: string): Promise<number | null> {
+export async function loadVersionAndSeq(
+  token: string,
+): Promise<{ version: number; maxSeq: number } | null> {
   if (!TOKEN_RE.test(token)) return null
+  // Correlated subquery for MAX(seq) built with the query builder (NOT a raw
+  // `sql` template): the builder qualifies `chat_messages.token = games.token`,
+  // whereas a raw template renders both columns unqualified — a `token=token`
+  // tautology that would return the GLOBAL max. Keeps it one round trip;
+  // COALESCE folds the no-chat case (NULL) to 0 so the caller never special-cases it.
+  const maxSeqSub = db
+    .select({ m: sql<number>`coalesce(max(${chatMessages.seq}), 0)` })
+    .from(chatMessages)
+    .where(eq(chatMessages.token, games.token))
   const rows = await db
-    .select({ version: games.version })
+    .select({ version: games.version, maxSeq: sql<number>`(${maxSeqSub})` })
     .from(games)
     .where(eq(games.token, token))
     .limit(1)
-  return rows[0]?.version ?? null
+  const row = rows[0]
+  if (!row) return null
+  return { version: row.version, maxSeq: Number(row.maxSeq) }
+}
+
+/* ---------------- chat (normalized out of the game row) ---------------- */
+
+const CHAT_SEQ_RETRIES = 6
+
+function rowToChat(row: typeof chatMessages.$inferSelect): ChatMessage {
+  return {
+    id: row.seq,
+    seatId: row.seatId,
+    name: row.name,
+    text: row.text,
+    at: row.createdAt,
+  }
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  for (let e = err; e; e = (e as { cause?: unknown }).cause) {
+    const { code, message } = e as { code?: string; message?: string }
+    if (
+      code === '23505' ||
+      /duplicate key|unique constraint/i.test(message ?? '')
+    )
+      return true
+  }
+  return false
+}
+
+/**
+ * Append one chat line and return it with its allocated per-game `seq`. The
+ * next `seq` is `MAX(seq)+1` for the token; the composite PK `(token, seq)`
+ * makes a lost race (two instances allocating the same seq) a unique-violation
+ * that we simply retry — the per-process game lock already serializes the
+ * common same-instance case, so the retry loop only ever fires cross-instance.
+ */
+export async function appendChatMessage(
+  token: string,
+  seatId: number,
+  name: string,
+  text: string,
+  createdAt: string,
+): Promise<ChatMessage> {
+  if (!TOKEN_RE.test(token)) throw new Error('Malformed game token')
+  for (let attempt = 0; attempt < CHAT_SEQ_RETRIES; attempt++) {
+    const maxRows = await db
+      .select({ max: sql<number>`coalesce(max(${chatMessages.seq}), 0)` })
+      .from(chatMessages)
+      .where(eq(chatMessages.token, token))
+    const nextSeq = Number(maxRows[0]?.max ?? 0) + 1
+    try {
+      const inserted = await db
+        .insert(chatMessages)
+        .values({ token, seq: nextSeq, seatId, name, text, createdAt })
+        .returning()
+      return rowToChat(inserted[0]!)
+    } catch (err) {
+      if (isUniqueViolation(err) && attempt < CHAT_SEQ_RETRIES - 1) continue
+      throw err
+    }
+  }
+  throw new Error('Could not allocate a chat sequence number')
+}
+
+/** The recent tail (last `limit`, ascending by seq) — the bounded slice the
+ *  game view carries so a frame never ships unbounded history. */
+export async function loadRecentChat(
+  token: string,
+  limit: number,
+): Promise<ChatMessage[]> {
+  if (!TOKEN_RE.test(token)) return []
+  const rows = await db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.token, token))
+    .orderBy(desc(chatMessages.seq))
+    .limit(limit)
+  return rows.reverse().map(rowToChat)
+}
+
+/** Messages strictly newer than `sinceSeq` (ascending, capped at `limit`) —
+ *  the increment the stream pushes when only chat moved. */
+export async function loadChatSince(
+  token: string,
+  sinceSeq: number,
+  limit: number,
+): Promise<ChatMessage[]> {
+  if (!TOKEN_RE.test(token)) return []
+  const rows = await db
+    .select()
+    .from(chatMessages)
+    .where(and(eq(chatMessages.token, token), gt(chatMessages.seq, sinceSeq)))
+    .orderBy(asc(chatMessages.seq))
+    .limit(limit)
+  return rows.map(rowToChat)
 }
 
 export async function saveGame(game: GameRecord): Promise<void> {
@@ -156,4 +265,14 @@ export async function sweepStaleGames(now = Date.now()): Promise<void> {
   // so a string `<` comparison is a correct TTL cutoff.
   const cutoff = new Date(now - GAME_TTL_MS).toISOString()
   await db.delete(games).where(lt(games.updatedAt, cutoff))
+  // Chat rows are tied to game lifetime; drop any now-orphaned by the sweep
+  // above (anti-join is cheap at this scale and keeps deletion in one place).
+  await db
+    .delete(chatMessages)
+    .where(
+      notInArray(
+        chatMessages.token,
+        db.select({ token: games.token }).from(games),
+      ),
+    )
 }

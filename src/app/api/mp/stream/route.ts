@@ -3,19 +3,33 @@
 // DB-AS-BUS MODEL. On serverless there is no single long-lived process, so
 // this stream is NOT a passive push subscriber — it is a server-side polling
 // loop with an open pipe to the client. The delivery GUARANTEE is a cheap
-// `loadVersion` DB poll every ~1.2s: the `games.version` column IS the event
-// bus, and any instance can read it. The in-process `subscribe()` bus is kept
-// only as a same-instance FAST PATH (zero-latency when the writer and this
-// stream share a Fluid-reused instance); every push is deduped by version so
-// the bus and the poll never double-send.
+// `(version, maxSeq)` DB poll every ~1.2s: the `games.version` column IS the
+// event bus for game state, and `MAX(chat_messages.seq)` is the bus for chat.
+// Any instance can read the pair. The in-process `subscribe()` bus is kept only
+// as a same-instance FAST PATH (zero-latency when the writer and this stream
+// share a Fluid-reused instance); pushes are deduped by version/seq so the bus
+// and the poll never double-send.
+//
+// Two frame kinds, so a chat line never costs a full ~26KB state frame:
+//   • default `data:` frame — the full per-seat view (version-guarded), sent
+//     when `version` moved OR on every (re)connect (carries current state +
+//     the recent chat tail).
+//   • `event: chat` frame — a bounded chat increment, sent when ONLY `maxSeq`
+//     moved; the client merges its messages by id (seq-idempotent).
 //
 // The stream is bounded by design: it closes cleanly just before `maxDuration`
 // and the client's EventSource reconnects (a `retry` hint shortens the gap).
 // The first frame on every (re)connect is the full current view, and the
-// client's version guard makes overlap/reorder harmless.
+// client's version/seq guards make overlap/reorder harmless.
 import { type NextRequest } from 'next/server'
-import { getGameView, kickAiTurns, subscribe } from '~/server/mp/game'
-import { loadGame, loadVersion } from '~/server/mp/store'
+import {
+  CHAT_TAIL_LIMIT,
+  getChatDelta,
+  getGameView,
+  kickAiTurns,
+  subscribe,
+} from '~/server/mp/game'
+import { loadGame, loadVersionAndSeq } from '~/server/mp/store'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -55,7 +69,10 @@ export async function GET(req: NextRequest) {
   const stream = new ReadableStream({
     start(controller) {
       let open = true
-      let lastSent = -1
+      // Two independent cursors: the last engine version pushed as a full
+      // frame, and the highest chat seq the client has been told about.
+      let lastVersion = -1
+      let lastSeq = 0
       let pollTimer: ReturnType<typeof setTimeout> | undefined
 
       const write = (chunk: string) => {
@@ -81,39 +98,64 @@ export async function GET(req: NextRequest) {
       }
 
       // Serialize pushes so the bus fast-path and the poll loop can't race on
-      // `lastSent` and double-send the same version.
-      let pushing: Promise<void> = Promise.resolve()
-      const pushIfNewer = () => {
-        pushing = pushing
+      // the cursors and double-send. One `syncNow` reconciles both cursors:
+      // a full view frame when `version` moved, else a bounded chat increment
+      // when only `maxSeq` moved.
+      let syncing: Promise<void> = Promise.resolve()
+      const syncNow = () => {
+        syncing = syncing
           .then(async () => {
             if (!open) return
-            const view = await getGameView(token, seatId, secret)
-            if (view && view.version > lastSent) {
-              lastSent = view.version
-              write(`data: ${JSON.stringify(view)}\n\n`)
+            const vs = await loadVersionAndSeq(token)
+            if (!vs) return
+            if (vs.version > lastVersion) {
+              // Full frame: current per-seat state + the recent chat tail.
+              const view = await getGameView(token, seatId, secret)
+              if (view && view.version > lastVersion) {
+                lastVersion = view.version
+                const tailMax = view.messages.at(-1)?.id ?? 0
+                if (tailMax > lastSeq) lastSeq = tailMax
+                write(`data: ${JSON.stringify(view)}\n\n`)
+              }
+            } else if (vs.maxSeq > lastSeq) {
+              // Only chat moved: push a bounded increment (or, for a spectator
+              // / stale secret, send nothing but advance the cursor so we don't
+              // re-query every tick).
+              const delta = await getChatDelta(
+                token,
+                seatId,
+                secret,
+                lastSeq,
+                CHAT_TAIL_LIMIT,
+              )
+              if (delta && delta.messages.length > 0) {
+                lastSeq = delta.chatSeq
+                write(`event: chat\ndata: ${JSON.stringify(delta)}\n\n`)
+              } else {
+                lastSeq = vs.maxSeq
+              }
             }
           })
           .catch(() => {
             // a transient load/filter error must not break the pipe
           })
-        return pushing
+        return syncing
       }
 
       // Reconnect hint first, then the full current view.
       write(`retry: ${RETRY_HINT_MS}\n\n`)
       unsub = subscribe(token, () => {
-        void pushIfNewer()
+        void syncNow()
       })
-      void pushIfNewer()
+      void syncNow()
 
-      // The guarantee: poll the version column; re-derive & push on change,
-      // and re-kick a stalled AI turn (idempotent — no-op if running/human).
+      // The guarantee: poll (version, maxSeq); push on change, and re-kick a
+      // stalled AI turn (idempotent — no-op if running/human).
       const poll = async () => {
         if (!open) return
         try {
           void kickAiTurns(token)
-          const v = await loadVersion(token)
-          if (v !== null && v > lastSent) await pushIfNewer()
+          await syncNow()
         } catch {
           // a transient DB blip must not kill the stream; next tick retries
         }

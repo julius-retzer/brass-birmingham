@@ -414,9 +414,11 @@ When updating this file, preserve this bar for all agents and keep entries conci
   so a serverless instance isn't frozen out from under a multi-step AI turn,
   and the stream poll re-kicks a stalled AI each tick. Do NOT add
   WebSockets/LISTEN-NOTIFY/an external pub-sub (decision doc §5). Wire tests:
-  `gameStore.multiplayer.test.ts` (act/chat view shape + hidden-info) +
-  `e2e/multiplayer.spec.ts` (raw SSE `retry:` line).
-- `store.ts` is the single seam (load/save/sweep/loadVersion by token); the
+  `gameStore.multiplayer.test.ts` (act/chat view shape + hidden-info + chat
+  seq delivery / bounded tail / `getChatDelta`) + `e2e/multiplayer.spec.ts`
+  (raw SSE `retry:` line + the `event: chat` increment frame).
+- `store.ts` is the single seam (load/save/sweep + chat append/tail + the
+  cheap `(version, maxSeq)` poll `loadVersionAndSeq`, by token); the
   DB engine is a config swap in `drizzle.config.ts` + `src/server/db/index.ts`.
   DATABASE_URL is now REQUIRED (a libsql `file:` URL will NOT connect through
   neon-http). Migrations in `./drizzle`; apply with `pnpm db:migrate`/`db:push`.
@@ -442,11 +444,25 @@ When updating this file, preserve this bar for all agents and keep entries conci
   "create a branch per preview deployment". Previews sit behind Vercel
   Deployment Protection (SSO) — viewable only when logged into the Vercel
   account.
-- Chat + turn notifications (2026-07-15): messages live ON the game record
-  (`store.ts ChatMessage`, capped 200×500 chars; POST /api/mp/chat auths
-  like act; only authed seats receive them in `viewFor`). Turn notifications
-  derive from SSE frames via `mp/turnNotify.ts` (`didBecomeMyTurn` — never
-  fires on the first frame); permission is asked only from the header bell.
+- Chat (normalized out 2026-07-16): chat lives in its OWN append-only
+  `chat_messages` table (PK = game token + monotonic per-game `seq`, which is
+  the wire `id`), NOT the game jsonb row. A POST /api/mp/chat appends ONE row
+  and does NOT rewrite the game row or bump the engine `version`, so a chat
+  line never fans a full ~26KB per-seat state frame (the DB-as-bus reason).
+  Delivery: the stream poll watches the pair `(version, maxSeq)` in one round
+  trip (`loadVersionAndSeq`) — a `version` bump → full `data:` view frame (now
+  also carrying the recent chat tail, `CHAT_TAIL_LIMIT`=50); only `maxSeq`
+  moved → a bounded `event: chat` increment (`getChatDelta`, authed-only,
+  no snapshot). The client merges chat by `id`==seq (idempotent) via
+  `applyView`/`applyChatDelta` in `mp-game.tsx`; full history stays in the
+  table (swept when the game is), the view only ever ships the tail.
+  Migration 0001 backfills the old jsonb `games.messages` (now vestigial —
+  kept only so the backfill stays re-runnable; drop once pre-migration games
+  age out under the 7-day TTL). Chat is public to seated players; there is no
+  seat-private channel. POST /api/mp/chat auths like act; spectators get no
+  chat in `viewFor`. Turn notifications derive from SSE frames via
+  `mp/turnNotify.ts` (`didBecomeMyTurn` — never fires on the first frame);
+  permission is asked only from the header bell.
 - Seat reclaim: refresh re-authenticates from localStorage; a LOST secret
   is recovered via the host-only "Seats" → Release, then re-claim from the
   invite link. GOTCHA: only the credentialed SSE stream may clear creds on

@@ -40,7 +40,13 @@ export function SetupScreen({
   const [mode, setMode] = useState<'local' | 'online' | 'ai'>('local')
   const [count, setCount] = useState(3)
   const [names, setNames] = useState<string[]>(DEFAULT_NAMES)
-  const [tiers, setTiers] = useState<AiTierId[]>(['clerk', 'clerk', 'clerk'])
+  // Default rival: haiku — fast and nearly as cheap as the budget tier
+  // (the Clerk reasons for ~a minute per decision).
+  const [tiers, setTiers] = useState<AiTierId[]>([
+    'apprentice',
+    'apprentice',
+    'apprentice',
+  ])
   const [creating, setCreating] = useState(false)
 
   const createOnline = async () => {

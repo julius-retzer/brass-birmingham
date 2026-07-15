@@ -25,7 +25,9 @@ export async function GET(req: NextRequest) {
   kickAiTurns(token)
 
   const encoder = new TextEncoder()
-  let unsub = () => {}
+  let unsub = () => {
+    /* replaced once the SSE subscription is established */
+  }
   let ping: ReturnType<typeof setInterval> | undefined
 
   const stream = new ReadableStream({

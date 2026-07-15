@@ -48,7 +48,11 @@ export function playTurnChime(): void {
     }
     note(660, 0)
     note(880, 0.12)
-    setTimeout(() => void ctx.close().catch(() => {}), 1200)
+    setTimeout(() => {
+      void ctx.close().catch(() => {
+        /* audio context already closed — nothing to do */
+      })
+    }, 1200)
   } catch {
     // sound is a nicety, never an error
   }

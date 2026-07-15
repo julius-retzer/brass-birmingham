@@ -129,6 +129,68 @@ describe('multiplayer: lifecycle and authority', () => {
     expect(money).toBe(47) // £17 + £30 loan
   })
 
+  test("act returns the actor's own fresh view + version (DB-as-bus fast path)", async () => {
+    const { host, guest } = await freshGame()
+    const view = await getGameView(host.token, 0, host.seatSecret)
+    const v0 = view!.version
+    const current = ctxOf(view!).currentPlayerIndex
+    const other = current === 0 ? 1 : 0
+    const creds = current === 0 ? host : guest
+    const otherCreds = other === 0 ? host : guest
+
+    const res = await actInGame(host.token, current, creds.seatSecret, {
+      type: 'TAKE_LOAN',
+    })
+    expect(res.ok).toBe(true)
+    if (!res.ok) throw new Error('unreachable')
+
+    // The response carries the engine's OWN authoritative view + bumped
+    // version, so the client applies its result in POST time (no poll wait).
+    expect(res.version).toBeGreaterThan(v0)
+    expect(res.view.version).toBe(res.version)
+    expect(res.view.you).toBe(current)
+
+    // Same viewFor path as an SSE frame — hidden info stays filtered: the
+    // actor's OWN act-response never contains another seat's real cards.
+    const rctx = ctxOf(res.view)
+    expect(
+      rctx.players[current]!.hand.every((c) => !c.id.startsWith('hidden-')),
+    ).toBe(true)
+    expect(
+      rctx.players[other]!.hand.every((c) => c.id.startsWith('hidden-')),
+    ).toBe(true)
+    expect(rctx.drawPile.every((c) => c.id.startsWith('hidden-'))).toBe(true)
+
+    // Wire-level: none of the other seat's REAL card ids leak into any card
+    // zone of the actor's response view.
+    const otherView = await getGameView(
+      host.token,
+      other,
+      otherCreds.seatSecret,
+    )
+    const otherRealHand = ctxOf(otherView!).players[other]!.hand.map(
+      (c) => c.id,
+    )
+    const actorZones = [
+      ...rctx.players.flatMap((p) => p.hand),
+      ...rctx.drawPile,
+    ].map((c) => c.id)
+    for (const id of otherRealHand) {
+      expect(actorZones).not.toContain(id)
+    }
+  })
+
+  test('chat returns the sender view + version with the new message', async () => {
+    const { host } = await freshGame()
+    const before = await getGameView(host.token, 0, host.seatSecret)
+    const res = await sendChat(host.token, 0, host.seatSecret, 'well played')
+    expect(res.ok).toBe(true)
+    if (!res.ok) throw new Error('unreachable')
+    expect(res.version).toBeGreaterThan(before!.version)
+    expect(res.view.version).toBe(res.version)
+    expect(res.view.messages.at(-1)?.text).toBe('well played')
+  })
+
   test('host can release a seat; a new player reclaims it', async () => {
     const { host } = await freshGame()
     await expect(
@@ -229,7 +291,7 @@ describe('multiplayer: table talk', () => {
     // A real message lands for BOTH seats, with sender name and id.
     const versionBefore = (await loadGame(host.token))!.version
     const sent = await sendChat(host.token, 0, host.seatSecret, '  hello  ')
-    expect(sent).toStrictEqual({ ok: true })
+    expect(sent.ok).toBe(true)
     const hostView = await getGameView(host.token, 0, host.seatSecret)
     const guestView = await getGameView(
       host.token,

@@ -55,14 +55,24 @@ const g = globalThis as unknown as {
   __bbMpLocks?: Map<string, Promise<unknown>>
   __bbAiRunning?: Set<string>
   __bbAiThinking?: Map<string, number>
+  __bbAiPromise?: Map<string, Promise<void>>
 }
 const bus = (g.__bbMpBus ??= new Map())
 const locks = (g.__bbMpLocks ??= new Map())
 /** tokens with an AI turn-runner in flight (single runner per game) */
 const aiRunning = (g.__bbAiRunning ??= new Set())
+/** token → the in-flight runner promise, so a route can `waitUntil` it */
+const aiPromise = (g.__bbAiPromise ??= new Map())
 /** token → seatId currently waiting on a model decision */
 const aiThinking = (g.__bbAiThinking ??= new Map())
 
+// The change bus is per-process and therefore only a FAST PATH: it fans out
+// writes made by THIS instance to SSE streams living on the same instance
+// (common under Fluid compute). It is NOT the delivery guarantee — on
+// serverless the POST that bumps the version and the SSE stream watching for
+// it routinely land on different instances. The guarantee is the stream's
+// ~1.2s `loadVersion` DB poll (see stream/route.ts); the bus just delivers the
+// same-instance case with zero latency.
 export function subscribe(token: string, fn: Listener): () => void {
   const set = bus.get(token) ?? new Set()
   set.add(fn)
@@ -360,7 +370,7 @@ export async function createGame(
     startEngine(game)
   }
   await saveGame(game)
-  kickAiTurns(token)
+  void kickAiTurns(token)
   return { token, seatId: 0, seatSecret: secret }
 }
 
@@ -405,7 +415,7 @@ export async function joinGame(
     game.updatedAt = new Date().toISOString()
     await saveGame(game)
     broadcast(token)
-    kickAiTurns(token)
+    void kickAiTurns(token)
     return { seatId: seat.seatId, seatSecret: secret }
   })
 }
@@ -442,7 +452,9 @@ export async function actInGame(
   seatId: number,
   seatSecret: string,
   event: { type: string } & Record<string, unknown>,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; view: GameView; version: number } | { ok: false; error: string }
+> {
   return withGameLock(token, async () => {
     const game = await loadGame(token)
     if (!game) return { ok: false, error: 'Game not found' }
@@ -485,8 +497,16 @@ export async function actInGame(
     game.updatedAt = new Date().toISOString()
     await saveGame(game)
     broadcast(token)
-    kickAiTurns(token)
-    return { ok: true }
+    void kickAiTurns(token)
+    // Return the actor's OWN fresh per-seat view so the client applies its
+    // authoritative result in POST time (~1s) instead of waiting for the next
+    // SSE poll tick. This is the engine's real result (viewFor filters hidden
+    // info exactly as an SSE frame does), NOT an optimistic prediction.
+    return {
+      ok: true,
+      view: viewFor(game, seatId, seatSecret),
+      version: game.version,
+    }
   })
 }
 
@@ -498,7 +518,9 @@ export async function sendChat(
   seatId: number,
   seatSecret: string,
   text: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; view: GameView; version: number } | { ok: false; error: string }
+> {
   return withGameLock(token, async () => {
     const game = await loadGame(token)
     if (!game) return { ok: false, error: 'Game not found' }
@@ -523,28 +545,42 @@ export async function sendChat(
     game.updatedAt = new Date().toISOString()
     await saveGame(game)
     broadcast(token)
-    return { ok: true }
+    // Same shape as actInGame: the sender applies its own fresh view (which
+    // includes the new message) immediately, rather than waiting for a poll.
+    return {
+      ok: true,
+      view: viewFor(game, seatId, seatSecret),
+      version: game.version,
+    }
   })
 }
 
 /* ---------------- the AI turn runner ---------------- */
 
 /**
- * Start the AI turn-runner for this game unless one is already in flight.
- * Safe to call from anywhere (create/join/act/stream-connect) — it no-ops
- * instantly when the current player is human or the game is over.
+ * Start the AI turn-runner for this game unless one is already in flight, and
+ * return the promise that settles when the current run finishes. Safe to call
+ * from anywhere (create/join/act/stream-connect) — it no-ops instantly when
+ * the current player is human or the game is over. Callers on a serverless
+ * request path should `waitUntil(kickAiTurns(token))` so the instance isn't
+ * frozen out from under the (detached) runner after the response returns.
  */
-export function kickAiTurns(token: string): void {
-  if (aiRunning.has(token)) return
+export function kickAiTurns(token: string): Promise<void> {
+  const existing = aiPromise.get(token)
+  if (existing) return existing
+  if (aiRunning.has(token)) return Promise.resolve()
   aiRunning.add(token)
-  void runAiTurns(token)
+  const p = runAiTurns(token)
     .catch(() => {
       // the runner never propagates — a failed decision is logged in-game
     })
     .finally(() => {
       aiRunning.delete(token)
+      aiPromise.delete(token)
       if (aiThinking.delete(token)) broadcast(token)
     })
+  aiPromise.set(token, p)
+  return p
 }
 
 /** Model calls per AI turn before the driver goes safety-first (cost cap). */

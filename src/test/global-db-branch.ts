@@ -24,6 +24,13 @@ import {
   resolveTestDatabaseUrl,
 } from './neon-branch'
 
+// First line of an error message, safe against non-Error throws (a bad
+// `.message` access here would crash globalSetup and defeat the fallback).
+function firstLine(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err)
+  return msg.split('\n')[0] ?? ''
+}
+
 // Fallback shared by every no-ephemeral path: prefer the dedicated test branch;
 // only ever touch a non-test DATABASE_URL as a last resort, and shout about it.
 function useFallbackDatabase(reason: string): void {
@@ -74,7 +81,7 @@ export default async function setup(): Promise<(() => Promise<void>) | void> {
     branch = await createBranch(apiKey)
   } catch (err) {
     useFallbackDatabase(
-      `could not create ephemeral Neon branch (${(err as Error).message.split('\n')[0]})`,
+      `could not create ephemeral Neon branch (${firstLine(err)})`,
     )
     return
   }
@@ -92,7 +99,7 @@ export default async function setup(): Promise<(() => Promise<void>) | void> {
       console.info(`[test-db] deleted ephemeral Neon branch ${branch.name}`)
     } catch (err) {
       console.warn(
-        `[test-db] could not delete branch ${branch.name} (${(err as Error).message.split('\n')[0]}); it will auto-expire`,
+        `[test-db] could not delete branch ${branch.name} (${firstLine(err)}); it will auto-expire`,
       )
     }
   }

@@ -105,6 +105,24 @@ export async function loadGame(token: string): Promise<GameRecord | null> {
   return row ? rowToRecord(row) : null
 }
 
+/**
+ * Read ONLY the monotonic `version` for a game — the cheap DB poll that lets
+ * the SSE stream act as a "server-side polling loop with an open pipe". This
+ * is the delivery guarantee for cross-instance updates on serverless (the
+ * in-process bus in `game.ts` is only a same-instance fast path): the stream
+ * selects this every ~1.2s and re-derives the full per-seat view on change.
+ * Returns null for an unknown/malformed token.
+ */
+export async function loadVersion(token: string): Promise<number | null> {
+  if (!TOKEN_RE.test(token)) return null
+  const rows = await db
+    .select({ version: games.version })
+    .from(games)
+    .where(eq(games.token, token))
+    .limit(1)
+  return rows[0]?.version ?? null
+}
+
 export async function saveGame(game: GameRecord): Promise<void> {
   if (!TOKEN_RE.test(game.token)) throw new Error('Malformed game token')
   const row = recordToRow(game)

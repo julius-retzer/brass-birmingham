@@ -7,7 +7,7 @@
 // via POST /api/mp/act. A read-only local actor is rebuilt from each
 // broadcast purely so the existing dock/board components can keep using
 // `snapshot.matches` / `snapshot.can`; it never executes actions.
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { createActor } from 'xstate'
 import { Toaster } from '~/components/ui/sonner'
@@ -140,6 +140,14 @@ export function MpGame({ token }: { token: string }) {
     setCredsLoaded(true)
   }, [token])
 
+  // Single apply path for every authoritative view — SSE frames AND the fresh
+  // view returned by an act/chat POST. Guarded by `version`: only a strictly
+  // newer view replaces the current one, so a late/duplicate frame arriving
+  // after the act response (or vice-versa) can never regress the state.
+  const applyView = useCallback((incoming: GameViewWire) => {
+    setView((cur) => (!cur || incoming.version > cur.version ? incoming : cur))
+  }, [])
+
   // Live view over SSE; EventSource reconnects on its own after drops and
   // dev-server restarts (the game itself is durable on disk). The stream is
   // (re)opened whenever the credentials change; only THIS stream may decide
@@ -166,7 +174,7 @@ export function MpGame({ token }: { token: string }) {
         setCreds(null)
         return
       }
-      setView(parsed)
+      applyView(parsed)
     }
     es.onerror = () => {
       if (!closed) setStreamFailing(true)
@@ -175,7 +183,7 @@ export function MpGame({ token }: { token: string }) {
       closed = true
       es.close()
     }
-  }, [token, creds, credsLoaded])
+  }, [token, creds, credsLoaded, applyView])
 
   if (!credsLoaded || (!view && !streamFailing)) {
     return (
@@ -227,7 +235,9 @@ export function MpGame({ token }: { token: string }) {
     return <LobbyScreen view={view} />
   }
 
-  return <MpTable token={token} view={view} creds={creds!} />
+  return (
+    <MpTable token={token} view={view} creds={creds!} applyView={applyView} />
+  )
 }
 
 function Centered({ children }: { children: React.ReactNode }) {
@@ -625,10 +635,12 @@ function MpTable({
   token,
   view,
   creds,
+  applyView,
 }: {
   token: string
   view: GameViewWire
   creds: Creds
+  applyView: (view: GameViewWire) => void
 }) {
   const [ledgerFor, setLedgerFor] = useState<string | null>(null)
   const [hoveredCard, setHoveredCard] = useState<Card | null>(null)
@@ -666,7 +678,12 @@ function MpTable({
               event,
             }),
           })
-          const body = (await res.json()) as { ok: boolean; error?: string }
+          const body = (await res.json()) as {
+            ok: boolean
+            error?: string
+            view?: GameViewWire
+            version?: number
+          }
           if (!body.ok) {
             // The server rejected the intent — no frame is coming, so settle
             // now; the existing error toast still surfaces the reason.
@@ -674,17 +691,23 @@ function MpTable({
             if (body.error && event.type !== 'CLEAR_ERROR') {
               toast.error(body.error)
             }
+          } else if (body.view) {
+            // Server-authoritative fast path: apply the engine's OWN fresh view
+            // from the POST response (same version-guarded apply path as an SSE
+            // frame — NOT an optimistic update). The version bump this causes
+            // settles the in-flight intent immediately (~1s), so the actor no
+            // longer waits for the next poll tick.
+            applyView(body.view)
           }
-          // On success we deliberately leave the intent pending: the engine
-          // advanced, and the resulting SSE frame settles it via the version
-          // bump (never a fixed timeout).
+          // If success carried no view (older server), we leave the intent
+          // pending: the resulting SSE frame settles it via the version bump.
         } catch {
           settle()
           toast.error('Could not reach the game server')
         }
       })()
     },
-    [token, creds, begin],
+    [token, creds, begin, applyView],
   )
 
   const ctx = state?.context
@@ -1133,16 +1156,29 @@ function MpTable({
             you={you}
             seats={view.seats}
             onSend={(text) => {
-              void fetch('/api/mp/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  token,
-                  seatId: creds.seatId,
-                  seatSecret: creds.seatSecret,
-                  text,
-                }),
-              }).catch(() => toast.error('Could not send the message'))
+              void (async () => {
+                try {
+                  const res = await fetch('/api/mp/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      token,
+                      seatId: creds.seatId,
+                      seatSecret: creds.seatSecret,
+                      text,
+                    }),
+                  })
+                  const body = (await res.json()) as {
+                    ok: boolean
+                    view?: GameViewWire
+                  }
+                  // Apply the sender's fresh view (with the new message) at once,
+                  // same version-guarded path as an SSE frame.
+                  if (body.ok && body.view) applyView(body.view)
+                } catch {
+                  toast.error('Could not send the message')
+                }
+              })()
             }}
           />
           <JournalPanel logs={ctx.logs} players={ctx.players} />

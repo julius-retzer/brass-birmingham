@@ -29,6 +29,7 @@ import { PlayerLedger } from '../player-ledger'
 import { PlayerRail } from '../player-rail'
 import { JournalPanel, MarketsPanel } from '../side-panels'
 import { didBecomeMyTurn, playTurnChime, titleForTurn } from './turnNotify'
+import { useInFlight } from './use-in-flight'
 
 /* ---------------- wire types ---------------- */
 
@@ -645,8 +646,14 @@ function MpTable({
     return snap as GameStoreSnapshot
   }, [view.snapshot])
 
+  // In-flight tracking: an intent is "pending" from the moment it POSTs until
+  // the settling SSE frame lands (a higher server version) or the POST errors.
+  // Drives the global sync bar + the dock/board pending states below.
+  const { inFlight, begin } = useInFlight(view.version)
+
   const send = useMemo(
     () => (event: { type: string } & Record<string, unknown>) => {
+      const settle = begin()
       void (async () => {
         try {
           const res = await fetch('/api/mp/act', {
@@ -660,15 +667,24 @@ function MpTable({
             }),
           })
           const body = (await res.json()) as { ok: boolean; error?: string }
-          if (!body.ok && body.error && event.type !== 'CLEAR_ERROR') {
-            toast.error(body.error)
+          if (!body.ok) {
+            // The server rejected the intent — no frame is coming, so settle
+            // now; the existing error toast still surfaces the reason.
+            settle()
+            if (body.error && event.type !== 'CLEAR_ERROR') {
+              toast.error(body.error)
+            }
           }
+          // On success we deliberately leave the intent pending: the engine
+          // advanced, and the resulting SSE frame settles it via the version
+          // bump (never a fixed timeout).
         } catch {
+          settle()
           toast.error('Could not reach the game server')
         }
       })()
     },
-    [token, creds],
+    [token, creds, begin],
   )
 
   const ctx = state?.context
@@ -875,7 +891,7 @@ function MpTable({
   }
 
   const onCityClick = (cityId: CityId) => {
-    if (!myTurn) return
+    if (!myTurn || inFlight) return
     if (state.can({ type: 'SELECT_LOCATION', cityId })) {
       send({ type: 'SELECT_LOCATION', cityId })
     } else {
@@ -886,7 +902,7 @@ function MpTable({
   }
 
   const onLinkClick = (from: CityId, to: CityId) => {
-    if (!myTurn) return
+    if (!myTurn || inFlight) return
     const conn = connections.find(
       (c) =>
         (c.from === from && c.to === to) || (c.from === to && c.to === from),
@@ -931,6 +947,12 @@ function MpTable({
 
   return (
     <div className="flex min-h-screen flex-col lg:h-screen lg:overflow-hidden">
+      {/* Global in-flight cue: a slim indeterminate bar + a polite live region
+          announcing that the last move is syncing with the server. */}
+      {inFlight && <div className="bb2-syncbar" aria-hidden="true" />}
+      <div className="sr-only" role="status" aria-live="polite">
+        {inFlight ? 'Syncing your move with the table…' : ''}
+      </div>
       {/* masthead */}
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-2 pt-3">
         <div className="flex items-baseline gap-2">
@@ -976,6 +998,12 @@ function MpTable({
           You are {me.name}
         </span>
         <div className="ml-auto flex items-center gap-3">
+          {inFlight && (
+            <span className="bb2-sync-pill" data-testid="mp-syncing">
+              <span className="bb2-sync-dot" />
+              Syncing
+            </span>
+          )}
           {notifyPermission === 'default' && (
             <button
               type="button"
@@ -1026,7 +1054,10 @@ function MpTable({
         </div>
 
         <aside className="flex w-full flex-none flex-col gap-3 pb-44 lg:w-[380px] lg:overflow-y-auto lg:pb-0">
-          <div className="bb2-panel p-4">
+          <div
+            className={`bb2-panel p-4 ${myTurn && inFlight ? 'bb2-busy' : ''}`}
+            aria-busy={myTurn && inFlight}
+          >
             {myTurn ? (
               <ActionDock
                 snapshot={state}
@@ -1122,7 +1153,7 @@ function MpTable({
       <HandTray
         hand={me.hand}
         canSelect={
-          handSel
+          handSel && !inFlight
             ? (cardId) => state.can({ type: 'SELECT_CARD', cardId })
             : null
         }

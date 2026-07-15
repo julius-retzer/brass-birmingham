@@ -393,3 +393,13 @@ When updating this file, preserve this bar for all agents and keep entries conci
   invite link. GOTCHA: only the credentialed SSE stream may clear creds on
   `you: null` — a late frame from the previous unauthenticated stream must
   not wipe freshly-claimed credentials (race fixed 2026-07-13).
+- In-flight "syncing" indicator (2026-07-15): because there is NO optimistic
+  UI, `mp/use-in-flight.ts` tracks each intent from `send()`'s POST until its
+  settling SSE frame. An intent is settled when a frame arrives with a
+  server `version` PAST the one captured at send time (never a fixed
+  timeout) — or immediately on a `body.ok === false` / network error. A
+  12s per-intent timeout is a VISUAL-only backstop for a dropped stream.
+  While `inFlight`, `mp-game.tsx` shows the `.bb2-syncbar` top bar + masthead
+  pill (`theme.css`), an `sr-only` `role=status` live region, dims the dock
+  (`.bb2-busy`, `aria-busy`), and gates board-click / hand-select handlers so
+  a move can't be double-fired. Do NOT drive any game state off this signal.

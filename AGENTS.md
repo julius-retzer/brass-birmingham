@@ -383,6 +383,20 @@ When updating this file, preserve this bar for all agents and keep entries conci
   tests + local dev use `dev`. Those DB-backed suites run ~30s over the
   network (vs instant files), so they set a 30s per-file timeout via
   `vi.setConfig`; leave the global 5s for the in-memory engine suite.
+- DEPLOY (Vercel, wired 2026-07-15): ship is direct-PR → Vercel Git
+  integration (project `brass-birmingham`, prod branch = `main`, PR previews
+  on). The Neon<->Vercel native integration (store "brass") manages the
+  `DATABASE_URL`/`POSTGRES_*`/`STACK_*` env vars. Per-environment DB
+  isolation is by Neon BRANCH, all in project `muddy-night-85782525`:
+  Vercel `production` → `main`, `preview` → the long-lived `preview` branch,
+  `development` → still `main`; local `.env` → `dev`. The preview isolation
+  is a manual preview-scoped `DATABASE_URL` override in Vercel (the shared
+  integration entry was narrowed to production+development) — a future
+  integration re-sync can clobber it. DURABLE FIX (needs a Neon-console
+  click, not in neonctl): project brass → Integrations → Vercel → enable
+  "create a branch per preview deployment". Previews sit behind Vercel
+  Deployment Protection (SSO) — viewable only when logged into the Vercel
+  account.
 - Chat + turn notifications (2026-07-15): messages live ON the game record
   (`store.ts ChatMessage`, capped 200×500 chars; POST /api/mp/chat auths
   like act; only authed seats receive them in `viewFor`). Turn notifications

@@ -193,6 +193,16 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   through the event surface with a guard-probing policy; if you add
   guards, keep CANCEL paths reachable so the driver can unwind
   (`unwind()` helper).
+- `src/store/build`, `src/store/market`, `src/store/network` hold the
+  real split-out action modules (`buildActions.ts`, `marketActions.ts`);
+  network logic itself actually lives in `shared/gameUtils.ts`
+  (`calculateNetworkDistance`, `linkConnectedLocations`) — a
+  `src/store/network/` module was dead placeholder scaffolding and was
+  removed 2026-07-15 along with unused `buildTypes.ts`/`marketTypes.ts`
+  and the whole pre-XState `src/legacyStores/` prototype dir. Before
+  adding a new file under `src/store/*`, grep that it's actually
+  imported somewhere — this codebase has a history of scaffold files
+  left unwired.
 
 ## UI — "The Ironmaster's Atlas" (v2, promoted to `/` on 2026-07-12)
 

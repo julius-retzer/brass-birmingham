@@ -10,7 +10,7 @@ import {
   releaseSeat,
   sendChat,
 } from '../server/mp/game'
-import { loadGame } from '../server/mp/store'
+import { loadGame, saveGame } from '../server/mp/store'
 import { ensureTestSchema } from '../test/db-schema'
 
 // Every test here drives several sequential round-trips to a real (network)
@@ -48,7 +48,7 @@ describe('multiplayer: lifecycle and authority', () => {
     expect(view?.you).toBe(0)
     expect(view?.seats.map((s) => s.name)).toEqual(['Ada', 'Brunel'])
     expect(guest.seatId).toBe(1)
-    // durability: the record round-trips through the file store
+    // durability: the record round-trips through the DB store
     const record = await loadGame(host.token)
     expect(record?.phase).toBe('playing')
     expect(record?.snapshot).toBeTruthy()
@@ -273,7 +273,9 @@ describe('multiplayer: persistence survives a redeploy', () => {
     let view = await getGameView(host.token, 0, host.seatSecret)
     const current = ctxOf(view!).currentPlayerIndex
     const creds = current === 0 ? host : guest
-    await actInGame(host.token, current, creds.seatSecret, { type: 'TAKE_LOAN' })
+    await actInGame(host.token, current, creds.seatSecret, {
+      type: 'TAKE_LOAN',
+    })
     view = await getGameView(host.token, current, creds.seatSecret)
     const ownHand = ctxOf(view!).players[current]!.hand
     await actInGame(host.token, current, creds.seatSecret, {
@@ -308,5 +310,29 @@ describe('multiplayer: persistence survives a redeploy', () => {
       after!.snapshot as { context: { players: Array<{ money: number }> } }
     ).context.players[current]!.money
     expect(money).toBe(47) // £17 + £30 loan
+  })
+})
+
+describe('multiplayer: concurrent-write protection', () => {
+  // The game lock is per-process; a second server instance can load the same
+  // record and race the save. The store's version-guarded upsert turns that
+  // into a hard error instead of a silent last-writer-wins overwrite (which
+  // would also erase chat, since messages live in the row).
+  test('a stale-version save is rejected; the first write stands', async () => {
+    const { host } = await freshGame()
+    const first = (await loadGame(host.token))!
+    const rival = structuredClone(first) // another instance's stale read
+
+    first.version++
+    first.updatedAt = new Date().toISOString()
+    await saveGame(first)
+
+    rival.version++ // same bump, computed from the same stale read
+    rival.updatedAt = new Date().toISOString()
+    await expect(saveGame(rival)).rejects.toThrow(/concurrent/i)
+
+    const settled = await loadGame(host.token)
+    expect(settled!.version).toBe(first.version)
+    expect(settled!.updatedAt).toBe(first.updatedAt)
   })
 })

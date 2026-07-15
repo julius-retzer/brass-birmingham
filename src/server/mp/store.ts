@@ -10,9 +10,9 @@
 // later is a config change in `drizzle.config.ts` + `src/server/db/index.ts`,
 // not a rewrite of this module.
 import { eq, lt } from 'drizzle-orm'
+import { type AiLogEntry, type AiTierId, type AiUsageTotals } from '../ai/types'
 import { db } from '../db'
 import { games } from '../db/schema'
-import { type AiLogEntry, type AiTierId, type AiUsageTotals } from '../ai/types'
 
 export interface SeatRecord {
   seatId: number
@@ -109,11 +109,23 @@ export async function saveGame(game: GameRecord): Promise<void> {
   if (!TOKEN_RE.test(game.token)) throw new Error('Malformed game token')
   const row = recordToRow(game)
   // Single atomic upsert replaces the old tmp-file + rename dance; the caller
-  // already bumped `version`/`updatedAt`.
-  await db
+  // already bumped `version`/`updatedAt`. The `setWhere` guard is optimistic
+  // concurrency: the game lock is per-process, so a second server instance
+  // can race the same read-modify-write — the writer whose bumped version is
+  // no longer ahead of the stored one loses, loudly, instead of silently
+  // overwriting the row (which would also erase chat — messages live in it).
+  const written = await db
     .insert(games)
     .values(row)
-    .onConflictDoUpdate({ target: games.token, set: row })
+    .onConflictDoUpdate({
+      target: games.token,
+      set: row,
+      setWhere: lt(games.version, row.version),
+    })
+    .returning({ token: games.token })
+  if (written.length === 0) {
+    throw new Error('Concurrent write: the game changed under this save')
+  }
 }
 
 let lastSweep = 0

@@ -306,6 +306,27 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   refuses with a clear error. Rationales + cost are PUBLIC in
   `GameView.ai`; the AI's hand stays as hidden as any other seat's.
 
+## CI (GitHub Actions, Neon-per-run added 2026-07-15)
+
+- `.github/workflows/ci.yml` (`test` job) runs `pnpm test` + lint + typecheck.
+  The DB-backed suites (`gameStore.multiplayer.test.ts`, `mp-ai.test.ts`) need a
+  real Postgres, so CI provisions an ISOLATED Neon branch per run via
+  `neondatabase/create-branch-action@v6` off the long-lived, pre-migrated `ci`
+  parent branch (project `muddy-night-85782525`), exports its `db_url` output as
+  `DATABASE_URL`, then removes it with `delete-branch-action@v3` in an
+  `if: always()` step (plus a 2h `expires_at` TTL as orphan backstop). Schema
+  comes free via copy-on-write from `ci`; `ensureTestSchema()` re-applies
+  `drizzle/*.sql` idempotently so a new PR migration works before `ci` is
+  re-migrated. Re-migrate the `ci` parent after schema changes:
+  `neonctl connection-string ci --project-id muddy-night-85782525` → `pnpm db:migrate`.
+- REQUIRED repo secrets: `NEON_API_KEY` (Neon Console → Account → API keys) and
+  `NEON_PROJECT_ID` (= `muddy-night-85782525`). Without them the create-branch
+  step fails.
+- `claude.yml` / `claude-code-review.yml` (anthropics/claude-code-action@beta,
+  auth via `CLAUDE_CODE_OAUTH_TOKEN` secret) pin `model: claude-sonnet-5` — the
+  action's built-in default `claude-sonnet-4-20250514` 404s (id no longer
+  served). Bump this when the model id changes.
+
 ## Maintaining this file
 
 Keep this file for knowledge useful to almost every future agent session in this project.

@@ -40,7 +40,32 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      # Isolated, throwaway Neon database for this run only. Branched off the
+      # long-lived, pre-migrated `ci` parent so it inherits the schema instantly
+      # (copy-on-write). The DB-backed suites (gameStore.multiplayer.test.ts,
+      # mp-ai.test.ts) need a real Postgres; the rest run offline. Tests also
+      # self-provision the schema idempotently via ensureTestSchema, so a fresh
+      # PR migration is picked up even before the `ci` parent is re-migrated.
+      - name: Compute Neon branch expiry (orphan backstop TTL)
+        id: expiry
+        run: echo "at=$(date -u -d '+2 hours' +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - name: Create isolated Neon branch
+        id: create-branch
+        uses: neondatabase/create-branch-action@v6.4.0
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          parent_branch: ci
+          branch_name: ci-run-${{ github.run_id }}-${{ github.run_attempt }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+          # Belt-and-braces cleanup: the always()-run delete step below removes
+          # the branch on every path, and this TTL reaps it even if the runner
+          # dies before that step gets to run.
+          expires_at: ${{ steps.expiry.outputs.at }}
+
       - name: Run tests
+        env:
+          DATABASE_URL: ${{ steps.create-branch.outputs.db_url }}
         run: pnpm test
 
       - name: Run linting
@@ -48,3 +73,11 @@ jobs:
 
       - name: Run type checking
         run: pnpm typecheck
+
+      - name: Delete isolated Neon branch
+        if: always()
+        uses: neondatabase/delete-branch-action@v3.2.1
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch: ci-run-${{ github.run_id }}-${{ github.run_attempt }}
+          api_key: ${{ secrets.NEON_API_KEY }}

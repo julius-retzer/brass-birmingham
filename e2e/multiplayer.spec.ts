@@ -61,6 +61,20 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
   /* ---- turn passes to the guest; both converge on round 2 ---- */
   await expect(guest.getByTestId('action-pass')).toBeVisible()
   await expect(host.getByTestId('waiting-panel')).toBeVisible()
+  // turn notification cues: the guest's tab title flags the turn, the
+  // host's does not; the unobtrusive permission bell is available
+  await expect(guest).toHaveTitle(/● Your turn — Brass/)
+  await expect(host).toHaveTitle(/^Brass: Birmingham$/)
+  // the permission bell shows only while permission is undecided — the
+  // test browser may auto-grant/deny, so gate the assertion on it
+  const notifyPermission = await guest.evaluate(
+    () => Notification.permission,
+  )
+  if (notifyPermission === 'default') {
+    await expect(guest.getByTestId('notify-enable')).toBeVisible()
+  } else {
+    await expect(guest.getByTestId('notify-enable')).toHaveCount(0)
+  }
   // Two-tap pass: arm, then confirm.
   await guest.getByTestId('action-pass').click()
   await guest.getByTestId('action-pass').click()

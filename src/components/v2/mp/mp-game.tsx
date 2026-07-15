@@ -26,6 +26,7 @@ import { GameOverScreen } from '../overlays'
 import { PlayerLedger } from '../player-ledger'
 import { PlayerRail } from '../player-rail'
 import { JournalPanel, MarketsPanel } from '../side-panels'
+import { didBecomeMyTurn, playTurnChime, titleForTurn } from './turnNotify'
 
 /* ---------------- wire types ---------------- */
 
@@ -655,6 +656,52 @@ function MpTable({
     }
   }, [ctx?.lastError, myTurn, send])
 
+  // ---------- turn notifications ----------
+  // Driven off the SSE frames: when the turn TRANSFERS to this seat,
+  // buzz the player — a browser Notification if the tab is hidden, a
+  // title-bar cue + soft chime if visible. Permission is only ever
+  // requested from the bell button (a user gesture), never on load.
+  const prevTurnIndex = useRef<number | null>(null)
+  const [notifyPermission, setNotifyPermission] = useState<
+    NotificationPermission | 'unsupported'
+  >(() =>
+    typeof Notification === 'undefined'
+      ? 'unsupported'
+      : Notification.permission,
+  )
+  useEffect(() => {
+    const next = ctx ? ctx.currentPlayerIndex : null
+    const became = didBecomeMyTurn(prevTurnIndex.current, next, you)
+    prevTurnIndex.current = next
+    if (!became || view.phase !== 'playing') return
+    if (document.hidden) {
+      if (notifyPermission === 'granted') {
+        try {
+          const n = new Notification('Your turn — Brass', {
+            body: 'The table is waiting on you.',
+            tag: `bb-turn-${token}`,
+          })
+          n.onclick = () => window.focus()
+        } catch {
+          // notification failures are never errors
+        }
+      }
+    } else {
+      playTurnChime()
+      toast('Your turn.', { duration: 3000 })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx?.currentPlayerIndex])
+
+  // Title-bar cue: '● Your turn — …' while it is on you, restored after.
+  useEffect(() => {
+    const base = 'Brass: Birmingham'
+    document.title = titleForTurn(base, myTurn && view.phase === 'playing')
+    return () => {
+      document.title = base
+    }
+  }, [myTurn, view.phase])
+
   // Era turnover announcement.
   const prevEra = useRef(ctx?.era)
   useEffect(() => {
@@ -887,6 +934,19 @@ function MpTable({
           You are {me.name}
         </span>
         <div className="ml-auto flex items-center gap-3">
+          {notifyPermission === 'default' && (
+            <button
+              type="button"
+              className="bb2-ghost-btn"
+              data-testid="notify-enable"
+              title="Get a browser notification when it becomes your turn while this tab is in the background"
+              onClick={() => {
+                void Notification.requestPermission().then(setNotifyPermission)
+              }}
+            >
+              🔔 Turn alerts
+            </button>
+          )}
           {you === 0 && (
             <SeatsButton token={token} creds={creds} seats={view.seats} />
           )}

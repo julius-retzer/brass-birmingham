@@ -15,6 +15,25 @@ import {
   advanceIncomeSpaces,
   incomeLevelForSpace,
 } from '../../data/incomeTrack'
+
+/**
+ * Marker movement for a FLIPPED tile: advance by the tile's printed
+ * SPACES; the level is the coin beside the landing space (audited
+ * 2026-07-15). The single source for every flip path — round-end checks,
+ * sell flips and build-time market auto-sales.
+ */
+export function incomeAfterFlip(
+  incomeSpace: number,
+  tile: { incomeAdvancement?: number },
+): { income: number; incomeSpace: number; advancedBy: number } {
+  const advancedBy = tile.incomeAdvancement || 0
+  const newSpace = advanceIncomeSpaces(incomeSpace, advancedBy)
+  return {
+    income: incomeLevelForSpace(newSpace),
+    incomeSpace: newSpace,
+    advancedBy,
+  }
+}
 import { GAME_CONSTANTS } from '../constants'
 import type {
   GameState,
@@ -252,25 +271,18 @@ export function checkAndFlipIndustryTilesLogic(context: GameState): {
         const newIndustries = [...player.industries]
         newIndustries[industryIndex] = updatedIndustry
 
-        // Advance the marker by SPACES on the Progress Track (audited
-        // 2026-07-15); the level is the coin beside the landing space.
-        const incomeAdvancement = industry.tile.incomeAdvancement || 0
-        const newSpace = advanceIncomeSpaces(
-          player.incomeSpace,
-          incomeAdvancement,
-        )
-        const newIncome = incomeLevelForSpace(newSpace)
+        const flip = incomeAfterFlip(player.incomeSpace, industry.tile)
 
         // Update player with flipped industry and new income
         updatedPlayers[playerIndex] = {
           ...player,
           industries: newIndustries,
-          income: newIncome,
-          incomeSpace: newSpace,
+          income: flip.income,
+          incomeSpace: flip.incomeSpace,
         }
 
         logMessages.push(
-          `${player.name}'s ${industry.type} at ${industry.location} flipped (income +${incomeAdvancement}, now ${newIncome})`,
+          `${player.name}'s ${industry.type} at ${industry.location} flipped (income +${flip.advancedBy}, now ${flip.income})`,
         )
       }
     }

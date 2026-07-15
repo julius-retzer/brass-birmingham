@@ -151,12 +151,27 @@ function emphasize(
     if (last < text.length) nodes.push(text.slice(last))
   }
 
+  // Only whole-word occurrences: a player called "Ada" must not light up
+  // inside "Adamant".
+  const isWordChar = (ch: string | undefined) => !!ch && /[\w]/.test(ch)
+  const findName = (text: string, name: string): number => {
+    let from = 0
+    while (true) {
+      const idx = text.indexOf(name, from)
+      if (idx === -1) return -1
+      const before = text[idx - 1]
+      const after = text[idx + name.length]
+      if (!isWordChar(before) && !isWordChar(after)) return idx
+      from = idx + 1
+    }
+  }
+
   let rest = message
   while (rest.length > 0) {
     let earliest: { idx: number; name: string; color: Player['color'] } | null =
       null
     for (const p of names) {
-      const idx = rest.indexOf(p.name)
+      const idx = findName(rest, p.name)
       if (idx !== -1 && (earliest === null || idx < earliest.idx)) {
         earliest = { idx, name: p.name, color: p.color }
       }

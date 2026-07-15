@@ -9,6 +9,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { createActor } from 'xstate'
 import { gameStore } from '../../store/gameStore'
+import { refreshEmbeddedTileStats } from '../../store/saveMigration'
 import {
   type ChatMessage,
   type GameRecord,
@@ -79,6 +80,9 @@ async function withGameLock<T>(
 
 // JSON round-trips turn the markets' `maxCubes: Infinity` into null; restore
 // it before the engine sees the snapshot (same fix as the client shell).
+// ALSO run the save migration here: the SERVER is the authority, and a
+// pre-audit game record would otherwise keep playing with stale tile stats
+// and no incomeSpace (whose NaN arithmetic reads as income level 30).
 function rehydrate(snapshot: unknown): unknown {
   const clone = structuredClone(snapshot) as {
     context?: {
@@ -91,6 +95,11 @@ function rehydrate(snapshot: unknown): unknown {
     for (const row of market) {
       if (row && row.maxCubes === null) row.maxCubes = Infinity
     }
+  }
+  try {
+    refreshEmbeddedTileStats(clone)
+  } catch {
+    // a malformed record fails at actor creation, with better context
   }
   return clone
 }

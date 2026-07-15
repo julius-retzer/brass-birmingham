@@ -285,6 +285,12 @@ When updating this file, preserve this bar for all agents and keep entries conci
   passesToGameOver in generate-demo.test.ts) so a freeze condition is
   asserted by the machine's own guards, never re-implemented.
 
+- UNDO (2026-07-15) is HOTSEAT-ONLY and shell-level: v2-game snapshots the
+  machine at turn start (`turnAnchor`) and remounts from it; one action
+  undoable while the same player still has an action left. Multiplayer undo
+  needs a server intent + rebroadcast — deliberately out of scope
+  (`gameStore.undo.test.ts` pins restore atomicity).
+
 ## Networked multiplayer (added 2026-07-13)
 
 - `/g/<token>` (`src/components/v2/mp/mp-game.tsx` + `src/server/mp/`) is
@@ -307,6 +313,11 @@ When updating this file, preserve this bar for all agents and keep entries conci
   `.bb-games/` (gitignored), atomic tmp+rename, 7-day TTL sweep — durable
   across restarts with zero env coupling (the Drizzle schema is a template
   and dev runs without DATABASE_URL); swap to SQLite = replace store.ts.
+- Chat + turn notifications (2026-07-15): messages live ON the game record
+  (`store.ts ChatMessage`, capped 200×500 chars; POST /api/mp/chat auths
+  like act; only authed seats receive them in `viewFor`). Turn notifications
+  derive from SSE frames via `mp/turnNotify.ts` (`didBecomeMyTurn` — never
+  fires on the first frame); permission is asked only from the header bell.
 - Seat reclaim: refresh re-authenticates from localStorage; a LOST secret
   is recovered via the host-only "Seats" → Release, then re-claim from the
   invite link. GOTCHA: only the credentialed SSE stream may clear creds on

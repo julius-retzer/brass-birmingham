@@ -61,6 +61,7 @@ import {
   findCardInHand,
   getCardDescription,
   getCurrentPlayer,
+  incomeAfterFlip,
   isFirstRound,
   isLocationInPlayerNetwork,
   removeCardFromHand,
@@ -1235,26 +1236,18 @@ export const gameStore = setup({
             const newIndustries = [...player.industries]
             newIndustries[industryIndex] = updatedIndustry
 
-            // Advance the income marker by SPACES on the Progress Track
-            // (audited 2026-07-15: the tile's arrow value is spaces, not
-            // levels); the level is the coin beside the landing space.
-            const incomeAdvancement = industry.tile.incomeAdvancement || 0
-            const newSpace = advanceIncomeSpaces(
-              player.incomeSpace,
-              incomeAdvancement,
-            )
-            const newIncome = incomeLevelForSpace(newSpace)
+            const flip = incomeAfterFlip(player.incomeSpace, industry.tile)
 
             // Update player with flipped industry and new income
             updatedPlayers[playerIndex] = {
               ...player,
               industries: newIndustries,
-              income: newIncome,
-              incomeSpace: newSpace,
+              income: flip.income,
+              incomeSpace: flip.incomeSpace,
             }
 
             logMessages.push(
-              `${player.name}'s ${industry.type} at ${industry.location} flipped (income +${incomeAdvancement}, now ${newIncome})`,
+              `${player.name}'s ${industry.type} at ${industry.location} flipped (income +${flip.advancedBy}, now ${flip.income})`,
             )
           }
         }
@@ -1860,7 +1853,11 @@ export const gameStore = setup({
                   remainingShortfall = 0
                 }
 
-                // Remove sold industries (in reverse order to maintain indices)
+                // Remove sold industries (in reverse order to maintain
+                // indices). Copy first: after {...player} the array is
+                // still SHARED with the previous context, and in-place
+                // splices leak through snapshot probes and undo anchors.
+                updatedPlayer.industries = [...updatedPlayer.industries]
                 industriesToRemove.reverse().forEach((index) => {
                   updatedPlayer.industries.splice(index, 1)
                 })

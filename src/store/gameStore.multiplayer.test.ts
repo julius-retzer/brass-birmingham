@@ -4,11 +4,13 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { afterAll, describe, expect, test } from 'vitest'
 import {
+  CHAT_MAX_LENGTH,
   actInGame,
   createGame,
   getGameView,
   joinGame,
   releaseSeat,
+  sendChat,
 } from '../server/mp/game'
 import { loadGame } from '../server/mp/store'
 
@@ -210,5 +212,51 @@ describe('multiplayer: hidden information never crosses the wire', () => {
     const badSecret = await getGameView(host.token, 0, 'guessed-secret-aaaa')
     expect(badSecret?.you).toBeNull()
     expect(badSecret?.snapshot).toBeNull()
+  })
+})
+
+describe('multiplayer: table talk', () => {
+  test('chat requires the right secret, lands for both seats, trims and caps', async () => {
+    const { host, guest } = await freshGame()
+
+    // Wrong secret → rejected, nothing stored.
+    const bad = await sendChat(host.token, 0, 'not-the-secret', 'hi')
+    expect(bad).toStrictEqual({ ok: false, error: 'Not your seat' })
+
+    // Empty / whitespace-only → rejected.
+    const empty = await sendChat(host.token, 0, host.seatSecret, '   ')
+    expect(empty.ok).toBe(false)
+
+    // A real message lands for BOTH seats, with sender name and id.
+    const versionBefore = (await loadGame(host.token))!.version
+    const sent = await sendChat(host.token, 0, host.seatSecret, '  hello  ')
+    expect(sent).toStrictEqual({ ok: true })
+    const hostView = await getGameView(host.token, 0, host.seatSecret)
+    const guestView = await getGameView(
+      host.token,
+      guest.seatId,
+      guest.seatSecret,
+    )
+    expect(hostView!.messages).toHaveLength(1)
+    expect(guestView!.messages).toStrictEqual(hostView!.messages)
+    expect(hostView!.messages[0]).toMatchObject({
+      id: 1,
+      seatId: 0,
+      name: 'Ada',
+      text: 'hello', // trimmed
+    })
+    // chat bumps the version so SSE clients refresh
+    expect((await loadGame(host.token))!.version).toBe(versionBefore + 1)
+
+    // Long messages are capped at CHAT_MAX_LENGTH characters.
+    await sendChat(host.token, 1, guest.seatSecret, 'x'.repeat(2000))
+    const after = await getGameView(host.token, 0, host.seatSecret)
+    expect(after!.messages).toHaveLength(2)
+    expect(after!.messages[1]!.text.length).toBe(CHAT_MAX_LENGTH)
+    expect(after!.messages[1]!.seatId).toBe(1)
+
+    // Spectators (no valid seat) never receive the messages.
+    const anon = await getGameView(host.token, null, null)
+    expect(anon!.messages).toStrictEqual([])
   })
 })

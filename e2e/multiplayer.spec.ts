@@ -67,6 +67,20 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
   await expect(host.getByTestId('round-chip')).toHaveText('Round 2')
   await expect(guest.getByTestId('round-chip')).toHaveText('Round 2')
 
+  /* ---- table talk: message, unread badge, reply ---- */
+  await host.getByTestId('chat-toggle').click()
+  await host.getByTestId('chat-input').fill('good luck!')
+  await host.getByTestId('chat-send').click()
+  // the guest sees an unread badge (panel closed), then reads it
+  await expect(guest.getByTestId('chat-unread')).toHaveText('1')
+  await guest.getByTestId('chat-toggle').click()
+  await expect(guest.getByTestId('chat-list')).toContainText('good luck!')
+  await expect(guest.getByTestId('chat-unread')).toHaveCount(0)
+  // reply flows back to the host's already-open panel
+  await guest.getByTestId('chat-input').fill('you too')
+  await guest.getByTestId('chat-send').click()
+  await expect(host.getByTestId('chat-list')).toContainText('you too')
+
   /* ---- mid-game refresh reclaims the seat from the stored secret ---- */
   await guest.reload()
   await expect(guest.getByTestId('you-chip')).toHaveText('You are Brunel')

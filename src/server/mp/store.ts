@@ -20,6 +20,17 @@ export interface SeatRecord {
   secretHash: string | null
 }
 
+/** One chat line — the shape the captain specified for a messages table
+ * (game id = the enclosing record, sender, text, timestamp). Colocated in
+ * the game file for now; moving to a Drizzle table is a store-level swap. */
+export interface ChatMessage {
+  id: number
+  seatId: number
+  name: string
+  text: string
+  at: string
+}
+
 export interface GameRecord {
   token: string
   phase: 'lobby' | 'playing' | 'over'
@@ -29,6 +40,8 @@ export interface GameRecord {
   seats: SeatRecord[]
   /** persisted XState snapshot of the authoritative engine (null in lobby) */
   snapshot: unknown | null
+  /** per-game table talk (absent in records from before the feature) */
+  messages?: ChatMessage[]
 }
 
 const STORE_DIR = path.join(process.cwd(), '.bb-games')

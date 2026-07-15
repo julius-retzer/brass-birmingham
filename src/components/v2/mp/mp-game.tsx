@@ -36,6 +36,14 @@ interface SeatView {
   claimed: boolean
 }
 
+interface ChatMessageWire {
+  id: number
+  seatId: number
+  name: string
+  text: string
+  at: string
+}
+
 interface GameViewWire {
   token: string
   phase: 'lobby' | 'playing' | 'over'
@@ -43,6 +51,7 @@ interface GameViewWire {
   you: number | null
   seats: SeatView[]
   snapshot: unknown | null
+  messages?: ChatMessageWire[]
 }
 
 interface Creds {
@@ -460,6 +469,128 @@ function ShareLink() {
 
 /* ---------------- the live table ---------------- */
 
+/* ---------------- chat ---------------- */
+
+function ChatPanel({
+  messages,
+  you,
+  seats,
+  onSend,
+}: {
+  messages: ChatMessageWire[]
+  you: number
+  seats: SeatView[]
+  onSend: (text: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [lastSeenId, setLastSeenId] = useState(0)
+  const listRef = useRef<HTMLDivElement | null>(null)
+
+  const latestId = messages[messages.length - 1]?.id ?? 0
+  const unread = open ? 0 : messages.filter((m) => m.id > lastSeenId).length
+
+  // Reading happens while the panel is open — remember the newest id.
+  useEffect(() => {
+    if (open) {
+      setLastSeenId(latestId)
+      const el = listRef.current
+      if (el) el.scrollTop = el.scrollHeight
+    }
+  }, [open, latestId])
+
+  const seatColor = (seatId: number) =>
+    PLAYER_FILL[(seats[seatId]?.color ?? 'red') as keyof typeof PLAYER_FILL]
+
+  const submit = () => {
+    const text = draft.trim()
+    if (!text) return
+    onSend(text)
+    setDraft('')
+  }
+
+  return (
+    <div className="bb2-panel flex flex-col gap-2 p-3">
+      <button
+        type="button"
+        className="flex items-center justify-between"
+        data-testid="chat-toggle"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="bb2-panel-title">Table talk</span>
+        <span className="flex items-center gap-2">
+          {unread > 0 && (
+            <span
+              className="rounded-full px-2 py-0.5 text-[10.5px] font-bold"
+              data-testid="chat-unread"
+              style={{ background: 'var(--bb-brass)', color: '#241a08' }}
+            >
+              {unread}
+            </span>
+          )}
+          <span style={{ color: 'rgba(231,215,177,.5)', fontSize: 11 }}>
+            {open ? '▾' : '▸'}
+          </span>
+        </span>
+      </button>
+      {open && (
+        <>
+          <div
+            ref={listRef}
+            className="flex max-h-48 min-h-0 flex-col gap-1 overflow-y-auto pr-1"
+            data-testid="chat-list"
+          >
+            {messages.map((m) => (
+              <div key={m.id} className="text-[13px] leading-snug">
+                <b style={{ color: seatColor(m.seatId) }}>
+                  {m.seatId === you ? 'You' : m.name}
+                </b>{' '}
+                <span style={{ color: 'var(--bb-parchment)' }}>{m.text}</span>
+              </div>
+            ))}
+            {messages.length === 0 && (
+              <p
+                className="text-[12px]"
+                style={{ color: 'rgba(231,215,177,.4)' }}
+              >
+                No messages yet — say hello.
+              </p>
+            )}
+          </div>
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              submit()
+            }}
+          >
+            <input
+              className="min-w-0 flex-1 rounded border bg-transparent px-3 py-1.5 text-[13px] outline-none"
+              style={{
+                borderColor: 'rgba(231,215,177,.25)',
+                color: 'var(--bb-parchment-bright)',
+              }}
+              data-testid="chat-input"
+              value={draft}
+              maxLength={500}
+              placeholder="Message your opponent…"
+              onChange={(e) => setDraft(e.target.value)}
+            />
+            <button
+              type="submit"
+              className="bb2-ghost-btn"
+              data-testid="chat-send"
+              disabled={draft.trim().length === 0}
+            >
+              Send
+            </button>
+          </form>
+        </>
+      )}
+    </div>
+  )
+}
+
 function MpTable({
   token,
   view,
@@ -829,6 +960,23 @@ function MpTable({
           <MarketsPanel
             coalMarket={ctx.coalMarket}
             ironMarket={ctx.ironMarket}
+          />
+          <ChatPanel
+            messages={view.messages ?? []}
+            you={you}
+            seats={view.seats}
+            onSend={(text) => {
+              void fetch('/api/mp/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  token,
+                  seatId: creds.seatId,
+                  seatSecret: creds.seatSecret,
+                  text,
+                }),
+              }).catch(() => toast.error('Could not send the message'))
+            }}
           />
           <JournalPanel logs={ctx.logs} players={ctx.players} />
         </aside>

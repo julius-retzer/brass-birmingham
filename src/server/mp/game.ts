@@ -10,6 +10,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { createActor } from 'xstate'
 import { gameStore } from '../../store/gameStore'
 import {
+  type ChatMessage,
   type GameRecord,
   type SeatRecord,
   loadGame,
@@ -144,6 +145,8 @@ export interface GameView {
   seats: SeatView[]
   /** per-seat filtered engine snapshot; null until seated & playing */
   snapshot: unknown | null
+  /** table talk — visible to seated players only */
+  messages: ChatMessage[]
 }
 
 const hiddenCard = (tag: string, i: number) => ({
@@ -215,6 +218,7 @@ export function viewFor(
       authed && game.snapshot !== null
         ? filterSnapshotForSeat(game.snapshot, seatId!)
         : null,
+    messages: authed ? (game.messages ?? []) : [],
   }
 }
 
@@ -365,6 +369,43 @@ export async function actInGame(
       game.phase = 'over'
     }
     actor.stop()
+    game.version++
+    game.updatedAt = new Date().toISOString()
+    await saveGame(game)
+    broadcast(token)
+    return { ok: true }
+  })
+}
+
+export const CHAT_MAX_LENGTH = 500
+export const CHAT_HISTORY_CAP = 200
+
+export async function sendChat(
+  token: string,
+  seatId: number,
+  seatSecret: string,
+  text: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  return withGameLock(token, async () => {
+    const game = await loadGame(token)
+    if (!game) return { ok: false, error: 'Game not found' }
+    const seat = game.seats[seatId]
+    if (!seat || !secretMatches(seatSecret, seat.secretHash)) {
+      return { ok: false, error: 'Not your seat' }
+    }
+    const trimmed = text.trim().slice(0, CHAT_MAX_LENGTH)
+    if (trimmed.length === 0) {
+      return { ok: false, error: 'Empty message' }
+    }
+    const messages = game.messages ?? []
+    const message: ChatMessage = {
+      id: (messages[messages.length - 1]?.id ?? 0) + 1,
+      seatId,
+      name: seat.name ?? `Player ${seatId + 1}`,
+      text: trimmed,
+      at: new Date().toISOString(),
+    }
+    game.messages = [...messages, message].slice(-CHAT_HISTORY_CAP)
     game.version++
     game.updatedAt = new Date().toISOString()
     await saveGame(game)

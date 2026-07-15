@@ -1,14 +1,17 @@
-// Durable, dependency-free game store for networked multiplayer.
+// Durable, DB-backed game store for networked multiplayer.
 //
-// Why file-backed JSON (and not the repo's Drizzle/SQLite scaffold): the DB
-// schema is a commented-out template, dev runs with SKIP_ENV_VALIDATION and
-// no DATABASE_URL, and multiplayer needs exactly one access pattern — load/
-// save a single record by unguessable token. One JSON file per game with
-// atomic tmp+rename writes gives durability across dev-server restarts with
-// zero env coupling; migrating to SQLite later is a drop-in swap of this
-// module.
-import { promises as fs } from 'node:fs'
-import path from 'node:path'
+// One row per game in the `games` table (Drizzle, keyed by the unguessable
+// token). This is the single seam between the multiplayer service and
+// persistence: load/save/sweep the whole `GameRecord` by token. Moving off
+// per-file JSON to the DB is what lets game state — including chat — survive
+// a redeploy on an ephemeral box. The chat `messages` and the AI log live IN
+// the row (JSON columns), so a single upsert writes the whole record
+// atomically, replacing the old tmp+rename file trick. Swapping the DB engine
+// later is a config change in `drizzle.config.ts` + `src/server/db/index.ts`,
+// not a rewrite of this module.
+import { eq, lt } from 'drizzle-orm'
+import { db } from '../db'
+import { games } from '../db/schema'
 import { type AiLogEntry, type AiTierId, type AiUsageTotals } from '../ai/types'
 
 export interface SeatRecord {
@@ -25,9 +28,10 @@ export interface SeatRecord {
   aiTier?: AiTierId
 }
 
-/** One chat line — the shape the captain specified for a messages table
- * (game id = the enclosing record, sender, text, timestamp). Colocated in
- * the game file for now; moving to a Drizzle table is a store-level swap. */
+/** One chat line — game id = the enclosing record, plus sender + text +
+ * timestamp. Stored as a JSON column on the game row (loaded/saved with the
+ * whole record); no separate table because there is exactly one access
+ * pattern: the entire record at once. */
 export interface ChatMessage {
   id: number
   seatId: number
@@ -54,33 +58,62 @@ export interface GameRecord {
   }
 }
 
-const STORE_DIR = path.join(process.cwd(), '.bb-games')
-
 /** Games untouched for this long are garbage-collected. */
 export const GAME_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
 const TOKEN_RE = /^[A-Za-z0-9_-]{20,64}$/
 
-function fileFor(token: string): string {
-  if (!TOKEN_RE.test(token)) throw new Error('Malformed game token')
-  return path.join(STORE_DIR, `${token}.json`)
-}
+type GameRow = typeof games.$inferSelect
 
-export async function loadGame(token: string): Promise<GameRecord | null> {
-  try {
-    const raw = await fs.readFile(fileFor(token), 'utf8')
-    return JSON.parse(raw) as GameRecord
-  } catch {
-    return null
+function rowToRecord(row: GameRow): GameRecord {
+  return {
+    token: row.token,
+    phase: row.phase,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    version: row.version,
+    seats: row.seats,
+    snapshot: row.snapshot ?? null,
+    // JSON NULL comes back as null; the record shape uses optional/undefined
+    ...(row.messages != null ? { messages: row.messages } : {}),
+    ...(row.ai != null ? { ai: row.ai } : {}),
   }
 }
 
+function recordToRow(game: GameRecord): GameRow {
+  return {
+    token: game.token,
+    phase: game.phase,
+    createdAt: game.createdAt,
+    updatedAt: game.updatedAt,
+    version: game.version,
+    seats: game.seats,
+    snapshot: game.snapshot ?? null,
+    messages: game.messages ?? null,
+    ai: game.ai ?? null,
+  }
+}
+
+export async function loadGame(token: string): Promise<GameRecord | null> {
+  if (!TOKEN_RE.test(token)) return null
+  const rows = await db
+    .select()
+    .from(games)
+    .where(eq(games.token, token))
+    .limit(1)
+  const row = rows[0]
+  return row ? rowToRecord(row) : null
+}
+
 export async function saveGame(game: GameRecord): Promise<void> {
-  await fs.mkdir(STORE_DIR, { recursive: true })
-  const target = fileFor(game.token)
-  const tmp = `${target}.${process.pid}.${Date.now()}.tmp`
-  await fs.writeFile(tmp, JSON.stringify(game), 'utf8')
-  await fs.rename(tmp, target) // atomic on POSIX
+  if (!TOKEN_RE.test(game.token)) throw new Error('Malformed game token')
+  const row = recordToRow(game)
+  // Single atomic upsert replaces the old tmp-file + rename dance; the caller
+  // already bumped `version`/`updatedAt`.
+  await db
+    .insert(games)
+    .values(row)
+    .onConflictDoUpdate({ target: games.token, set: row })
 }
 
 let lastSweep = 0
@@ -89,23 +122,8 @@ let lastSweep = 0
 export async function sweepStaleGames(now = Date.now()): Promise<void> {
   if (now - lastSweep < 60 * 60 * 1000) return
   lastSweep = now
-  let entries: string[]
-  try {
-    entries = await fs.readdir(STORE_DIR)
-  } catch {
-    return
-  }
-  await Promise.all(
-    entries
-      .filter((f) => f.endsWith('.json'))
-      .map(async (f) => {
-        const p = path.join(STORE_DIR, f)
-        try {
-          const stat = await fs.stat(p)
-          if (now - stat.mtimeMs > GAME_TTL_MS) await fs.unlink(p)
-        } catch {
-          // raced with another sweep — fine
-        }
-      }),
-  )
+  // ISO-8601 timestamps sort lexicographically the same as chronologically,
+  // so a string `<` comparison is a correct TTL cutoff.
+  const cutoff = new Date(now - GAME_TTL_MS).toISOString()
+  await db.delete(games).where(lt(games.updatedAt, cutoff))
 }

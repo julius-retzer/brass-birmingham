@@ -1,5 +1,5 @@
 {
-  "id": "25cad736-e964-4935-b468-23c825256922",
+  "id": "69cb57c5-90cb-4c5b-96b1-b15cef447570",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -8,62 +8,78 @@
       "name": "games",
       "schema": "",
       "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
+        "token": {
+          "name": "token",
+          "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
+          "notNull": true
         },
-        "state": {
-          "name": "state",
+        "phase": {
+          "name": "phase",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'lobby'"
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "player1_name": {
-          "name": "player1_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "player2_name": {
-          "name": "player2_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'waiting_for_player2'"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamp",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
+          "notNull": true
+        },
+        "seats": {
+          "name": "seats",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "snapshot": {
+          "name": "snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "messages": {
+          "name": "messages",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ai": {
+          "name": "ai",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
   "enums": {},
   "schemas": {},
   "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
   "_meta": {
     "columns": {},
     "schemas": {},

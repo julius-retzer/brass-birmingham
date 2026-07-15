@@ -48,5 +48,6 @@ yarn-error.log*
 /test-results/
 /playwright-report/
 
-# multiplayer game store
-/.bb-games/
+# local dev DB file (if DATABASE_URL points at a libsql/sqlite file)
+/local.db
+/local.db-*

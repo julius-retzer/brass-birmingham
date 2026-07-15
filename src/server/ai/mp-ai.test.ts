@@ -1,27 +1,20 @@
 // The AI opponent through the REAL multiplayer service: an AI seat is
 // claimed at creation, acts as a normal server-driven player when its turn
 // comes, logs a public rationale per move, and counts its spend.
-import { promises as fs } from 'node:fs'
-import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { actInGame, createGame, getGameView, releaseSeat } from '../mp/game'
 import { loadGame } from '../mp/store'
+import { ensureTestSchema } from '../../test/db-schema'
 
-const createdTokens: string[] = []
+// The store is DB-backed (Neon/Postgres); set DATABASE_URL to a dev branch.
 
-beforeAll(() => {
+beforeAll(async () => {
   process.env.BB_AI_MOCK = '1'
+  await ensureTestSchema()
 })
 
-afterAll(async () => {
+afterAll(() => {
   delete process.env.BB_AI_MOCK
-  await Promise.all(
-    createdTokens.map((t) =>
-      fs.unlink(path.join(process.cwd(), '.bb-games', `${t}.json`)).catch(
-        () => undefined, // already gone
-      ),
-    ),
-  )
 })
 
 type Ctx = {
@@ -46,7 +39,6 @@ async function waitFor<T>(
 
 async function aiGame() {
   const host = await createGame('Ada', 2, ['apprentice'])
-  createdTokens.push(host.token)
   // With every seat claimed at creation the engine starts immediately; the
   // AI runner may already be taking the first turn — wait for Ada's turn.
   const record = await waitFor(async () => {

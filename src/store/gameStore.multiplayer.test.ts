@@ -1,8 +1,6 @@
 // Multiplayer service tests: server authority, seat security, and — most
 // importantly — that a seat's view NEVER contains another player's cards.
-import { promises as fs } from 'node:fs'
-import path from 'node:path'
-import { afterAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   CHAT_MAX_LENGTH,
   actInGame,
@@ -13,22 +11,17 @@ import {
   sendChat,
 } from '../server/mp/game'
 import { loadGame } from '../server/mp/store'
+import { ensureTestSchema } from '../test/db-schema'
 
-const createdTokens: string[] = []
-
-afterAll(async () => {
-  await Promise.all(
-    createdTokens.map((t) =>
-      fs
-        .unlink(path.join(process.cwd(), '.bb-games', `${t}.json`))
-        .catch(() => {}),
-    ),
-  )
+// The store is DB-backed (Neon/Postgres); set DATABASE_URL to a dev branch.
+// We provision the schema once per run; rows are left in the dev branch (the
+// TTL sweep and the dev-branch lifecycle clean them up).
+beforeAll(async () => {
+  await ensureTestSchema()
 })
 
 async function freshGame() {
   const host = await createGame('Ada', 2)
-  createdTokens.push(host.token)
   const guest = await joinGame(host.token, 'Brunel')
   return { host, guest }
 }
@@ -258,5 +251,56 @@ describe('multiplayer: table talk', () => {
     // Spectators (no valid seat) never receive the messages.
     const anon = await getGameView(host.token, null, null)
     expect(anon!.messages).toStrictEqual([])
+  })
+})
+
+describe('multiplayer: persistence survives a redeploy', () => {
+  // A "restart" for this store is a fresh load from the DB: the store keeps
+  // NO in-memory copy of a game (game.ts's process singletons are pub/sub
+  // and locks only), so a reload by token reconstructs the whole record from
+  // the DB row alone. If that reload returns the played state AND the chat
+  // history, an ephemeral-box redeploy loses nothing.
+  test('a played + chatted game reloads from the DB with identical state and chat', async () => {
+    const { host, guest } = await freshGame()
+
+    // Play a full loan through the engine so the snapshot carries real state.
+    let view = await getGameView(host.token, 0, host.seatSecret)
+    const current = ctxOf(view!).currentPlayerIndex
+    const creds = current === 0 ? host : guest
+    await actInGame(host.token, current, creds.seatSecret, { type: 'TAKE_LOAN' })
+    view = await getGameView(host.token, current, creds.seatSecret)
+    const ownHand = ctxOf(view!).players[current]!.hand
+    await actInGame(host.token, current, creds.seatSecret, {
+      type: 'SELECT_CARD',
+      cardId: ownHand[0]!.id,
+    })
+    await actInGame(host.token, current, creds.seatSecret, { type: 'CONFIRM' })
+
+    // Chat from both seats.
+    await sendChat(host.token, 0, host.seatSecret, 'good game')
+    await sendChat(host.token, 1, guest.seatSecret, 'you too')
+
+    // Snapshot the authoritative record BEFORE the "restart".
+    const before = await loadGame(host.token)
+    expect(before).not.toBeNull()
+
+    // Simulate the redeploy: a brand-new load from the DB, nothing cached.
+    const after = await loadGame(host.token)
+    expect(after).not.toBeNull()
+
+    // Whole record is identical — phase, version, seats, snapshot, and chat.
+    expect(after).toStrictEqual(before)
+    expect(after!.phase).toBe('playing')
+    expect(after!.snapshot).toBeTruthy()
+    expect(after!.messages).toHaveLength(2)
+    expect(after!.messages!.map((m) => m.text)).toEqual([
+      'good game',
+      'you too',
+    ])
+    // The engine state (the loan's money) survived the round-trip.
+    const money = (
+      after!.snapshot as { context: { players: Array<{ money: number }> } }
+    ).context.players[current]!.money
+    expect(money).toBe(47) // £17 + £30 loan
   })
 })

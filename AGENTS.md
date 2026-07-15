@@ -348,10 +348,16 @@ When updating this file, preserve this bar for all agents and keep entries conci
   filtering here.
 - Transport = SSE (`/api/mp/stream`) + POST intents: first-class in Next
   route handlers, EventSource auto-reconnects across dev restarts.
-  WebSockets would need a custom server. Store = one JSON file per game in
-  `.bb-games/` (gitignored), atomic tmp+rename, 7-day TTL sweep — durable
-  across restarts with zero env coupling (the Drizzle schema is a template
-  and dev runs without DATABASE_URL); swap to SQLite = replace store.ts.
+  WebSockets would need a custom server. Store = the `games` table (Drizzle,
+  Neon/Postgres), one row per game keyed by token: jsonb `snapshot`/`seats`/
+  `messages`/`ai`, atomic upsert, 7-day TTL sweep (a DELETE) — so game state
+  and chat SURVIVE a redeploy (`.bb-games/` files, or any ephemeral-disk file,
+  did not). `store.ts` is the single seam (load/save/sweep by token); the DB
+  engine is a config swap in `drizzle.config.ts` + `src/server/db/index.ts`.
+  DATABASE_URL is now REQUIRED (a libsql `file:` URL will NOT connect through
+  neon-http). Migrations in `./drizzle`; apply with `pnpm db:migrate`/`db:push`.
+  Store-touching tests need a live DB (a Neon dev branch) — they self-provision
+  the schema via `src/test/db-schema.ts`; the engine suite still runs offline.
 - Chat + turn notifications (2026-07-15): messages live ON the game record
   (`store.ts ChatMessage`, capped 200×500 chars; POST /api/mp/chat auths
   like act; only authed seats receive them in `viewFor`). Turn notifications

@@ -1,9 +1,11 @@
 'use client'
 
-// The company charter — local hotseat setup, or opening an online table.
+// The company charter — local hotseat setup, opening an online table, or
+// founding a company against server-driven AI opponents.
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { AI_TIERS, type AiTierId } from '~/server/ai/types'
 import { type Player } from '~/store/gameStore'
 import { PLAYER_FILL } from './board/board-map'
 
@@ -16,6 +18,13 @@ const CHARACTERS: Player['character'][] = [
 ]
 const DEFAULT_NAMES = ['Eliza', 'Isambard', 'George', 'Richard']
 
+const TIER_ORDER: AiTierId[] = [
+  'apprentice',
+  'foreman',
+  'magnate',
+  'ironmaster',
+]
+
 export type SetupPlayer = Omit<
   Player,
   'hand' | 'links' | 'industries' | 'incomeSpace'
@@ -27,9 +36,14 @@ export function SetupScreen({
   onStart: (players: SetupPlayer[]) => void
 }) {
   const router = useRouter()
-  const [mode, setMode] = useState<'local' | 'online'>('local')
+  const [mode, setMode] = useState<'local' | 'online' | 'ai'>('local')
   const [count, setCount] = useState(3)
   const [names, setNames] = useState<string[]>(DEFAULT_NAMES)
+  const [tiers, setTiers] = useState<AiTierId[]>([
+    'foreman',
+    'foreman',
+    'foreman',
+  ])
   const [creating, setCreating] = useState(false)
 
   const createOnline = async () => {
@@ -41,6 +55,7 @@ export function SetupScreen({
         body: JSON.stringify({
           name: names[0]?.trim() || DEFAULT_NAMES[0],
           playerCount: count,
+          ...(mode === 'ai' ? { opponents: tiers.slice(0, count - 1) } : {}),
         }),
       })
       const body = (await res.json()) as {
@@ -105,7 +120,7 @@ export function SetupScreen({
       >
         <span className="bb2-panel-title">Company charter</span>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <button
             type="button"
             className="bb2-option justify-center py-2"
@@ -128,6 +143,17 @@ export function SetupScreen({
               Play online
             </span>
           </button>
+          <button
+            type="button"
+            className="bb2-option justify-center py-2"
+            data-selected={mode === 'ai'}
+            data-testid="mode-ai"
+            onClick={() => setMode('ai')}
+          >
+            <span className="text-[11.5px] font-bold uppercase tracking-[0.14em]">
+              Versus AI
+            </span>
+          </button>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -148,7 +174,7 @@ export function SetupScreen({
         </div>
 
         <div className="flex flex-col gap-2">
-          {Array.from({ length: mode === 'online' ? 1 : count }, (_, i) => (
+          {Array.from({ length: mode === 'local' ? count : 1 }, (_, i) => (
             <div key={i} className="flex items-center gap-3">
               <span
                 className="h-8 w-2 flex-none rounded-full"
@@ -163,7 +189,7 @@ export function SetupScreen({
                     return next
                   })
                 }
-                placeholder={mode === 'online' ? 'Your name' : DEFAULT_NAMES[i]}
+                placeholder={mode === 'local' ? DEFAULT_NAMES[i] : 'Your name'}
                 data-testid={`name-${i}`}
                 className="w-full rounded border bg-transparent px-3 py-2 text-[14px] outline-none transition-colors"
                 style={{
@@ -179,6 +205,47 @@ export function SetupScreen({
               </span>
             </div>
           ))}
+          {mode === 'ai' &&
+            Array.from({ length: count - 1 }, (_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <span
+                  className="h-8 w-2 flex-none rounded-full"
+                  style={{ background: PLAYER_FILL[COLORS[i + 1]!] }}
+                />
+                <div className="grid w-full grid-cols-4 gap-1.5">
+                  {TIER_ORDER.map((tierId) => {
+                    const tier = AI_TIERS[tierId]
+                    return (
+                      <button
+                        key={tierId}
+                        type="button"
+                        className="bb2-option flex-col justify-center gap-0.5 px-1 py-1.5"
+                        data-selected={tiers[i] === tierId}
+                        data-testid={`ai-tier-${i}-${tierId}`}
+                        title={`${tier.label} — ${tier.model}`}
+                        onClick={() =>
+                          setTiers((prev) => {
+                            const next = [...prev]
+                            next[i] = tierId
+                            return next
+                          })
+                        }
+                      >
+                        <span className="text-[10px] font-bold uppercase tracking-[0.08em]">
+                          {tier.difficulty}
+                        </span>
+                        <span
+                          className="text-[9px]"
+                          style={{ color: 'rgba(231,215,177,.55)' }}
+                        >
+                          {tier.label.replace('The ', '')}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
           {mode === 'online' && (
             <p
               className="text-[12px]"
@@ -187,6 +254,16 @@ export function SetupScreen({
               You&rsquo;ll get a link to share — the other{' '}
               {count - 1 === 1 ? 'player claims' : 'players claim'} their seats
               by opening it. No accounts, ever.
+            </p>
+          )}
+          {mode === 'ai' && (
+            <p
+              className="text-[12px]"
+              style={{ color: 'rgba(231,215,177,.5)' }}
+            >
+              Each AI rival is a Claude model — harder rivals think with
+              stronger models. You&rsquo;ll see a one-line rationale for every
+              move they make.
             </p>
           )}
         </div>
@@ -203,7 +280,11 @@ export function SetupScreen({
             disabled={creating}
             onClick={() => void createOnline()}
           >
-            {creating ? 'Opening the table…' : 'Open an online table'}
+            {creating
+              ? 'Opening the table…'
+              : mode === 'ai'
+                ? 'Found the company'
+                : 'Open an online table'}
           </button>
         )}
       </div>

@@ -35,6 +35,31 @@ interface SeatView {
   name: string | null
   color: string
   claimed: boolean
+  kind?: 'human' | 'ai'
+  aiTier?: { id: string; label: string; difficulty: string; model: string }
+}
+
+interface AiLogEntryWire {
+  seatId: number
+  era: string
+  round: number
+  eventType: string
+  label: string
+  rationale: string | null
+  fallback: boolean
+  at: string
+}
+
+interface AiViewWire {
+  thinkingSeatId: number | null
+  log: AiLogEntryWire[]
+  usage: {
+    calls: number
+    inputTokens: number
+    outputTokens: number
+    costUsd: number
+    fallbacks: number
+  }
 }
 
 interface ChatMessageWire {
@@ -53,6 +78,7 @@ interface GameViewWire {
   seats: SeatView[]
   snapshot: unknown | null
   messages?: ChatMessageWire[]
+  ai?: AiViewWire
 }
 
 interface Creds {
@@ -887,6 +913,10 @@ function MpTable({
     ? ctx.players.find((p) => p.id === ledgerFor)
     : null
 
+  const currentSeat = view.seats[ctx.currentPlayerIndex]
+  const aiTurn = currentSeat?.kind === 'ai'
+  const aiIsThinking = aiTurn && view.ai?.thinkingSeatId === currentSeat?.seatId
+
   return (
     <div className="flex min-h-screen flex-col lg:h-screen lg:overflow-hidden">
       {/* masthead */}
@@ -995,6 +1025,38 @@ function MpTable({
                   max: maxActions,
                 }}
               />
+            ) : aiTurn ? (
+              <div className="flex flex-col gap-2" data-testid="ai-panel">
+                <span className="bb2-panel-title">The rival&rsquo;s desk</span>
+                <p
+                  className="text-[14px]"
+                  style={{ color: 'var(--bb-parchment)' }}
+                >
+                  <b style={{ color: 'var(--bb-brass-bright)' }}>
+                    {currentPlayer.name}
+                  </b>{' '}
+                  <span
+                    className="text-[11px] uppercase tracking-[0.12em]"
+                    style={{ color: 'rgba(231,215,177,.5)' }}
+                  >
+                    ({currentSeat?.aiTier?.difficulty ?? 'ai'})
+                  </span>{' '}
+                  {aiIsThinking ? (
+                    <span className="animate-pulse" data-testid="ai-thinking">
+                      is thinking…
+                    </span>
+                  ) : (
+                    <span>is moving…</span>
+                  )}
+                </p>
+                <p
+                  className="text-[12px]"
+                  style={{ color: 'rgba(231,215,177,.5)' }}
+                >
+                  Its moves and reasoning appear in the rival&rsquo;s journal
+                  below.
+                </p>
+              </div>
             ) : (
               <div className="flex flex-col gap-2" data-testid="waiting-panel">
                 <span className="bb2-panel-title">The table</span>
@@ -1017,6 +1079,7 @@ function MpTable({
               </div>
             )}
           </div>
+          {view.ai && <AiMindPanel ai={view.ai} seats={view.seats} />}
           <MarketsPanel
             coalMarket={ctx.coalMarket}
             ironMarket={ctx.ironMarket}
@@ -1065,6 +1128,79 @@ function MpTable({
       )}
 
       <Toaster theme="dark" position="top-right" />
+    </div>
+  )
+}
+
+/** The AI's public journal: one-line rationales per move + the spend meter. */
+function AiMindPanel({
+  ai,
+  seats,
+}: {
+  ai: AiViewWire
+  seats: SeatView[]
+}) {
+  const nameOf = (seatId: number) =>
+    seats.find((s) => s.seatId === seatId)?.name ?? `Seat ${seatId + 1}`
+  // Steps the model reasoned about, plus fallbacks (worth flagging) —
+  // silent auto-steps (confirms, single legal moves) stay out of the way.
+  const entries = ai.log
+    .filter((e) => e.rationale !== null || e.fallback)
+    .slice(-8)
+  return (
+    <div className="bb2-panel flex flex-col gap-2 p-4" data-testid="ai-mind">
+      <span className="bb2-panel-title">The rival&rsquo;s journal</span>
+      {entries.length === 0 ? (
+        <p className="text-[12px]" style={{ color: 'rgba(231,215,177,.45)' }}>
+          The AI has not moved yet.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {entries
+            .slice()
+            .reverse()
+            .map((e, i) => (
+              <div
+                key={`${e.at}-${i}`}
+                className="text-[12px] leading-snug"
+                data-testid="ai-rationale"
+                style={{ color: 'var(--bb-parchment)' }}
+              >
+                <span style={{ color: 'var(--bb-brass)' }}>
+                  {nameOf(e.seatId)}
+                </span>{' '}
+                — {e.label}
+                <br />
+                {e.rationale !== null && (
+                  <span
+                    className="italic"
+                    style={{ color: 'rgba(231,215,177,.6)' }}
+                  >
+                    &ldquo;{e.rationale}&rdquo;
+                  </span>
+                )}
+                {e.fallback && (
+                  <span
+                    className="ml-1 text-[10px] uppercase"
+                    style={{ color: 'rgba(231,215,177,.4)' }}
+                    title="The model's picks were illegal; a safe default move was played"
+                  >
+                    (fallback)
+                  </span>
+                )}
+              </div>
+            ))}
+        </div>
+      )}
+      <p
+        className="text-[11px]"
+        data-testid="ai-cost"
+        style={{ color: 'rgba(231,215,177,.45)' }}
+      >
+        AI spend: ${ai.usage.costUsd.toFixed(4)} · {ai.usage.calls} model{' '}
+        {ai.usage.calls === 1 ? 'call' : 'calls'}
+        {ai.usage.fallbacks > 0 ? ` · ${ai.usage.fallbacks} fallbacks` : ''}
+      </p>
     </div>
   )
 }

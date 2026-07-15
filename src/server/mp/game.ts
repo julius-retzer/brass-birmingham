@@ -10,6 +10,16 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { createActor } from 'xstate'
 import { gameStore } from '../../store/gameStore'
 import { refreshEmbeddedTileStats } from '../../store/saveMigration'
+import { STEP_SAFETY_BUDGET, aiDecideAndApply } from '../ai/driver'
+import { defaultProvider, hasAnthropicKey, isMockMode } from '../ai/provider'
+import {
+  AI_TIERS,
+  type AiLogEntry,
+  type AiTierId,
+  type AiUsageTotals,
+  emptyUsageTotals,
+  isAiTierId,
+} from '../ai/types'
 import {
   type ChatMessage,
   type GameRecord,
@@ -38,9 +48,15 @@ type Listener = () => void
 const g = globalThis as unknown as {
   __bbMpBus?: Map<string, Set<Listener>>
   __bbMpLocks?: Map<string, Promise<unknown>>
+  __bbAiRunning?: Set<string>
+  __bbAiThinking?: Map<string, number>
 }
 const bus = (g.__bbMpBus ??= new Map())
 const locks = (g.__bbMpLocks ??= new Map())
+/** tokens with an AI turn-runner in flight (single runner per game) */
+const aiRunning = (g.__bbAiRunning ??= new Set())
+/** token → seatId currently waiting on a model decision */
+const aiThinking = (g.__bbAiThinking ??= new Map())
 
 export function subscribe(token: string, fn: Listener): () => void {
   const set = bus.get(token) ?? new Set()
@@ -144,6 +160,16 @@ export interface SeatView {
   name: string | null
   color: string
   claimed: boolean
+  kind: 'human' | 'ai'
+  /** tier id + display label for AI seats */
+  aiTier?: { id: AiTierId; label: string; difficulty: string; model: string }
+}
+
+/** Public AI-table facts: rationales and spend are visible to everyone. */
+export interface AiView {
+  thinkingSeatId: number | null
+  log: AiLogEntry[]
+  usage: AiUsageTotals
 }
 
 export interface GameView {
@@ -156,6 +182,8 @@ export interface GameView {
   snapshot: unknown | null
   /** table talk — visible to seated players only */
   messages: ChatMessage[]
+  /** present when the table has AI seats */
+  ai?: AiView
 }
 
 const hiddenCard = (tag: string, i: number) => ({
@@ -201,12 +229,38 @@ export function filterSnapshotForSeat(
 }
 
 function seatViews(game: GameRecord): SeatView[] {
-  return game.seats.map((s) => ({
-    seatId: s.seatId,
-    name: s.name,
-    color: s.color,
-    claimed: s.claimed,
-  }))
+  return game.seats.map((s) => {
+    const tier = s.kind === 'ai' && s.aiTier ? AI_TIERS[s.aiTier] : null
+    return {
+      seatId: s.seatId,
+      name: s.name,
+      color: s.color,
+      claimed: s.claimed,
+      kind: s.kind === 'ai' ? ('ai' as const) : ('human' as const),
+      ...(tier
+        ? {
+            aiTier: {
+              id: tier.id,
+              label: tier.label,
+              difficulty: tier.difficulty,
+              model: tier.model,
+            },
+          }
+        : {}),
+    }
+  })
+}
+
+const AI_LOG_WIRE_LIMIT = 30
+
+function aiView(game: GameRecord): AiView | undefined {
+  if (!game.seats.some((s) => s.kind === 'ai')) return undefined
+  const ai = game.ai ?? { log: [], usage: emptyUsageTotals() }
+  return {
+    thinkingSeatId: aiThinking.get(game.token) ?? null,
+    log: ai.log.slice(-AI_LOG_WIRE_LIMIT),
+    usage: ai.usage,
+  }
 }
 
 export function viewFor(
@@ -217,6 +271,7 @@ export function viewFor(
   const seat =
     seatId !== null && seatSecret !== null ? game.seats[seatId] : undefined
   const authed = !!seat && secretMatches(seatSecret!, seat.secretHash)
+  const ai = aiView(game)
   return {
     token: game.token,
     phase: game.phase,
@@ -228,6 +283,7 @@ export function viewFor(
         ? filterSnapshotForSeat(game.snapshot, seatId!)
         : null,
     messages: authed ? (game.messages ?? []) : [],
+    ...(ai ? { ai } : {}),
   }
 }
 
@@ -236,20 +292,47 @@ export function viewFor(
 export async function createGame(
   hostName: string,
   playerCount: number,
+  /** seats 1..n-1: 'human' keeps the seat open for a join; a tier id
+   *  seats an AI opponent driven by the server */
+  opponents: Array<'human' | AiTierId> = [],
 ): Promise<{ token: string; seatId: number; seatSecret: string }> {
   await sweepStaleGames()
   if (playerCount < 2 || playerCount > 4) throw new Error('2–4 players')
+  const hasAi = opponents.some((o) => o !== 'human')
+  if (hasAi && !hasAnthropicKey() && !isMockMode()) {
+    throw new Error(
+      'AI opponents are not available: the server has no ANTHROPIC_API_KEY.',
+    )
+  }
   const token = newToken()
   const secret = newSecret()
   const now = new Date().toISOString()
-  const seats: SeatRecord[] = Array.from({ length: playerCount }, (_, i) => ({
-    seatId: i,
-    name: i === 0 ? hostName.slice(0, 24) || 'Host' : null,
-    color: COLORS[i]!,
-    character: CHARACTERS[i]!,
-    claimed: i === 0,
-    secretHash: i === 0 ? hash(secret) : null,
-  }))
+  const seats: SeatRecord[] = Array.from({ length: playerCount }, (_, i) => {
+    const opponent = i === 0 ? 'human' : (opponents[i - 1] ?? 'human')
+    if (opponent !== 'human') {
+      if (!isAiTierId(opponent)) throw new Error('Unknown AI difficulty')
+      const tier = AI_TIERS[opponent]
+      return {
+        seatId: i,
+        name: tier.label,
+        color: COLORS[i]!,
+        character: CHARACTERS[i]!,
+        claimed: true,
+        secretHash: null,
+        kind: 'ai' as const,
+        aiTier: tier.id,
+      }
+    }
+    return {
+      seatId: i,
+      name: i === 0 ? hostName.slice(0, 24) || 'Host' : null,
+      color: COLORS[i]!,
+      character: CHARACTERS[i]!,
+      claimed: i === 0,
+      secretHash: i === 0 ? hash(secret) : null,
+      kind: 'human' as const,
+    }
+  })
   const game: GameRecord = {
     token,
     phase: 'lobby',
@@ -258,8 +341,13 @@ export async function createGame(
     version: 1,
     seats,
     snapshot: null,
+    ...(hasAi ? { ai: { log: [], usage: emptyUsageTotals() } } : {}),
+  }
+  if (game.seats.every((s) => s.claimed)) {
+    startEngine(game)
   }
   await saveGame(game)
+  kickAiTurns(token)
   return { token, seatId: 0, seatSecret: secret }
 }
 
@@ -304,6 +392,7 @@ export async function joinGame(
     game.updatedAt = new Date().toISOString()
     await saveGame(game)
     broadcast(token)
+    kickAiTurns(token)
     return { seatId: seat.seatId, seatSecret: secret }
   })
 }
@@ -323,6 +412,7 @@ export async function releaseSeat(
     if (targetSeatId === 0) throw new Error('The host seat cannot be released')
     const seat = game.seats[targetSeatId]
     if (!seat) throw new Error('No such seat')
+    if (seat.kind === 'ai') throw new Error('AI seats cannot be released')
     seat.claimed = false
     seat.secretHash = null
     // the engine player's name is fixed after START_GAME; the seat is
@@ -382,6 +472,7 @@ export async function actInGame(
     game.updatedAt = new Date().toISOString()
     await saveGame(game)
     broadcast(token)
+    kickAiTurns(token)
     return { ok: true }
   })
 }
@@ -421,6 +512,117 @@ export async function sendChat(
     broadcast(token)
     return { ok: true }
   })
+}
+
+/* ---------------- the AI turn runner ---------------- */
+
+/**
+ * Start the AI turn-runner for this game unless one is already in flight.
+ * Safe to call from anywhere (create/join/act/stream-connect) — it no-ops
+ * instantly when the current player is human or the game is over.
+ */
+export function kickAiTurns(token: string): void {
+  if (aiRunning.has(token)) return
+  aiRunning.add(token)
+  void runAiTurns(token)
+    .catch(() => {
+      // the runner never propagates — a failed decision is logged in-game
+    })
+    .finally(() => {
+      aiRunning.delete(token)
+      if (aiThinking.delete(token)) broadcast(token)
+    })
+}
+
+/** Model calls per AI turn before the driver goes safety-first (cost cap). */
+const MODEL_CALL_TURN_BUDGET = 30
+
+async function runAiTurns(token: string): Promise<void> {
+  let stepsThisTurn = 0
+  let modelCallsThisTurn = 0
+  let lastSeat = -1
+  for (;;) {
+    // Peek outside the lock: is it an AI's turn at all?
+    const peek = await loadGame(token)
+    if (!peek || peek.phase !== 'playing' || peek.snapshot === null) return
+    const ctx = (peek.snapshot as { context: { currentPlayerIndex: number } })
+      .context
+    const seat = peek.seats[ctx.currentPlayerIndex]
+    if (!seat || seat.kind !== 'ai' || !seat.aiTier) return
+
+    if (seat.seatId !== lastSeat) {
+      lastSeat = seat.seatId
+      stepsThisTurn = 0
+      modelCallsThisTurn = 0
+    }
+    stepsThisTurn += 1
+
+    // Publish "thinking" so every client shows the state immediately.
+    aiThinking.set(token, seat.seatId)
+    broadcast(token)
+
+    const tier = AI_TIERS[seat.aiTier]
+    let outcome
+    try {
+      // The decision (incl. the model call) runs outside the game lock —
+      // it is this seat's turn, so no competing writer exists; the apply
+      // below re-validates against the freshest record under the lock.
+      outcome = await aiDecideAndApply({
+        persisted: peek.snapshot,
+        seatIndex: seat.seatId,
+        provider: defaultProvider(),
+        tier,
+        forceSafe:
+          stepsThisTurn > STEP_SAFETY_BUDGET ||
+          modelCallsThisTurn > MODEL_CALL_TURN_BUDGET,
+      })
+      modelCallsThisTurn += outcome.usage.calls
+    } catch {
+      aiThinking.delete(token)
+      broadcast(token)
+      return
+    }
+
+    const done = await withGameLock(token, async () => {
+      const game = await loadGame(token)
+      if (!game || game.phase !== 'playing' || game.snapshot === null) {
+        return true
+      }
+      // the world moved while we were thinking (release, restart, …)
+      if (game.version !== peek.version) return false
+      game.snapshot = outcome.snapshot
+      const after = outcome.snapshot as {
+        status?: string
+        context: { era: string; round: number }
+      }
+      const engineDone = after.status === 'done'
+      if (engineDone) game.phase = 'over'
+      const ai = (game.ai ??= { log: [], usage: emptyUsageTotals() })
+      ai.log.push({
+        seatId: seat.seatId,
+        era: after.context.era,
+        round: after.context.round,
+        eventType: outcome.move.event.type,
+        label: outcome.move.label,
+        rationale: outcome.rationale,
+        fallback: outcome.fallback,
+        at: new Date().toISOString(),
+      })
+      if (ai.log.length > 500) ai.log = ai.log.slice(-400)
+      ai.usage.calls += outcome.usage.calls
+      ai.usage.inputTokens += outcome.usage.inputTokens
+      ai.usage.outputTokens += outcome.usage.outputTokens
+      ai.usage.costUsd += outcome.usage.costUsd
+      ai.usage.fallbacks += outcome.usage.fallbacks
+      game.version++
+      game.updatedAt = new Date().toISOString()
+      await saveGame(game)
+      aiThinking.delete(token)
+      broadcast(token)
+      return engineDone
+    })
+    if (done) return
+  }
 }
 
 export async function getGameView(

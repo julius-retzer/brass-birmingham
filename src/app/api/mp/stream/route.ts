@@ -2,7 +2,7 @@
 // Sends the current view on connect and on every game change; EventSource
 // reconnects automatically after dev-server restarts (the store is on disk).
 import { type NextRequest } from 'next/server'
-import { getGameView, subscribe } from '~/server/mp/game'
+import { getGameView, kickAiTurns, subscribe } from '~/server/mp/game'
 import { loadGame } from '~/server/mp/store'
 
 export const runtime = 'nodejs'
@@ -17,6 +17,10 @@ export async function GET(req: NextRequest) {
 
   const game = await loadGame(token).catch(() => null)
   if (!game) return new Response('Game not found', { status: 404 })
+
+  // Recovery: if the server restarted mid-AI-turn, the first client to
+  // reconnect restarts the turn-runner (no-op when it's a human's turn).
+  kickAiTurns(token)
 
   const encoder = new TextEncoder()
   let unsub = () => {}

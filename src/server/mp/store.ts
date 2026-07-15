@@ -9,6 +9,7 @@
 // module.
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import { type AiLogEntry, type AiTierId, type AiUsageTotals } from '../ai/types'
 
 export interface SeatRecord {
   seatId: number
@@ -18,6 +19,10 @@ export interface SeatRecord {
   claimed: boolean
   /** sha256 of the seat secret; the plain secret only ever goes to its owner */
   secretHash: string | null
+  /** 'ai' seats are server-driven; absent/'human' seats need a secret */
+  kind?: 'human' | 'ai'
+  /** difficulty tier for 'ai' seats */
+  aiTier?: AiTierId
 }
 
 /** One chat line — the shape the captain specified for a messages table
@@ -42,6 +47,11 @@ export interface GameRecord {
   snapshot: unknown | null
   /** per-game table talk (absent in records from before the feature) */
   messages?: ChatMessage[]
+  /** present when the table has AI seats: their move log + spend counter */
+  ai?: {
+    log: AiLogEntry[]
+    usage: AiUsageTotals
+  }
 }
 
 const STORE_DIR = path.join(process.cwd(), '.bb-games')

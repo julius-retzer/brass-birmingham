@@ -18,12 +18,13 @@
     "typecheck": "tsc --noEmit",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
-    "test": "vitest run src/store/gameStore.*.test.ts src/data/*.test.ts src/components/v2/mp/*.test.ts",
-    "test:watch": "vitest src/store/gameStore.*.test.ts src/data/*.test.ts src/components/v2/mp/*.test.ts",
+    "test": "vitest run src/store/gameStore.*.test.ts src/data/*.test.ts src/components/v2/mp/*.test.ts src/server/ai/*.test.ts",
+    "test:watch": "vitest src/store/gameStore.*.test.ts src/data/*.test.ts src/components/v2/mp/*.test.ts src/server/ai/*.test.ts",
     "test:all": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
     "@libsql/client": "^0.9.0",
     "@neondatabase/serverless": "^1.0.1",
     "@t3-oss/env-nextjs": "^0.10.1",

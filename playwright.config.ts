@@ -13,7 +13,9 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'SKIP_ENV_VALIDATION=1 pnpm dev --port 3199',
+    // BB_AI_MOCK: AI-opponent journeys run against the deterministic mock
+    // provider — no network, no ANTHROPIC_API_KEY, zero cost.
+    command: 'SKIP_ENV_VALIDATION=1 BB_AI_MOCK=1 pnpm dev --port 3199',
     url: 'http://localhost:3199',
     reuseExistingServer: true,
     timeout: 120_000,

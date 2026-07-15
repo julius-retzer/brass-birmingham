@@ -42,7 +42,7 @@ describe('serializeGameState', () => {
     const text = serializeGameState(snap, 0)
     expect(text).toContain('CANAL ERA, round 1')
     expect(text).toContain('== YOU (Ada) ==')
-    expect(text).toContain('Money £17 | income 10 | victory points 0')
+    expect(text).toContain('Money £17 | income 0 | victory points 0')
     expect(text).toContain('== OPPONENT: Brunel ==')
     expect(text).toContain('== MARKETS ==')
     expect(text).toMatch(/Coal: next cube costs £\d/)

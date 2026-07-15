@@ -144,7 +144,7 @@ describe('aiDecideAndApply', () => {
     expect(outcomes[2]!.usage.calls).toBe(0)
     const ctx = ctxOf(after)
     expect(ctx.players[seatIndex]!.money).toBe(47)
-    expect(ctx.players[seatIndex]!.income).toBe(7)
+    expect(ctx.players[seatIndex]!.income).toBe(-3)
     // turn ended (round 1 has a single action)
     expect(ctx.currentPlayerIndex).not.toBe(seatIndex)
   })

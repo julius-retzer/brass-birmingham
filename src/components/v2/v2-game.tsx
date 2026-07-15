@@ -16,12 +16,7 @@ import { Component, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { createActor } from 'xstate'
 import { Toaster } from '~/components/ui/sonner'
-import {
-  type CityId,
-  cities,
-  cityIndustrySlots,
-  connections,
-} from '~/data/board'
+import { type CityId, cities, connections } from '~/data/board'
 import { type Card, type IndustryType } from '~/data/cards'
 import {
   type GameEvent,
@@ -46,6 +41,7 @@ import { demoSnapshotRail } from './demo/demo-snapshot-rail'
 import { demoSnapshotSell } from './demo/demo-snapshot-sell'
 import { demoSnapshotWilds } from './demo/demo-snapshot-wilds'
 import { HandTray } from './hand-tray'
+import { computeHoverCities } from './hover-highlight'
 import { GameOverScreen, PassGate } from './overlays'
 import { PlayerLedger } from './player-ledger'
 import { PlayerRail } from './player-rail'
@@ -645,32 +641,16 @@ function V2GameInner({
     [currentPlayer],
   )
 
-  // Hovering a hand card previews its targets on the map: a location
-  // card spotlights its city; an industry card spotlights cities with a
-  // matching slot inside the player's network (anywhere while they have
-  // no presence). A soft HINT for orientation — build legality proper is
-  // still decided by the machine when the flow starts.
-  const hoverCities = useMemo(() => {
-    if (!hoveredCard || !currentPlayer) return null
-    if (hoveredCard.type === 'location') {
-      return new Set<string>([hoveredCard.location])
-    }
-    if (hoveredCard.type !== 'industry') return null // wilds: anywhere
-    const network = networkCities ?? new Set<CityId>()
-    const anywhere = network.size === 0
-    const set = new Set<string>()
-    for (const [cityId, slots] of Object.entries(cityIndustrySlots)) {
-      if (!anywhere && !network.has(cityId as CityId)) continue
-      if (
-        slots.some((slot) =>
-          hoveredCard.industries.some((t) => slot.includes(t)),
-        )
-      ) {
-        set.add(cityId)
-      }
-    }
-    return set
-  }, [hoveredCard, currentPlayer, networkCities])
+  // Hovering a hand card previews its targets on the map (shared with the
+  // networked surface via computeHoverCities): a location card spotlights
+  // its city; an industry card spotlights cities with a matching slot
+  // inside the player's network. A soft HINT for orientation — build
+  // legality proper is still decided by the machine when the flow starts.
+  const hoverCities = useMemo(
+    () =>
+      currentPlayer ? computeHoverCities(hoveredCard, networkCities) : null,
+    [hoveredCard, currentPlayer, networkCities],
+  )
 
   // A lingering hover from the previous turn must not haunt the next one.
   useEffect(() => {

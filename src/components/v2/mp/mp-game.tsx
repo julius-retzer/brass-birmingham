@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { createActor } from 'xstate'
 import { Toaster } from '~/components/ui/sonner'
 import { type CityId, cities, connections } from '~/data/board'
+import type { Card } from '~/data/cards'
 import {
   type GameStoreSnapshot,
   type Player,
@@ -22,6 +23,7 @@ import { ActionDock, SELLABLE, getHandSelection } from '../action-dock'
 import { linkKey } from '../board/board-data'
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from '../board/board-map'
 import { HandTray } from '../hand-tray'
+import { computeHoverCities } from '../hover-highlight'
 import { GameOverScreen } from '../overlays'
 import { PlayerLedger } from '../player-ledger'
 import { PlayerRail } from '../player-rail'
@@ -628,6 +630,7 @@ function MpTable({
   creds: Creds
 }) {
   const [ledgerFor, setLedgerFor] = useState<string | null>(null)
+  const [hoveredCard, setHoveredCard] = useState<Card | null>(null)
 
   // Read-only actor per broadcast: gives the dock/board the snapshot shape
   // (`matches`, `can`, context) they already understand.
@@ -759,6 +762,15 @@ function MpTable({
     }
     return set
   }, [pickingSite, state])
+
+  // Hovering a card in my hand previews its build targets on the map,
+  // scoped to my own network — the same soft hint as the hotseat surface
+  // (shared via computeHoverCities). The tray only ever shows my hand, so
+  // the preview always reflects where I could build.
+  const hoverCities = useMemo(
+    () => computeHoverCities(hoveredCard, me ? playerNetworkCities(me) : null),
+    [hoveredCard, me],
+  )
 
   const legalLinks = useMemo(() => {
     if ((!pickingLink && !pickingSecondLink) || !state || !ctx) return null
@@ -1008,6 +1020,7 @@ function MpTable({
               onLinkClick={onLinkClick}
               networkCities={me ? playerNetworkCities(me) : null}
               networkColor={me ? PLAYER_FILL[me.color] : null}
+              hoverCities={hoverCities}
             />
           </div>
         </div>
@@ -1116,6 +1129,7 @@ function MpTable({
         onSelect={(cardId) => send({ type: 'SELECT_CARD', cardId })}
         selectedIds={handSel?.selectedIds ?? []}
         hint={handSel?.hint ?? null}
+        onHoverCard={setHoveredCard}
       />
 
       {ledgerPlayer && (

@@ -358,6 +358,12 @@ When updating this file, preserve this bar for all agents and keep entries conci
   neon-http). Migrations in `./drizzle`; apply with `pnpm db:migrate`/`db:push`.
   Store-touching tests need a live DB (a Neon dev branch) — they self-provision
   the schema via `src/test/db-schema.ts`; the engine suite still runs offline.
+  Neon project `muddy-night-85782525` (name "brass"); branches: `main`=prod,
+  `dev`, `preview`. Point `.env` DATABASE_URL at the branch you want
+  (`neonctl connection-string <branch> --project-id muddy-night-85782525`) —
+  tests + local dev use `dev`. Those DB-backed suites run ~30s over the
+  network (vs instant files), so they set a 30s per-file timeout via
+  `vi.setConfig`; leave the global 5s for the in-memory engine suite.
 - Chat + turn notifications (2026-07-15): messages live ON the game record
   (`store.ts ChatMessage`, capped 200×500 chars; POST /api/mp/chat auths
   like act; only authed seats receive them in `viewFor`). Turn notifications

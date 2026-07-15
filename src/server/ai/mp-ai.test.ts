@@ -1,12 +1,15 @@
 // The AI opponent through the REAL multiplayer service: an AI seat is
 // claimed at creation, acts as a normal server-driven player when its turn
 // comes, logs a public rationale per move, and counts its spend.
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
 import { actInGame, createGame, getGameView, releaseSeat } from '../mp/game'
 import { loadGame } from '../mp/store'
 import { ensureTestSchema } from '../../test/db-schema'
 
 // The store is DB-backed (Neon/Postgres); set DATABASE_URL to a dev branch.
+// A full AI turn is many sequential engine steps, each persisted over the
+// network, so raise the global 5s per-test timeout for this file.
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 })
 
 beforeAll(async () => {
   process.env.BB_AI_MOCK = '1'
@@ -89,12 +92,14 @@ describe('multiplayer with an AI opponent', () => {
     ).toBe(true)
 
     // The AI turn runs in the background; wait until play returns to Ada.
+    // A full AI turn is many sequential engine steps, each persisted over the
+    // network to Neon, so allow generous headroom vs the old instant file I/O.
     const settled = await waitFor(async () => {
       const g = await loadGame(host.token)
       if (!g || g.snapshot === null) return null
       const ctx = ctxOf(g.snapshot)
       return ctx.currentPlayerIndex === 0 && ctx.round > round ? g : null
-    })
+    }, 25_000)
 
     // The AI acted: its move log is public, rationales included.
     const ai = settled.ai!

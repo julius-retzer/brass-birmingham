@@ -11,6 +11,14 @@ import path from 'node:path'
 import { sql } from 'drizzle-orm'
 import { db } from '~/server/db'
 
+function isAlreadyExists(err: unknown): boolean {
+  for (let e = err; e; e = (e as { cause?: unknown }).cause) {
+    const { code, message } = e as { code?: string; message?: string }
+    if (code === '42P07' || /already exists/i.test(message ?? '')) return true
+  }
+  return false
+}
+
 let applied: Promise<void> | null = null
 
 async function apply(): Promise<void> {
@@ -24,8 +32,10 @@ async function apply(): Promise<void> {
       try {
         await db.execute(sql.raw(trimmed))
       } catch (err) {
-        // Idempotent: the table may already exist on a shared dev branch.
-        if (!/already exists/i.test(String(err))) throw err
+        // Idempotent: the object may already exist on a shared dev branch.
+        // drizzle wraps the driver error, so walk the cause chain looking for
+        // Postgres 42P07 (duplicate_table) / an "already exists" message.
+        if (!isAlreadyExists(err)) throw err
       }
     }
   }

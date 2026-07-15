@@ -1,6 +1,6 @@
 // Multiplayer service tests: server authority, seat security, and — most
 // importantly — that a seat's view NEVER contains another player's cards.
-import { beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test, vi } from 'vitest'
 import {
   CHAT_MAX_LENGTH,
   actInGame,
@@ -12,6 +12,12 @@ import {
 } from '../server/mp/game'
 import { loadGame } from '../server/mp/store'
 import { ensureTestSchema } from '../test/db-schema'
+
+// Every test here drives several sequential round-trips to a real (network)
+// DB, so the global 5s per-test timeout — sized for the in-memory engine
+// suite — is too tight, especially under parallel load. Raise it for this
+// file only.
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 })
 
 // The store is DB-backed (Neon/Postgres); set DATABASE_URL to a dev branch.
 // We provision the schema once per run; rows are left in the dev branch (the

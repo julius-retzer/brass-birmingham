@@ -50,3 +50,6 @@ yarn-error.log*
 
 # legacy multiplayer game store (pre-DB); leftover dirs on dev machines
 /.bb-games/
+
+# per-machine local Claude Code settings (not shared; breaks worktree teardown when tracked)
+.claude/settings.local.json

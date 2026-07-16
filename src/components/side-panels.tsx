@@ -200,7 +200,7 @@ export function JournalPanel({
 }) {
   const recent = logs.slice(-40).reverse()
   return (
-    <div className="bb2-panel flex min-h-0 flex-1 flex-col gap-2 p-3">
+    <div className="bb2-panel flex min-h-[220px] flex-1 flex-col gap-2 p-3">
       <span className="bb2-panel-title">Journal</span>
       <div className="bb2-log min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1">
         {recent.map((entry, i) => (

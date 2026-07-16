@@ -157,6 +157,53 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
   )
   expect(ctx.drawPile.every((c) => c.id.startsWith('hidden-'))).toBe(true)
 
+  /* ---- chat delta on the wire: a NEW chat line arrives as an `event: chat`
+     increment (NOT a full-state `data:` view frame), proving a message never
+     costs a full ~26KB per-seat frame under the DB-as-bus poll ---- */
+  const [chatWire] = await Promise.all([
+    guest.evaluate(
+      async ({ token }) => {
+        const creds = JSON.parse(localStorage.getItem(`bb-mp-${token}`)!) as {
+          seatId: number
+          seatSecret: string
+        }
+        const res = await fetch(
+          `/api/mp/stream?token=${token}&seat=${creds.seatId}&secret=${encodeURIComponent(creds.seatSecret)}`,
+        )
+        const reader = res.body!.getReader()
+        let text = ''
+        // Read for up to ~8s or until the chat increment frame lands.
+        for (let i = 0; i < 60 && !/event: chat\n/.test(text); i++) {
+          const { value, done } = await reader.read()
+          if (done) break
+          text += new TextDecoder().decode(value)
+        }
+        await reader.cancel()
+        return text
+      },
+      { token },
+    ),
+    // Send a fresh line from the host once the guest's raw stream is open.
+    (async () => {
+      await guest.waitForTimeout(1500)
+      await host.getByTestId('chat-input').fill('wire-delta-check')
+      await host.getByTestId('chat-send').click()
+    })(),
+  ])
+  // The increment rides its own SSE event and carries only the new message —
+  // there is no engine snapshot in a chat frame.
+  expect(chatWire).toContain('event: chat')
+  const chatStart = chatWire.indexOf('event: chat')
+  const dataLine = chatWire.slice(chatStart).match(/data: (.+)\n/)
+  const delta = JSON.parse(dataLine![1]!) as {
+    chatSeq: number
+    messages: Array<{ id: number; text: string }>
+    snapshot?: unknown
+  }
+  expect(delta.snapshot).toBeUndefined() // chat frame ≠ full-state frame
+  expect(delta.messages.at(-1)!.text).toBe('wire-delta-check')
+  expect(delta.chatSeq).toBe(delta.messages.at(-1)!.id)
+
   await hostCtx.close()
   await guestCtx.close()
 })

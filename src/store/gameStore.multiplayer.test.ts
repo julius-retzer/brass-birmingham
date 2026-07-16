@@ -3,14 +3,23 @@
 import { beforeAll, describe, expect, test, vi } from 'vitest'
 import {
   CHAT_MAX_LENGTH,
+  CHAT_TAIL_LIMIT,
   actInGame,
   createGame,
+  getChatDelta,
   getGameView,
   joinGame,
   releaseSeat,
   sendChat,
 } from '../server/mp/game'
-import { loadGame, saveGame } from '../server/mp/store'
+import {
+  appendChatMessage,
+  loadChatSince,
+  loadGame,
+  loadRecentChat,
+  loadVersionAndSeq,
+  saveGame,
+} from '../server/mp/store'
 import { ensureTestSchema } from '../test/db-schema'
 
 // Every test here drives several sequential round-trips to a real (network)
@@ -180,13 +189,16 @@ describe('multiplayer: lifecycle and authority', () => {
     }
   })
 
-  test('chat returns the sender view + version with the new message', async () => {
+  test('chat returns the sender view + the new message, WITHOUT bumping the engine version', async () => {
     const { host } = await freshGame()
     const before = await getGameView(host.token, 0, host.seatSecret)
     const res = await sendChat(host.token, 0, host.seatSecret, 'well played')
     expect(res.ok).toBe(true)
     if (!res.ok) throw new Error('unreachable')
-    expect(res.version).toBeGreaterThan(before!.version)
+    // Chat is normalized out of the game row: the returned version is the
+    // UNCHANGED engine version (no full-state frame), and the sender's own
+    // view already carries the new line in its bounded tail.
+    expect(res.version).toBe(before!.version)
     expect(res.view.version).toBe(res.version)
     expect(res.view.messages.at(-1)?.text).toBe('well played')
   })
@@ -306,8 +318,10 @@ describe('multiplayer: table talk', () => {
       name: 'Ada',
       text: 'hello', // trimmed
     })
-    // chat bumps the version so SSE clients refresh
-    expect((await loadGame(host.token))!.version).toBe(versionBefore + 1)
+    // chat is normalized OUT of the game row: a message inserts one
+    // chat_messages row and does NOT rewrite the game record nor bump the
+    // engine version (that's the whole point — no full-state frame per line).
+    expect((await loadGame(host.token))!.version).toBe(versionBefore)
 
     // Long messages are capped at CHAT_MAX_LENGTH characters.
     await sendChat(host.token, 1, guest.seatSecret, 'x'.repeat(2000))
@@ -320,6 +334,103 @@ describe('multiplayer: table talk', () => {
     const anon = await getGameView(host.token, null, null)
     expect(anon!.messages).toStrictEqual([])
   })
+})
+
+describe('multiplayer: chat delivery over the (version, maxSeq) poll', () => {
+  test('per-game seq increases monotonically; the poll pair tracks it without bumping version', async () => {
+    const { host, guest } = await freshGame()
+    const base = await loadVersionAndSeq(host.token)
+    expect(base).not.toBeNull()
+    expect(base!.maxSeq).toBe(0) // no chat yet
+
+    const a = await sendChat(host.token, 0, host.seatSecret, 'one')
+    const b = await sendChat(host.token, 1, guest.seatSecret, 'two')
+    expect(a.ok && b.ok).toBe(true)
+    if (!a.ok || !b.ok) throw new Error('unreachable')
+    // ids are the monotonic per-game seq
+    expect(a.view.messages.at(-1)!.id).toBe(1)
+    expect(b.view.messages.at(-1)!.id).toBe(2)
+
+    // The cheap poll pair sees the new max seq but the SAME engine version:
+    // the stream pushes a chat increment, never a full-state frame, for chat.
+    const poll = await loadVersionAndSeq(host.token)
+    expect(poll!.version).toBe(base!.version)
+    expect(poll!.maxSeq).toBe(2)
+  })
+
+  test('getChatDelta returns only messages since a seq, and only to seated players', async () => {
+    const { host, guest } = await freshGame()
+    await sendChat(host.token, 0, host.seatSecret, 'm1')
+    await sendChat(host.token, 1, guest.seatSecret, 'm2')
+    await sendChat(host.token, 0, host.seatSecret, 'm3')
+
+    // Increment since seq 1 → messages 2 and 3 only, ascending, chatSeq = 3.
+    const delta = await getChatDelta(host.token, 0, host.seatSecret, 1, 50)
+    expect(delta).not.toBeNull()
+    expect(delta!.chatSeq).toBe(3)
+    expect(delta!.messages.map((m) => m.id)).toEqual([2, 3])
+    expect(delta!.messages.map((m) => m.text)).toEqual(['m2', 'm3'])
+
+    // Caught up (since the max) → nothing to send.
+    expect(await getChatDelta(host.token, 0, host.seatSecret, 3, 50)).toBeNull()
+
+    // A spectator / wrong secret never gets a chat increment.
+    expect(await getChatDelta(host.token, null, null, 0, 50)).toBeNull()
+    expect(await getChatDelta(host.token, 0, 'wrong-secret', 0, 50)).toBeNull()
+  })
+
+  test('store-level increment: loadChatSince mirrors what the stream pushes', async () => {
+    const { host, guest } = await freshGame()
+    await sendChat(host.token, 0, host.seatSecret, 'x1')
+    await sendChat(host.token, 1, guest.seatSecret, 'x2')
+    const since1 = await loadChatSince(host.token, 1, 50)
+    expect(since1.map((m) => m.id)).toEqual([2])
+    expect(await loadChatSince(host.token, 2, 50)).toHaveLength(0)
+  })
+})
+
+describe('multiplayer: the chat tail carried in a view is bounded', () => {
+  test('a view ships only the recent CHAT_TAIL_LIMIT lines; full history stays in the table', async () => {
+    const { host, guest } = await freshGame()
+    const total = CHAT_TAIL_LIMIT + 15
+    // Exercise the real send path for the first two (seq allocation + view),
+    // then bulk-seed the rest straight through the store's appendChatMessage
+    // (same seq allocation, fewer round trips) so the test stays under budget.
+    await sendChat(host.token, 0, host.seatSecret, 'msg-1')
+    await sendChat(host.token, 1, guest.seatSecret, 'msg-2')
+    for (let i = 3; i <= total; i++) {
+      const asHost = i % 2 === 1
+      const msg = await appendChatMessage(
+        host.token,
+        asHost ? 0 : 1,
+        asHost ? 'Ada' : 'Brunel',
+        `msg-${i}`,
+        new Date(2026, 0, 1, 0, 0, i).toISOString(),
+      )
+      expect(msg.id).toBe(i) // seq stays monotonic through both paths
+    }
+
+    // The seat view (a full frame / reconnect frame) carries only the tail…
+    const view = await getGameView(host.token, 0, host.seatSecret)
+    expect(view!.messages).toHaveLength(CHAT_TAIL_LIMIT)
+    // …and it is the LAST CHAT_TAIL_LIMIT, in order, ending at the newest id.
+    expect(view!.messages.at(-1)!.id).toBe(total)
+    expect(view!.messages.at(-1)!.text).toBe(`msg-${total}`)
+    expect(view!.messages[0]!.id).toBe(total - CHAT_TAIL_LIMIT + 1)
+    const ids = view!.messages.map((m) => m.id)
+    expect(ids).toEqual([...ids].sort((p, q) => p - q))
+
+    // The bounded tail is a VIEW concern only — the table keeps everything.
+    const everything = await loadRecentChat(host.token, total + 100)
+    expect(everything).toHaveLength(total)
+    expect(everything[0]!.id).toBe(1)
+
+    // A reconnecting client's first frame == the current state + recent tail,
+    // so it never has to page history to render the conversation.
+    const reconnectFrame = await getGameView(host.token, 1, guest.seatSecret)
+    expect(reconnectFrame!.messages).toHaveLength(CHAT_TAIL_LIMIT)
+    expect(reconnectFrame!.messages.at(-1)!.id).toBe(total)
+  }, 90_000) // seeds > CHAT_TAIL_LIMIT rows over the network — extra headroom
 })
 
 describe('multiplayer: persistence survives a redeploy', () => {
@@ -358,12 +469,16 @@ describe('multiplayer: persistence survives a redeploy', () => {
     const after = await loadGame(host.token)
     expect(after).not.toBeNull()
 
-    // Whole record is identical — phase, version, seats, snapshot, and chat.
+    // Whole game record is identical — phase, version, seats, snapshot.
     expect(after).toStrictEqual(before)
     expect(after!.phase).toBe('playing')
     expect(after!.snapshot).toBeTruthy()
-    expect(after!.messages).toHaveLength(2)
-    expect(after!.messages!.map((m) => m.text)).toEqual([
+    // Chat now lives in its OWN table, so it survives the reload independently
+    // of the game row — read it back through the seat view (the record itself
+    // no longer carries chat).
+    const chatView = await getGameView(host.token, 0, host.seatSecret)
+    expect(chatView!.messages).toHaveLength(2)
+    expect(chatView!.messages.map((m) => m.text)).toEqual([
       'good game',
       'you too',
     ])

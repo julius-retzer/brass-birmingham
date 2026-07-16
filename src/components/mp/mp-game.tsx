@@ -84,12 +84,47 @@ interface GameViewWire {
   ai?: AiViewWire
 }
 
+/** A chat increment pushed on the `event: chat` SSE frame (see stream route). */
+interface ChatDeltaWire {
+  version: number
+  chatSeq: number
+  messages: ChatMessageWire[]
+}
+
 interface Creds {
   seatId: number
   seatSecret: string
 }
 
 const credsKey = (token: string) => `bb-mp-${token}`
+
+/** Keep the client's chat memory bounded; the recent tail on a full frame is
+ *  smaller than this, so a reconnect never loses already-seen lines. */
+const CLIENT_CHAT_CAP = 200
+
+/**
+ * Merge chat lines by `id` (== per-game seq): idempotent union, sorted, capped.
+ * Returns the SAME array reference when nothing new arrived so callers can
+ * no-op. This is why a duplicated/reordered chat frame (delta or full-frame
+ * tail) is harmless — the id set converges regardless of arrival order.
+ */
+function mergeChat(
+  current: ChatMessageWire[] = [],
+  incoming: ChatMessageWire[] = [],
+): ChatMessageWire[] {
+  if (incoming.length === 0) return current
+  const byId = new Map<number, ChatMessageWire>()
+  for (const m of current) byId.set(m.id, m)
+  let changed = false
+  for (const m of incoming) {
+    if (!byId.has(m.id)) {
+      byId.set(m.id, m)
+      changed = true
+    }
+  }
+  if (!changed) return current
+  return [...byId.values()].sort((a, b) => a.id - b.id).slice(-CLIENT_CHAT_CAP)
+}
 
 function loadCreds(token: string): Creds | null {
   try {
@@ -140,12 +175,35 @@ export function MpGame({ token }: { token: string }) {
     setCredsLoaded(true)
   }, [token])
 
-  // Single apply path for every authoritative view — SSE frames AND the fresh
-  // view returned by an act/chat POST. Guarded by `version`: only a strictly
-  // newer view replaces the current one, so a late/duplicate frame arriving
-  // after the act response (or vice-versa) can never regress the state.
+  // Single apply path for every authoritative full view — SSE `data:` frames
+  // AND the fresh view returned by an act/chat POST. The engine snapshot is
+  // guarded by `version` (only a strictly newer view replaces it, so a
+  // late/duplicate frame can never regress state); chat merges by id at ANY
+  // version, since a chat line no longer bumps the engine version.
   const applyView = useCallback((incoming: GameViewWire) => {
-    setView((cur) => (!cur || incoming.version > cur.version ? incoming : cur))
+    setView((cur) => {
+      if (!cur) return incoming
+      if (incoming.version > cur.version) {
+        return {
+          ...incoming,
+          messages: mergeChat(cur.messages, incoming.messages),
+        }
+      }
+      // same-or-older engine version: only the chat tail may carry news
+      const merged = mergeChat(cur.messages, incoming.messages)
+      return merged === cur.messages ? cur : { ...cur, messages: merged }
+    })
+  }, [])
+
+  // A chat increment (`event: chat`) — merge its messages into the current
+  // view without touching the engine snapshot/version. Ignored before the
+  // first full frame (the stream always sends that full frame first).
+  const applyChatDelta = useCallback((delta: ChatDeltaWire) => {
+    setView((cur) => {
+      if (!cur) return cur
+      const merged = mergeChat(cur.messages, delta.messages)
+      return merged === cur.messages ? cur : { ...cur, messages: merged }
+    })
   }, [])
 
   // Live view over SSE; EventSource reconnects on its own after drops and
@@ -176,6 +234,15 @@ export function MpGame({ token }: { token: string }) {
       }
       applyView(parsed)
     }
+    // Bounded chat increments arrive on their own event so a chat line never
+    // rides a full-state frame (see stream route). Merged by id, idempotent.
+    es.addEventListener('chat', (e) => {
+      if (closed) return
+      setStreamFailing(false)
+      applyChatDelta(
+        JSON.parse((e as MessageEvent).data as string) as ChatDeltaWire,
+      )
+    })
     es.onerror = () => {
       if (!closed) setStreamFailing(true)
     }
@@ -183,7 +250,7 @@ export function MpGame({ token }: { token: string }) {
       closed = true
       es.close()
     }
-  }, [token, creds, credsLoaded, applyView])
+  }, [token, creds, credsLoaded, applyView, applyChatDelta])
 
   if (!credsLoaded || (!view && !streamFailing)) {
     return (

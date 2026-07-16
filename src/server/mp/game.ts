@@ -29,7 +29,10 @@ import {
   type ChatMessage,
   type GameRecord,
   type SeatRecord,
+  appendChatMessage,
+  loadChatSince,
   loadGame,
+  loadRecentChat,
   saveGame,
   sweepStaleGames,
 } from './store'
@@ -284,6 +287,9 @@ export function viewFor(
   game: GameRecord,
   seatId: number | null,
   seatSecret: string | null,
+  /** the recent chat tail (loaded from `chat_messages`); shown to seated
+   *  players only — chat is public to the table but not to spectators */
+  chatTail: ChatMessage[] = [],
 ): GameView {
   const seat =
     seatId !== null && seatSecret !== null ? game.seats[seatId] : undefined
@@ -299,7 +305,7 @@ export function viewFor(
       authed && game.snapshot !== null
         ? filterSnapshotForSeat(game.snapshot, seatId!)
         : null,
-    messages: authed ? (game.messages ?? []) : [],
+    messages: authed ? chatTail : [],
     ...(ai ? { ai } : {}),
   }
 }
@@ -503,17 +509,31 @@ export async function actInGame(
     // Return the actor's OWN fresh per-seat view so the client applies its
     // authoritative result in POST time (~1s) instead of waiting for the next
     // SSE poll tick. This is the engine's real result (viewFor filters hidden
-    // info exactly as an SSE frame does), NOT an optimistic prediction.
+    // info exactly as an SSE frame does), NOT an optimistic prediction. The
+    // chat tail rides along so the actor's view stays consistent with chat.
+    const chatTail = await loadRecentChat(token, CHAT_TAIL_LIMIT)
     return {
       ok: true,
-      view: viewFor(game, seatId, seatSecret),
+      view: viewFor(game, seatId, seatSecret, chatTail),
       version: game.version,
     }
   })
 }
 
 export const CHAT_MAX_LENGTH = 500
-export const CHAT_HISTORY_CAP = 200
+/** The recent chat tail carried in a game view — full history stays in the
+ *  `chat_messages` table; a frame never ships more than this. */
+export const CHAT_TAIL_LIMIT = 50
+
+/** A chat increment pushed on the SSE stream when ONLY chat moved (the engine
+ *  `version` is unchanged). The client merges `messages` by `id` (== seq) into
+ *  its current view — idempotent, so a dropped/duplicated/reordered delta is
+ *  harmless, exactly like the version-guarded full frame. */
+export interface ChatDelta {
+  version: number
+  chatSeq: number
+  messages: ChatMessage[]
+}
 
 export async function sendChat(
   token: string,
@@ -534,27 +554,56 @@ export async function sendChat(
     if (trimmed.length === 0) {
       return { ok: false, error: 'Empty message' }
     }
-    const messages = game.messages ?? []
-    const message: ChatMessage = {
-      id: (messages[messages.length - 1]?.id ?? 0) + 1,
+    // Append ONE small row — this does NOT rewrite the game row nor bump the
+    // engine `version`, so it triggers a bounded chat increment rather than a
+    // full-state frame to every viewer.
+    await appendChatMessage(
+      token,
       seatId,
-      name: seat.name ?? `Player ${seatId + 1}`,
-      text: trimmed,
-      at: new Date().toISOString(),
-    }
-    game.messages = [...messages, message].slice(-CHAT_HISTORY_CAP)
-    game.version++
-    game.updatedAt = new Date().toISOString()
-    await saveGame(game)
+      seat.name ?? `Player ${seatId + 1}`,
+      trimmed,
+      new Date().toISOString(),
+    )
+    // Same-instance fast path: nudge any co-located streams to push the
+    // increment now; the ~1.2s (version, maxSeq) poll is the guarantee.
     broadcast(token)
-    // Same shape as actInGame: the sender applies its own fresh view (which
-    // includes the new message) immediately, rather than waiting for a poll.
+    // The sender applies its own fresh view (with the new message in the tail)
+    // immediately. `version` is unchanged; the client merges chat by id.
+    const chatTail = await loadRecentChat(token, CHAT_TAIL_LIMIT)
     return {
       ok: true,
-      view: viewFor(game, seatId, seatSecret),
+      view: viewFor(game, seatId, seatSecret, chatTail),
       version: game.version,
     }
   })
+}
+
+/**
+ * The chat increment for a seat since `sinceSeq` — authenticated (chat is for
+ * seated players only, never spectators), bounded to `limit`. Returns null
+ * when the caller isn't a valid seat or there is nothing new, so the stream
+ * pushes only real, authorized increments.
+ */
+export async function getChatDelta(
+  token: string,
+  seatId: number | null,
+  seatSecret: string | null,
+  sinceSeq: number,
+  limit: number,
+): Promise<ChatDelta | null> {
+  const game = await loadGame(token)
+  if (!game) return null
+  const seat =
+    seatId !== null && seatSecret !== null ? game.seats[seatId] : undefined
+  const authed = !!seat && secretMatches(seatSecret!, seat.secretHash)
+  if (!authed) return null
+  const messages = await loadChatSince(token, sinceSeq, limit)
+  if (messages.length === 0) return null
+  return {
+    version: game.version,
+    chatSeq: messages[messages.length - 1]!.id,
+    messages,
+  }
 }
 
 /* ---------------- the AI turn runner ---------------- */
@@ -702,5 +751,9 @@ export async function getGameView(
 ): Promise<GameView | null> {
   const game = await loadGame(token)
   if (!game) return null
-  return viewFor(game, seatId, seatSecret)
+  // The full frame (every SSE (re)connect and every act response) carries the
+  // recent chat tail so a fresh/reconnecting client starts with current state
+  // + recent chat in one frame. `viewFor` discards it for spectators.
+  const chatTail = await loadRecentChat(token, CHAT_TAIL_LIMIT)
+  return viewFor(game, seatId, seatSecret, chatTail)
 }

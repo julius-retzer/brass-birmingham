@@ -562,7 +562,14 @@ export function consumeBeerFromSources(
       updatedMerchants: context.merchants,
       merchantBonusesCollected: [],
       logDetails,
-      errorMessage: `Insufficient beer available. Required: ${beerRequired}, available: ${beerConsumed}`,
+      // Name what is missing, not just that something is (captain, 2026-07-16):
+      // this string is surfaced verbatim to the refused player. The partial
+      // case stays source-agnostic — `beerConsumed` may include merchant beer
+      // on a sale path, not only breweries.
+      errorMessage:
+        beerConsumed === 0
+          ? `Needs ${beerRequired} beer — no connected brewery has beer.`
+          : `Needs ${beerRequired} beer — only ${beerConsumed} within reach.`,
     }
   }
 

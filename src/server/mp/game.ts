@@ -9,8 +9,8 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { createActor } from 'xstate'
 import { gameStore } from '../../store/gameStore'
-import { refreshEmbeddedTileStats } from '../../store/saveMigration'
 import { STEP_SAFETY_BUDGET, aiDecideAndApply } from '../ai/driver'
+import { applyIntent, rehydrate } from './intent'
 import {
   gatewayBaseUrl,
   hasAnthropicKey,
@@ -116,32 +116,6 @@ async function withGameLock<T>(
 
 /* ---------------- engine helpers ---------------- */
 
-// JSON round-trips turn the markets' `maxCubes: Infinity` into null; restore
-// it before the engine sees the snapshot (same fix as the client shell).
-// ALSO run the save migration here: the SERVER is the authority, and a
-// pre-audit game record would otherwise keep playing with stale tile stats
-// and no incomeSpace (whose NaN arithmetic reads as income level 30).
-function rehydrate(snapshot: unknown): unknown {
-  const clone = structuredClone(snapshot) as {
-    context?: {
-      coalMarket?: Array<{ maxCubes: number | null }>
-      ironMarket?: Array<{ maxCubes: number | null }>
-    }
-  }
-  for (const market of [clone.context?.coalMarket, clone.context?.ironMarket]) {
-    if (!Array.isArray(market)) continue
-    for (const row of market) {
-      if (row && row.maxCubes === null) row.maxCubes = Infinity
-    }
-  }
-  try {
-    refreshEmbeddedTileStats(clone)
-  } catch {
-    // a malformed record fails at actor creation, with better context
-  }
-  return clone
-}
-
 const COLORS = ['red', 'blue', 'green', 'yellow'] as const
 const CHARACTERS = [
   'Eliza Tinsley',
@@ -149,31 +123,6 @@ const CHARACTERS = [
   'George Stephenson',
   'Richard Arkwright',
 ] as const
-
-// Player-facing intents only — TEST_*/TRIGGER_* and lifecycle events are
-// server business and must never be accepted off the wire.
-const ALLOWED_EVENTS = new Set([
-  'BUILD',
-  'DEVELOP',
-  'SELL',
-  'TAKE_LOAN',
-  'SCOUT',
-  'NETWORK',
-  'PASS',
-  'SELECT_CARD',
-  'SELECT_LOCATION',
-  'SELECT_INDUSTRY_TYPE',
-  'SELECT_TILES_FOR_DEVELOP',
-  'SELECT_SALE',
-  'SELECT_LINK',
-  'SELECT_SECOND_LINK',
-  'CHOOSE_DOUBLE_LINK_BUILD',
-  'EXECUTE_DOUBLE_NETWORK_ACTION',
-  'BUILD_SECOND_LINK',
-  'CONFIRM',
-  'CANCEL',
-  'CLEAR_ERROR',
-])
 
 /* ---------------- views ---------------- */
 
@@ -230,10 +179,20 @@ export function filterSnapshotForSeat(
       currentPlayerIndex?: number
       selectedCard?: unknown
       selectedCardsForScout?: unknown[]
+      lastError?: string | null
+      errorContext?: string | null
     }
   }
   const ctx = clone.context
   if (!ctx) return clone
+
+  // A refusal reason belongs to the player who caused it. `applyIntent` never
+  // persists one, so this is belt-and-braces: if any path ever does, it must
+  // not ride out in a bystander's frame.
+  if (ctx.currentPlayerIndex !== seatId) {
+    ctx.lastError = null
+    ctx.errorContext = null
+  }
 
   ctx.players?.forEach((p, i) => {
     if (i !== seatId) {
@@ -475,34 +434,14 @@ export async function actInGame(
     if (game.phase !== 'playing' || game.snapshot === null) {
       return { ok: false, error: 'The game has not started' }
     }
-    if (!ALLOWED_EVENTS.has(event.type)) {
-      return { ok: false, error: `Event ${event.type} is not allowed` }
-    }
+    // Turn check, legality and execution all live in the pure seam, which
+    // returns the EXACT reason for a refusal (see intent.ts). A refusal is
+    // never persisted, so the acting player's error can't leak to other seats.
+    const outcome = applyIntent(game.snapshot, seatId, event)
+    if (!outcome.ok) return { ok: false, error: outcome.error }
 
-    const actor = createActor(gameStore, {
-      snapshot: rehydrate(game.snapshot) as never,
-    })
-    actor.start()
-    const before = actor.getSnapshot() as {
-      context: { currentPlayerIndex: number }
-      can: (e: never) => boolean
-      matches: (v: never) => boolean
-    }
-    if (before.context.currentPlayerIndex !== seatId) {
-      actor.stop()
-      return { ok: false, error: 'Not your turn' }
-    }
-    if (!before.can(event as never)) {
-      actor.stop()
-      return { ok: false, error: 'That action is not legal right now' }
-    }
-    actor.send(event as never)
-    const after = actor.getSnapshot()
-    game.snapshot = actor.getPersistedSnapshot()
-    if ((after as { matches: (v: string) => boolean }).matches('gameOver')) {
-      game.phase = 'over'
-    }
-    actor.stop()
+    game.snapshot = outcome.next
+    if (outcome.gameOver) game.phase = 'over'
     game.version++
     game.updatedAt = new Date().toISOString()
     await saveGame(game)

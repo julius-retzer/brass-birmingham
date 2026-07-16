@@ -18,6 +18,7 @@ import {
   type Player,
   gameStore,
 } from '~/store/gameStore'
+import { explainRefusal } from '~/store/refusal'
 import { refreshEmbeddedTileStats } from '~/store/saveMigration'
 import { ActionDock, SELLABLE, getHandSelection } from '../action-dock'
 import { linkKey } from '../board/board-data'
@@ -28,6 +29,7 @@ import { GameOverScreen } from '../overlays'
 import { OpenMatButton, PlayerLedger } from '../player-ledger'
 import { PlayerRail } from '../player-rail'
 import { CollapsiblePanel, JournalPanel, MarketsPanel } from '../side-panels'
+import { UNREACHABLE, refusalToShow } from './refusal'
 import { didBecomeMyTurn, playTurnChime, titleForTurn } from './turnNotify'
 import { useInFlight } from './use-in-flight'
 
@@ -780,12 +782,12 @@ function MpTable({
             version?: number
           }
           if (!body.ok) {
-            // The server rejected the intent — no frame is coming, so settle
-            // now; the existing error toast still surfaces the reason.
+            // The server refused the intent — no frame is coming, so settle
+            // now and show the server's EXACT reason (what is missing: the
+            // money, the beer, the connection, whose turn it is).
             settle()
-            if (body.error && event.type !== 'CLEAR_ERROR') {
-              toast.error(body.error)
-            }
+            const refusal = refusalToShow(body, event.type)
+            if (refusal) toast.error(refusal)
           } else if (body.view) {
             // Server-authoritative fast path: apply the engine's OWN fresh view
             // from the POST response (same version-guarded apply path as an SSE
@@ -798,7 +800,7 @@ function MpTable({
           // pending: the resulting SSE frame settles it via the version bump.
         } catch {
           settle()
-          toast.error('Could not reach the game server')
+          toast.error(UNREACHABLE)
         }
       })()
     },
@@ -1035,18 +1037,28 @@ function MpTable({
       )
       return
     }
+    // The client gates the click itself, so the server's refusal reason would
+    // never be reached for an illegal route. Ask the SAME explainer the server
+    // uses — everything it needs (money, links, era) is public state already
+    // in this frame — so the player is told what is missing either way.
     if (pickingSecondLink) {
-      if (state.can({ type: 'SELECT_SECOND_LINK', from, to })) {
-        send({ type: 'SELECT_SECOND_LINK', from, to })
-      } else {
-        toast.error('That route cannot be your second rail.')
+      const event = { type: 'SELECT_SECOND_LINK', from, to } as const
+      if (state.can(event)) send(event)
+      else {
+        toast.error(
+          explainRefusal(state, event) ??
+            'That route cannot be your second rail.',
+        )
       }
       return
     }
-    if (state.can({ type: 'SELECT_LINK', from, to })) {
-      send({ type: 'SELECT_LINK', from, to })
-    } else {
-      toast.error('That route cannot be claimed right now.')
+    const event = { type: 'SELECT_LINK', from, to } as const
+    if (state.can(event)) send(event)
+    else {
+      toast.error(
+        explainRefusal(state, event) ??
+          'That route cannot be claimed right now.',
+      )
     }
   }
 

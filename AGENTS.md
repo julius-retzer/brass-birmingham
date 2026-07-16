@@ -422,6 +422,25 @@ When updating this file, preserve this bar for all agents and keep entries conci
   server validates seat + turn + an event whitelist (never TEST_*/TRIGGER_*),
   executes on the real engine, persists, broadcasts. The client's local
   actor is READ-ONLY (rebuilt per SSE broadcast just for matches/can).
+  `actInGame` owns only the I/O — the whitelist/turn/guard/execute DECISION
+  lives in `mp/intent.ts` (`applyIntent`), which imports no DB and is
+  therefore tested offline (`intent.test.ts`) while the rest of the mp suite
+  needs Neon. `game.ts` imports `rehydrate` from there; don't re-fork it.
+- REFUSALS NAME WHAT IS MISSING (2026-07-16, captain's requirement): a
+  refused intent answers with the exact reason ("Not enough money: you have
+  £2, a canal link costs £3.", "Needs 1 beer — no connected brewery has
+  beer."), never a generic failure. Two paths, both in `applyIntent`: a
+  guard rejection (`can()` false) is explained by `src/store/refusal.ts`
+  (`explainRefusal`), which re-derives the cause by calling the SAME
+  validators the guards call (`validateSale`, `consumeCoalFromSources`,
+  `GAME_CONSTANTS` costs) — NEVER re-implement a rule there, and return null
+  to fall back to the generic string rather than guess; an execution failure
+  reports `context.lastError` verbatim. A refusal is NEVER persisted, so the
+  reason reaches only the acting player's POST response (`filterSnapshotForSeat`
+  also nulls `lastError` for foreign seats as defence in depth). The client
+  renders it via `mp/refusal.ts` (`refusalToShow`, pure — pinned without a
+  DOM, like `turnNotify.ts`). If a guard starts refusing something new, teach
+  `explainRefusal` about it in the same commit.
 - HIDDEN INFO IS FILTERED SERVER-SIDE in `filterSnapshotForSeat`: foreign
   hands, the draw pile, and foreign in-flight selections become `hidden-*`
   placeholders (lengths preserved — guards need counts). Wire-level tests:

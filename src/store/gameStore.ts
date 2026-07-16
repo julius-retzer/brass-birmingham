@@ -1,4 +1,4 @@
-import { type Actor, StateFrom, and, assign, setup } from 'xstate'
+import { type Actor, StateFrom, and, assign, not, setup } from 'xstate'
 import {
   type CityId,
   FARM_BREWERIES,
@@ -77,6 +77,7 @@ import {
 import {
   type BeerSource,
   type IronSource,
+  type Resource,
   beerChoiceSatisfied,
   canChooseBeerSource,
   canChooseIronSource,
@@ -2665,17 +2666,24 @@ export const gameStore = setup({
 
       return true
     },
-    /** The source question this step asks is answered (or there was none). */
-    beerChoiceSatisfied: ({ context }) => beerChoiceSatisfied(context),
-    ironChoiceSatisfied: ({ context }) => ironChoiceSatisfied(context),
+    /**
+     * The source question this step asks is answered (or there was none).
+     * One guard for both resources: which one is a PARAMETER of the transition
+     * (`guard: { type: 'choiceSatisfied', params: { resource: 'beer' } }`),
+     * mirroring how resourceSources.ts already pairs its selectors.
+     */
+    choiceSatisfied: ({ context }, params: { resource: Resource }) =>
+      params.resource === 'beer'
+        ? beerChoiceSatisfied(context)
+        : ironChoiceSatisfied(context),
 
     /** Only a source this step actually offers may be picked. */
-    canChooseBeerSource: ({ context, event }) =>
-      event.type === 'SELECT_BEER_SOURCE' &&
-      canChooseBeerSource(context, event.source),
-    canChooseIronSource: ({ context, event }) =>
-      event.type === 'SELECT_IRON_SOURCE' &&
-      canChooseIronSource(context, event.source),
+    canChooseSource: ({ context, event }, params: { resource: Resource }) =>
+      params.resource === 'beer'
+        ? event.type === 'SELECT_BEER_SOURCE' &&
+          canChooseBeerSource(context, event.source)
+        : event.type === 'SELECT_IRON_SOURCE' &&
+          canChooseIronSource(context, event.source),
 
     canExecuteSale: ({ context, event }) => {
       if (event.type !== 'SELECT_SALE') return false
@@ -2683,10 +2691,10 @@ export const gameStore = setup({
     },
 
     // You cannot take a loan if it would take your income level below -10
-    canTakeLoan: ({ context }) =>
-      context.selectedCard !== null &&
+    loanKeepsIncomeLegal: ({ context }) =>
       getCurrentPlayer(context).income - GAME_CONSTANTS.LOAN_INCOME_PENALTY >=
-        GAME_CONSTANTS.MIN_INCOME,
+      GAME_CONSTANTS.MIN_INCOME,
+    canTakeLoan: and(['hasSelectedCard', 'loanKeepsIncomeLegal']),
 
     hasSoldThisAction: ({ context }) => context.salesMadeThisAction > 0,
 
@@ -2909,16 +2917,24 @@ export const gameStore = setup({
 
     // Era end fires only once the round in which the last cards were played
     // has fully completed (turn order + income resolved by nextPlayer)
-    isCanalEraEnd: ({ context }) =>
-      context.eraEndPending && context.era === 'canal',
-
-    isRailEraEnd: ({ context }) =>
-      context.eraEndPending && context.era === 'rail',
+    eraEndPending: ({ context }) => context.eraEndPending,
+    isEra: ({ context }, params: { era: 'canal' | 'rail' }) =>
+      context.era === params.era,
+    isCanalEraEnd: and([
+      'eraEndPending',
+      { type: 'isEra', params: { era: 'canal' as const } },
+    ]),
+    isRailEraEnd: and([
+      'eraEndPending',
+      { type: 'isEra', params: { era: 'rail' as const } },
+    ]),
 
     // A player may only keep taking actions while they have actions left AND
     // cards to discard for them (hands shrink once the draw deck is empty)
-    canContinueTurn: ({ context }) =>
-      context.actionsRemaining > 0 && getCurrentPlayer(context).hand.length > 0,
+    canContinueTurn: and([
+      'hasActionsRemaining',
+      not('currentPlayerHandEmpty'),
+    ]),
 
     currentPlayerHandEmpty: ({ context }) =>
       getCurrentPlayer(context).hand.length === 0,
@@ -3344,12 +3360,21 @@ export const gameStore = setup({
                 choosingIronSource: {
                   entry: 'enterBuildIronStep',
                   always: [
-                    { guard: 'ironChoiceSatisfied', target: 'confirmingBuild' },
+                    {
+                      guard: {
+                        type: 'choiceSatisfied',
+                        params: { resource: 'iron' },
+                      },
+                      target: 'confirmingBuild',
+                    },
                   ],
                   on: {
                     SELECT_IRON_SOURCE: {
                       actions: 'chooseIronSource',
-                      guard: 'canChooseIronSource',
+                      guard: {
+                        type: 'canChooseSource',
+                        params: { resource: 'iron' },
+                      },
                     },
                     CANCEL: {
                       target: 'selectingLocation',
@@ -3408,14 +3433,20 @@ export const gameStore = setup({
                   entry: 'enterDevelopIronStep',
                   always: [
                     {
-                      guard: 'ironChoiceSatisfied',
+                      guard: {
+                        type: 'choiceSatisfied',
+                        params: { resource: 'iron' },
+                      },
                       target: 'confirmingDevelop',
                     },
                   ],
                   on: {
                     SELECT_IRON_SOURCE: {
                       actions: 'chooseIronSource',
-                      guard: 'canChooseIronSource',
+                      guard: {
+                        type: 'canChooseSource',
+                        params: { resource: 'iron' },
+                      },
                     },
                     CANCEL: {
                       target: 'selectingTiles',
@@ -3488,7 +3519,10 @@ export const gameStore = setup({
                 choosingBeerSource: {
                   always: [
                     {
-                      guard: 'beerChoiceSatisfied',
+                      guard: {
+                        type: 'choiceSatisfied',
+                        params: { resource: 'beer' },
+                      },
                       target: 'selectingSale',
                       actions: 'executeStagedSale',
                     },
@@ -3496,7 +3530,10 @@ export const gameStore = setup({
                   on: {
                     SELECT_BEER_SOURCE: {
                       actions: 'chooseBeerSource',
-                      guard: 'canChooseBeerSource',
+                      guard: {
+                        type: 'canChooseSource',
+                        params: { resource: 'beer' },
+                      },
                     },
                     CANCEL: {
                       // Nothing was flipped yet — the staged sale is free to drop
@@ -3624,14 +3661,20 @@ export const gameStore = setup({
                   entry: 'enterDoubleLinkBeerStep',
                   always: [
                     {
-                      guard: 'beerChoiceSatisfied',
+                      guard: {
+                        type: 'choiceSatisfied',
+                        params: { resource: 'beer' },
+                      },
                       target: 'confirmingDoubleLink',
                     },
                   ],
                   on: {
                     SELECT_BEER_SOURCE: {
                       actions: 'chooseBeerSource',
-                      guard: 'canChooseBeerSource',
+                      guard: {
+                        type: 'canChooseSource',
+                        params: { resource: 'beer' },
+                      },
                     },
                     CANCEL: {
                       target: 'selectingSecondLink',

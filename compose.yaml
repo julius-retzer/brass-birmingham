@@ -1,0 +1,57 @@
+# Local test database: Postgres + the Neon HTTP proxy.
+#
+#   docker compose up -d
+#
+# WHY A PROXY: the app talks to Postgres through `@neondatabase/serverless`
+# (`neon-http`), which speaks Neon's HTTP protocol — NOT the Postgres wire
+# protocol. A bare Postgres container is therefore unreachable from the app;
+# the proxy terminates Neon HTTP on :4444 and speaks native Postgres to the
+# container below.
+#
+# WHY NOT `neondatabase/neon_local`: Neon Local is a proxy to a Neon CLOUD
+# branch — it needs NEON_API_KEY + NEON_PROJECT_ID and every query still flies
+# to us-east-1. That defeats both reasons this file exists (speed + offline).
+# This image is the setup Neon's own local-development guide recommends:
+# https://neon.com/guides/local-development-with-neon
+#
+# See README "Local test database (Docker)" and src/test/local-db.ts.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: main
+    # SPEED, and the reason this stack is worth having. The proxy re-runs the
+    # full SCRAM handshake on EVERY HTTP request (each one is a fresh stateless
+    # connection), and PBKDF2 at the default 4096 iterations costs ~115ms of the
+    # ~120ms round trip — as slow as the us-east-1 branch we came here to avoid.
+    # One iteration makes auth free. Safe precisely here: a throwaway loopback
+    # container holding no real data, with a password that is public in this file.
+    # NEVER copy this to anything reachable.
+    command: postgres -c scram_iterations=1
+    volumes:
+      # Re-hashes the password initdb already wrote at 4096 iterations.
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/10-scram.sql:ro
+    ports:
+      # Exposed for psql/drizzle-studio poking. The app never uses this port.
+      - '5464:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    tmpfs:
+      # Throwaway by design: test data must never outlive the container, and
+      # RAM-backed storage keeps per-run CREATE/DROP DATABASE cheap.
+      - /var/lib/postgresql/data
+
+  neon-proxy:
+    image: ghcr.io/timowilhelm/local-neon-http-proxy:main
+    environment:
+      PG_CONNECTION_STRING: postgres://postgres:postgres@postgres:5432/main
+    ports:
+      - '4444:4444'
+    depends_on:
+      postgres:
+        condition: service_healthy

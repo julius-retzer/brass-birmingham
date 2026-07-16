@@ -1,10 +1,43 @@
 import { defineConfig, devices } from '@playwright/test'
+import {
+  isLocalDbReachableSync,
+  localDbUrl,
+  newLocalDbName,
+} from './src/test/local-db'
+
+// Pick this run's database HERE, at config-load time, because the webServer
+// starts before globalSetup (see e2e/global-db.ts) and inherits its env from
+// this process. Precedence mirrors the vitest harness
+// (src/test/global-db-branch.ts): an externally supplied DATABASE_URL wins, then
+// the local Docker stack; otherwise nothing changes and the DB-backed specs fall
+// back to `.env` — or skip, via e2e/db-available.ts.
+//
+// The name is memoised through the environment, not a module variable: this
+// config is re-loaded in every worker process, so a bare newLocalDbName() would
+// mint a DIFFERENT database per worker. `??=` means only the first (main)
+// process names it and the workers inherit that name.
+function useLocalDatabase(): boolean {
+  if (process.env.DATABASE_URL || process.env.TEST_DB_LOCAL === '0')
+    return false
+  if (process.env.BB_E2E_DB) return true
+  if (!isLocalDbReachableSync()) return false
+  process.env.BB_E2E_DB = newLocalDbName('bb_e2e')
+  return true
+}
+
+const localDb = useLocalDatabase()
+if (localDb) {
+  // Both the specs (via e2e/db-available.ts) and the dev server read this.
+  process.env.DATABASE_URL = localDbUrl(process.env.BB_E2E_DB as string)
+}
 
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   retries: 0,
   reporter: [['list']],
+  globalSetup: './e2e/global-db.ts',
+  globalTeardown: './e2e/global-db-teardown.ts',
   use: {
     baseURL: 'http://localhost:3199',
     trace: 'retain-on-failure',
@@ -17,7 +50,13 @@ export default defineConfig({
     // provider — no network, no ANTHROPIC_API_KEY, zero cost.
     command: 'SKIP_ENV_VALIDATION=1 BB_AI_MOCK=1 pnpm dev --port 3199',
     url: 'http://localhost:3199',
+    // GOTCHA: an already-running `pnpm dev` on :3199 is reused as-is, and it
+    // reads DATABASE_URL from `.env` — so this run's database is NOT what it
+    // talks to. Stop your dev server for a faithful DB-backed e2e run.
     reuseExistingServer: true,
     timeout: 120_000,
+    // Next only fills gaps from `.env*`, so an explicit value wins: this is what
+    // points the dev server at this run's database.
+    env: localDb ? { DATABASE_URL: process.env.DATABASE_URL as string } : {},
   },
 })

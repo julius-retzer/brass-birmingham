@@ -8,15 +8,26 @@
 // directly — see src/test/neon-branch.ts.
 //
 // Precedence (offline work must never hard-fail; tests must NEVER hit `dev`):
-//   1. NEON_API_KEY present (and TEST_DB_BRANCH!=0) → per-run EPHEMERAL branch
-//      off `ci`, deleted in teardown. The isolation guarantee.
-//   2. else (TEST_DB_BRANCH=0, no key, or create failed) → TEST_DATABASE_URL,
+//   0. DATABASE_URL already in the process env → an EXTERNAL owner provisioned
+//      it (CI passes the run's Neon branch to `pnpm test`); use it untouched.
+//      Nothing loads `.env` into this process, so a local run does not hit this.
+//   1. The local Docker stack (compose.yaml) is up → per-run DATABASE on it,
+//      dropped in teardown. Fast, free, offline: the default for laptops.
+//   2. else NEON_API_KEY present (and TEST_DB_BRANCH!=0) → per-run EPHEMERAL
+//      branch off `ci`, deleted in teardown.
+//   3. else (TEST_DB_BRANCH=0, no key, or create failed) → TEST_DATABASE_URL,
 //      the dedicated long-lived Neon `test` branch, when set.
-//   3. else → the existing DATABASE_URL, with a LOUD warning that tests are
+//   4. else → the existing DATABASE_URL, with a LOUD warning that tests are
 //      about to hit a non-test database.
-// Whichever branch we land on, the DB suites' `ensureTestSchema()` (beforeAll)
-// migrates it idempotently — so a stale `test` branch is brought up to date by
-// the same harness step the ephemeral path relies on.
+// Whichever database we land on, the DB suites' `ensureTestSchema()` (beforeAll)
+// migrates it idempotently — so a fresh local database and a stale `test` branch
+// are both brought up to date by the same harness step.
+import {
+  createLocalDatabase,
+  dropLocalDatabase,
+  isLocalDbReachable,
+  newLocalDbName,
+} from './local-db'
 import {
   createBranch,
   deleteBranch,
@@ -63,7 +74,51 @@ function useFallbackDatabase(reason: string): void {
   )
 }
 
+// Create this run's own database on the local stack. Returns a teardown, or
+// null to fall through to the Neon paths if the stack turns out unusable
+// (reachable-but-broken: probed liveness is not proof the database works).
+async function setupLocalDatabase(): Promise<(() => Promise<void>) | null> {
+  const name = newLocalDbName()
+  try {
+    process.env.DATABASE_URL = await createLocalDatabase(name)
+  } catch (err) {
+    console.warn(
+      `[test-db] local Docker stack answered but the database could not be created (${firstLine(err)}) → falling back to Neon`,
+    )
+    return null
+  }
+  console.info(
+    `[test-db] local Docker database ${name} created (compose.yaml) → DATABASE_URL points at it`,
+  )
+  return async () => {
+    try {
+      await dropLocalDatabase(name)
+      console.info(`[test-db] dropped local Docker database ${name}`)
+    } catch (err) {
+      console.warn(
+        `[test-db] could not drop local database ${name} (${firstLine(err)}); \`docker compose down\` clears it`,
+      )
+    }
+  }
+}
+
 export default async function setup(): Promise<(() => Promise<void>) | void> {
+  // (0) An external owner already chose the database — CI hands `pnpm test` the
+  // run's Neon branch. Never second-guess it: CI must keep using Neon branches.
+  if (process.env.DATABASE_URL) {
+    console.info(
+      '[test-db] using the DATABASE_URL supplied by the environment (CI provisions the run branch)',
+    )
+    return
+  }
+
+  // (1) The local Docker stack — the fast, free, offline default. TEST_DB_LOCAL=0
+  // forces the Neon path (e.g. to reproduce a CI-only failure locally).
+  if (process.env.TEST_DB_LOCAL !== '0' && (await isLocalDbReachable())) {
+    const local = await setupLocalDatabase()
+    if (local) return local
+  }
+
   // TEST_DB_BRANCH=0 forces the no-ephemeral path (still avoids `dev`).
   const apiKey = process.env.TEST_DB_BRANCH === '0' ? null : resolveNeonApiKey()
 

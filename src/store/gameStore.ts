@@ -85,6 +85,41 @@ export interface Link {
   type: 'canal' | 'rail'
 }
 
+/** Where a slice of a player's score came from. */
+export type VpAwardSource =
+  | 'industry'
+  | 'link'
+  | 'merchantBonus'
+  | 'incomeShortfall'
+  /** Only from `saveMigration`: VP scored before this ledger existed. */
+  | 'carriedForward'
+
+/**
+ * One entry in a player's append-only VP ledger.
+ *
+ * The engine only ever kept a running `victoryPoints` total, and era scoring
+ * DESTROYS `player.links` — so the components of a final score cannot be
+ * recomputed from the end state. Every site that moves `victoryPoints` appends
+ * an award here instead, recording the VP *actually* applied (penalties clamp
+ * at zero). Invariant, pinned by gameStore.vpbreakdown.test.ts:
+ *
+ *   sum(player.vpAwards.map(a => a.vp)) === player.victoryPoints
+ *
+ * Public information — scoring is open in Brass, so this is deliberately NOT
+ * redacted by `filterSnapshotForSeat`.
+ */
+export interface VpAward {
+  source: VpAwardSource
+  era: 'canal' | 'rail'
+  /** Signed VP applied to the total; negative for `incomeShortfall`. */
+  vp: number
+  /** The industry's location, or the merchant sold to. */
+  location?: CityId
+  industryType?: IndustryType
+  level?: number
+  link?: Link
+}
+
 export interface Merchant {
   location: CityId
   industryIcons: IndustryType[]
@@ -106,6 +141,8 @@ export interface Player {
     | 'Henry Bessemer'
   money: number
   victoryPoints: number
+  /** Append-only ledger explaining `victoryPoints`; see {@link VpAward}. */
+  vpAwards: VpAward[]
   /** Income LEVEL (-10..30) — the coin beside the marker; what a round pays. */
   income: number
   /** Marker position on the Progress Track (0..99). Flips advance SPACES. */
@@ -188,7 +225,10 @@ type GameEvent =
       // income/incomeSpace are overwritten by setup (marker on space 10),
       // so callers need not provide the marker position.
       players: Array<
-        Omit<Player, 'hand' | 'links' | 'industries' | 'incomeSpace'> &
+        Omit<
+          Player,
+          'hand' | 'links' | 'industries' | 'incomeSpace' | 'vpAwards'
+        > &
           Partial<Pick<Player, 'incomeSpace'>>
       >
     }
@@ -524,6 +564,7 @@ export const gameStore = setup({
         income: incomeLevelForSpace(STARTING_INCOME_SPACE),
         incomeSpace: STARTING_INCOME_SPACE,
         victoryPoints: 0,
+        vpAwards: [],
         hand: hands[index] ?? [],
         industryTilesOnMat: getInitialPlayerIndustryTilesWithQuantities(),
         links: [],
@@ -1503,6 +1544,15 @@ export const gameStore = setup({
             break
           case 'victoryPoints':
             updatedPlayer.victoryPoints += bonus.value
+            updatedPlayer.vpAwards = [
+              ...(updatedPlayer.vpAwards ?? []),
+              {
+                source: 'merchantBonus',
+                era: context.era,
+                vp: bonus.value,
+                location: bonus.merchantLocation,
+              },
+            ]
             break
           case 'develop':
             // Remove 1 of the lowest level tiles of any industry from Player Mat
@@ -1885,10 +1935,24 @@ export const gameStore = setup({
 
                 // If still short, lose VP
                 if (remainingShortfall > 0) {
-                  updatedPlayer.victoryPoints = Math.max(
-                    0,
-                    updatedPlayer.victoryPoints - remainingShortfall,
+                  // The penalty clamps at 0, so the VP actually lost can be
+                  // less than the debt. Record the applied delta — recording
+                  // the debt would break the ledger's reconciliation.
+                  const lost = Math.min(
+                    remainingShortfall,
+                    updatedPlayer.victoryPoints,
                   )
+                  updatedPlayer.victoryPoints -= lost
+                  if (lost > 0) {
+                    updatedPlayer.vpAwards = [
+                      ...(updatedPlayer.vpAwards ?? []),
+                      {
+                        source: 'incomeShortfall',
+                        era: context.era,
+                        vp: -lost,
+                      },
+                    ]
+                  }
                   logs.push(
                     createLogEntry(
                       `${player.name} lost ${remainingShortfall} VP due to income shortfall`,
@@ -2131,9 +2195,14 @@ export const gameStore = setup({
       for (let i = 0; i < updatedPlayers.length; i++) {
         const player = updatedPlayers[i]!
         let linkVPs = 0
+        const awards: VpAward[] = []
 
         for (const link of player.links) {
-          linkVPs += calculateLinkVictoryPoints(context, link)
+          const vp = calculateLinkVictoryPoints(context, link)
+          linkVPs += vp
+          // Recorded even at 0 VP: the end screen still wants to show that
+          // the link existed, and these tiles are about to be destroyed.
+          awards.push({ source: 'link', era: context.era, vp, link })
         }
 
         if (linkVPs > 0) {
@@ -2145,6 +2214,7 @@ export const gameStore = setup({
         updatedPlayers[i] = {
           ...player,
           victoryPoints: player.victoryPoints + linkVPs,
+          vpAwards: [...(player.vpAwards ?? []), ...awards],
           links: [],
         }
       }
@@ -2155,10 +2225,19 @@ export const gameStore = setup({
       for (let i = 0; i < updatedPlayers.length; i++) {
         const player = updatedPlayers[i]!
         let industryVPs = 0
+        const awards: VpAward[] = []
 
         for (const industry of player.industries) {
           if (industry.flipped) {
             industryVPs += industry.tile.victoryPoints
+            awards.push({
+              source: 'industry',
+              era: context.era,
+              vp: industry.tile.victoryPoints,
+              location: industry.location,
+              industryType: industry.type,
+              level: industry.level,
+            })
           }
         }
 
@@ -2171,6 +2250,7 @@ export const gameStore = setup({
         updatedPlayers[i] = {
           ...player,
           victoryPoints: player.victoryPoints + industryVPs,
+          vpAwards: [...(player.vpAwards ?? []), ...awards],
         }
       }
 
@@ -2717,9 +2797,8 @@ export const gameStore = setup({
       }
       // Mirror execution: the second link is on the board (and so part of the
       // player's network) before its coal is sourced
-      const playerWithLinks = firstCoal.updatedPlayers[
-        context.currentPlayerIndex
-      ]!
+      const playerWithLinks =
+        firstCoal.updatedPlayers[context.currentPlayerIndex]!
       const secondCoal = consumeCoalFromSources(
         {
           ...context,

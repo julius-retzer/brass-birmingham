@@ -146,4 +146,10 @@ test('?preview=gameover renders the final scoring with a winner', async ({
   await expect(
     page.getByRole('button', { name: 'Found a new company' }),
   ).toBeVisible()
+
+  // The final board stays on screen beside the result…
+  await expect(page.locator('[data-city="birmingham"]')).toBeVisible()
+  // …and the score is explained, adding up to the scoreboard total.
+  await expect(page.getByTestId('vp-ledger')).toBeVisible()
+  await expect(page.getByTestId('ledger-mismatch')).toHaveCount(0)
 })

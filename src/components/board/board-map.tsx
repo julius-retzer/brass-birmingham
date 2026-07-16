@@ -135,6 +135,44 @@ function assignSlots(
 
 /* ---------------- props ---------------- */
 
+/**
+ * The game-end VP marker: a struck brass roundel showing what a place or
+ * route earned. Purely decorative — never intercepts board pointer events.
+ */
+function VpRoundel({
+  vp,
+  color,
+  scale = 1,
+}: {
+  vp: number
+  color: string
+  scale?: number
+}) {
+  const negative = vp < 0
+  return (
+    <g pointerEvents="none" transform={`scale(${scale})`}>
+      <circle
+        r="13"
+        fill={negative ? '#c14434' : '#16130f'}
+        stroke={negative ? '#f2e6c8' : '#e6bd63'}
+        strokeWidth="2"
+        filter="url(#bb2-plate-shadow)"
+      />
+      <circle r="13" fill={color} fillOpacity={negative ? 0 : 0.22} />
+      <text
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize="13"
+        fontWeight="800"
+        fill={negative ? '#f2e6c8' : '#e6bd63'}
+        style={{ fontFamily: 'var(--bb-display)' }}
+      >
+        {negative ? vp : `${vp}`}
+      </text>
+    </g>
+  )
+}
+
 export interface BoardMapProps {
   players: Player[]
   era: 'canal' | 'rail'
@@ -154,6 +192,18 @@ export interface BoardMapProps {
   networkColor?: string | null
   /** Cities spotlit while a hand card is hovered (soft preview hint). */
   hoverCities?: ReadonlySet<string> | null
+  /**
+   * Game-end scoring overlay: VP earned per city and per route by ONE player
+   * (null = off). Annotated places get a brass VP roundel; everything else
+   * recedes, so the score reads off the board. Links are destroyed by era
+   * scoring, so these totals come from the engine's ledger, not the board.
+   */
+  vpAnnotations?: {
+    cities: ReadonlyMap<string, number>
+    links: ReadonlyMap<string, number>
+  } | null
+  /** The annotated player's colour — tints the roundels. */
+  vpColor?: string | null
 }
 
 /* ================================================================ */
@@ -172,6 +222,8 @@ export function BoardMap({
   networkCities = null,
   networkColor = null,
   hoverCities = null,
+  vpAnnotations = null,
+  vpColor = null,
 }: BoardMapProps) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const [vb, setVb] = useState({ x: 0, y: 0, w: VIEW_W, h: VIEW_H })
@@ -535,6 +587,9 @@ export function BoardMap({
               legalLinks?.has(linkKey(conn.to, conn.from)) ??
               false
             const isSelected = selectedLinkKeys.has(key)
+            const linkVp =
+              vpAnnotations?.links.get(key) ??
+              vpAnnotations?.links.get(linkKey(conn.to, conn.from))
             const renderType: 'canal' | 'rail' = built
               ? built.type
               : activeThisEra
@@ -542,7 +597,9 @@ export function BoardMap({
                 : types.includes('canal')
                   ? 'canal'
                   : 'rail'
-            const dimmed = pickingLink && !isLegal && !isSelected
+            const dimmed =
+              (pickingLink && !isLegal && !isSelected) ||
+              (vpAnnotations !== null && linkVp === undefined)
 
             return (
               <g key={key} opacity={dimmed ? 0.3 : 1}>
@@ -657,6 +714,16 @@ export function BoardMap({
                   </g>
                 )}
 
+                {/* game-end: what this route scored for the shown player */}
+                {linkVp !== undefined && (
+                  <g
+                    transform={`translate(${mid.x}, ${mid.y})`}
+                    data-vp-link={key}
+                  >
+                    <VpRoundel vp={linkVp} color={vpColor ?? '#e6bd63'} />
+                  </g>
+                )}
+
                 {/* fat invisible hit area */}
                 {(pickingLink || onLinkClick) && (
                   <path
@@ -726,9 +793,14 @@ export function BoardMap({
               key={id}
               cityId={id}
               entries={merchantsByCity.get(id) ?? []}
-              dimmed={pickingCity}
+              dimmed={
+                pickingCity ||
+                (vpAnnotations !== null && !vpAnnotations.cities.has(id))
+              }
               inNetwork={networkCities?.has(id) ?? false}
               networkColor={networkColor}
+              vp={vpAnnotations?.cities.get(id)}
+              vpColor={vpColor}
             />
           ))}
 
@@ -745,10 +817,15 @@ export function BoardMap({
                 occupants={occupants}
                 isLegal={isLegal}
                 isSelected={selectedCity === id}
-                dimmed={pickingCity && !isLegal && selectedCity !== id}
+                dimmed={
+                  (pickingCity && !isLegal && selectedCity !== id) ||
+                  (vpAnnotations !== null && !vpAnnotations.cities.has(id))
+                }
                 inNetwork={networkCities?.has(id) ?? false}
                 networkColor={networkColor}
                 hoverHint={hoverCities?.has(id) ?? false}
+                vp={vpAnnotations?.cities.get(id)}
+                vpColor={vpColor}
                 onClick={() => {
                   if (!wasDrag() && pickingCity) onCityClick?.(id)
                 }}
@@ -954,6 +1031,8 @@ function CityPlate({
   inNetwork = false,
   networkColor = null,
   hoverHint = false,
+  vp = undefined,
+  vpColor = null,
 }: {
   cityId: CityId
   occupants: (BuiltIndustry | null)[]
@@ -965,6 +1044,9 @@ function CityPlate({
   inNetwork?: boolean
   networkColor?: string | null
   hoverHint?: boolean
+  /** Game-end: VP the shown player earned here (undefined = none). */
+  vp?: number
+  vpColor?: string | null
 }) {
   const pos = cityPos[cityId]
   const slots = cityIndustrySlots[cityId] ?? []
@@ -1014,6 +1096,23 @@ function CityPlate({
           strokeOpacity="0.95"
           strokeWidth="2.2"
           strokeDasharray="6 4"
+          pointerEvents="none"
+        />
+      )}
+      {/* game-end: this place's VP for the shown player — a tinted band so
+          the scoring locations read at a glance, plus the roundel below */}
+      {vp !== undefined && (
+        <rect
+          x="-6"
+          y="-6"
+          width={plateW + 12}
+          height={plateH + 12}
+          rx={isFarm ? 17 : 11}
+          fill={vpColor ?? '#e6bd63'}
+          fillOpacity="0.16"
+          stroke={vpColor ?? '#e6bd63'}
+          strokeOpacity="0.9"
+          strokeWidth="2.2"
           pointerEvents="none"
         />
       )}
@@ -1098,6 +1197,13 @@ function CityPlate({
           {name}
         </text>
       </g>
+
+      {/* game-end VP roundel — struck on the plate's top-right corner */}
+      {vp !== undefined && (
+        <g transform={`translate(${plateW - 2}, -2)`} data-vp-city={cityId}>
+          <VpRoundel vp={vp} color={vpColor ?? '#e6bd63'} scale={1.15} />
+        </g>
+      )}
     </g>
   )
 }
@@ -1316,12 +1422,17 @@ function MerchantPlate({
   dimmed,
   inNetwork = false,
   networkColor = null,
+  vp = undefined,
+  vpColor = null,
 }: {
   cityId: CityId
   entries: Merchant[]
   dimmed: boolean
   inNetwork?: boolean
   networkColor?: string | null
+  /** Game-end: VP the shown player took from this merchant's bonus. */
+  vp?: number
+  vpColor?: string | null
 }) {
   const pos = cityPos[cityId]
   const n = Math.max(entries.length, 2)
@@ -1344,6 +1455,21 @@ function MerchantPlate({
       opacity={dimmed ? 0.45 : closed ? 0.3 : 1}
       style={{ transition: 'opacity .2s' }}
     >
+      {vp !== undefined && (
+        <rect
+          x="-6"
+          y="-6"
+          width={plateW + 12}
+          height={plateH + 12}
+          rx="11"
+          fill={vpColor ?? '#e6bd63'}
+          fillOpacity="0.16"
+          stroke={vpColor ?? '#e6bd63'}
+          strokeOpacity="0.9"
+          strokeWidth="2.2"
+          pointerEvents="none"
+        />
+      )}
       {inNetwork && networkColor && (
         <rect
           x="-7"
@@ -1518,6 +1644,13 @@ function MerchantPlate({
           </text>
         )}
       </g>
+
+      {/* game-end VP roundel — the bonus this merchant paid out */}
+      {vp !== undefined && (
+        <g transform={`translate(${plateW - 2}, -2)`} data-vp-city={cityId}>
+          <VpRoundel vp={vp} color={vpColor ?? '#e6bd63'} scale={1.15} />
+        </g>
+      )}
     </g>
   )
 }

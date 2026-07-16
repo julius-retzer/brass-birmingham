@@ -1001,6 +1001,8 @@ function MpTable({
       <GameOverScreen
         players={ctx.players}
         winners={ctx.winners ?? []}
+        era={ctx.era}
+        merchants={ctx.merchants}
         onRestart={() => {
           window.location.href = '/'
         }}

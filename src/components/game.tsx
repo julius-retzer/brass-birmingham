@@ -21,6 +21,7 @@ import { type Card, type IndustryType } from '~/data/cards'
 import {
   type GameEvent,
   type GameStoreSnapshot,
+  type Merchant,
   type Player,
   gameStore,
 } from '~/store/gameStore'
@@ -232,8 +233,18 @@ export function Game() {
   }
 
   if (boot.kind === 'preview-gameover') {
-    const players = (demoSnapshotRail as { context: { players: Player[] } })
-      .context.players
+    // Through the migration like every other boot, so an older fixture
+    // still yields a reconciling ledger.
+    const previewCtx = (
+      rehydrateSnapshot(demoSnapshotRail) as {
+        context: {
+          players: Player[]
+          era: 'canal' | 'rail'
+          merchants: Merchant[]
+        }
+      }
+    ).context
+    const players = previewCtx.players
     const ranked = [...players].sort(
       (a, b) =>
         b.victoryPoints - a.victoryPoints ||
@@ -244,6 +255,8 @@ export function Game() {
       <GameOverScreen
         players={players}
         winners={ranked[0] ? [ranked[0].id] : []}
+        era={previewCtx.era}
+        merchants={previewCtx.merchants}
         onRestart={() => {
           window.location.href = window.location.pathname
         }}
@@ -764,6 +777,8 @@ function GameInner({
       <GameOverScreen
         players={ctx.players}
         winners={ctx.winners ?? []}
+        era={ctx.era}
+        merchants={ctx.merchants}
         onRestart={onNewGame}
       />
     )

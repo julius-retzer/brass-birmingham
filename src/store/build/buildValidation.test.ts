@@ -20,6 +20,7 @@ const createTestContext = (overrides: Partial<GameState> = {}): GameState => {
         character: 'Richard Arkwright',
         money: 17,
         victoryPoints: 0,
+        vpAwards: [],
         income: 10,
       incomeSpace: 30,
         hand: [],

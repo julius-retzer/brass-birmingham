@@ -374,6 +374,14 @@ const expectCompletedGame = (
   const c = snap.context
   expect(c.players).toHaveLength(playerCount)
 
+  // The VP ledger must reconcile to the score the scoreboard shows — the
+  // end screen renders the breakdown from these awards, so any drift is a
+  // scoring bug surfacing as a wrong explanation.
+  c.players.forEach((p: any) => {
+    const summed = p.vpAwards.reduce((t: number, a: any) => t + a.vp, 0)
+    expect(summed).toBe(p.victoryPoints)
+  })
+
   // Both era transitions fired automatically (no TRIGGER_* events sent)
   expect(c.logs.some((l: any) => l.message === 'Canal Era ended')).toBe(true)
   expect(c.logs.some((l: any) => l.message === 'Rail Era started')).toBe(true)

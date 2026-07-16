@@ -28,7 +28,7 @@ const TIER_ORDER: AiTierId[] = [
 
 export type SetupPlayer = Omit<
   Player,
-  'hand' | 'links' | 'industries' | 'incomeSpace'
+  'hand' | 'links' | 'industries' | 'incomeSpace' | 'vpAwards'
 >
 
 export function SetupScreen({

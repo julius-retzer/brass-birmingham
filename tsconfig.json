@@ -23,8 +23,8 @@
     "plugins": [{ "name": "next" }],
     "incremental": true,
 
-    /* Path Aliases */
-    "baseUrl": ".",
+    /* Path Aliases — TS7 removed 'baseUrl'; paths are resolved relative to
+       this file, so every mapping must be './'-prefixed. */
     "paths": {
       "~/*": ["./src/*"]
     }

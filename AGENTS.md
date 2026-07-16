@@ -102,6 +102,38 @@ when the pin changes.
 - Board connections as arrays of relationship objects
 - Immutable state updates using XState assign actions
 
+## TypeScript 7 (native `tsc`, upgraded 2026-07-16)
+
+TWO packages, and the split is deliberate — do not "fix" it back to one:
+- `@typescript/native` (= `npm:typescript@7`) supplies the **`tsc` binary**.
+  TS7 is the native (Go) compiler; `pnpm typecheck` runs it.
+- `typescript` is ALIASED to `npm:@typescript/typescript6` — the sanctioned
+  6.0 **compiler-API** compat shim. TS7 ships no classic API
+  (`require('typescript')` on real TS7 yields 2 keys: `version` + `unstable/*`),
+  so anything calling `ts.createProgram` needs this. Here that is **Next's own
+  TS integration** (`next build`'s "checking validity of types", `next dev`).
+  Nothing else does: eslint is unwired (no config/script — Biome lints), and
+  vitest transpiles via esbuild.
+No bin collision: typescript@7 ships `tsc`, typescript6 ships `tsc6`.
+`pnpm exec tsc --version` must say 7.x — if it says 6.x the alias is inverted.
+
+TS7 constraints that bit this repo (see `tsconfig.json`):
+- **`baseUrl` is REMOVED** (TS5102). Every `paths` mapping must be
+  `./`-prefixed and resolves relative to the tsconfig.
+- Side-effect imports of undeclared modules are now an error (TS2882). Next
+  only declares `*.module.css`, so global `import './globals.css'` needs the
+  ambient `declare module '*.css'` in `css.d.ts` — deleting that file breaks
+  `pnpm typecheck`.
+- TS6/7 default `types` to `[]`. No explicit array is needed here (node/react
+  types arrive via next-env.d.ts's `/// <reference types="next" />`, and every
+  test imports `vitest` explicitly rather than using bare globals) — but add
+  one if you introduce a dependency on ambient `@types/*` globals.
+
+GOTCHA: `pnpm check` (`biome check && tsc --noEmit`) fails on PRE-EXISTING
+formatter complaints in files nobody touched (demo snapshots, `gameUtils.ts`,
+`mp/game.ts`). CI runs `pnpm lint` + `pnpm typecheck`, which are green; don't
+chase `check` failures you didn't cause, and don't `pnpm format:write` (see
+the Formatting gotcha above).
 
 ### Shadcn MCP Server
 When a task requires building or modifying a user interface, you must use the tools available in the shadcn-ui MCP server.

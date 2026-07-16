@@ -14,6 +14,13 @@ Digital implementation of the Brass Birmingham board game using Next.js 15, Type
 
 ## Development Commands
 
+**Node.js:** pinned in `.nvmrc` / `package.json engines.node` (currently the
+latest Active LTS — check https://nodejs.org/en/about/previous-releases for
+the current line before bumping; CI's `setup-node` step must match). Vercel's
+per-project Node version is a separate dashboard setting (Project Settings →
+General) that does NOT read `engines.node` — bump it manually to stay in sync
+when the pin changes.
+
 **Build & Development:**
 - `pnpm dev` - Start development server with Turbo
 - `pnpm build` - Production build

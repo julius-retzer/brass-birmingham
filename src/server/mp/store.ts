@@ -138,6 +138,50 @@ export async function loadVersionAndSeq(
   return { version: row.version, maxSeq: Number(row.maxSeq) }
 }
 
+/** The cheap "is it an AI seat's turn?" peek: phase + version + seats + the
+ *  current player index, WITHOUT the 28–65KB `snapshot` jsonb. The SSE poll
+ *  re-kicks the AI turn-runner every ~1.2s per open tab; before this it read
+ *  the whole game row (incl. snapshot) on every tick even for human-turn,
+ *  finished, or no-AI games — the bulk of the Neon egress leak. Here we pull
+ *  only `snapshot#>>'{context,currentPlayerIndex}'` as a scalar and the small
+ *  `seats` array, so a poll tick on an idle game costs <1KB instead of tens of
+ *  KB. The full `loadGame` (snapshot included) is paid ONLY once it is
+ *  genuinely an AI's turn. Returns null for an unknown/malformed token. */
+export interface AiPeek {
+  phase: GameRecord['phase']
+  version: number
+  seats: SeatRecord[]
+  /** null in the lobby (no snapshot yet) */
+  currentPlayerIndex: number | null
+}
+
+export async function loadAiPeek(token: string): Promise<AiPeek | null> {
+  if (!TOKEN_RE.test(token)) return null
+  const rows = await db
+    .select({
+      phase: games.phase,
+      version: games.version,
+      seats: games.seats,
+      // Extract the scalar from the jsonb server-side so the (large) snapshot
+      // never crosses the wire. `#>>` on a NULL snapshot (lobby) yields NULL.
+      currentPlayerIndex: sql<
+        number | null
+      >`(${games.snapshot} #>> '{context,currentPlayerIndex}')::int`,
+    })
+    .from(games)
+    .where(eq(games.token, token))
+    .limit(1)
+  const row = rows[0]
+  if (!row) return null
+  return {
+    phase: row.phase,
+    version: row.version,
+    seats: row.seats,
+    currentPlayerIndex:
+      row.currentPlayerIndex === null ? null : Number(row.currentPlayerIndex),
+  }
+}
+
 /* ---------------- chat (normalized out of the game row) ---------------- */
 
 const CHAT_SEQ_RETRIES = 6

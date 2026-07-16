@@ -169,11 +169,37 @@ export function MpGame({ token }: { token: string }) {
   const [credsLoaded, setCredsLoaded] = useState(false)
   const [view, setView] = useState<GameViewWire | null>(null)
   const [streamFailing, setStreamFailing] = useState(false)
+  // The SSE stream drives a ~1.2s server-side DB poll for its whole lifetime.
+  // A tab left open on a dormant game therefore keeps polling Neon forever —
+  // the bulk of the egress leak. Close the stream once the tab has been hidden
+  // for a grace period and reopen it when the tab is shown again; the first
+  // frame on reopen is the full current view, so nothing is missed.
+  const [streamPaused, setStreamPaused] = useState(false)
 
   useEffect(() => {
     setCreds(loadCreds(token))
     setCredsLoaded(true)
   }, [token])
+
+  // Pause the live stream on a persistently hidden tab (60s grace, so a quick
+  // tab switch doesn't churn the connection). Resume immediately on show.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    let hideTimer: ReturnType<typeof setTimeout> | undefined
+    const onVisibility = () => {
+      if (document.hidden) {
+        hideTimer = setTimeout(() => setStreamPaused(true), 60_000)
+      } else {
+        if (hideTimer) clearTimeout(hideTimer)
+        setStreamPaused(false)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      if (hideTimer) clearTimeout(hideTimer)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [])
 
   // Single apply path for every authoritative full view — SSE `data:` frames
   // AND the fresh view returned by an act/chat POST. The engine snapshot is
@@ -213,6 +239,8 @@ export function MpGame({ token }: { token: string }) {
   // stream must never wipe freshly-claimed credentials.
   useEffect(() => {
     if (!credsLoaded) return
+    // Hidden-tab pause: hold the connection closed until the tab is shown.
+    if (streamPaused) return
     const myCreds = creds
     const qs = new URLSearchParams({ token })
     if (myCreds) {
@@ -250,7 +278,7 @@ export function MpGame({ token }: { token: string }) {
       closed = true
       es.close()
     }
-  }, [token, creds, credsLoaded, applyView, applyChatDelta])
+  }, [token, creds, credsLoaded, streamPaused, applyView, applyChatDelta])
 
   if (!credsLoaded || (!view && !streamFailing)) {
     return (

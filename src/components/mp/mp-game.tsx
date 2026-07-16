@@ -18,6 +18,7 @@ import {
   type Player,
   gameStore,
 } from '~/store/gameStore'
+import { explainRefusal } from '~/store/refusal'
 import { refreshEmbeddedTileStats } from '~/store/saveMigration'
 import { ActionDock, SELLABLE, getHandSelection } from '../action-dock'
 import { linkKey } from '../board/board-data'
@@ -1036,18 +1037,27 @@ function MpTable({
       )
       return
     }
+    // The client gates the click itself, so the server's refusal reason would
+    // never be reached for an illegal route. Ask the SAME explainer the server
+    // uses — everything it needs (money, links, era) is public state already
+    // in this frame — so the player is told what is missing either way.
     if (pickingSecondLink) {
-      if (state.can({ type: 'SELECT_SECOND_LINK', from, to })) {
-        send({ type: 'SELECT_SECOND_LINK', from, to })
-      } else {
-        toast.error('That route cannot be your second rail.')
+      const event = { type: 'SELECT_SECOND_LINK', from, to } as const
+      if (state.can(event)) send(event)
+      else {
+        toast.error(
+          explainRefusal(ctx, event) ??
+            'That route cannot be your second rail.',
+        )
       }
       return
     }
-    if (state.can({ type: 'SELECT_LINK', from, to })) {
-      send({ type: 'SELECT_LINK', from, to })
-    } else {
-      toast.error('That route cannot be claimed right now.')
+    const event = { type: 'SELECT_LINK', from, to } as const
+    if (state.can(event)) send(event)
+    else {
+      toast.error(
+        explainRefusal(ctx, event) ?? 'That route cannot be claimed right now.',
+      )
     }
   }
 

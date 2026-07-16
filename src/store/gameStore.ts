@@ -3082,6 +3082,14 @@ export const gameStore = setup({
   },
 }).createMachine({
   id: 'brassGame',
+  // Safety net on the `always` chains. The engine leans on eventless
+  // transitions to auto-advance (actionComplete → nextPlayer, the era-end
+  // guards, the source-choice auto-skips); a regressed guard could spin one
+  // of those forever and hang the request that is driving it. A finite cap
+  // turns that hang into a loud throw. Well above any real chain (the
+  // longest is a handful of microsteps), so it can only fire on a genuine
+  // bug — never on legal play.
+  options: { maxIterations: 1000 },
   context: {
     players: [],
     currentPlayerIndex: 0,

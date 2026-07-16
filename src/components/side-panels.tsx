@@ -1,8 +1,54 @@
 'use client'
 
 // Right-dock reference panels: the coal & iron exchanges and the journal.
+import { type ReactNode, useState } from 'react'
 import { type GameState, type LogEntry, type Player } from '~/store/gameStore'
 import { PLAYER_FILL } from './board/board-map'
+
+/* ---------------- collapsible shell ---------------- */
+
+// The collapse affordance the chat panel established (`ChatPanel` in
+// mp/mp-game.tsx): the title row doubles as the toggle, caret on the right.
+export function CollapsiblePanel({
+  title,
+  testId,
+  panelTestId,
+  defaultOpen = true,
+  openClassName = '',
+  children,
+}: {
+  title: string
+  testId?: string
+  panelTestId?: string
+  defaultOpen?: boolean
+  // Applied only while open — layout that must not reserve space for content
+  // that isn't rendered (e.g. the journal's min-height floor).
+  openClassName?: string
+  children: ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div
+      className={`bb2-panel flex flex-col gap-2 p-3 ${open ? openClassName : ''}`}
+      data-testid={panelTestId}
+      data-open={open}
+    >
+      <button
+        type="button"
+        className="flex flex-none items-center justify-between"
+        data-testid={testId}
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="bb2-panel-title">{title}</span>
+        <span style={{ color: 'rgba(231,215,177,.5)', fontSize: 11 }}>
+          {open ? '▾' : '▸'}
+        </span>
+      </button>
+      {open && children}
+    </div>
+  )
+}
 
 /* ---------------- markets ---------------- */
 
@@ -98,8 +144,7 @@ export function MarketsPanel({
   ironMarket: GameState['ironMarket']
 }) {
   return (
-    <div className="bb2-panel flex flex-col gap-3 p-3">
-      <span className="bb2-panel-title">The Exchanges</span>
+    <CollapsiblePanel title="The Exchanges" testId="markets-toggle">
       <div className="flex gap-5">
         <MarketTrack
           title="Coal"
@@ -114,7 +159,7 @@ export function MarketsPanel({
           cubeStroke="#7c3d1c"
         />
       </div>
-    </div>
+    </CollapsiblePanel>
   )
 }
 
@@ -200,8 +245,14 @@ export function JournalPanel({
 }) {
   const recent = logs.slice(-40).reverse()
   return (
-    <div className="bb2-panel flex min-h-0 flex-1 flex-col gap-2 p-3">
-      <span className="bb2-panel-title">Journal</span>
+    <CollapsiblePanel
+      title="Journal"
+      testId="journal-toggle"
+      // A floor, so a tall dock can't squeeze the journal to nothing — the
+      // aside overflows and scrolls instead. Collapsed it is only its header,
+      // so it must not claim the space then.
+      openClassName="min-h-[220px] flex-1"
+    >
       <div className="bb2-log min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1">
         {recent.map((entry, i) => (
           <div
@@ -221,6 +272,6 @@ export function JournalPanel({
           </p>
         )}
       </div>
-    </div>
+    </CollapsiblePanel>
   )
 }

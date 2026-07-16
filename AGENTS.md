@@ -233,6 +233,11 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   removed then, so `/v2` no longer resolves.) The former v1 hotseat surface
   and the legacy networked flow (`gameManager`/`GameInterface`/`/game/[gameId]`)
   were deleted when this surface replaced them; `pnpm build` passes cleanly.
+- DEV-ONLY machine visualisation: `NEXT_PUBLIC_XSTATE_INSPECT=1 pnpm dev`
+  pops the Stately Inspector on the live `gameStore` actor. Hard-gated off
+  production and dynamically imported (`src/lib/xstate-inspector.ts`, fed into
+  `useMachine` in `game.tsx`); disabled default is a zero-behaviour no-op. See
+  the README "Debugging the game state machine" section.
 - The action UI is generated from the machine, not hand-coded state:
   `ActionDock` branches on `snapshot.matches('playing.action.<...>')` and
   gates every choice with `snapshot.can(event)`. Board city/link clicks are

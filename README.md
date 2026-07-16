@@ -28,6 +28,26 @@ You can check out the [create-t3-app GitHub repository](https://github.com/t3-os
 
 Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
 
+## Debugging the game state machine (Stately Inspector)
+
+The client-side XState machine can be visualised live with the
+[Stately Inspector](https://stately.ai/docs/inspector). It is **opt-in and
+dev-only** — hard-gated off production, and the inspector package is loaded via
+a dynamic import so it never lands in the production bundle.
+
+To turn it on, set the flag when running locally (or on a preview):
+
+```bash
+NEXT_PUBLIC_XSTATE_INSPECT=1 pnpm dev
+```
+
+Then open the app. A Stately Inspector window pops up and shows the live
+machine, its states and every event as you play. Leave the flag unset (the
+default) for normal play — the inspector adds nothing when disabled.
+
+Wiring lives in `src/lib/xstate-inspector.ts` (the flag check + dynamic import)
+and is fed into `useMachine` in `src/components/game.tsx`.
+
 ## Icon credits
 
 Industry and marker icons are from [game-icons.net](https://game-icons.net),

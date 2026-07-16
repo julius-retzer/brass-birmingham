@@ -456,9 +456,10 @@ const SELLABLE_INDUSTRY_TYPES: IndustryType[] = [
   'pottery',
 ]
 
-// Shared validation for a single sale within a Sell action, used by both the
-// canExecuteSale guard and the executeSingleSale action
-const validateSale = (
+// Shared validation for a single sale within a Sell action, used by the
+// canExecuteSale guard, the executeSingleSale action, and `explainRefusal`
+// (src/store/refusal.ts) — which surfaces the `error` the guard discards.
+export const validateSale = (
   context: GameState,
   event: { location: CityId; industryType: IndustryType; merchant: CityId },
 ): {

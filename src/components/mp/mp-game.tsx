@@ -28,6 +28,7 @@ import { GameOverScreen } from '../overlays'
 import { PlayerLedger } from '../player-ledger'
 import { PlayerRail } from '../player-rail'
 import { CollapsiblePanel, JournalPanel, MarketsPanel } from '../side-panels'
+import { UNREACHABLE, refusalToShow } from './refusal'
 import { didBecomeMyTurn, playTurnChime, titleForTurn } from './turnNotify'
 import { useInFlight } from './use-in-flight'
 
@@ -780,12 +781,12 @@ function MpTable({
             version?: number
           }
           if (!body.ok) {
-            // The server rejected the intent — no frame is coming, so settle
-            // now; the existing error toast still surfaces the reason.
+            // The server refused the intent — no frame is coming, so settle
+            // now and show the server's EXACT reason (what is missing: the
+            // money, the beer, the connection, whose turn it is).
             settle()
-            if (body.error && event.type !== 'CLEAR_ERROR') {
-              toast.error(body.error)
-            }
+            const refusal = refusalToShow(body, event.type)
+            if (refusal) toast.error(refusal)
           } else if (body.view) {
             // Server-authoritative fast path: apply the engine's OWN fresh view
             // from the POST response (same version-guarded apply path as an SSE
@@ -798,7 +799,7 @@ function MpTable({
           // pending: the resulting SSE frame settles it via the version bump.
         } catch {
           settle()
-          toast.error('Could not reach the game server')
+          toast.error(UNREACHABLE)
         }
       })()
     },

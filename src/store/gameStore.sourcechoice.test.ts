@@ -190,6 +190,101 @@ const setupSellBoard = (
 }
 
 describe('Resource source choice - beer on sell', () => {
+  test('a two-barrel sale takes each barrel from a different source (mixed allocation)', () => {
+    // A 2-beer tile: the beer step stays open until both barrels are assigned,
+    // so a mixed allocation (own brewery + merchant) is reached by two picks —
+    // there is no homogeneous-only limitation. Built inline so the ONLY cotton
+    // at worcester is the 2-beer one (setupSellBoard always adds a 1-beer one).
+    const { actor } = setupGame()
+    buildLinkToGloucester(actor)
+    passCurrentPlayer(actor)
+    const sellerIndex = actor.getSnapshot().context.currentPlayerIndex
+    const opponentIndex = sellerIndex === 0 ? 1 : 0
+    actor.send({
+      type: 'TEST_SET_MERCHANTS',
+      merchants: [gloucesterMerchant()],
+    })
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: sellerIndex,
+      money: 20,
+      income: 10,
+      industries: [
+        makeIndustry('worcester', { ...cottonTile, beerRequired: 2 }),
+        makeIndustry('worcester', breweryTile, { beerBarrelsOnTile: 1 }),
+      ],
+    })
+    // A connected opponent brewery gives a THIRD barrel, so with 2 required
+    // the player genuinely chooses WHICH two (3 available > 2 = a real choice).
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: opponentIndex,
+      industries: [
+        makeIndustry('gloucester', breweryTile, { beerBarrelsOnTile: 1 }),
+      ],
+    })
+    const openSell = () => {
+      actor.send({ type: 'SELL' })
+      actor.send({
+        type: 'SELECT_CARD',
+        cardId: actor.getSnapshot().context.players[sellerIndex]!.hand[0]!.id,
+      })
+    }
+    openSell()
+
+    actor.send({
+      type: 'SELECT_SALE',
+      location: 'worcester',
+      industryType: 'cotton',
+      merchant: 'gloucester',
+    })
+    // Two barrels required, so the step does NOT auto-close after one pick.
+    expect(
+      actor.getSnapshot().matches({
+        playing: { action: { selling: 'choosingBeerSource' } },
+      }),
+    ).toBe(true)
+
+    const sellerId = actor.getSnapshot().context.players[sellerIndex]!.id
+    // Barrel 1 from the own brewery…
+    actor.send({
+      type: 'SELECT_BEER_SOURCE',
+      source: { kind: 'brewery', ownerId: sellerId, location: 'worcester' },
+    })
+    // …still open (1 of 2 assigned)…
+    expect(
+      actor.getSnapshot().matches({
+        playing: { action: { selling: 'choosingBeerSource' } },
+      }),
+    ).toBe(true)
+    // …barrel 2 from the merchant, which closes the step and executes.
+    actor.send({
+      type: 'SELECT_BEER_SOURCE',
+      source: { kind: 'merchant', location: 'gloucester' },
+    })
+    actor.send({ type: 'CONFIRM' })
+
+    const snap = actor.getSnapshot()
+    const seller = snap.context.players[sellerIndex]!
+    // Own brewery drained + merchant barrel taken (£5 bonus): a genuine mix.
+    // The opponent's brewery — the third, unchosen source — is left alone.
+    expect(
+      seller.industries.find((i) => i.type === 'brewery')!.beerBarrelsOnTile,
+    ).toBe(0)
+    expect(
+      snap.context.merchants.find((m) => m.location === 'gloucester')!.hasBeer,
+    ).toBe(false)
+    expect(
+      snap.context.players[opponentIndex]!.industries.find(
+        (i) => i.type === 'brewery',
+      )!.beerBarrelsOnTile,
+    ).toBe(1)
+    expect(seller.money).toBe(25) // 20 + £5 merchant bonus
+    expect(seller.industries.find((i) => i.type === 'cotton')!.flipped).toBe(
+      true,
+    )
+  })
+
   test('choosing merchant beer collects the bonus and spares the own brewery', () => {
     const { actor, sellerIndex, openSell } = setupSellBoard(
       [],
@@ -493,6 +588,163 @@ describe('Resource source choice - beer on the double rail link', () => {
         playing: { action: { networking: 'choosingDoubleLinkBeer' } },
       }),
     ).toBe(true)
+  })
+
+  test('beer reachability is judged after both rails are placed (provisional network)', () => {
+    // Opponent brewery sits at nuneaton. The builder's second link ends at
+    // wolverhampton, which only reaches nuneaton THROUGH the two rails being
+    // built (wolverhampton–birmingham–coventry–nuneaton). Before placement
+    // wolverhampton is isolated, so the brewery is only reachable — and only
+    // consumable — once both rails are down, exactly as execution sees it.
+    const { actor } = setupGame()
+    actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
+    const builderIndex = actor.getSnapshot().context.currentPlayerIndex
+    const opponentIndex = builderIndex === 0 ? 1 : 0
+
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: builderIndex,
+      money: 60,
+      industries: [
+        makeIndustry('birmingham', breweryTile, { beerBarrelsOnTile: 2 }),
+        makeIndustry(
+          'birmingham',
+          { ...ironTile, type: 'coal' },
+          {
+            coalCubesOnTile: 4,
+          },
+        ),
+      ],
+    })
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: opponentIndex,
+      industries: [
+        makeIndustry('nuneaton', breweryTile, { beerBarrelsOnTile: 1 }),
+      ],
+    })
+    const opponentId = actor.getSnapshot().context.players[opponentIndex]!.id
+
+    // Network: birmingham–coventry, then the double coventry–nuneaton +
+    // birmingham–wolverhampton (second link ends at wolverhampton).
+    const hand = actor.getSnapshot().context.players[builderIndex]!.hand
+    actor.send({ type: 'NETWORK' })
+    actor.send({ type: 'SELECT_CARD', cardId: hand[0]!.id })
+    actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'coventry' })
+    actor.send({ type: 'CONFIRM' })
+    actor.send({ type: 'NETWORK' })
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: actor.getSnapshot().context.players[builderIndex]!.hand[0]!.id,
+    })
+    actor.send({ type: 'SELECT_LINK', from: 'coventry', to: 'nuneaton' })
+    actor.send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })
+    actor.send({
+      type: 'SELECT_SECOND_LINK',
+      from: 'birmingham',
+      to: 'wolverhampton',
+    })
+
+    // Own beer (birmingham) plus the opponent's nuneaton brewery — reachable
+    // ONLY via the provisional both-rails network — are both offered.
+    const step = actor.getSnapshot()
+    expect(
+      step.can({
+        type: 'SELECT_BEER_SOURCE',
+        source: { kind: 'brewery', ownerId: opponentId, location: 'nuneaton' },
+      }),
+    ).toBe(true)
+
+    // And it consumes: pick the opponent's, confirm, their brewery flips.
+    actor.send({
+      type: 'SELECT_BEER_SOURCE',
+      source: { kind: 'brewery', ownerId: opponentId, location: 'nuneaton' },
+    })
+    actor.send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
+    const after = actor.getSnapshot()
+    const oppBrewery = after.context.players[opponentIndex]!.industries.find(
+      (i) => i.type === 'brewery',
+    )!
+    expect(oppBrewery.beerBarrelsOnTile).toBe(0)
+    expect(after.context.players[builderIndex]!.links.length).toBe(3)
+  })
+
+  test('cancelling after a pick and re-selecting re-asks the beer source', () => {
+    const { actor, opponentIndex } = railBoard()
+    const opponentId = actor.getSnapshot().context.players[opponentIndex]!.id
+
+    const inBeerStep = () =>
+      actor.getSnapshot().matches({
+        playing: { action: { networking: 'choosingDoubleLinkBeer' } },
+      })
+
+    // Pick the opponent's brewery, then change your mind and cancel out
+    expect(inBeerStep()).toBe(true)
+    actor.send({
+      type: 'SELECT_BEER_SOURCE',
+      source: {
+        kind: 'brewery',
+        ownerId: opponentId,
+        location: 'wolverhampton',
+      },
+    })
+    expect(
+      actor.getSnapshot().matches({
+        playing: { action: { networking: 'confirmingDoubleLink' } },
+      }),
+    ).toBe(true)
+    actor.send({ type: 'CANCEL' })
+
+    // The stale pick must not skip the re-ask (regression: it used to land
+    // straight back in confirmingDoubleLink and consume from the old brewery).
+    expect(actor.getSnapshot().context.chosenBeerSources).toEqual([])
+    actor.send({
+      type: 'SELECT_SECOND_LINK',
+      from: 'birmingham',
+      to: 'wolverhampton',
+    })
+    expect(inBeerStep()).toBe(true)
+    expect(actor.getSnapshot().context.chosenBeerSources).toEqual([])
+  })
+})
+
+describe('Resource source choice - iron on build', () => {
+  test('a location-card build routes through the iron step (does not skip it)', () => {
+    // Regression: a location-card build sent SELECT_INDUSTRY_TYPE straight to
+    // confirmingBuild, bypassing choosingIronSource — so an iron-requiring
+    // build never asked where the iron came from. The site being fixed by the
+    // card must not skip the iron question.
+    const { actor } = setupGame()
+    const builderIndex = actor.getSnapshot().context.currentPlayerIndex
+
+    actor.send({
+      type: 'TEST_SET_PLAYER_HAND',
+      playerId: builderIndex,
+      hand: [
+        {
+          id: 'loc_bham',
+          type: 'location',
+          location: 'birmingham',
+          color: 'blue',
+        },
+      ],
+    })
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: builderIndex,
+      money: 50,
+    })
+
+    actor.send({ type: 'BUILD' })
+    actor.send({ type: 'SELECT_CARD', cardId: 'loc_bham' })
+    actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'manufacturer' })
+
+    // The choosingIronSource step was entered — its entry stamps pendingIronStep.
+    // (Before the fix the step was skipped, so this stayed null.) Manufacturer
+    // L1 needs no iron, so it then auto-skips to the confirm — the point is the
+    // step is on the path now; the "stop when iron is needed + a choice exists"
+    // behaviour is pinned by the develop iron tests below.
+    expect(actor.getSnapshot().context.pendingIronStep).toBe('build')
   })
 })
 

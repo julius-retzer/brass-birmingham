@@ -712,9 +712,6 @@ function GameInner({
     setHoveredCard(null)
   }, [currentPlayer?.id])
 
-  // While the dock asks WHERE a sale's beer comes from, spotlight the places
-  // it could come from — the choice is about the board, so it belongs on it.
-  // The candidates are the engine's own enumeration, never a UI guess.
   // While the machine is asking WHERE a sale's beer comes from, spotlight the
   // places it could come from — the choice is about the board, so it belongs
   // on it. Both the question and the answers are the engine's.

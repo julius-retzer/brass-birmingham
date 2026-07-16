@@ -15,7 +15,7 @@ export const demoSnapshotBeerChoice: unknown = {
         "name": "Eliza",
         "color": "red",
         "character": "Eliza Tinsley",
-        "money": 5,
+        "money": 2,
         "victoryPoints": 0,
         "income": -9,
         "industryTilesOnMat": {
@@ -41,7 +41,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 5,
                 "quantity": 3
               },
-              "quantityAvailable": 0
+              "quantityAvailable": 2
             },
             {
               "tile": {
@@ -181,7 +181,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 6,
                 "quantity": 2
               },
-              "quantityAvailable": 1
+              "quantityAvailable": 2
             },
             {
               "tile": {
@@ -532,7 +532,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 1,
                 "quantity": 1
               },
-              "quantityAvailable": 0
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -626,7 +626,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 4,
                 "quantity": 2
               },
-              "quantityAvailable": 2
+              "quantityAvailable": 0
             },
             {
               "tile": {
@@ -649,7 +649,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 5,
                 "quantity": 2
               },
-              "quantityAvailable": 2
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -701,32 +701,97 @@ export const demoSnapshotBeerChoice: unknown = {
         },
         "incomeSpace": 1,
         "vpAwards": [],
-        "hand": [],
+        "hand": [
+          {
+            "id": "dudley_1",
+            "type": "location",
+            "location": "dudley",
+            "color": "other"
+          }
+        ],
         "links": [],
         "industries": [
           {
-            "location": "coventry",
-            "type": "pottery",
+            "location": "cannock",
+            "type": "coal",
             "level": 2,
             "flipped": false,
             "tile": {
-              "id": "pottery_2",
-              "type": "pottery",
+              "id": "coal_2",
+              "type": "coal",
               "level": 2,
-              "cost": 0,
-              "victoryPoints": 1,
-              "incomeSpaces": 1,
+              "cost": 7,
+              "victoryPoints": 2,
+              "incomeSpaces": 7,
               "linkScoringIcons": 1,
-              "coalRequired": 1,
+              "coalRequired": 0,
               "ironRequired": 0,
+              "beerRequired": 0,
+              "beerProduced": 0,
+              "coalProduced": 3,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": true,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 7,
+              "quantity": 2
+            },
+            "coalCubesOnTile": 3,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          },
+          {
+            "location": "coventry",
+            "type": "coal",
+            "level": 2,
+            "flipped": false,
+            "tile": {
+              "id": "coal_2",
+              "type": "coal",
+              "level": 2,
+              "cost": 7,
+              "victoryPoints": 2,
+              "incomeSpaces": 7,
+              "linkScoringIcons": 1,
+              "coalRequired": 0,
+              "ironRequired": 0,
+              "beerRequired": 0,
+              "beerProduced": 0,
+              "coalProduced": 3,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": true,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 7,
+              "quantity": 2
+            },
+            "coalCubesOnTile": 3,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          },
+          {
+            "location": "stoke",
+            "type": "pottery",
+            "level": 1,
+            "flipped": false,
+            "tile": {
+              "id": "pottery_1",
+              "type": "pottery",
+              "level": 1,
+              "cost": 17,
+              "victoryPoints": 10,
+              "incomeSpaces": 5,
+              "linkScoringIcons": 1,
+              "coalRequired": 0,
+              "ironRequired": 1,
               "beerRequired": 1,
               "beerProduced": 0,
               "coalProduced": 0,
               "ironProduced": 0,
               "canBuildInCanalEra": true,
               "canBuildInRailEra": true,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 1,
+              "hasLightbulbIcon": true,
+              "incomeAdvancement": 5,
               "quantity": 1
             },
             "coalCubesOnTile": 0,
@@ -766,7 +831,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 5,
                 "quantity": 3
               },
-              "quantityAvailable": 2
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -883,7 +948,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 7,
                 "quantity": 2
               },
-              "quantityAvailable": 0
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -906,7 +971,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 6,
                 "quantity": 2
               },
-              "quantityAvailable": 0
+              "quantityAvailable": 2
             },
             {
               "tile": {
@@ -929,7 +994,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 5,
                 "quantity": 2
               },
-              "quantityAvailable": 1
+              "quantityAvailable": 2
             }
           ],
           "iron": [
@@ -1234,7 +1299,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 5,
                 "quantity": 1
               },
-              "quantityAvailable": 1
+              "quantityAvailable": 0
             },
             {
               "tile": {
@@ -1374,7 +1439,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 5,
                 "quantity": 2
               },
-              "quantityAvailable": 2
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -1428,16 +1493,75 @@ export const demoSnapshotBeerChoice: unknown = {
         "vpAwards": [],
         "hand": [],
         "links": [],
-        "industries": []
+        "industries": [
+          {
+            "location": "wolverhampton",
+            "type": "coal",
+            "level": 2,
+            "flipped": false,
+            "tile": {
+              "id": "coal_2",
+              "type": "coal",
+              "level": 2,
+              "cost": 7,
+              "victoryPoints": 2,
+              "incomeSpaces": 7,
+              "linkScoringIcons": 1,
+              "coalRequired": 0,
+              "ironRequired": 0,
+              "beerRequired": 0,
+              "beerProduced": 0,
+              "coalProduced": 3,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": true,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 7,
+              "quantity": 2
+            },
+            "coalCubesOnTile": 3,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          },
+          {
+            "location": "coventry",
+            "type": "pottery",
+            "level": 1,
+            "flipped": false,
+            "tile": {
+              "id": "pottery_1",
+              "type": "pottery",
+              "level": 1,
+              "cost": 17,
+              "victoryPoints": 10,
+              "incomeSpaces": 5,
+              "linkScoringIcons": 1,
+              "coalRequired": 0,
+              "ironRequired": 1,
+              "beerRequired": 1,
+              "beerProduced": 0,
+              "coalProduced": 0,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": true,
+              "hasLightbulbIcon": true,
+              "incomeAdvancement": 5,
+              "quantity": 1
+            },
+            "coalCubesOnTile": 0,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          }
+        ]
       },
       {
         "id": "3",
         "name": "George",
         "color": "green",
         "character": "George Stephenson",
-        "money": 13,
+        "money": 8,
         "victoryPoints": 0,
-        "income": -6,
+        "income": -10,
         "industryTilesOnMat": {
           "cotton": [
             {
@@ -1555,7 +1679,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 4,
                 "quantity": 1
               },
-              "quantityAvailable": 1
+              "quantityAvailable": 0
             },
             {
               "tile": {
@@ -1578,7 +1702,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 7,
                 "quantity": 2
               },
-              "quantityAvailable": 2
+              "quantityAvailable": 0
             },
             {
               "tile": {
@@ -1672,7 +1796,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 3,
                 "quantity": 1
               },
-              "quantityAvailable": 0
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -1743,7 +1867,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 5,
                 "quantity": 1
               },
-              "quantityAvailable": 0
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -1766,7 +1890,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 1,
                 "quantity": 2
               },
-              "quantityAvailable": 0
+              "quantityAvailable": 2
             },
             {
               "tile": {
@@ -1929,7 +2053,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 5,
                 "quantity": 1
               },
-              "quantityAvailable": 1
+              "quantityAvailable": 0
             },
             {
               "tile": {
@@ -2046,7 +2170,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 4,
                 "quantity": 2
               },
-              "quantityAvailable": 0
+              "quantityAvailable": 1
             },
             {
               "tile": {
@@ -2069,7 +2193,7 @@ export const demoSnapshotBeerChoice: unknown = {
                 "incomeAdvancement": 5,
                 "quantity": 2
               },
-              "quantityAvailable": 1
+              "quantityAvailable": 2
             },
             {
               "tile": {
@@ -2119,11 +2243,24 @@ export const demoSnapshotBeerChoice: unknown = {
             }
           ]
         },
-        "incomeSpace": 4,
+        "incomeSpace": 0,
         "vpAwards": [],
         "hand": [
           {
-            "id": "stoke_1",
+            "id": "brewery_4",
+            "type": "industry",
+            "industries": [
+              "brewery"
+            ]
+          },
+          {
+            "id": "kidderminster_1",
+            "type": "location",
+            "location": "kidderminster",
+            "color": "other"
+          },
+          {
+            "id": "stoke_3",
             "type": "location",
             "location": "stoke",
             "color": "other"
@@ -2148,36 +2285,36 @@ export const demoSnapshotBeerChoice: unknown = {
         ],
         "industries": [
           {
-            "location": "coalbrookdale",
-            "type": "brewery",
+            "location": "coventry",
+            "type": "iron",
             "level": 1,
-            "flipped": false,
+            "flipped": true,
             "tile": {
-              "id": "brewery_1",
-              "type": "brewery",
+              "id": "iron_1",
+              "type": "iron",
               "level": 1,
               "cost": 5,
-              "victoryPoints": 4,
-              "incomeSpaces": 4,
-              "linkScoringIcons": 2,
-              "coalRequired": 0,
-              "ironRequired": 1,
+              "victoryPoints": 3,
+              "incomeSpaces": 3,
+              "linkScoringIcons": 1,
+              "coalRequired": 1,
+              "ironRequired": 0,
               "beerRequired": 0,
-              "beerProduced": 1,
+              "beerProduced": 0,
               "coalProduced": 0,
-              "ironProduced": 0,
+              "ironProduced": 4,
               "canBuildInCanalEra": true,
               "canBuildInRailEra": false,
               "hasLightbulbIcon": false,
-              "incomeAdvancement": 4,
-              "quantity": 2
+              "incomeAdvancement": 3,
+              "quantity": 1
             },
             "coalCubesOnTile": 0,
             "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 1
+            "beerBarrelsOnTile": 0
           },
           {
-            "location": "worcester",
+            "location": "kidderminster",
             "type": "cotton",
             "level": 1,
             "flipped": false,
@@ -2206,29 +2343,29 @@ export const demoSnapshotBeerChoice: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "leek",
-            "type": "cotton",
+            "location": "stafford",
+            "type": "pottery",
             "level": 1,
             "flipped": false,
             "tile": {
-              "id": "cotton_1",
-              "type": "cotton",
+              "id": "pottery_1",
+              "type": "pottery",
               "level": 1,
-              "cost": 12,
-              "victoryPoints": 5,
+              "cost": 17,
+              "victoryPoints": 10,
               "incomeSpaces": 5,
               "linkScoringIcons": 1,
               "coalRequired": 0,
-              "ironRequired": 0,
+              "ironRequired": 1,
               "beerRequired": 1,
               "beerProduced": 0,
               "coalProduced": 0,
               "ironProduced": 0,
               "canBuildInCanalEra": true,
-              "canBuildInRailEra": false,
-              "hasLightbulbIcon": false,
+              "canBuildInRailEra": true,
+              "hasLightbulbIcon": true,
               "incomeAdvancement": 5,
-              "quantity": 3
+              "quantity": 1
             },
             "coalCubesOnTile": 0,
             "ironCubesOnTile": 0,
@@ -2264,77 +2401,77 @@ export const demoSnapshotBeerChoice: unknown = {
             "beerBarrelsOnTile": 1
           },
           {
-            "location": "nuneaton",
-            "type": "brewery",
+            "location": "cannock",
+            "type": "coal",
             "level": 2,
             "flipped": false,
             "tile": {
-              "id": "brewery_2",
-              "type": "brewery",
+              "id": "coal_2",
+              "type": "coal",
               "level": 2,
               "cost": 7,
-              "victoryPoints": 5,
-              "incomeSpaces": 5,
-              "linkScoringIcons": 2,
+              "victoryPoints": 2,
+              "incomeSpaces": 7,
+              "linkScoringIcons": 1,
               "coalRequired": 0,
-              "ironRequired": 1,
+              "ironRequired": 0,
               "beerRequired": 0,
-              "beerProduced": 1,
-              "coalProduced": 0,
+              "beerProduced": 0,
+              "coalProduced": 3,
               "ironProduced": 0,
               "canBuildInCanalEra": true,
               "canBuildInRailEra": true,
               "hasLightbulbIcon": false,
-              "incomeAdvancement": 5,
+              "incomeAdvancement": 7,
               "quantity": 2
             },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 1
-          },
-          {
-            "location": "dudley",
-            "type": "iron",
-            "level": 2,
-            "flipped": true,
-            "tile": {
-              "id": "iron_2",
-              "type": "iron",
-              "level": 2,
-              "cost": 7,
-              "victoryPoints": 5,
-              "incomeSpaces": 3,
-              "linkScoringIcons": 1,
-              "coalRequired": 1,
-              "ironRequired": 0,
-              "beerRequired": 0,
-              "beerProduced": 0,
-              "coalProduced": 0,
-              "ironProduced": 4,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": true,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 3,
-              "quantity": 1
-            },
-            "coalCubesOnTile": 0,
+            "coalCubesOnTile": 3,
             "ironCubesOnTile": 0,
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "wolverhampton",
-            "type": "manufacturer",
+            "location": "dudley",
+            "type": "coal",
+            "level": 2,
+            "flipped": false,
+            "tile": {
+              "id": "coal_2",
+              "type": "coal",
+              "level": 2,
+              "cost": 7,
+              "victoryPoints": 2,
+              "incomeSpaces": 7,
+              "linkScoringIcons": 1,
+              "coalRequired": 0,
+              "ironRequired": 0,
+              "beerRequired": 0,
+              "beerProduced": 0,
+              "coalProduced": 3,
+              "ironProduced": 0,
+              "canBuildInCanalEra": true,
+              "canBuildInRailEra": true,
+              "hasLightbulbIcon": false,
+              "incomeAdvancement": 7,
+              "quantity": 2
+            },
+            "coalCubesOnTile": 3,
+            "ironCubesOnTile": 0,
+            "beerBarrelsOnTile": 0
+          },
+          {
+            "location": "leek",
+            "type": "cotton",
             "level": 1,
             "flipped": false,
             "tile": {
-              "id": "manufacturer_1",
-              "type": "manufacturer",
+              "id": "cotton_1",
+              "type": "cotton",
               "level": 1,
-              "cost": 8,
-              "victoryPoints": 3,
+              "cost": 12,
+              "victoryPoints": 5,
               "incomeSpaces": 5,
-              "linkScoringIcons": 2,
-              "coalRequired": 1,
+              "linkScoringIcons": 1,
+              "coalRequired": 0,
               "ironRequired": 0,
               "beerRequired": 1,
               "beerProduced": 0,
@@ -2344,65 +2481,36 @@ export const demoSnapshotBeerChoice: unknown = {
               "canBuildInRailEra": false,
               "hasLightbulbIcon": false,
               "incomeAdvancement": 5,
-              "quantity": 1
+              "quantity": 3
             },
             "coalCubesOnTile": 0,
             "ironCubesOnTile": 0,
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "birmingham",
-            "type": "manufacturer",
-            "level": 2,
+            "location": "worcester",
+            "type": "cotton",
+            "level": 1,
             "flipped": false,
             "tile": {
-              "id": "manufacturer_2",
-              "type": "manufacturer",
-              "level": 2,
-              "cost": 10,
+              "id": "cotton_1",
+              "type": "cotton",
+              "level": 1,
+              "cost": 12,
               "victoryPoints": 5,
-              "incomeSpaces": 1,
+              "incomeSpaces": 5,
               "linkScoringIcons": 1,
               "coalRequired": 0,
-              "ironRequired": 1,
+              "ironRequired": 0,
               "beerRequired": 1,
               "beerProduced": 0,
               "coalProduced": 0,
               "ironProduced": 0,
               "canBuildInCanalEra": true,
-              "canBuildInRailEra": true,
+              "canBuildInRailEra": false,
               "hasLightbulbIcon": false,
-              "incomeAdvancement": 1,
-              "quantity": 2
-            },
-            "coalCubesOnTile": 0,
-            "ironCubesOnTile": 0,
-            "beerBarrelsOnTile": 0
-          },
-          {
-            "location": "stoke",
-            "type": "manufacturer",
-            "level": 2,
-            "flipped": false,
-            "tile": {
-              "id": "manufacturer_2",
-              "type": "manufacturer",
-              "level": 2,
-              "cost": 10,
-              "victoryPoints": 5,
-              "incomeSpaces": 1,
-              "linkScoringIcons": 1,
-              "coalRequired": 0,
-              "ironRequired": 1,
-              "beerRequired": 1,
-              "beerProduced": 0,
-              "coalProduced": 0,
-              "ironProduced": 0,
-              "canBuildInCanalEra": true,
-              "canBuildInRailEra": true,
-              "hasLightbulbIcon": false,
-              "incomeAdvancement": 1,
-              "quantity": 2
+              "incomeAdvancement": 5,
+              "quantity": 3
             },
             "coalCubesOnTile": 0,
             "ironCubesOnTile": 0,
@@ -2413,7 +2521,7 @@ export const demoSnapshotBeerChoice: unknown = {
     ],
     "currentPlayerIndex": 2,
     "era": "canal",
-    "round": 10,
+    "round": 9,
     "actionsRemaining": 1,
     "resources": {
       "coal": 24,
@@ -2480,7 +2588,7 @@ export const demoSnapshotBeerChoice: unknown = {
       },
       {
         "price": 4,
-        "cubes": 2,
+        "cubes": 0,
         "maxCubes": 2
       },
       {
@@ -2498,551 +2606,491 @@ export const demoSnapshotBeerChoice: unknown = {
       {
         "message": "Game started",
         "type": "system",
-        "timestamp": "2026-07-16T17:56:18.760Z"
+        "timestamp": "2026-07-16T20:57:56.472Z"
       },
       {
-        "message": "Eliza built cotton Level 1 at birmingham for £12 using birmingham (other)",
+        "message": "Eliza built coal Level 1 at coventry for £5 using coventry (other)",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.760Z"
+        "timestamp": "2026-07-16T20:57:56.473Z"
       },
       {
-        "message": "Isambard built coal Level 1 at coventry for £5 using coventry (other)",
+        "message": "Isambard built brewery Level 1 at walsall for £7 (consumed consumed 1 iron from market for £2) using brewery industry",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.761Z"
+        "timestamp": "2026-07-16T20:57:56.473Z"
       },
       {
-        "message": "George built cotton Level 1 at kidderminster for £12 using kidderminster (other)",
+        "message": "George built iron Level 1 at coventry for £5 (consumed 1 coal from connected coal mine (free)) (sold 1 iron to market for £2, sold 2 iron to market for £2) using iron industry",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.761Z"
+        "timestamp": "2026-07-16T20:57:56.473Z"
       },
       {
         "message": "Eliza collected £0 income",
         "type": "info",
-        "timestamp": "2026-07-16T17:56:18.761Z"
+        "timestamp": "2026-07-16T20:57:56.473Z"
       },
       {
         "message": "Isambard collected £0 income",
         "type": "info",
-        "timestamp": "2026-07-16T17:56:18.761Z"
+        "timestamp": "2026-07-16T20:57:56.473Z"
       },
       {
         "message": "George collected £0 income",
         "type": "info",
-        "timestamp": "2026-07-16T17:56:18.761Z"
+        "timestamp": "2026-07-16T20:57:56.473Z"
       },
       {
         "message": "Round 1 completed",
         "type": "system",
-        "timestamp": "2026-07-16T17:56:18.761Z"
+        "timestamp": "2026-07-16T20:57:56.473Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at stafford for £7 (consumed consumed 1 iron from market for £2) using stafford (other)",
+        "message": "Eliza built brewery Level 1 at coalbrookdale for £5 (consumed 1 iron from iron works (free), George's iron at coventry flipped (income +3, now 2)) using coalbrookdale (other)",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.761Z"
+        "timestamp": "2026-07-16T20:57:56.473Z"
       },
       {
-        "message": "Isambard took a loan (£30, -3 income) using pottery_1",
+        "message": "Eliza took a loan (£30, -3 income) using worcester_2",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.761Z"
+        "timestamp": "2026-07-16T20:57:56.474Z"
       },
       {
-        "message": "Eliza took a loan (£30, -3 income) using tamworth_1",
+        "message": "George built cotton Level 1 at kidderminster for £12 using kidderminster (other)",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.761Z"
+        "timestamp": "2026-07-16T20:57:56.474Z"
       },
       {
-        "message": "Eliza built pottery Level 1 at stafford for £19 (consumed consumed 1 iron from market for £2) using stafford (other)",
+        "message": "George took a loan (£30, -3 income) using cotton_manufacturer_6",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.761Z"
+        "timestamp": "2026-07-16T20:57:56.474Z"
       },
       {
-        "message": "George took a loan (£30, -3 income) using cannock_1",
+        "message": "Isambard built brewery Level 1 at stafford for £6 (consumed consumed 1 iron from market for £1) using stafford (other)",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.762Z"
+        "timestamp": "2026-07-16T20:57:56.475Z"
       },
       {
-        "message": "George built brewery Level 1 at coalbrookdale for £8 (consumed consumed 1 iron from market for £3) using coalbrookdale (other)",
+        "message": "Isambard took a loan (£30, -3 income) using coventry_1",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.762Z"
+        "timestamp": "2026-07-16T20:57:56.475Z"
       },
       {
         "message": "Eliza paid £3 negative income",
         "type": "info",
-        "timestamp": "2026-07-16T17:56:18.762Z"
+        "timestamp": "2026-07-16T20:57:56.475Z"
       },
       {
         "message": "Isambard paid £3 negative income",
         "type": "info",
-        "timestamp": "2026-07-16T17:56:18.762Z"
+        "timestamp": "2026-07-16T20:57:56.475Z"
       },
       {
-        "message": "George paid £3 negative income",
+        "message": "George paid £1 negative income",
         "type": "info",
-        "timestamp": "2026-07-16T17:56:18.762Z"
+        "timestamp": "2026-07-16T20:57:56.475Z"
       },
       {
         "message": "Round 2 completed",
         "type": "system",
-        "timestamp": "2026-07-16T17:56:18.762Z"
-      },
-      {
-        "message": "Isambard built coal Level 2 at coventry for £7 (overbuilt own level 1) using coventry (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.762Z"
-      },
-      {
-        "message": "Isambard built coal Level 2 at burton for £7 using burton (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.762Z"
-      },
-      {
-        "message": "George built cotton Level 1 at worcester for £12 using worcester (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.763Z"
-      },
-      {
-        "message": "George built cotton Level 1 at leek for £12 using leek (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.763Z"
-      },
-      {
-        "message": "Eliza built pottery Level 2 at coventry for £0 (consumed 1 coal from connected coal mine (free)) using coventry (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.763Z"
-      },
-      {
-        "message": "Eliza built coal Level 1 at wolverhampton for £5 using wolverhampton (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.763Z"
-      },
-      {
-        "message": "Eliza paid £3 negative income",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.763Z"
-      },
-      {
-        "message": "Isambard paid £3 negative income",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.763Z"
-      },
-      {
-        "message": "George sold cotton industry for £6",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.763Z"
-      },
-      {
-        "message": "George paid £3 negative income (shortfall: £3)",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.763Z"
-      },
-      {
-        "message": "Round 3 completed",
-        "type": "system",
-        "timestamp": "2026-07-16T17:56:18.763Z"
-      },
-      {
-        "message": "Eliza took a loan (£30, -3 income) using iron_3",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.763Z"
-      },
-      {
-        "message": "Eliza built coal Level 2 at cannock for £7 using cannock (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.764Z"
-      },
-      {
-        "message": "Isambard built coal Level 3 at coalbrookdale for £11 (consumed consumed 1 iron from market for £3) using coalbrookdale (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.765Z"
-      },
-      {
-        "message": "Isambard took a loan (£30, -3 income) using iron_2",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.765Z"
-      },
-      {
-        "message": "George took a loan (£30, -3 income) using coal_1",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.765Z"
-      },
-      {
-        "message": "George built brewery Level 1 at stone for £9 (consumed consumed 1 iron from market for £4) using stone (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.765Z"
-      },
-      {
-        "message": "Eliza paid £6 negative income",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.765Z"
-      },
-      {
-        "message": "Isambard paid £6 negative income",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.765Z"
-      },
-      {
-        "message": "George paid £6 negative income",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.765Z"
-      },
-      {
-        "message": "Round 4 completed",
-        "type": "system",
-        "timestamp": "2026-07-16T17:56:18.765Z"
-      },
-      {
-        "message": "Eliza built coal Level 2 at redditch for £7 using redditch (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.766Z"
-      },
-      {
-        "message": "Eliza built coal Level 3 at dudley for £12 (consumed consumed 1 iron from market for £4) using dudley (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.766Z"
-      },
-      {
-        "message": "George built brewery Level 2 at nuneaton for £12 (consumed consumed 1 iron from market for £5) using nuneaton (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.767Z"
-      },
-      {
-        "message": "George took a loan (£30, -3 income) using cotton_manufacturer_4",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.767Z"
-      },
-      {
-        "message": "Isambard built coal Level 3 at stone for £13 (consumed consumed 1 iron from market for £5) using stone (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.767Z"
-      },
-      {
-        "message": "Isambard built cotton Level 1 at stoke for £12 using stoke (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.768Z"
-      },
-      {
-        "message": "Eliza sold cotton industry for £6",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.768Z"
-      },
-      {
-        "message": "Eliza paid £6 negative income (shortfall: £3)",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.768Z"
-      },
-      {
-        "message": "Isambard sold brewery industry for £2",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.768Z"
-      },
-      {
-        "message": "Isambard sold coal industry for £3",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.768Z"
-      },
-      {
-        "message": "Isambard paid £6 negative income (shortfall: £3)",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.768Z"
-      },
-      {
-        "message": "George paid £9 negative income",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.768Z"
-      },
-      {
-        "message": "Round 5 completed",
-        "type": "system",
-        "timestamp": "2026-07-16T17:56:18.768Z"
-      },
-      {
-        "message": "George built iron Level 1 at dudley for £5 (consumed 1 coal from connected coal mine (free)) (sold 2 iron to market for £10, sold 2 iron to market for £8) (tile flipped, +3 income) using dudley (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.769Z"
-      },
-      {
-        "message": "George built iron Level 2 at dudley for £7 (consumed 1 coal from connected coal mine (free)) (sold 2 iron to market for £6, sold 2 iron to market for £4) (tile flipped, +3 income) (overbuilt own level 1) using iron industry",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.770Z"
-      },
-      {
-        "message": "Eliza took a loan (£30, -3 income) using brewery_4",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.770Z"
-      },
-      {
-        "message": "Eliza built cotton Level 1 at kidderminster for £12 using kidderminster (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.770Z"
-      },
-      {
-        "message": "Isambard took a loan (£30, -3 income) using birmingham_2",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.770Z"
-      },
-      {
-        "message": "Isambard built coal Level 4 at coalbrookdale for £12 (consumed consumed 1 iron from market for £2) (overbuilt own level 3) using coalbrookdale (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.771Z"
-      },
-      {
-        "message": "Eliza paid £9 negative income",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.771Z"
-      },
-      {
-        "message": "Isambard paid £9 negative income",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.771Z"
-      },
-      {
-        "message": "George paid £3 negative income",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.771Z"
-      },
-      {
-        "message": "Round 6 completed",
-        "type": "system",
-        "timestamp": "2026-07-16T17:56:18.771Z"
-      },
-      {
-        "message": "George built manufacturer Level 1 at wolverhampton for £8 (consumed 1 coal from connected coal mine (free)) using wolverhampton (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.772Z"
-      },
-      {
-        "message": "George built manufacturer Level 2 at birmingham for £12 (consumed consumed 1 iron from market for £2) using birmingham (other)",
-        "type": "action",
-        "timestamp": "2026-07-16T17:56:18.773Z"
+        "timestamp": "2026-07-16T20:57:56.475Z"
       },
       {
         "message": "Eliza built cotton Level 1 at leek for £12 using leek (other)",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.774Z"
+        "timestamp": "2026-07-16T20:57:56.475Z"
       },
       {
-        "message": "Eliza passed (discarded brewery industry)",
+        "message": "Eliza built brewery Level 1 at nuneaton for £6 (consumed consumed 1 iron from market for £1) using nuneaton (other)",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.774Z"
+        "timestamp": "2026-07-16T20:57:56.475Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at walsall for £8 (consumed consumed 1 iron from market for £3) using walsall (other)",
+        "message": "Isambard built brewery Level 2 at walsall for £9 (consumed consumed 1 iron from market for £2) (overbuilt own level 1) using brewery industry",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.775Z"
+        "timestamp": "2026-07-16T20:57:56.475Z"
       },
       {
-        "message": "Isambard passed (discarded brewery industry)",
+        "message": "Isambard built cotton Level 1 at stoke for £12 using stoke (other)",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.775Z"
+        "timestamp": "2026-07-16T20:57:56.476Z"
       },
       {
-        "message": "Eliza sold pottery industry for £8",
+        "message": "George built coal Level 1 at dudley for £5 using dudley (other)",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.476Z"
+      },
+      {
+        "message": "George built pottery Level 1 at stafford for £19 (consumed consumed 1 iron from market for £2) using stafford (other)",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.476Z"
+      },
+      {
+        "message": "Eliza paid £3 negative income",
         "type": "info",
-        "timestamp": "2026-07-16T17:56:18.775Z"
+        "timestamp": "2026-07-16T20:57:56.476Z"
       },
       {
-        "message": "Eliza sold coal industry for £2",
+        "message": "Isambard paid £3 negative income",
         "type": "info",
-        "timestamp": "2026-07-16T17:56:18.775Z"
+        "timestamp": "2026-07-16T20:57:56.476Z"
       },
       {
-        "message": "Eliza paid £9 negative income (shortfall: £9)",
+        "message": "George paid £1 negative income",
         "type": "info",
-        "timestamp": "2026-07-16T17:56:18.775Z"
+        "timestamp": "2026-07-16T20:57:56.476Z"
       },
       {
-        "message": "Isambard sold coal industry for £3",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.775Z"
-      },
-      {
-        "message": "Isambard sold coal industry for £4",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.775Z"
-      },
-      {
-        "message": "Isambard paid £9 negative income (shortfall: £6)",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.775Z"
-      },
-      {
-        "message": "George paid £3 negative income",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.775Z"
-      },
-      {
-        "message": "Round 7 completed",
+        "message": "Round 3 completed",
         "type": "system",
-        "timestamp": "2026-07-16T17:56:18.775Z"
+        "timestamp": "2026-07-16T20:57:56.476Z"
       },
       {
-        "message": "Isambard passed (discarded cotton/manufacturer industry)",
+        "message": "Eliza built brewery Level 2 at uttoxeter for £10 (consumed consumed 1 iron from market for £3) using uttoxeter (other)",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.775Z"
+        "timestamp": "2026-07-16T20:57:56.476Z"
       },
       {
-        "message": "Isambard passed (discarded worcester (other))",
+        "message": "Eliza took a loan (£30, -3 income) using cotton_manufacturer_2",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.775Z"
+        "timestamp": "2026-07-16T20:57:56.476Z"
       },
       {
-        "message": "Eliza passed (discarded brewery industry)",
+        "message": "Isambard took a loan (£30, -3 income) using cotton_manufacturer_1",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.776Z"
+        "timestamp": "2026-07-16T20:57:56.477Z"
       },
       {
-        "message": "Eliza passed (discarded iron industry)",
+        "message": "Isambard built coal Level 1 at wolverhampton for £5 using wolverhampton (other)",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.776Z"
+        "timestamp": "2026-07-16T20:57:56.477Z"
       },
       {
-        "message": "George built manufacturer Level 2 at stoke for £13 (consumed consumed 1 iron from market for £3) using stoke (other)",
+        "message": "George built brewery Level 1 at stone for £8 (consumed consumed 1 iron from market for £3) using stone (other)",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.776Z"
+        "timestamp": "2026-07-16T20:57:56.477Z"
       },
       {
-        "message": "George took a loan (£30, -3 income) using cotton_manufacturer_3",
+        "message": "George took a loan (£30, -3 income) using pottery_2",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.777Z"
+        "timestamp": "2026-07-16T20:57:56.477Z"
       },
       {
-        "message": "Eliza sold coal industry for £3",
+        "message": "Eliza paid £6 negative income",
         "type": "info",
-        "timestamp": "2026-07-16T17:56:18.777Z"
+        "timestamp": "2026-07-16T20:57:56.477Z"
       },
       {
-        "message": "Eliza sold coal industry for £3",
+        "message": "Isambard paid £6 negative income",
         "type": "info",
-        "timestamp": "2026-07-16T17:56:18.777Z"
+        "timestamp": "2026-07-16T20:57:56.477Z"
       },
       {
-        "message": "Eliza sold coal industry for £4",
+        "message": "George paid £4 negative income",
         "type": "info",
-        "timestamp": "2026-07-16T17:56:18.777Z"
+        "timestamp": "2026-07-16T20:57:56.477Z"
       },
       {
-        "message": "Eliza paid £9 negative income (shortfall: £8)",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.777Z"
-      },
-      {
-        "message": "Isambard sold cotton industry for £6",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.777Z"
-      },
-      {
-        "message": "Isambard sold coal industry for £5",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.777Z"
-      },
-      {
-        "message": "Isambard paid £9 negative income (shortfall: £8)",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.777Z"
-      },
-      {
-        "message": "George paid £6 negative income",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.777Z"
-      },
-      {
-        "message": "Round 8 completed",
+        "message": "Round 4 completed",
         "type": "system",
-        "timestamp": "2026-07-16T17:56:18.777Z"
+        "timestamp": "2026-07-16T20:57:56.477Z"
       },
       {
-        "message": "Isambard passed (discarded coal industry)",
+        "message": "Isambard built cotton Level 1 at birmingham for £12 using birmingham (other)",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.777Z"
+        "timestamp": "2026-07-16T20:57:56.477Z"
       },
       {
-        "message": "Isambard passed (discarded brewery industry)",
+        "message": "Isambard built coal Level 2 at wolverhampton for £7 (overbuilt own level 1) using wolverhampton (other)",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.777Z"
+        "timestamp": "2026-07-16T20:57:56.478Z"
       },
       {
-        "message": "Eliza passed (discarded pottery industry)",
+        "message": "George built coal Level 2 at cannock for £7 using cannock (other)",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.777Z"
+        "timestamp": "2026-07-16T20:57:56.478Z"
       },
       {
-        "message": "Eliza passed (discarded uttoxeter (other))",
+        "message": "George built coal Level 2 at dudley for £7 (overbuilt own level 1) using coal industry",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.777Z"
+        "timestamp": "2026-07-16T20:57:56.479Z"
       },
       {
-        "message": "George built a canal link between leek and stoke",
+        "message": "Eliza built coal Level 2 at cannock for £7 using cannock (other)",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.778Z"
+        "timestamp": "2026-07-16T20:57:56.479Z"
       },
       {
-        "message": "George built a canal link between stoke and stone",
+        "message": "Eliza built coal Level 2 at coventry for £7 (overbuilt own level 1) using coal industry",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.778Z"
+        "timestamp": "2026-07-16T20:57:56.479Z"
       },
       {
-        "message": "Eliza sold cotton industry for £6",
+        "message": "Eliza paid £6 negative income",
         "type": "info",
-        "timestamp": "2026-07-16T17:56:18.778Z"
+        "timestamp": "2026-07-16T20:57:56.479Z"
       },
       {
-        "message": "Eliza sold cotton industry for £6",
+        "message": "Isambard paid £6 negative income",
         "type": "info",
-        "timestamp": "2026-07-16T17:56:18.778Z"
+        "timestamp": "2026-07-16T20:57:56.479Z"
       },
       {
-        "message": "Eliza paid £9 negative income (shortfall: £7)",
+        "message": "George paid £4 negative income",
         "type": "info",
-        "timestamp": "2026-07-16T17:56:18.778Z"
+        "timestamp": "2026-07-16T20:57:56.479Z"
       },
       {
-        "message": "Isambard sold brewery industry for £2",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.778Z"
-      },
-      {
-        "message": "Isambard lost 4 VP due to income shortfall",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.778Z"
-      },
-      {
-        "message": "Isambard paid £9 negative income (shortfall: £6)",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.778Z"
-      },
-      {
-        "message": "George paid £6 negative income",
-        "type": "info",
-        "timestamp": "2026-07-16T17:56:18.778Z"
-      },
-      {
-        "message": "Round 9 completed",
+        "message": "Round 5 completed",
         "type": "system",
-        "timestamp": "2026-07-16T17:56:18.778Z"
+        "timestamp": "2026-07-16T20:57:56.479Z"
+      },
+      {
+        "message": "George took a loan (£30, -3 income) using redditch_1",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.480Z"
+      },
+      {
+        "message": "George built cotton Level 1 at leek for £12 using leek (other)",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.480Z"
+      },
+      {
+        "message": "Eliza took a loan (£30, -3 income) using iron_4",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.481Z"
+      },
+      {
+        "message": "Eliza built pottery Level 1 at stoke for £21 (consumed consumed 1 iron from market for £4) using stoke (other)",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.481Z"
+      },
+      {
+        "message": "Isambard took a loan (£30, -3 income) using iron_3",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.481Z"
+      },
+      {
+        "message": "Isambard built pottery Level 1 at coventry for £21 (consumed consumed 1 iron from market for £4) using coventry (other)",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.481Z"
+      },
+      {
+        "message": "Eliza paid £9 negative income",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.481Z"
+      },
+      {
+        "message": "Isambard paid £9 negative income",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.481Z"
+      },
+      {
+        "message": "George paid £7 negative income",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.481Z"
+      },
+      {
+        "message": "Round 6 completed",
+        "type": "system",
+        "timestamp": "2026-07-16T20:57:56.481Z"
+      },
+      {
+        "message": "George built cotton Level 1 at worcester for £12 using worcester (other)",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.482Z"
+      },
+      {
+        "message": "George took a loan (£30, -3 income) using walsall_1",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.482Z"
+      },
+      {
+        "message": "Eliza passed (discarded birmingham (other))",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.482Z"
       },
       {
         "message": "Eliza passed (discarded burton (other))",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.779Z"
+        "timestamp": "2026-07-16T20:57:56.483Z"
+      },
+      {
+        "message": "Isambard passed (discarded iron industry)",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.483Z"
+      },
+      {
+        "message": "Isambard passed (discarded coalbrookdale (other))",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.483Z"
+      },
+      {
+        "message": "Eliza sold brewery industry for £2",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.483Z"
+      },
+      {
+        "message": "Eliza paid £9 negative income (shortfall: £2)",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.483Z"
+      },
+      {
+        "message": "Isambard sold brewery industry for £2",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.483Z"
+      },
+      {
+        "message": "Isambard sold brewery industry for £3",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.483Z"
+      },
+      {
+        "message": "Isambard sold cotton industry for £6",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.483Z"
+      },
+      {
+        "message": "Isambard paid £9 negative income (shortfall: £8)",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.483Z"
+      },
+      {
+        "message": "George paid £10 negative income",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.483Z"
+      },
+      {
+        "message": "Round 7 completed",
+        "type": "system",
+        "timestamp": "2026-07-16T20:57:56.483Z"
+      },
+      {
+        "message": "Eliza passed (discarded coalbrookdale (other))",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.483Z"
+      },
+      {
+        "message": "Eliza passed (discarded brewery industry)",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.484Z"
+      },
+      {
+        "message": "Isambard passed (discarded tamworth (other))",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.484Z"
+      },
+      {
+        "message": "Isambard passed (discarded cotton/manufacturer industry)",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.484Z"
+      },
+      {
+        "message": "George built a canal link between leek and stoke",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.485Z"
+      },
+      {
+        "message": "George built a canal link between stoke and stone",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.485Z"
+      },
+      {
+        "message": "Eliza sold cotton industry for £6",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.485Z"
+      },
+      {
+        "message": "Eliza sold brewery industry for £2",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.485Z"
+      },
+      {
+        "message": "Eliza sold brewery industry for £3",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.485Z"
+      },
+      {
+        "message": "Eliza paid £9 negative income (shortfall: £9)",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.485Z"
+      },
+      {
+        "message": "Isambard sold cotton industry for £6",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.485Z"
+      },
+      {
+        "message": "Isambard paid £9 negative income (shortfall: £6)",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.485Z"
+      },
+      {
+        "message": "George paid £10 negative income",
+        "type": "info",
+        "timestamp": "2026-07-16T20:57:56.485Z"
+      },
+      {
+        "message": "Round 8 completed",
+        "type": "system",
+        "timestamp": "2026-07-16T20:57:56.485Z"
+      },
+      {
+        "message": "Eliza passed (discarded pottery industry)",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.486Z"
+      },
+      {
+        "message": "Eliza passed (discarded birmingham (other))",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.486Z"
+      },
+      {
+        "message": "Isambard passed (discarded burton (other))",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.486Z"
+      },
+      {
+        "message": "Isambard passed (discarded cotton/manufacturer industry)",
+        "type": "action",
+        "timestamp": "2026-07-16T20:57:56.486Z"
       },
       {
         "message": "George built a canal link between stoke and warrington",
         "type": "action",
-        "timestamp": "2026-07-16T17:56:18.779Z"
+        "timestamp": "2026-07-16T20:57:56.487Z"
       }
     ],
     "drawPile": [],
     "discardPile": [
       {
-        "id": "birmingham_3",
+        "id": "coventry_3",
         "type": "location",
-        "location": "birmingham",
+        "location": "coventry",
         "color": "other"
       },
       {
-        "id": "coventry_2",
+        "id": "brewery_5",
+        "type": "industry",
+        "industries": [
+          "brewery"
+        ]
+      },
+      {
+        "id": "iron_1",
+        "type": "industry",
+        "industries": [
+          "iron"
+        ]
+      },
+      {
+        "id": "coalbrookdale_1",
         "type": "location",
-        "location": "coventry",
+        "location": "coalbrookdale",
+        "color": "other"
+      },
+      {
+        "id": "worcester_2",
+        "type": "location",
+        "location": "worcester",
         "color": "other"
       },
       {
@@ -3052,40 +3100,17 @@ export const demoSnapshotBeerChoice: unknown = {
         "color": "other"
       },
       {
-        "id": "stafford_2",
-        "type": "location",
-        "location": "stafford",
-        "color": "other"
-      },
-      {
-        "id": "pottery_1",
+        "id": "cotton_manufacturer_6",
         "type": "industry",
         "industries": [
-          "pottery"
+          "cotton",
+          "manufacturer"
         ]
       },
       {
-        "id": "tamworth_1",
-        "type": "location",
-        "location": "tamworth",
-        "color": "other"
-      },
-      {
-        "id": "stafford_1",
+        "id": "stafford_2",
         "type": "location",
         "location": "stafford",
-        "color": "other"
-      },
-      {
-        "id": "cannock_1",
-        "type": "location",
-        "location": "cannock",
-        "color": "other"
-      },
-      {
-        "id": "coalbrookdale_1",
-        "type": "location",
-        "location": "coalbrookdale",
         "color": "other"
       },
       {
@@ -3095,33 +3120,144 @@ export const demoSnapshotBeerChoice: unknown = {
         "color": "other"
       },
       {
-        "id": "burton_1",
-        "type": "location",
-        "location": "burton",
-        "color": "other"
-      },
-      {
-        "id": "worcester_1",
-        "type": "location",
-        "location": "worcester",
-        "color": "other"
-      },
-      {
         "id": "leek_2",
         "type": "location",
         "location": "leek",
         "color": "other"
       },
       {
-        "id": "coventry_3",
+        "id": "nuneaton_1",
         "type": "location",
-        "location": "coventry",
+        "location": "nuneaton",
+        "color": "other"
+      },
+      {
+        "id": "brewery_1",
+        "type": "industry",
+        "industries": [
+          "brewery"
+        ]
+      },
+      {
+        "id": "stoke_2",
+        "type": "location",
+        "location": "stoke",
+        "color": "other"
+      },
+      {
+        "id": "dudley_2",
+        "type": "location",
+        "location": "dudley",
+        "color": "other"
+      },
+      {
+        "id": "stafford_1",
+        "type": "location",
+        "location": "stafford",
+        "color": "other"
+      },
+      {
+        "id": "uttoxeter_1",
+        "type": "location",
+        "location": "uttoxeter",
+        "color": "other"
+      },
+      {
+        "id": "cotton_manufacturer_2",
+        "type": "industry",
+        "industries": [
+          "cotton",
+          "manufacturer"
+        ]
+      },
+      {
+        "id": "cotton_manufacturer_1",
+        "type": "industry",
+        "industries": [
+          "cotton",
+          "manufacturer"
+        ]
+      },
+      {
+        "id": "wolverhampton_1",
+        "type": "location",
+        "location": "wolverhampton",
+        "color": "other"
+      },
+      {
+        "id": "stone_1",
+        "type": "location",
+        "location": "stone",
+        "color": "other"
+      },
+      {
+        "id": "pottery_2",
+        "type": "industry",
+        "industries": [
+          "pottery"
+        ]
+      },
+      {
+        "id": "birmingham_2",
+        "type": "location",
+        "location": "birmingham",
         "color": "other"
       },
       {
         "id": "wolverhampton_2",
         "type": "location",
         "location": "wolverhampton",
+        "color": "other"
+      },
+      {
+        "id": "cannock_2",
+        "type": "location",
+        "location": "cannock",
+        "color": "other"
+      },
+      {
+        "id": "coal_2",
+        "type": "industry",
+        "industries": [
+          "coal"
+        ]
+      },
+      {
+        "id": "cannock_1",
+        "type": "location",
+        "location": "cannock",
+        "color": "other"
+      },
+      {
+        "id": "coal_1",
+        "type": "industry",
+        "industries": [
+          "coal"
+        ]
+      },
+      {
+        "id": "redditch_1",
+        "type": "location",
+        "location": "redditch",
+        "color": "other"
+      },
+      {
+        "id": "leek_1",
+        "type": "location",
+        "location": "leek",
+        "color": "other"
+      },
+      {
+        "id": "iron_4",
+        "type": "industry",
+        "industries": [
+          "iron"
+        ]
+      },
+      {
+        "id": "stoke_1",
+        "type": "location",
+        "location": "stoke",
         "color": "other"
       },
       {
@@ -3132,15 +3268,33 @@ export const demoSnapshotBeerChoice: unknown = {
         ]
       },
       {
-        "id": "cannock_2",
+        "id": "coventry_2",
         "type": "location",
-        "location": "cannock",
+        "location": "coventry",
         "color": "other"
       },
       {
-        "id": "coalbrookdale_3",
+        "id": "worcester_1",
         "type": "location",
-        "location": "coalbrookdale",
+        "location": "worcester",
+        "color": "other"
+      },
+      {
+        "id": "walsall_1",
+        "type": "location",
+        "location": "walsall",
+        "color": "other"
+      },
+      {
+        "id": "birmingham_3",
+        "type": "location",
+        "location": "birmingham",
+        "color": "other"
+      },
+      {
+        "id": "burton_1",
+        "type": "location",
+        "location": "burton",
         "color": "other"
       },
       {
@@ -3151,38 +3305,32 @@ export const demoSnapshotBeerChoice: unknown = {
         ]
       },
       {
-        "id": "coal_1",
+        "id": "coalbrookdale_2",
+        "type": "location",
+        "location": "coalbrookdale",
+        "color": "other"
+      },
+      {
+        "id": "coalbrookdale_3",
+        "type": "location",
+        "location": "coalbrookdale",
+        "color": "other"
+      },
+      {
+        "id": "brewery_2",
         "type": "industry",
         "industries": [
-          "coal"
+          "brewery"
         ]
       },
       {
-        "id": "stone_1",
+        "id": "tamworth_1",
         "type": "location",
-        "location": "stone",
+        "location": "tamworth",
         "color": "other"
       },
       {
-        "id": "redditch_1",
-        "type": "location",
-        "location": "redditch",
-        "color": "other"
-      },
-      {
-        "id": "dudley_1",
-        "type": "location",
-        "location": "dudley",
-        "color": "other"
-      },
-      {
-        "id": "nuneaton_1",
-        "type": "location",
-        "location": "nuneaton",
-        "color": "other"
-      },
-      {
-        "id": "cotton_manufacturer_4",
+        "id": "cotton_manufacturer_3",
         "type": "industry",
         "industries": [
           "cotton",
@@ -3196,54 +3344,18 @@ export const demoSnapshotBeerChoice: unknown = {
         "color": "other"
       },
       {
-        "id": "stoke_3",
-        "type": "location",
-        "location": "stoke",
-        "color": "other"
-      },
-      {
-        "id": "dudley_2",
-        "type": "location",
-        "location": "dudley",
-        "color": "other"
-      },
-      {
-        "id": "iron_1",
-        "type": "industry",
-        "industries": [
-          "iron"
-        ]
-      },
-      {
-        "id": "brewery_4",
+        "id": "brewery_3",
         "type": "industry",
         "industries": [
           "brewery"
         ]
       },
       {
-        "id": "kidderminster_1",
-        "type": "location",
-        "location": "kidderminster",
-        "color": "other"
-      },
-      {
-        "id": "birmingham_2",
-        "type": "location",
-        "location": "birmingham",
-        "color": "other"
-      },
-      {
-        "id": "coalbrookdale_2",
-        "type": "location",
-        "location": "coalbrookdale",
-        "color": "other"
-      },
-      {
-        "id": "wolverhampton_1",
-        "type": "location",
-        "location": "wolverhampton",
-        "color": "other"
+        "id": "pottery_1",
+        "type": "industry",
+        "industries": [
+          "pottery"
+        ]
       },
       {
         "id": "birmingham_1",
@@ -3252,124 +3364,21 @@ export const demoSnapshotBeerChoice: unknown = {
         "color": "other"
       },
       {
-        "id": "leek_1",
-        "type": "location",
-        "location": "leek",
-        "color": "other"
-      },
-      {
-        "id": "brewery_3",
-        "type": "industry",
-        "industries": [
-          "brewery"
-        ]
-      },
-      {
-        "id": "walsall_1",
-        "type": "location",
-        "location": "walsall",
-        "color": "other"
-      },
-      {
-        "id": "brewery_2",
-        "type": "industry",
-        "industries": [
-          "brewery"
-        ]
-      },
-      {
-        "id": "cotton_manufacturer_6",
-        "type": "industry",
-        "industries": [
-          "cotton",
-          "manufacturer"
-        ]
-      },
-      {
-        "id": "worcester_2",
-        "type": "location",
-        "location": "worcester",
-        "color": "other"
-      },
-      {
-        "id": "brewery_5",
-        "type": "industry",
-        "industries": [
-          "brewery"
-        ]
-      },
-      {
-        "id": "iron_4",
-        "type": "industry",
-        "industries": [
-          "iron"
-        ]
-      },
-      {
-        "id": "stoke_2",
-        "type": "location",
-        "location": "stoke",
-        "color": "other"
-      },
-      {
-        "id": "cotton_manufacturer_3",
-        "type": "industry",
-        "industries": [
-          "cotton",
-          "manufacturer"
-        ]
-      },
-      {
-        "id": "coal_2",
-        "type": "industry",
-        "industries": [
-          "coal"
-        ]
-      },
-      {
-        "id": "brewery_1",
-        "type": "industry",
-        "industries": [
-          "brewery"
-        ]
-      },
-      {
-        "id": "pottery_2",
-        "type": "industry",
-        "industries": [
-          "pottery"
-        ]
-      },
-      {
-        "id": "uttoxeter_1",
-        "type": "location",
-        "location": "uttoxeter",
-        "color": "other"
-      },
-      {
-        "id": "cotton_manufacturer_5",
-        "type": "industry",
-        "industries": [
-          "cotton",
-          "manufacturer"
-        ]
-      },
-      {
-        "id": "cotton_manufacturer_2",
-        "type": "industry",
-        "industries": [
-          "cotton",
-          "manufacturer"
-        ]
-      },
-      {
         "id": "burton_2",
         "type": "location",
         "location": "burton",
         "color": "other"
       },
       {
-        "id": "cotton_manufacturer_1",
+        "id": "cotton_manufacturer_4",
+        "type": "industry",
+        "industries": [
+          "cotton",
+          "manufacturer"
+        ]
+      },
+      {
+        "id": "cotton_manufacturer_5",
         "type": "industry",
         "industries": [
           "cotton",
@@ -3404,10 +3413,35 @@ export const demoSnapshotBeerChoice: unknown = {
       "3": 3
     },
     "turnOrder": [
-      "2",
       "1",
+      "2",
       "3"
     ],
+    "roundSummary": {
+      "round": 8,
+      "era": "canal",
+      "previousOrder": [
+        "1",
+        "2",
+        "3"
+      ],
+      "newOrder": [
+        "1",
+        "2",
+        "3"
+      ],
+      "spending": {
+        "1": 0,
+        "2": 0,
+        "3": 6
+      },
+      "income": {
+        "1": 2,
+        "2": -3,
+        "3": -10
+      },
+      "eraEnded": false
+    },
     "isFinalRound": false,
     "selectedLink": null,
     "selectedSecondLink": null,
@@ -3428,26 +3462,30 @@ export const demoSnapshotBeerChoice: unknown = {
       },
       {
         "location": "gloucester",
-        "industryIcons": [],
+        "industryIcons": [
+          "cotton",
+          "manufacturer",
+          "pottery"
+        ],
         "bonusType": "develop",
         "bonusValue": 1,
-        "hasBeer": false
+        "hasBeer": true
       },
       {
         "location": "gloucester",
-        "industryIcons": [],
-        "bonusType": "develop",
-        "bonusValue": 1,
-        "hasBeer": false
-      },
-      {
-        "location": "oxford",
         "industryIcons": [
           "pottery"
         ],
+        "bonusType": "develop",
+        "bonusValue": 1,
+        "hasBeer": true
+      },
+      {
+        "location": "oxford",
+        "industryIcons": [],
         "bonusType": "income",
         "bonusValue": 2,
-        "hasBeer": true
+        "hasBeer": false
       },
       {
         "location": "oxford",
@@ -3460,19 +3498,15 @@ export const demoSnapshotBeerChoice: unknown = {
       },
       {
         "location": "warrington",
-        "industryIcons": [
-          "cotton"
-        ],
+        "industryIcons": [],
         "bonusType": "money",
         "bonusValue": 5,
-        "hasBeer": true
+        "hasBeer": false
       },
       {
         "location": "warrington",
         "industryIcons": [
-          "cotton",
-          "manufacturer",
-          "pottery"
+          "cotton"
         ],
         "bonusType": "money",
         "bonusValue": 5,
@@ -3480,10 +3514,14 @@ export const demoSnapshotBeerChoice: unknown = {
       }
     ],
     "salesMadeThisAction": 0,
+    "pendingSale": null,
+    "chosenBeerSources": [],
+    "chosenIronSources": [],
+    "pendingIronStep": null,
     "eraEndPending": false,
     "winners": null,
-    "lastError": "Insufficient coal available. Required: 2, available: 0. Need connection to coal mines or markets.",
-    "errorContext": "build"
+    "lastError": null,
+    "errorContext": null
   },
   "children": {}
 }

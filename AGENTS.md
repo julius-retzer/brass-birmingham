@@ -183,11 +183,23 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
     because demo fixtures and pre-deploy saved/MP games were frozen without
     them — a missing field must never crash the actor (it did: the picker's
     `.filter` on `undefined` tripped the SaveRecoveryBoundary).
+  - `SELECT_BEER_SOURCE`/`SELECT_IRON_SOURCE` MUST be in the mp `ALLOWED_EVENTS`
+    whitelist (`src/server/mp/intent.ts`) or networked humans get hard-stuck in
+    every choosing state (the server enters it via the whitelisted SELECT_SALE
+    but then refuses the pick). `explainRefusal` names an off-offer pick; pinned
+    by `src/server/mp/intent.test.ts`.
+  - Double-link beer reachability is judged against the POST-placement network
+    (both rails on the board) via `withProvisionalDoubleLink` — enumeration,
+    the `canCompleteDoubleLink` guard and execution must all use it or they
+    disagree. `choosingDoubleLinkBeer` resets `chosenBeerSources` on entry (and
+    `clearSecondLink`/the success return clear it) so a cancelled-and-reselected
+    double link re-asks instead of inheriting a stale pick.
   - Coal is deliberately excluded (closest-mine rule, not a choice). The
     staged sale/picks reference only public board state, so
     `filterSnapshotForSeat` needs nothing; a forged MP pick is refused by the
     same guard. Pinned by `gameStore.sourcechoice.test.ts`,
-    `legal-moves.test.ts`, `e2e/beer-source.spec.ts` + `?demo=beerchoice`.
+    `legal-moves.test.ts`, `intent.test.ts`, `e2e/beer-source.spec.ts` +
+    `?demo=beerchoice`.
 - Link scoring: 1 VP per •-• icon on built industry tiles in the two
   adjacent locations, plus `GAME_CONSTANTS.MERCHANT_LINK_ICONS` (2) at
   merchant locations.

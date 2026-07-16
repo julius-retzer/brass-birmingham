@@ -375,3 +375,127 @@ describe('applyIntent — a refusal names what is missing', () => {
     expect(res).not.toHaveProperty('next')
   })
 })
+
+describe('applyIntent — source-choice picks over the wire', () => {
+  // Round 1: seat 0 links worcester–gloucester, seat 1 passes. Round 2 opens on
+  // the passer (spent least) — the seller — with worcester connected to the
+  // gloucester merchant via seat 0's link (network is shared).
+  const connectedSellBoard = () => {
+    const actor = game()
+    actor.send({ type: 'NETWORK' })
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: actor.getSnapshot().context.players[0]!.hand[0]!.id,
+    })
+    actor.send({ type: 'SELECT_LINK', from: 'worcester', to: 'gloucester' })
+    actor.send({ type: 'CONFIRM' })
+
+    actor.send({ type: 'PASS' })
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: actor.getSnapshot().context.players[1]!.hand[0]!.id,
+    })
+    actor.send({ type: 'CONFIRM' })
+
+    const seller = actor.getSnapshot().context.currentPlayerIndex
+    actor.send({
+      type: 'TEST_SET_MERCHANTS',
+      merchants: [gloucesterMerchant()],
+    })
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: seller,
+      money: 20,
+      income: 10,
+      industries: [
+        {
+          location: 'worcester',
+          type: 'cotton',
+          level: 1,
+          flipped: false,
+          tile: cottonTile,
+          coalCubesOnTile: 0,
+          ironCubesOnTile: 0,
+          beerBarrelsOnTile: 0,
+        } as never,
+        {
+          location: 'worcester',
+          type: 'brewery',
+          level: 1,
+          flipped: false,
+          tile: { ...cottonTile, type: 'brewery', beerRequired: 0 },
+          coalCubesOnTile: 0,
+          ironCubesOnTile: 0,
+          beerBarrelsOnTile: 1,
+        } as never,
+      ],
+    })
+    actor.send({ type: 'SELL' })
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: actor.getSnapshot().context.players[seller]!.hand[0]!.id,
+    })
+    return { actor, seller }
+  }
+
+  test('a legitimate beer-source pick is accepted and executes the sale', () => {
+    const { actor, seller } = connectedSellBoard()
+
+    // SELECT_SALE stages it (own brewery vs the merchant barrel = a choice).
+    const staged = applyIntent(actor.getPersistedSnapshot(), seller, {
+      type: 'SELECT_SALE',
+      location: 'worcester',
+      industryType: 'cotton',
+      merchant: 'gloucester',
+    })
+    actor.stop()
+    expect(staged.ok).toBe(true)
+    if (!staged.ok) return
+
+    // The pick used to be refused by the whitelist, hard-stucking the player.
+    const picked = applyIntent((staged as { next: unknown }).next, seller, {
+      type: 'SELECT_BEER_SOURCE',
+      source: { kind: 'merchant', location: 'gloucester' },
+    })
+    expect(picked.ok).toBe(true)
+    if (!picked.ok) return
+
+    // The merchant barrel was taken (bonus £5) and the cotton flipped.
+    const done = createActor(gameStore, {
+      snapshot: (picked as { next: unknown }).next as never,
+    })
+    done.start()
+    const ctx = done.getSnapshot().context
+    done.stop()
+    expect(ctx.players[seller]!.money).toBe(25)
+    expect(
+      ctx.players[seller]!.industries.find((i) => i.type === 'cotton')!.flipped,
+    ).toBe(true)
+    expect(
+      ctx.merchants.find((m) => m.location === 'gloucester')!.hasBeer,
+    ).toBe(false)
+  })
+
+  test('a beer source the step never offered is refused with a reason', () => {
+    const { actor, seller } = connectedSellBoard()
+    const staged = applyIntent(actor.getPersistedSnapshot(), seller, {
+      type: 'SELECT_SALE',
+      location: 'worcester',
+      industryType: 'cotton',
+      merchant: 'gloucester',
+    })
+    actor.stop()
+    expect(staged.ok).toBe(true)
+    if (!staged.ok) return
+
+    // Nobody has a brewery at birmingham — the pick is refused, not defaulted.
+    const res = applyIntent((staged as { next: unknown }).next, seller, {
+      type: 'SELECT_BEER_SOURCE',
+      source: { kind: 'brewery', ownerId: '1', location: 'birmingham' },
+    })
+    expect(res.ok).toBe(false)
+    expect((res as { error: string }).error).toBe(
+      'That beer source is not available for this action.',
+    )
+  })
+})

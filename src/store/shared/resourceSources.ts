@@ -13,6 +13,7 @@
 // separately).
 import type { CityId } from '../../data/board'
 import type { IndustryType } from '../../data/cards'
+import { GAME_CONSTANTS } from '../constants'
 import type { GameState, Player } from '../gameStore'
 import { calculateNetworkDistance, getCurrentPlayer } from './gameUtils'
 
@@ -236,7 +237,9 @@ export function getIronSourceOptions(
     source: { kind: 'market' },
     available: Number.POSITIVE_INFINITY,
     own: false,
-    price: cheapest?.price,
+    // Empty finite rows still cost the fallback price, so the picker/AI label
+    // always names the market's real cost rather than showing it as free.
+    price: cheapest?.price ?? GAME_CONSTANTS.IRON_FALLBACK_PRICE,
     flipsOwnerTile: false,
   })
 
@@ -397,9 +400,43 @@ export function beerChoiceForSale(
 }
 
 /**
+ * A copy of `context` with both selected rail links provisionally on the
+ * current player's board. The rules judge the double link's beer reachability
+ * "after placement" (p.9), and execution consumes beer with both rails built —
+ * so enumeration and the guard must see the same post-placement network, or an
+ * opponent brewery reachable only via the new rails would be offered at
+ * execution yet hidden at the choice (and vice versa).
+ */
+export function withProvisionalDoubleLink(context: GameState): GameState {
+  if (!context.selectedLink || !context.selectedSecondLink) return context
+  const me = context.players[context.currentPlayerIndex]
+  if (!me) return context
+  const type = context.era
+  const updated = {
+    ...me,
+    links: [
+      ...me.links,
+      { from: context.selectedLink.from, to: context.selectedLink.to, type },
+      {
+        from: context.selectedSecondLink.from,
+        to: context.selectedSecondLink.to,
+        type,
+      },
+    ],
+  }
+  return {
+    ...context,
+    players: context.players.map((p, i) =>
+      i === context.currentPlayerIndex ? updated : p,
+    ),
+  }
+}
+
+/**
  * The beer question for the double rail link the machine is holding: one
  * barrel, reachable from the second link, never merchant beer (rules p.9).
- * Returns null when no second link is selected.
+ * Reachability is judged against the post-placement network so it matches
+ * execution. Returns null when no second link is selected.
  */
 export function beerChoiceForDoubleLink(
   context: GameState,
@@ -407,7 +444,7 @@ export function beerChoiceForDoubleLink(
 ): BeerChoice | null {
   if (!context.selectedSecondLink) return null
   const options = getBeerSourceOptions(
-    context,
+    withProvisionalDoubleLink(context),
     context.selectedSecondLink.to,
     currentPlayer,
   )

@@ -336,7 +336,9 @@ function ironSourceTitle(option: IronSourceOption): string {
 }
 
 function ironSourceCaption(option: IronSourceOption): string {
-  if (!option.flipsOwnerTile) return 'Costs money; flips nothing.'
+  // Only the market costs money; a works is free whether or not this cube
+  // flips it (flipsOwnerTile is false for a works that keeps cubes after).
+  if (option.source.kind === 'market') return 'Costs money; flips nothing.'
   return option.own
     ? 'Free — flips your works when its last cube goes, advancing your income.'
     : `Free — flips ${option.ownerName}'s works when its last cube goes, advancing their income.`

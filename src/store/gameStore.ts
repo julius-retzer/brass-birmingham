@@ -83,6 +83,7 @@ import {
   ironChoiceSatisfied,
   pendingBeerChoice,
   pendingIronChoice,
+  withProvisionalDoubleLink,
 } from './shared/resourceSources'
 
 export type LogEntryType = 'system' | 'action' | 'info' | 'error'
@@ -1138,7 +1139,14 @@ export const gameStore = setup({
 
     clearSecondLink: assign({
       selectedSecondLink: null,
+      // The double-link barrel belongs to this second link; drop any pick so a
+      // re-selected link asks again rather than inheriting the stale choice.
+      chosenBeerSources: [],
     }),
+
+    // Entered from selectingSecondLink — start the barrel pick fresh so a
+    // cancelled-and-reselected double link re-asks (mirror of the iron steps).
+    enterDoubleLinkBeerStep: assign({ chosenBeerSources: [] }),
 
     setError: assign(({ context, event }) => {
       if (event.type !== 'SET_ERROR') return {}
@@ -1331,6 +1339,7 @@ export const gameStore = setup({
         selectedSecondLink: null,
         selectedLocation: null,
         selectedIndustryTile: null,
+        chosenBeerSources: [],
         actionsRemaining: context.actionsRemaining - 1,
         spentMoney: context.spentMoney + totalCost,
         playerSpending: {
@@ -1570,6 +1579,10 @@ export const gameStore = setup({
       })
       if (!validation.isValid) {
         return {
+          // Drop the staged sale so a failed attempt doesn't leave a phantom
+          // pending question (the board spotlight keys on pendingSale).
+          pendingSale: null,
+          chosenBeerSources: [],
           lastError: validation.error ?? 'Invalid sale',
           errorContext: 'sell' as const,
           logs: [
@@ -1731,6 +1744,9 @@ export const gameStore = setup({
         resources: beerResult.updatedResources,
         merchants: beerResult.updatedMerchants || context.merchants,
         salesMadeThisAction: context.salesMadeThisAction + 1,
+        // The staged sale is done; reset so the next SELECT_SALE stages afresh.
+        pendingSale: null,
+        chosenBeerSources: [],
         lastError: null,
         errorContext: null,
         logs: [
@@ -3002,9 +3018,12 @@ export const gameStore = setup({
         return false
       }
 
-      // Check if beer is available for double rail link
+      // Check if beer is available for double rail link. Judge reachability
+      // against the post-placement network (both rails built), matching
+      // execution — an opponent brewery reachable only via the new rails must
+      // be treated the same here as at consumption.
       const beerCheckResult = consumeBeerFromSources(
-        context,
+        withProvisionalDoubleLink(context),
         context.selectedSecondLink.to,
         1,
         // No merchant beer for Network actions
@@ -3268,7 +3287,12 @@ export const gameStore = setup({
                   on: {
                     SELECT_INDUSTRY_TYPE: [
                       {
-                        target: 'confirmingBuild',
+                        // A location card fixes the site, so the next question
+                        // is the iron source (choosingIronSource auto-skips
+                        // when the tile needs no iron or only one works can
+                        // supply it). Routing straight to confirmingBuild here
+                        // skipped that step for location-card builds.
+                        target: 'choosingIronSource',
                         actions: 'selectIndustryType',
                         // BOTH guards: a real location card fixes the site,
                         // and canSelectIndustryType checks the industry has
@@ -3592,6 +3616,7 @@ export const gameStore = setup({
                  * p.9). Skipped when only one brewery can supply it.
                  */
                 choosingDoubleLinkBeer: {
+                  entry: 'enterDoubleLinkBeerStep',
                   always: [
                     {
                       guard: 'beerChoiceSatisfied',

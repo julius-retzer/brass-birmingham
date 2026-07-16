@@ -638,6 +638,9 @@ describe('demo snapshot generator', () => {
       while (actions < 260 && !actor.getSnapshot().matches('gameOver')) {
         if (!isSelectingAction(actor)) unwind(actor)
         if (isSelectingAction(actor) && beerChoicePossible(actor)) {
+          // Drop any transient engine error so the frozen fixture doesn't open
+          // with an unrelated toast (e.g. a prior "Insufficient coal").
+          actor.send({ type: 'CLEAR_ERROR' } as any)
           found = actor
           break
         }

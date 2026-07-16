@@ -338,6 +338,20 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   action's built-in default `claude-sonnet-4-20250514` 404s (id no longer
   served). Bump this when the model id changes.
 
+## NEVER `git stash` here (2026-07-16)
+
+This repo is worked by CONCURRENT agent worktrees sharing ONE `.git`, and
+the stash stack is shared with it — `git stash` is global, not per-worktree.
+A `stash`/`stash pop` pair that looks atomic in your worktree will silently
+hand your work to another lane and pop THEIRS into your tree (observed: a
+lane popped a foreign `action-dock.tsx` and lost its own 5 files).
+To compare against a clean tree, use a throwaway worktree
+(`git worktree add`), `git diff > /tmp/x.patch` + `git checkout --`, or
+`git stash create` (writes a dangling commit WITHOUT touching the shared
+stack). Recovery if it happens: your work is a dangling commit — find the
+`WIP on <your-branch>` one via `git fsck --unreachable | grep commit`, then
+`git checkout <sha> -- <your files>`.
+
 ## Maintaining this file
 
 Keep this file for knowledge useful to almost every future agent session in this project.

@@ -44,7 +44,7 @@ import { demoSnapshotWilds } from './demo/demo-snapshot-wilds'
 import { HandTray } from './hand-tray'
 import { computeHoverCities } from './hover-highlight'
 import { GameOverScreen, PassGate } from './overlays'
-import { PlayerLedger } from './player-ledger'
+import { OpenMatButton, PlayerLedger } from './player-ledger'
 import { PlayerRail } from './player-rail'
 import { SetupScreen } from './setup-screen'
 import { JournalPanel, MarketsPanel } from './side-panels'
@@ -880,7 +880,7 @@ function GameInner({
         </div>
 
         <aside className="flex w-full flex-none flex-col gap-3 pb-44 lg:w-[380px] lg:overflow-y-auto lg:pb-0">
-          <div className="bb2-panel p-4">
+          <div className="bb2-panel flex flex-col gap-3 p-4">
             {!needsReveal && (
               <ActionDock
                 snapshot={state as GameStoreSnapshot}
@@ -896,6 +896,9 @@ function GameInner({
                 legalSiteCount={pickingSite ? (legalCities?.size ?? 0) : null}
                 onUndo={canUndo ? onUndo : null}
               />
+            )}
+            {!needsReveal && (
+              <OpenMatButton onClick={() => setLedgerFor(currentPlayer.id)} />
             )}
           </div>
           <MarketsPanel

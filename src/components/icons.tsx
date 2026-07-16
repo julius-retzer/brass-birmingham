@@ -240,6 +240,17 @@ export function LaurelIcon(p: IconProps) {
   )
 }
 
+// The player mat: a tile board of unflipped industry slots.
+export function MatIcon(p: IconProps) {
+  return base(
+    p,
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="1.5" />
+      <path d="M3 12h18M9 5v14M15 5v14" />
+    </>,
+  )
+}
+
 export function CardsIcon(p: IconProps) {
   return base(
     p,

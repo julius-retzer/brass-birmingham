@@ -792,7 +792,7 @@ function GameInner({
             className="bb2-display text-[13px] italic"
             style={{ color: 'rgba(231,215,177,.55)' }}
           >
-            Birmingham
+            Austria-Hungary
           </span>
         </div>
 

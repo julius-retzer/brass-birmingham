@@ -101,7 +101,7 @@ export function SetupScreen({
           className="text-[12px] font-semibold uppercase tracking-[0.4em]"
           style={{ color: 'var(--bb-brass)' }}
         >
-          Birmingham · 1770
+          Austria-Hungary · 1770
         </span>
         <h1
           className="bb2-display text-7xl font-black tracking-wide"

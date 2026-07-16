@@ -558,7 +558,30 @@ When updating this file, preserve this bar for all agents and keep entries conci
   DB-backed suites run ~30s over the network (vs instant files), so they set a
   30s per-file timeout via `vi.setConfig`; leave the global 5s for the
   in-memory engine suite.
-- LOCAL TEST DB ISOLATION (added 2026-07-16): every local test run gets its
+- LOCAL TEST DB IS DOCKER (added 2026-07-17, supersedes the Neon-branch default
+  below for laptops): `compose.yaml` runs Postgres + the Neon HTTP proxy;
+  `pnpm db:local` starts it and both `pnpm test` and `pnpm exec playwright test`
+  then use it with no flags/key/network (~15ms/query vs ~100ms+ to us-east-1 —
+  the multiplayer suite goes ~43s → ~6s). Per-run isolation = one DATABASE per
+  run (`src/test/local-db.ts`), so concurrent worktrees don't collide. README
+  "Local test database (Docker)" documents the precedence; the `[test-db]` line
+  each run prints says which path it took. NON-OBVIOUS, all learned the hard way:
+  (1) the proxy is MANDATORY — the app's `neon-http` driver speaks Neon's HTTP
+  protocol, so a bare Postgres container is unreachable; `neondatabase/neon_local`
+  is NOT the answer (it proxies to a CLOUD branch: needs an API key, still
+  us-east-1). (2) `scram_iterations=1` (compose `command:` + `docker/postgres-init.sql`,
+  which re-hashes the password initdb already wrote at 4096) is a LOAD-BEARING
+  8x speedup, not a tweak: the proxy redoes the full SCRAM handshake on EVERY
+  HTTP request and default PBKDF2 costs ~115ms of a ~120ms round trip. (3) drop
+  needs `WITH (FORCE)` — the proxy holds pooled backends open. (4) playwright's
+  webServer starts BEFORE globalSetup, so the DB is chosen in
+  `playwright.config.ts` (memoised via `BB_E2E_DB` because every worker re-loads
+  the config) and only created in `e2e/global-db.ts`. (5) `configureLocalProxy`
+  (`src/server/db/local-proxy.ts`) must stay a no-op for cloud urls —
+  `neonConfig.fetchEndpoint` is global and the cloud default rewrites the host
+  (pinned by `local-proxy.test.ts`).
+- LOCAL TEST DB ISOLATION (added 2026-07-16; now the FALLBACK when Docker isn't
+  running — CI still uses this path): every local test run gets its
   OWN throwaway Neon branch — no more sharing `dev`, and parallel runs can't
   collide. Wired via vitest `globalSetup` (`src/test/global-db-branch.ts` +
   `src/test/neon-branch.ts`), driven by the official Neon TS SDK

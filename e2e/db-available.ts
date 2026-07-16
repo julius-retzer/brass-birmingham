@@ -13,4 +13,4 @@ export const hasDatabaseUrl =
   )
 
 export const NEEDS_DB_MESSAGE =
-  'needs a live DB — put a Neon DATABASE_URL in .env'
+  'needs a live DB — run `pnpm db:local` (or put a Neon DATABASE_URL in .env)'

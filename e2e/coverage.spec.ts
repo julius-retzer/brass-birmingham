@@ -221,9 +221,7 @@ test('Develop: scrap the lowest tile, consuming iron', async ({ page }) => {
   ).toBeVisible()
   await page.getByTestId('confirm-action').click()
 
-  await expect(
-    page.getByText(/Eliza developed \(removed 1 tile/),
-  ).toBeVisible()
+  await expect(page.getByText(/Eliza developed \(removed 1 tile/)).toBeVisible()
   // Her turn ends but the round continues with the next player.
   await expect(page.getByTestId('round-chip')).toHaveText('Round 8')
 })
@@ -292,7 +290,7 @@ test('capstone: play the final turns through the UI to the winner', async ({
   // number the scoreboard shows — a mismatch is a scoring bug, not a
   // rendering detail.
   await expect(page.getByTestId('vp-ledger')).toContainText(
-    "George\u2019s ledger",
+    'George\u2019s ledger',
   )
   await expect(page.getByTestId('ledger-total')).toHaveText('38 VP')
   await expect(page.getByTestId('ledger-mismatch')).toHaveCount(0)
@@ -307,7 +305,7 @@ test('capstone: play the final turns through the UI to the winner', async ({
   // on industry tiles too, so cities pick up roundels.
   await page.getByTestId('score-row-2').click()
   await expect(page.getByTestId('vp-ledger')).toContainText(
-    "Isambard\u2019s ledger",
+    'Isambard\u2019s ledger',
   )
   await expect(page.getByTestId('ledger-total')).toHaveText('23 VP')
   await expect(page.locator('svg [data-vp-city]').first()).toBeVisible()
@@ -344,4 +342,29 @@ test('Undo: the first action of a turn can be taken back in full', async ({
   await expect(page.getByText(/George completed Sell action/)).toHaveCount(0)
   await expect(treasuryOf(page, 'George')).toHaveText('£9')
   await expect(page.getByTestId('undo-action')).toHaveCount(0)
+})
+
+test('the dock signposts your own player mat without a name-click', async ({
+  page,
+}) => {
+  await page.goto('/?demo')
+  const open = page.getByTestId('open-player-mat')
+  await expect(open).toBeVisible()
+
+  // Opens the ACTING player's mat, exactly as tapping their rail card does.
+  await open.click()
+  const ledger = page.getByRole('dialog')
+  await expect(ledger).toHaveAttribute('aria-label', "Eliza's ledger")
+
+  // The rail card remains a way in — the button is an addition, not a swap.
+  await ledger.getByRole('button', { name: 'Close' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page
+    .locator('[data-testid^="mat-"]')
+    .filter({ hasText: 'Eliza' })
+    .click()
+  await expect(page.getByRole('dialog')).toHaveAttribute(
+    'aria-label',
+    "Eliza's ledger",
+  )
 })

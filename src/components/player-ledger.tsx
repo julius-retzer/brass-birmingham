@@ -1,7 +1,8 @@
 'use client'
 
 // The player ledger — the digital equivalent of the physical player mat.
-// Opened from a player's rail card: remaining industry tiles by type and
+// Opened from a player's rail card or the dock's OpenMatButton: remaining
+// industry tiles by type and
 // level (cost, VP, resource needs, next-buildable highlight), plus the
 // works and routes already on the board.
 import { useEffect } from 'react'
@@ -14,6 +15,7 @@ import {
   IncomeIcon,
   IndustryGlyph,
   LaurelIcon,
+  MatIcon,
   RailIcon,
 } from './icons'
 
@@ -408,5 +410,22 @@ export function PlayerLedger({
         </div>
       </div>
     </div>
+  )
+}
+
+// The mat is also reachable by tapping your own rail card, which is not
+// discoverable — this is the signposted way in, sat under the dock.
+export function OpenMatButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className="bb2-ghost-btn flex items-center justify-center gap-2"
+      data-testid="open-player-mat"
+      onClick={onClick}
+      title="Your remaining industry tiles, works and routes"
+    >
+      <MatIcon size={14} />
+      Your player mat
+    </button>
   )
 }

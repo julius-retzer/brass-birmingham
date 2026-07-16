@@ -25,7 +25,7 @@ import { BoardMap, PLAYER_FILL, playerNetworkCities } from '../board/board-map'
 import { HandTray } from '../hand-tray'
 import { computeHoverCities } from '../hover-highlight'
 import { GameOverScreen } from '../overlays'
-import { PlayerLedger } from '../player-ledger'
+import { OpenMatButton, PlayerLedger } from '../player-ledger'
 import { PlayerRail } from '../player-rail'
 import { CollapsiblePanel, JournalPanel, MarketsPanel } from '../side-panels'
 import { didBecomeMyTurn, playTurnChime, titleForTurn } from './turnNotify'
@@ -1175,7 +1175,7 @@ function MpTable({
 
         <aside className="flex w-full flex-none flex-col gap-3 pb-44 lg:w-[380px] lg:overflow-y-auto lg:pb-0">
           <div
-            className={`bb2-panel p-4 ${myTurn && inFlight ? 'bb2-busy' : ''}`}
+            className={`bb2-panel flex flex-col gap-3 p-4 ${myTurn && inFlight ? 'bb2-busy' : ''}`}
             aria-busy={myTurn && inFlight}
           >
             {myTurn ? (
@@ -1242,6 +1242,8 @@ function MpTable({
                 </p>
               </div>
             )}
+            {/* Always yours, never the seat that happens to be acting. */}
+            {me && <OpenMatButton onClick={() => setLedgerFor(me.id)} />}
           </div>
           {view.ai && <AiMindPanel ai={view.ai} seats={view.seats} />}
           <MarketsPanel

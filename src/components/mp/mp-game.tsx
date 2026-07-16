@@ -24,7 +24,7 @@ import { linkKey } from '../board/board-data'
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from '../board/board-map'
 import { HandTray } from '../hand-tray'
 import { computeHoverCities } from '../hover-highlight'
-import { GameOverScreen } from '../overlays'
+import { GameOverScreen, RoundCurtain } from '../overlays'
 import { OpenMatButton, PlayerLedger } from '../player-ledger'
 import { PlayerRail } from '../player-rail'
 import { CollapsiblePanel, JournalPanel, MarketsPanel } from '../side-panels'
@@ -101,6 +101,12 @@ const credsKey = (token: string) => `bb-mp-${token}`
 /** Keep the client's chat memory bounded; the recent tail on a full frame is
  *  smaller than this, so a reconnect never loses already-seen lines. */
 const CLIENT_CHAT_CAP = 200
+
+/**
+ * How long the round-end curtain hangs before lifting itself. Nobody hands
+ * this device on, so the curtain must never be the reason a live turn stalls.
+ */
+const MP_CURTAIN_MS = 6000
 
 /**
  * Merge chat lines by `id` (== per-game seq): idempotent union, sorted, capped.
@@ -865,6 +871,16 @@ function MpTable({
     }
   }, [myTurn, view.phase])
 
+  // Round-end curtain. Seeded from the first view we see, so joining or
+  // refreshing mid-game never replays the curtain for an already-finished
+  // round — only a round ending live bumps roundSummary.round past the seed.
+  const [curtainSeen, setCurtainSeen] = useState<number | null>(null)
+  const curtainSeed = useRef<number | null | undefined>(undefined)
+  if (curtainSeed.current === undefined && ctx) {
+    curtainSeed.current = ctx.roundSummary?.round ?? null
+  }
+  const seenRound = curtainSeen ?? curtainSeed.current ?? null
+
   // Era turnover announcement.
   const prevEra = useRef(ctx?.era)
   useEffect(() => {
@@ -1304,6 +1320,17 @@ function MpTable({
           era={ctx.era}
           isCurrent={ledgerPlayer.id === currentPlayer.id}
           onClose={() => setLedgerFor(null)}
+        />
+      )}
+
+      {/* Round end: spends + the order switch. Auto-lifts so it can never
+          stall the next player's turn on a shared, live board. */}
+      {ctx.roundSummary && ctx.roundSummary.round !== seenRound && (
+        <RoundCurtain
+          summary={ctx.roundSummary}
+          players={ctx.players}
+          autoDismissMs={MP_CURTAIN_MS}
+          onDismiss={() => setCurtainSeen(ctx.roundSummary!.round)}
         />
       )}
 

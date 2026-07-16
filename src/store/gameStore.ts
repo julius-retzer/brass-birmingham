@@ -168,6 +168,26 @@ export interface Player {
   }[]
 }
 
+/** What happened in the round that just ended, as the engine recorded it. */
+export interface RoundSummary {
+  /** The round that ENDED (context.round has already advanced past it). */
+  round: number
+  era: 'canal' | 'rail'
+  /** Turn order used during the round that ended. */
+  previousOrder: string[]
+  /** Turn order installed for the next round (least spender first). */
+  newOrder: string[]
+  /** Money spent per player id during the round that ended. */
+  spending: Record<string, number>
+  /**
+   * Net money change per player id from the end-of-round income settlement.
+   * Empty on the game's final round, where no income is collected.
+   */
+  income: Record<string, number>
+  /** The round's end also exhausted the deck, so the era ends. */
+  eraEnded: boolean
+}
+
 export interface GameState {
   players: Player[]
   currentPlayerIndex: number
@@ -194,6 +214,11 @@ export interface GameState {
   // Round management state
   playerSpending: Record<string, number> // Track spending per player per round
   turnOrder: string[] // Player IDs in turn order (updated each round based on spending)
+  // Record of the most recently completed round. playerSpending/turnOrder are
+  // overwritten the instant a round ends, so this is the only place the UI can
+  // read what actually happened (it drives the round-end curtain). Public
+  // information — every value in it is already visible at the table.
+  roundSummary: RoundSummary | null
   isFinalRound: boolean
   // Network-related state
   selectedLink: {
@@ -616,6 +641,7 @@ export const gameStore = setup({
         spentMoney: 0,
         playerSpending: {},
         turnOrder: players.map((p) => p.id), // Initial turn order
+        roundSummary: null,
         isFinalRound: false,
         selectedLink: null,
         selectedSecondLink: null,
@@ -1806,6 +1832,7 @@ export const gameStore = setup({
       let newTurnOrder = context.turnOrder
       let finalPlayerIndex = context.currentPlayerIndex
       let eraEndPending = false
+      let roundSummary = context.roundSummary
       const logs = [...context.logs]
 
       if (!isRoundComplete) {
@@ -1849,6 +1876,13 @@ export const gameStore = setup({
         eraEndPending = isEraOver
         const isFinalGameRound =
           context.isFinalRound || (context.era === 'rail' && isEraOver)
+
+        // Money before settlement, so the summary can report the income
+        // delta the players actually experienced (a shortfall pays only
+        // what it can) rather than the nominal income figure.
+        const moneyBefore = new Map(
+          updatedPlayers.map((player) => [player.id, player.money]),
+        )
 
         // 2. Collect income (if not final round of the game)
         if (!isFinalGameRound) {
@@ -1965,6 +1999,27 @@ export const gameStore = setup({
           })
         }
 
+        const income: Record<string, number> = {}
+        updatedPlayers.forEach((player) => {
+          const delta = player.money - (moneyBefore.get(player.id) ?? 0)
+          if (delta !== 0) income[player.id] = delta
+        })
+
+        roundSummary = {
+          round: context.round,
+          era: context.era,
+          previousOrder: context.turnOrder,
+          newOrder: newTurnOrder,
+          spending: Object.fromEntries(
+            context.turnOrder.map((playerId) => [
+              playerId,
+              context.playerSpending[playerId] || 0,
+            ]),
+          ),
+          income,
+          eraEnded: isEraOver,
+        }
+
         logs.push(createLogEntry(`Round ${context.round} completed`, 'system'))
 
         if (isEraOver) {
@@ -1985,6 +2040,7 @@ export const gameStore = setup({
         players: updatedPlayers,
         playerSpending: updatedPlayerSpending,
         turnOrder: newTurnOrder,
+        roundSummary,
         eraEndPending,
         selectedCard: null,
         selectedCardsForScout: [],
@@ -2849,6 +2905,7 @@ export const gameStore = setup({
     spentMoney: 0,
     playerSpending: {},
     turnOrder: [],
+    roundSummary: null,
     isFinalRound: false,
     selectedLink: null,
     selectedSecondLink: null,

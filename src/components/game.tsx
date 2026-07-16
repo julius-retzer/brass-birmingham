@@ -43,7 +43,7 @@ import { demoSnapshotSell } from './demo/demo-snapshot-sell'
 import { demoSnapshotWilds } from './demo/demo-snapshot-wilds'
 import { HandTray } from './hand-tray'
 import { computeHoverCities } from './hover-highlight'
-import { GameOverScreen, PassGate } from './overlays'
+import { GameOverScreen, PassGate, RoundCurtain } from './overlays'
 import { OpenMatButton, PlayerLedger } from './player-ledger'
 import { PlayerRail } from './player-rail'
 import { SetupScreen } from './setup-screen'
@@ -151,6 +151,18 @@ const snapshotCurrentPlayerId = (snapshot: unknown): string | null => {
     snapshot as { context: { players: Player[]; currentPlayerIndex: number } }
   ).context
   return ctx.players[ctx.currentPlayerIndex]?.id ?? null
+}
+
+/**
+ * The round a booted snapshot's summary already describes — treated as
+ * already-seen, so resuming a save does not replay a curtain for a round the
+ * player finished before the refresh.
+ */
+const snapshotRoundSummaryRound = (snapshot: unknown): number | null => {
+  if (!snapshot) return null
+  const ctx = (snapshot as { context?: { roundSummary?: { round: number } } })
+    .context
+  return ctx?.roundSummary?.round ?? null
 }
 
 interface Boot {
@@ -358,6 +370,12 @@ function GameInner({
   )
   const [ledgerFor, setLedgerFor] = useState<string | null>(null)
   const [hoveredCard, setHoveredCard] = useState<Card | null>(null)
+  // The round the player has already seen the curtain for. Seeded from the
+  // booted snapshot so resuming a save mid-game never replays an old round's
+  // curtain; a round ending in play bumps roundSummary.round past it.
+  const [curtainSeen, setCurtainSeen] = useState<number | null>(() =>
+    snapshotRoundSummaryRound(boot.snapshot),
+  )
 
   const ctx = state.context
   const currentPlayer: Player | undefined = ctx.players[ctx.currentPlayerIndex]
@@ -932,6 +950,16 @@ function GameInner({
           era={ctx.era}
           isCurrent={ledgerPlayer.id === currentPlayer.id}
           onClose={() => setLedgerFor(null)}
+        />
+      )}
+
+      {/* Round end announces itself above the pass gate: what everyone spent
+          and how the turn order moved because of it. */}
+      {ctx.roundSummary && ctx.roundSummary.round !== curtainSeen && (
+        <RoundCurtain
+          summary={ctx.roundSummary}
+          players={ctx.players}
+          onDismiss={() => setCurtainSeen(ctx.roundSummary!.round)}
         />
       )}
 

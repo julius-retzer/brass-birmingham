@@ -1,5 +1,8 @@
-import { expect, test } from '@playwright/test'
+import { expect as baseExpect, test } from '@playwright/test'
 import { NEEDS_DB_MESSAGE, hasDatabaseUrl } from './db-available'
+
+// Real network database: round-trips outlast the 5s default under load.
+const expect = baseExpect.configure({ timeout: 15_000 })
 
 /**
  * Versus-AI journey against the MOCKED provider (BB_AI_MOCK=1 in the
@@ -13,6 +16,9 @@ import { NEEDS_DB_MESSAGE, hasDatabaseUrl } from './db-available'
  */
 
 test.skip(!hasDatabaseUrl, `versus-AI e2e ${NEEDS_DB_MESSAGE}`)
+// Real network database + a server-side AI turn: the round-trips outgrow the
+// 30s default when the DB is contended (observed under full-suite load).
+test.setTimeout(90_000)
 
 test('found a company against an AI rival and watch it take its turn', async ({
   page,

@@ -157,13 +157,11 @@ describe('Game Store - Card Selection Auto-behavior', () => {
 
     snapshot = actor.getSnapshot()
 
-    // In rail era, level 1 coal mines can't be built (canBuildInRailEra: false)
-    // So it should select the next available tile (level 2) or be null if none available
-    const selectedTile = snapshot.context.selectedIndustryTile
-    if (selectedTile) {
-      expect(selectedTile.canBuildInRailEra).toBe(true)
-    }
-    // Note: The exact behavior depends on what tiles are available in rail era
+    // The mat's lowest coal tile is the canal-only L1, so in the Rail Era
+    // NOTHING is selected — the player must Develop it away first. Selecting
+    // the L2 instead would be a free Develop (rules p.4 step 2 / p.7); see
+    // gameStore.railera.test.ts.
+    expect(snapshot.context.selectedIndustryTile).toBeNull()
   })
 
   test('wild industry card auto-selects first available industry type', () => {

@@ -22,7 +22,9 @@ import {
 import {
   type IndustryTile,
   type IndustryTileWithQuantity,
+  canBuildTileInEra,
   decrementTileQuantity,
+  getBuildableTileInEra,
   getInitialPlayerIndustryTiles,
   getInitialPlayerIndustryTilesWithQuantities,
   getLowestAvailableTile,
@@ -31,6 +33,7 @@ import {
 import {
   type ValidationResult,
   buildIndustryTile,
+  eraRestrictionMessage,
   validateBuildActionSelections,
   // Non-throwing validation functions
   validateBuildActionSelectionsResult,
@@ -646,21 +649,14 @@ export const gameStore = setup({
         for (const industryType of industryCard.industries) {
           const tilesWithQuantity =
             player.industryTilesOnMat[industryType] || []
-          const availableTiles = tilesWithQuantity
-            .filter((t) => t.quantityAvailable > 0)
-            .map((t) => t.tile)
-            .filter((tile) => {
-              if (context.era === 'canal') return tile.canBuildInCanalEra
-              if (context.era === 'rail') return tile.canBuildInRailEra
-              return false
-            })
+          const buildableTile = getBuildableTileInEra(
+            tilesWithQuantity,
+            context.era,
+          )
 
-          if (availableTiles.length > 0) {
-            const lowestTile = getLowestLevelTile(availableTiles)
-            if (lowestTile) {
-              result.selectedIndustryTile = lowestTile
-              break
-            }
+          if (buildableTile) {
+            result.selectedIndustryTile = buildableTile
+            break
           }
         }
       }
@@ -2041,6 +2037,16 @@ export const gameStore = setup({
         }
       }
 
+      // Stay era-aware so this agrees with canSelectIndustryType: the lowest
+      // tile is the only candidate, and a canal-only one must be Developed
+      // away rather than skipped (rules p.7).
+      if (!canBuildTileInEra(lowestTile, context.era)) {
+        return {
+          lastError: eraRestrictionMessage(lowestTile, context.era),
+          errorContext: 'build' as const,
+        }
+      }
+
       const result: Partial<GameState> = {
         selectedIndustryTile: lowestTile,
       }
@@ -2609,20 +2615,18 @@ export const gameStore = setup({
       if (event.type !== 'SELECT_INDUSTRY_TYPE') return false
       if (!context.selectedCard) return false
 
-      // Check if player has tiles of this industry type available
+      // The mat's lowest tile is the only candidate, and it must be legal in
+      // the current era - a canal-only tile is not skipped, it blocks the
+      // industry until Develop removes it (rules p.4 step 2 / p.7).
       const player = getCurrentPlayer(context)
       const tilesWithQuantity =
         player.industryTilesOnMat[event.industryType] || []
-      const availableTiles = tilesWithQuantity
-        .filter((t) => t.quantityAvailable > 0)
-        .map((t) => t.tile)
-        .filter((tile) => {
-          if (context.era === 'canal') return tile.canBuildInCanalEra
-          if (context.era === 'rail') return tile.canBuildInRailEra
-          return false
-        })
+      const buildableTile = getBuildableTileInEra(
+        tilesWithQuantity,
+        context.era,
+      )
 
-      if (availableTiles.length === 0) {
+      if (!buildableTile) {
         return false
       }
 
@@ -2630,12 +2634,11 @@ export const gameStore = setup({
       // industry type - either in a free slot or as a legal overbuild
       if (context.selectedCard.type === 'location') {
         const locationCard = context.selectedCard as LocationCard
-        const lowestTile = getLowestLevelTile(availableTiles)
         return canPlaceOrOverbuildIndustry(
           context,
           locationCard.location as CityId,
           event.industryType,
-          lowestTile?.level ?? 1,
+          buildableTile.level,
         )
       }
 

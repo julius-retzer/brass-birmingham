@@ -726,6 +726,26 @@ export function canBuildTileInEra(
   return era === 'canal' ? tile.canBuildInCanalEra : tile.canBuildInRailEra
 }
 
+/**
+ * The one tile an industry can currently build, or null if it can build none.
+ *
+ * Rules p.4 step 2 takes the LOWEST level tile on the mat, and p.7 forbids
+ * building a tile whose slot shows the current era's half-circle. So the
+ * lowest tile is the only candidate: when it is barred, the industry is
+ * unbuildable this era until a Develop action removes the tile — the engine
+ * must NOT quietly fall through to the next level (that would hand out a free
+ * Develop). Level 1 Pottery carries no blue half-circle and is the rulebook's
+ * explicit Rail Era exception; that lives in the tile data, not here.
+ */
+export function getBuildableTileInEra(
+  tilesWithQuantity: IndustryTileWithQuantity[],
+  era: 'canal' | 'rail',
+): IndustryTile | null {
+  const lowest = getLowestAvailableTile(tilesWithQuantity)
+  if (!lowest) return null
+  return canBuildTileInEra(lowest, era) ? lowest : null
+}
+
 export function canDevelopTile(tile: IndustryTile): boolean {
   return !tile.hasLightbulbIcon
 }

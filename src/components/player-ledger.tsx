@@ -168,13 +168,11 @@ export function PlayerLedger({
               const rows = [...(player.industryTilesOnMat[t] ?? [])].sort(
                 (a, b) => a.tile.level - b.tile.level,
               )
-              const nextIdx = rows.findIndex(
-                (r) =>
-                  r.quantityAvailable > 0 &&
-                  (era === 'canal'
-                    ? r.tile.canBuildInCanalEra
-                    : r.tile.canBuildInRailEra),
-              )
+              // The mat's next tile is simply the lowest one left — never the
+              // next era-legal one. A barred tile blocks the industry until
+              // Develop removes it, so highlighting past it would promise a
+              // build the engine refuses (rules p.4 step 2 / p.7).
+              const nextIdx = rows.findIndex((r) => r.quantityAvailable > 0)
               return (
                 <div key={t} className="flex flex-col gap-1.5">
                   <span
@@ -191,11 +189,15 @@ export function PlayerLedger({
                           ? r.tile.canBuildInCanalEra
                           : r.tile.canBuildInRailEra
                       const depleted = r.quantityAvailable === 0
-                      const isNext = i === nextIdx
+                      // Only the lowest remaining tile is ever in play, and
+                      // only if this era allows it — otherwise it is what the
+                      // player must Develop away.
+                      const isNext = i === nextIdx && eraOk
+                      const isBlocking = i === nextIdx && !eraOk
                       return (
                         <div
                           key={r.tile.id}
-                          className="flex items-center gap-2 rounded border px-2 py-1.5 text-[13px]"
+                          className="flex flex-wrap items-center gap-2 rounded border px-2 py-1.5 text-[13px]"
                           style={{
                             borderColor: isNext
                               ? 'var(--bb-brass-bright)'
@@ -324,6 +326,17 @@ export function PlayerLedger({
                           >
                             ×{r.quantityAvailable}
                           </span>
+                          {isBlocking && (
+                            <span
+                              data-testid={`mat-blocked-${r.tile.id}`}
+                              className="w-full text-[11px] italic"
+                              style={{ color: 'rgba(231,215,177,.5)' }}
+                            >
+                              {era === 'rail'
+                                ? 'canal-era tile — Develop to skip'
+                                : 'rail-era tile — not yet buildable'}
+                            </span>
+                          )}
                         </div>
                       )
                     })}

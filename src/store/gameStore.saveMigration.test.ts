@@ -135,4 +135,39 @@ describe('refreshEmbeddedTileStats', () => {
       context: {},
     })
   })
+
+  it('gives a save from before the VP ledger a reconciling ledger', () => {
+    // Appending to a missing vpAwards would throw inside an assign; and any
+    // VP already scored has no recoverable components, so it carries forward
+    // as one entry rather than reading as an unaccounted-for gap.
+    const save: {
+      context: {
+        era: 'rail'
+        players: Array<{ victoryPoints: number; vpAwards?: unknown }>
+      }
+    } = {
+      context: {
+        era: 'rail',
+        players: [{ victoryPoints: 26 }, { victoryPoints: 0 }],
+      },
+    }
+    refreshEmbeddedTileStats(save)
+
+    expect(save.context.players[0]!.vpAwards).toStrictEqual([
+      { source: 'carriedForward', era: 'rail', vp: 26 },
+    ])
+    // Nothing scored yet — an empty ledger already reconciles.
+    expect(save.context.players[1]!.vpAwards).toStrictEqual([])
+  })
+
+  it('leaves an existing ledger alone', () => {
+    const awards = [{ source: 'link', era: 'canal', vp: 3 }]
+    const save: {
+      context: { players: Array<{ victoryPoints: number; vpAwards?: unknown }> }
+    } = {
+      context: { players: [{ victoryPoints: 3, vpAwards: awards }] },
+    }
+    refreshEmbeddedTileStats(save)
+    expect(save.context.players[0]!.vpAwards).toBe(awards)
+  })
 })

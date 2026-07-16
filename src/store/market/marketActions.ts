@@ -431,6 +431,8 @@ export function consumeBeerFromSources(
   merchantBonusesCollected: Array<{
     type: 'develop' | 'income' | 'victoryPoints' | 'money'
     value: number
+    /** The merchant the bonus came from — named by the VP ledger. */
+    merchantLocation: CityId
   }>
   logDetails: string[]
   errorMessage?: string
@@ -443,6 +445,7 @@ export function consumeBeerFromSources(
   const merchantBonusesCollected: Array<{
     type: 'develop' | 'income' | 'victoryPoints' | 'money'
     value: number
+    merchantLocation: CityId
   }> = []
 
   const currentPlayer = getCurrentPlayer(context)
@@ -541,6 +544,7 @@ export function consumeBeerFromSources(
         merchantBonusesCollected.push({
           type: merchant.bonusType,
           value: merchant.bonusValue,
+          merchantLocation: merchant.location,
         })
         logDetails.push(
           `1 beer from merchant at ${merchant.location} (${merchant.bonusType} +${merchant.bonusValue})`,

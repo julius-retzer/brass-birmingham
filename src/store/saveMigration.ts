@@ -25,9 +25,12 @@ interface TileWithQuantityShape {
 
 interface SnapshotShape {
   context?: {
+    era?: 'canal' | 'rail'
     players?: Array<{
       income?: number
       incomeSpace?: number
+      victoryPoints?: number
+      vpAwards?: Array<Record<string, unknown>>
       industries?: Array<{ tile?: { id?: string } }>
       industryTilesOnMat?: Record<string, TileWithQuantityShape[]>
     }>
@@ -45,6 +48,26 @@ export function refreshEmbeddedTileStats(snapshot: unknown): unknown {
   if (!ctx?.players) return snapshot
 
   for (const player of ctx.players) {
+    // Saves from before the VP ledger have no `vpAwards`. Appending to a
+    // missing array would throw inside an assign (killing the actor), so
+    // seed one. Any VP already on the scoreboard was scored before the
+    // ledger existed and its components are unrecoverable — record it as a
+    // single carried-forward entry so the ledger still reconciles and says
+    // plainly that the detail predates it, rather than reading as a bug.
+    if (!Array.isArray(player.vpAwards)) {
+      const scored = player.victoryPoints ?? 0
+      player.vpAwards =
+        scored === 0
+          ? []
+          : [
+              {
+                source: 'carriedForward',
+                era: ctx.era ?? 'canal',
+                vp: scored,
+              },
+            ]
+    }
+
     // Saves from before the income-track audit carry only the level —
     // seat the marker on the highest space of that level.
     if (

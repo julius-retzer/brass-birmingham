@@ -82,30 +82,31 @@ test('Network: rail-era double-link build (two routes, £15 + coal + beer)', asy
 }) => {
   await page.goto('/?era=rail')
   await expect(page.getByTestId('era-plate')).toHaveText('rail era')
-  await expect(treasuryOf(page, 'George')).toHaveText('£21')
+  await expect(treasuryOf(page, 'Isambard')).toHaveText('£21')
 
   await page.getByTestId('action-network').click()
   await page.locator('button.bb2-card:not([disabled])').first().click()
   await expect(page.getByText('Choose a rail route on the map.')).toBeVisible()
 
-  await clickRoute(page, 'derby|burton')
+  await clickRoute(page, 'leek|stoke')
   await page.getByTestId('choose-double-link').click()
   await expect(
     page.getByText('Choose the second rail route on the map.'),
   ).toBeVisible()
 
-  await clickRoute(page, 'stone|burton')
+  await clickRoute(page, 'belper|leek')
   const confirm = page.getByTestId('confirm-action')
   await expect(confirm).toBeEnabled()
   await confirm.click()
 
   await expect(
-    page.getByText(/George built 2 rail links \(derby-burton, stone-burton\)/),
+    page.getByText(/Isambard built 2 rail links \(leek-stoke, belper-leek\)/),
   ).toBeVisible()
-  // The £15 (+ any market coal) left the treasury; this was George's last
-  // action, so the device passes on.
-  await expect(treasuryOf(page, 'George')).not.toHaveText('£21')
-  await expect(page.getByTestId('pass-curtain')).toBeVisible()
+  // The £15 (+ any market coal) left the treasury, and the action is spent —
+  // this fixture starts the turn with two, so the dock offers the second.
+  await expect(treasuryOf(page, 'Isambard')).not.toHaveText('£21')
+  await expect(page.locator('.bb2-pip[data-spent="true"]')).toHaveCount(1)
+  await expect(page.getByTestId('action-network')).toBeVisible()
 })
 
 test('Sell: gated with an explanation when nothing can be sold', async ({
@@ -273,19 +274,43 @@ test('capstone: play the final turns through the UI to the winner', async ({
     await page.waitForTimeout(50)
   }
 
-  // Final scoring (links + flipped industries) crowns Isambard at 32 VP —
+  // Final scoring (links + flipped industries) crowns George at 38 VP —
   // end-of-era scoring decides it, which is exactly what this test pins.
   await expect(finished).toBeVisible()
   await expect(
-    page.getByRole('heading', { name: 'Isambard prevails' }),
+    page.getByRole('heading', { name: 'George prevails' }),
   ).toBeVisible()
   const rows = page.locator('.bb2-mat')
   await expect(rows).toHaveCount(3)
-  await expect(rows.first()).toContainText('Isambard')
-  await expect(rows.first()).toContainText('32')
+  await expect(rows.first()).toContainText('George')
+  await expect(rows.first()).toContainText('38')
   await expect(
     page.getByRole('button', { name: 'Found a new company' }),
   ).toBeVisible()
+
+  // The ledger explains the winner's score, and it must add up to the
+  // number the scoreboard shows — a mismatch is a scoring bug, not a
+  // rendering detail.
+  await expect(page.getByTestId('vp-ledger')).toContainText(
+    "George\u2019s ledger",
+  )
+  await expect(page.getByTestId('ledger-total')).toHaveText('38 VP')
+  await expect(page.getByTestId('ledger-mismatch')).toHaveCount(0)
+
+  // The final board is still on screen, annotated with where those VP came
+  // from (the whole point of the end screen). George scored purely on
+  // links, so his marks are all on routes.
+  await expect(page.locator('svg [data-vp-link]').first()).toBeVisible()
+  await expect(page.locator('svg [data-vp-city]')).toHaveCount(0)
+
+  // Switching player re-reads both the ledger and the map. Isambard scored
+  // on industry tiles too, so cities pick up roundels.
+  await page.getByTestId('score-row-2').click()
+  await expect(page.getByTestId('vp-ledger')).toContainText(
+    "Isambard\u2019s ledger",
+  )
+  await expect(page.getByTestId('ledger-total')).toHaveText('23 VP')
+  await expect(page.locator('svg [data-vp-city]').first()).toBeVisible()
 })
 
 test('Undo: the first action of a turn can be taken back in full', async ({

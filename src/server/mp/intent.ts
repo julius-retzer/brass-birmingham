@@ -84,12 +84,6 @@ export type IntentOutcome =
 
 const GENERIC_REFUSAL = 'That action is not legal right now.'
 
-/** Is the machine parked on a step where CONFIRM commits a link? */
-const atLinkConfirm = (snapshot: GameStoreSnapshot) =>
-  snapshot.matches({
-    playing: { action: { networking: 'confirmingLink' } },
-  } as never)
-
 /**
  * Decide one intent against a persisted snapshot. Never mutates its input.
  *
@@ -124,13 +118,15 @@ export function applyIntent(
     }
 
     if (!before.can(event as never)) {
-      const reason = explainRefusal(
-        context,
-        event as unknown as GameEvent,
-        atLinkConfirm(before),
-      )
+      const reason = explainRefusal(before, event as unknown as GameEvent)
       return { ok: false, error: reason ?? GENERIC_REFUSAL }
     }
+
+    // A record written by the PRE-FIX server may already carry a lastError
+    // (that server persisted execution failures — the bug this closes). Only a
+    // reason this event NEWLY set may refuse it, or the next legal move would
+    // be rejected with a stale, wrong reason.
+    const errorBefore = before.context.lastError
 
     actor.send(event as never)
     const after = actor.getSnapshot() as GameStoreSnapshot
@@ -138,8 +134,9 @@ export function applyIntent(
     // The guard accepted but execution refused: report the engine's own reason
     // and DISCARD the snapshot, so the action is not consumed and the error
     // never becomes shared state.
-    if (after.context.lastError !== null) {
-      return { ok: false, error: after.context.lastError }
+    const errorAfter = after.context.lastError
+    if (errorAfter !== null && errorAfter !== errorBefore) {
+      return { ok: false, error: errorAfter }
     }
 
     return {

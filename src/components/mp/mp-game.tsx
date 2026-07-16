@@ -1046,7 +1046,7 @@ function MpTable({
       if (state.can(event)) send(event)
       else {
         toast.error(
-          explainRefusal(ctx, event) ??
+          explainRefusal(state, event) ??
             'That route cannot be your second rail.',
         )
       }
@@ -1056,7 +1056,8 @@ function MpTable({
     if (state.can(event)) send(event)
     else {
       toast.error(
-        explainRefusal(ctx, event) ?? 'That route cannot be claimed right now.',
+        explainRefusal(state, event) ??
+          'That route cannot be claimed right now.',
       )
     }
   }

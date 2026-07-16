@@ -9,21 +9,34 @@
 //
 // This module re-derives the reason by calling the SAME validators and probes
 // the guards themselves call (validateSale, consumeCoalFromSources,
-// linkConnectedLocations, GAME_CONSTANTS costs) — it never re-implements a
-// rule. If a guard changes, the explainer changes with it, because both read
-// the same helper. Where an explainer cannot pin the cause it returns null and
-// the caller falls back to a generic string; a wrong reason is worse than a
-// vague one.
+// consumeBeerFromSources, consumeIronFromSources, GAME_CONSTANTS costs). Where
+// an explainer cannot pin the cause it returns null and the caller falls back
+// to a generic string; a wrong reason is worse than a vague one.
+//
+// DRIFT WARNING: the link explainers below are the one place that re-states a
+// guard's structure rather than calling it (`canBuildLink` is a boolean
+// cascade with no shared helper to borrow). They mirror its rejection ORDER so
+// the named cause is the one that actually blocks. If `canBuildLink` grows a
+// check — the documented era/board-graph gap, say — update `explainLink` in
+// the same commit, or it will silently answer with a stale reason.
 //
 // CONTRACT: only call this when `can(event)` is already false. It answers "why
 // would this be refused", not "is this legal" — the machine owns legality.
 import { type CityId, connections, linkConnectedLocations } from '../data/board'
 import { GAME_CONSTANTS } from './constants'
-import { type GameEvent, type GameState, validateSale } from './gameStore'
-import { consumeCoalFromSources } from './market/marketActions'
+import {
+  type GameEvent,
+  type GameState,
+  type GameStoreSnapshot,
+  validateSale,
+} from './gameStore'
+import {
+  consumeBeerFromSources,
+  consumeCoalFromSources,
+  consumeIronFromSources,
+} from './market/marketActions'
 import { getCurrentPlayer } from './shared/gameUtils'
 
-/** £ amounts read better without a trailing `.00`. */
 const money = (amount: number) => `£${amount}`
 
 const linkCostFor = (context: GameState) =>
@@ -122,16 +135,92 @@ const explainSelectedLink = (context: GameState): string | null => {
   return null
 }
 
+/** CONFIRM on a build — canCompleteBuild's coal-reachability check. */
+const explainBuildConfirm = (context: GameState): string | null => {
+  const tile = context.selectedIndustryTile
+  const location = context.selectedLocation
+  if (!tile || !location) return null
+  if (tile.coalRequired > 0) {
+    const coal = consumeCoalFromSources(context, location, tile.coalRequired)
+    if (!coal.success) {
+      return `No coal reachable from ${location} — this ${tile.type} needs ${tile.coalRequired} coal.`
+    }
+  }
+  return null
+}
+
+/** CONFIRM on a develop — hasSelectedTilesForDevelop's iron affordability. */
+const explainDevelopConfirm = (context: GameState): string | null => {
+  const count = context.selectedTilesForDevelop.length
+  if (count === 0) return 'No tiles selected to develop.'
+  const player = getCurrentPlayer(context)
+  const { ironCost } = consumeIronFromSources(context, count)
+  if (player.money < ironCost) {
+    return `Not enough money: you have ${money(player.money)}, the iron to develop ${count === 1 ? 'this tile' : `these ${count} tiles`} costs ${money(ironCost)}.`
+  }
+  return null
+}
+
+/** CHOOSE_DOUBLE_LINK_BUILD — canBuildSecondLink's era + beer-supply check. */
+const explainSecondLinkOffer = (context: GameState): string | null => {
+  if (context.era !== 'rail') {
+    return 'Two links at once is a Rail Era action.'
+  }
+  if (!context.selectedLink) return 'Select the first link first.'
+  const hasAnyBeer = context.players.some((p) =>
+    p.industries.some(
+      (i) => i.type === 'brewery' && !i.flipped && i.beerBarrelsOnTile > 0,
+    ),
+  )
+  if (!hasAnyBeer) {
+    return 'Two rails needs 1 beer — no brewery on the board has any.'
+  }
+  return null
+}
+
+/**
+ * EXECUTE_DOUBLE_NETWORK_ACTION — canCompleteDoubleLink: beer, then coal for
+ * both links, then £15. Probed in the guard's own order.
+ */
+const explainDoubleLink = (context: GameState): string | null => {
+  const first = context.selectedLink
+  const second = context.selectedSecondLink
+  if (context.era !== 'rail') return 'Two links at once is a Rail Era action.'
+  if (!first || !second) return 'Select both links first.'
+
+  const beer = consumeBeerFromSources(context, second.to as CityId, 1)
+  if (!beer.success) {
+    return (
+      beer.errorMessage ??
+      'Two rails needs 1 beer — none is reachable from your network.'
+    )
+  }
+  const coal = consumeCoalFromSources(context, first.from as CityId, 1)
+  if (!coal.success) {
+    return `No coal reachable from ${first.from} — each rail link needs 1 coal.`
+  }
+  const player = getCurrentPlayer(context)
+  const cost = GAME_CONSTANTS.RAIL_DOUBLE_LINK_COST
+  if (player.money < cost) {
+    return `Not enough money: you have ${money(player.money)}, two rails cost ${money(cost)} plus coal.`
+  }
+  return null
+}
+
 /**
  * Explain a refused event. Returns null when the cause cannot be pinned —
  * callers should fall back to a generic message rather than guess.
+ *
+ * Takes the SNAPSHOT (not just context) because a CONFIRM means something
+ * different at each confirm step, and only the state tells them apart.
  */
 export function explainRefusal(
-  context: GameState,
+  snapshot: GameStoreSnapshot,
   event: GameEvent,
-  /** true when the machine is parked on a link confirm step */
-  atLinkConfirm = false,
 ): string | null {
+  const context = snapshot.context
+  const at = (path: unknown) => snapshot.matches(path as never)
+
   switch (event.type) {
     case 'SELECT_LINK':
     case 'SELECT_SECOND_LINK':
@@ -141,6 +230,12 @@ export function explainRefusal(
       // validateSale already produces the exact reason (missing beer, no
       // merchant, not connected) — the guard just throws it away.
       return validateSale(context, event).error ?? null
+
+    case 'CHOOSE_DOUBLE_LINK_BUILD':
+      return explainSecondLinkOffer(context)
+
+    case 'EXECUTE_DOUBLE_NETWORK_ACTION':
+      return explainDoubleLink(context)
 
     case 'TAKE_LOAN': {
       if (context.selectedCard === null) return 'No card selected for the loan.'
@@ -177,7 +272,16 @@ export function explainRefusal(
     }
 
     case 'CONFIRM':
-      return atLinkConfirm ? explainSelectedLink(context) : null
+      if (at({ playing: { action: { networking: 'confirmingLink' } } })) {
+        return explainSelectedLink(context)
+      }
+      if (at({ playing: { action: { building: 'confirmingBuild' } } })) {
+        return explainBuildConfirm(context)
+      }
+      if (at({ playing: { action: { developing: 'confirmingDevelop' } } })) {
+        return explainDevelopConfirm(context)
+      }
+      return null
 
     default:
       return null

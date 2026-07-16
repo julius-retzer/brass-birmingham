@@ -211,6 +211,44 @@ describe('applyIntent — a refusal names what is missing', () => {
     )
   })
 
+  // e10d6e8 moved affordability INTO the guards, so develop's iron shortfall
+  // fails at can() — a boolean — exactly like the link case.
+  test('develop refused for iron money names the shortfall', () => {
+    const actor = game()
+    const idx = actor.getSnapshot().context.currentPlayerIndex
+    actor.send({ type: 'TEST_SET_PLAYER_STATE', playerId: idx, money: 1 })
+    actor.send({ type: 'DEVELOP' })
+    let snap = actor.getSnapshot()
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: snap.context.players[idx]!.hand[0]!.id,
+    })
+    snap = actor.getSnapshot()
+    const tile = snap.context.players[idx]!.industryTilesOnMat
+    const anyType = (Object.keys(tile) as Array<keyof typeof tile>).find(
+      (k) => (tile[k]?.length ?? 0) > 0,
+    )
+    // Asserted, not skipped: if the fixture ever stops offering a developable
+    // tile this test must fail loudly rather than pass having checked nothing.
+    expect(anyType).toBeDefined()
+    actor.send({
+      type: 'SELECT_TILES_FOR_DEVELOP',
+      industryTypes: [anyType!],
+    })
+
+    const res = applyIntent(actor.getPersistedSnapshot(), idx, {
+      type: 'CONFIRM',
+    })
+    actor.stop()
+
+    // £1 cannot buy the iron, so the guard must refuse — and say why.
+    expect(res.ok).toBe(false)
+    expect((res as { error: string }).error).toMatch(/Not enough money|iron/i)
+    expect((res as { error: string }).error).not.toBe(
+      'That action is not legal right now.',
+    )
+  })
+
   test('a legal move is accepted and returns the next snapshot', () => {
     const actor = game()
     const idx = actor.getSnapshot().context.currentPlayerIndex
@@ -235,6 +273,83 @@ describe('applyIntent — a refusal names what is missing', () => {
     actor.stop()
     expect(res.ok).toBe(false)
     expect((res as { error: string }).error).toContain('is not allowed')
+  })
+
+  // Path 2: the guard ACCEPTS and execution fails. The engine's actions never
+  // throw — they set lastError and refuse to consume the action. The pre-fix
+  // server persisted that snapshot and answered ok; these pin that it now
+  // refuses, verbatim, and keeps nothing.
+  test('an execution failure is reported verbatim and consumes nothing', () => {
+    const actor = game()
+    const idx = actor.getSnapshot().context.currentPlayerIndex
+    // £2 buys no industry tile: build's funds check lives in execution
+    // (buildIndustryTile), past the guard.
+    actor.send({ type: 'TEST_SET_PLAYER_STATE', playerId: idx, money: 2 })
+    actor.send({
+      type: 'TEST_SET_PLAYER_HAND',
+      playerId: idx,
+      hand: [
+        {
+          id: 'loc_birmingham_1',
+          type: 'location',
+          location: 'birmingham',
+          color: 'other',
+        },
+      ],
+    })
+    actor.send({ type: 'BUILD' })
+    actor.send({ type: 'SELECT_CARD', cardId: 'loc_birmingham_1' })
+    actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'cotton' })
+
+    const before = actor.getPersistedSnapshot()
+    const moneyBefore = actor.getSnapshot().context.players[idx]!.money
+    const res = applyIntent(before, idx, { type: 'CONFIRM' })
+    actor.stop()
+
+    expect(res.ok).toBe(false)
+    // The engine's own words, naming the shortfall — not "Build action failed".
+    expect((res as { error: string }).error).toContain('Insufficient funds')
+    expect((res as { error: string }).error).toContain('£2')
+    expect(res).not.toHaveProperty('next')
+    expect(moneyBefore).toBe(2)
+  })
+
+  // A record written by the PRE-FIX server can already carry a lastError.
+  // Only a NEWLY set one may refuse the move, or the next legal action would
+  // be rejected with a stale, wrong reason.
+  test('a stale lastError on an old record does not refuse the next legal move', () => {
+    const actor = game()
+    const idx = actor.getSnapshot().context.currentPlayerIndex
+    actor.send({ type: 'TEST_SET_PLAYER_STATE', playerId: idx, money: 2 })
+    actor.send({
+      type: 'TEST_SET_PLAYER_HAND',
+      playerId: idx,
+      hand: [
+        {
+          id: 'loc_birmingham_2',
+          type: 'location',
+          location: 'birmingham',
+          color: 'other',
+        },
+      ],
+    })
+    // Produce a real lastError, then persist it the way the old server did.
+    actor.send({ type: 'BUILD' })
+    actor.send({ type: 'SELECT_CARD', cardId: 'loc_birmingham_2' })
+    actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'cotton' })
+    actor.send({ type: 'CONFIRM' })
+    const stale = actor.getSnapshot().context.lastError
+    expect(stale).not.toBeNull() // the record now carries a stale reason
+
+    // TAKE_LOAN is legal and does not clear lastError — the exact seam.
+    const res = applyIntent(actor.getPersistedSnapshot(), idx, {
+      type: 'TAKE_LOAN',
+    })
+    actor.stop()
+
+    expect(res.ok).toBe(true)
   })
 
   test('a refusal never persists the engine error into shared state', () => {

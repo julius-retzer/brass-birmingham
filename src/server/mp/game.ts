@@ -102,7 +102,9 @@ async function withGameLock<T>(
   const next = prev.then(fn, fn)
   locks.set(
     token,
-    next.catch(() => {}),
+    next.catch(() => {
+      /* per-token lock: swallow rejection so the chain never wedges */
+    }),
   )
   return next
 }

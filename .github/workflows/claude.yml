@@ -39,9 +39,10 @@ jobs:
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
             actions: read
-          
-          # Optional: Specify model (defaults to Claude Sonnet 4, uncomment for Claude Opus 4)
-          # model: "claude-opus-4-20250514"
+
+          # The action's built-in default (claude-sonnet-4-20250514) 404s — that
+          # model id is no longer served. Pin a current model explicitly.
+          model: "claude-sonnet-5"
           
           # Optional: Customize the trigger phrase (default: @claude)
           # trigger_phrase: "/claude"

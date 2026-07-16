@@ -60,7 +60,6 @@ export function PlayerLedger({
   }, [onClose])
 
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click-to-close is a convenience; Escape/close button are the accessible paths
     <div
       className="bb2-curtain fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-8"
       style={{ background: 'rgba(10, 8, 6, 0.82)' }}

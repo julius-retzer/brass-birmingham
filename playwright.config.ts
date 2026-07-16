@@ -12,13 +12,15 @@ import {
 // the local Docker stack; otherwise nothing changes and the DB-backed specs fall
 // back to `.env` — or skip, via e2e/db-available.ts.
 //
-// The name is memoised through the environment, not a module variable: this
-// config is re-loaded in every worker process, so a bare newLocalDbName() would
-// mint a DIFFERENT database per worker. `??=` means only the first (main)
-// process names it and the workers inherit that name.
+// The choice is memoised through the ENVIRONMENT rather than a module variable,
+// because every worker process re-loads this config and would otherwise mint a
+// database name of its own. Only the main process gets as far as naming one;
+// workers inherit both vars and short-circuit on the DATABASE_URL check below,
+// which is why they still agree on the same database.
 function useLocalDatabase(): boolean {
   if (process.env.DATABASE_URL || process.env.TEST_DB_LOCAL === '0')
     return false
+  // Set by an ancestor process (or by hand) — reuse rather than re-probe.
   if (process.env.BB_E2E_DB) return true
   if (!isLocalDbReachableSync()) return false
   process.env.BB_E2E_DB = newLocalDbName('bb_e2e')

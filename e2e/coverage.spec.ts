@@ -263,6 +263,9 @@ test('capstone: play the final turns through the UI to the winner', async ({
   const finished = page.getByText('The books are closed')
   for (let i = 0; i < 45; i++) {
     if (await finished.isVisible().catch(() => false)) break
+    // A round closing raises the round curtain over the pass gate; lift it.
+    const curtain = page.getByTestId('round-curtain-dismiss')
+    if (await curtain.isVisible().catch(() => false)) await curtain.click()
     await revealIfGated(page)
     const pass = page.getByTestId('action-pass')
     if (await pass.isVisible().catch(() => false)) {

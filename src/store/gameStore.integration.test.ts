@@ -8,6 +8,11 @@ import { createActor } from 'xstate'
 import { cities, cityIndustrySlots, connections } from '../data/board'
 import type { CityId } from '../data/board'
 import { gameStore } from './gameStore'
+import {
+  beerChoiceForSale,
+  pendingBeerChoice,
+  pendingIronChoice,
+} from './shared/resourceSources'
 
 let activeActors: ReturnType<typeof createActor>[] = []
 let moneyInvariantViolations: string[] = []
@@ -121,6 +126,56 @@ const turnState = (actor: AnyActor) => {
   }
 }
 
+/**
+ * Answer any source question the machine is asking (beer for a sale, iron for
+ * a build/develop) by taking the first source offered, until every unit is
+ * assigned.
+ *
+ * The driver would otherwise stall on a material choice: SELECT_SALE parks it
+ * in choosingBeerSource, its CONFIRM is ignored, and unwind() abandons the
+ * sale. The plain policies happen almost never to produce a 2-source
+ * situation, so `sourcePicks` counts every pick actually accepted by the
+ * machine — the steered full-game test below asserts the choosing states
+ * really were exercised rather than silently auto-skipped.
+ */
+const sourcePicks = { beer: 0, iron: 0 }
+const resetSourcePicks = () => {
+  sourcePicks.beer = 0
+  sourcePicks.iron = 0
+}
+
+const answerSourceSteps = (actor: AnyActor) => {
+  // One pick per unit; bounded so a bug can never spin here.
+  for (let i = 0; i < 8; i++) {
+    const c = ctx(actor)
+    const beer = pendingBeerChoice(c)
+    if (beer?.hasChoice && beer.options[0]) {
+      const event = {
+        type: 'SELECT_BEER_SOURCE',
+        source: beer.options[0].source,
+      } as any
+      // The first option is always a legal pick; count only accepted sends
+      // so the counter can never inflate on a guard refusal.
+      if (!(actor.getSnapshot() as any).can(event)) return
+      actor.send(event)
+      sourcePicks.beer++
+      continue
+    }
+    const iron = pendingIronChoice(c)
+    if (iron?.hasChoice && iron.options[0]) {
+      const event = {
+        type: 'SELECT_IRON_SOURCE',
+        source: iron.options[0].source,
+      } as any
+      if (!(actor.getSnapshot() as any).can(event)) return
+      actor.send(event)
+      sourcePicks.iron++
+      continue
+    }
+    return
+  }
+}
+
 // Back out of any half-finished action flow (guards can leave us in a
 // confirming sub-state whose only exit is CANCEL)
 const unwind = (actor: AnyActor) => {
@@ -131,7 +186,10 @@ const unwind = (actor: AnyActor) => {
 
 // --- Policy steps -----------------------------------------------------------
 
-const trySell = (actor: AnyActor): boolean => {
+// With `onlyChoiceSales`, a sale is only attempted when its beer question is
+// a material choice (2+ distinct sources) - probed via the same
+// `beerChoiceForSale` the machine's guard reads, never re-derived by hand.
+const trySell = (actor: AnyActor, onlyChoiceSales = false): boolean => {
   const c = ctx(actor)
   const player = currentPlayer(actor)
 
@@ -149,12 +207,21 @@ const trySell = (actor: AnyActor): boolean => {
   for (const industry of sellable) {
     for (const merchant of c.merchants) {
       if (!merchant.industryIcons.includes(industry.type)) continue
+      if (onlyChoiceSales) {
+        const probe = beerChoiceForSale(ctx(actor), currentPlayer(actor), {
+          location: industry.location,
+          industryType: industry.type,
+          merchant: merchant.location,
+        } as any)
+        if (!probe?.hasChoice) continue
+      }
       actor.send({
         type: 'SELECT_SALE',
         location: industry.location,
         industryType: industry.type,
         merchant: merchant.location,
       } as any)
+      answerSourceSteps(actor)
     }
   }
 
@@ -168,7 +235,16 @@ const trySell = (actor: AnyActor): boolean => {
   return false
 }
 
-const tryBuild = (actor: AnyActor): boolean => {
+// `preferredTypes` steers which industries get built first (both which hand
+// card is tried and which slot type a location card attempts) without making
+// anything legal that wasn't - guards still filter every attempt. With
+// `onlyPreferred`, cards and slots outside the preferred types are not
+// attempted at all (the caller wants exactly this industry or nothing).
+const tryBuild = (
+  actor: AnyActor,
+  preferredTypes: string[] = [],
+  onlyPreferred = false,
+): boolean => {
   const player = currentPlayer(actor)
   if (player.money < 8 || player.hand.length === 0) return false
 
@@ -176,19 +252,42 @@ const tryBuild = (actor: AnyActor): boolean => {
     (id) => (cities as any)[id].type === 'city',
   ) as CityId[]
 
-  for (const card of player.hand) {
+  const prefersCard = (card: any) =>
+    card.type === 'industry' &&
+    card.industries.some((t: string) => preferredTypes.includes(t))
+  const orderedHand = [
+    ...player.hand.filter(prefersCard),
+    ...player.hand.filter((card: any) => !prefersCard(card)),
+  ]
+
+  for (const card of orderedHand) {
     if (card.type !== 'location' && card.type !== 'industry') continue
+    if (onlyPreferred && card.type === 'industry' && !prefersCard(card)) {
+      continue
+    }
+
+    // Which slot types this card may attempt, preferred first
+    const slots =
+      card.type === 'location'
+        ? (cityIndustrySlots[card.location as CityId] ?? [])
+        : []
+    const types = [...new Set(slots.flat())]
+      .filter((t) => !onlyPreferred || preferredTypes.includes(t))
+      .sort(
+        (a, b) =>
+          (preferredTypes.includes(b) ? 1 : 0) -
+          (preferredTypes.includes(a) ? 1 : 0),
+      )
+    if (card.type === 'location' && types.length === 0) continue
 
     const before = turnState(actor)
     actor.send({ type: 'BUILD' } as any)
     actor.send({ type: 'SELECT_CARD', cardId: card.id } as any)
 
     if (card.type === 'location') {
-      // Try each industry type the location's slots allow
-      const slots = cityIndustrySlots[card.location as CityId] ?? []
-      const types = [...new Set(slots.flat())]
       for (const industryType of types) {
         actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType } as any)
+        answerSourceSteps(actor)
         const snap = actor.getSnapshot() as any
         if (
           snap.matches({ playing: { action: { building: 'confirmingBuild' } } })
@@ -205,6 +304,7 @@ const tryBuild = (actor: AnyActor): boolean => {
       // Industry card: try candidate locations; guards filter invalid ones
       for (const cityId of cityIds) {
         actor.send({ type: 'SELECT_LOCATION', cityId } as any)
+        answerSourceSteps(actor)
         const snap = actor.getSnapshot() as any
         if (
           snap.matches({ playing: { action: { building: 'confirmingBuild' } } })
@@ -224,7 +324,15 @@ const tryBuild = (actor: AnyActor): boolean => {
   return false
 }
 
-const tryNetwork = (actor: AnyActor): boolean => {
+// `order` optionally re-sorts the era-legal candidate links (e.g. toward
+// merchants); guards still decide what is actually buildable.
+const tryNetwork = (
+  actor: AnyActor,
+  order?: (
+    a: (typeof connections)[number],
+    b: (typeof connections)[number],
+  ) => number,
+): boolean => {
   const c = ctx(actor)
   const player = currentPlayer(actor)
   if (player.money < 10 || player.hand.length === 0) return false
@@ -232,6 +340,7 @@ const tryNetwork = (actor: AnyActor): boolean => {
   const candidates = connections.filter((conn) =>
     (conn.types as readonly string[]).includes(c.era),
   )
+  if (order) candidates.sort(order)
 
   const before = turnState(actor)
   actor.send({ type: 'NETWORK' } as any)
@@ -294,6 +403,7 @@ const tryDevelop = (actor: AnyActor): boolean => {
     type: 'SELECT_TILES_FOR_DEVELOP',
     industryTypes: [developableType],
   } as any)
+  answerSourceSteps(actor)
   actor.send({ type: 'CONFIRM' } as any)
   if (actionConsumed(actor, before)) return true
   unwind(actor)
@@ -357,6 +467,98 @@ const scoutDevelopPolicy: Policy = (actor) => {
   if (player.hand.length >= 6 && tryScout(actor)) return true
   if (tryDevelop(actor)) return true
   if (tryBuild(actor)) return true
+  if (player.money < 12 && tryLoan(actor)) return true
+  return pass(actor)
+}
+
+// Distinct iron sources (owner+location of unflipped works with cubes) - a
+// develop/iron-build asks the iron question only when there are 2+ of these
+const distinctIronSources = (c: any): number => {
+  const keys = new Set<string>()
+  for (const p of c.players) {
+    for (const i of p.industries) {
+      if (i.type === 'iron' && !i.flipped && i.ironCubesOnTile > 0) {
+        keys.add(`${p.id}:${i.location}`)
+      }
+    }
+  }
+  return keys.size
+}
+
+// Distinct own beer sources (unflipped breweries with barrels, per location).
+// With 2+ of these, EVERY legal sale offers a material beer choice - own
+// breweries supply sale beer from anywhere, no connection needed.
+const ownBeerSources = (player: any): number => {
+  const keys = new Set<string>()
+  for (const i of player.industries) {
+    if (i.type === 'brewery' && !i.flipped && i.beerBarrelsOnTile > 0) {
+      keys.add(i.location)
+    }
+  }
+  return keys.size
+}
+
+const hasUnflippedSellable = (player: any): boolean =>
+  player.industries.some(
+    (i: any) =>
+      !i.flipped && ['cotton', 'manufacturer', 'pottery'].includes(i.type),
+  )
+
+// Static BFS hops from every location to the nearest merchant, over the full
+// board graph - used only to ORDER link attempts, never to judge legality
+const merchantDistances = (c: any): Map<string, number> => {
+  const dist = new Map<string, number>()
+  const queue: Array<[string, number]> = []
+  for (const m of c.merchants) {
+    if (!dist.has(m.location)) {
+      dist.set(m.location, 0)
+      queue.push([m.location, 0])
+    }
+  }
+  while (queue.length > 0) {
+    const [loc, d] = queue.shift()!
+    for (const conn of connections) {
+      const next =
+        conn.from === loc ? conn.to : conn.to === loc ? conn.from : null
+      if (next && !dist.has(next)) {
+        dist.set(next, d + 1)
+        queue.push([next, d + 1])
+      }
+    }
+  }
+  return dist
+}
+
+// Steered to manufacture source choices, which the plain policies never hit
+// (measured 0 picks - they build merchant links so rarely that no goods are
+// ever sold, and iron works flip on build while the market has room):
+//   iron - build iron works and breweries first; while 2+ unflipped works
+//          hold cubes, a develop (and any iron-consuming build) must ask
+//          which works pays
+//   beer - hoard goods, grow links toward merchants, and only sell while
+//          holding 2 own beer sources, so the sale must ask which brewery
+const sourceChoicePolicy: Policy = (actor) => {
+  const c = ctx(actor)
+  const player = currentPlayer(actor)
+  const ironSources = distinctIronSources(c)
+  if (ironSources >= 2 && tryDevelop(actor)) return true
+  // Spam iron works until two hold cubes: each build sells cubes into the
+  // market until it is full, after which a new works keeps its cubes - and
+  // while an unflipped works exists all iron consumption drains IT (the
+  // market is off limits, rules p.5), so the market stays full and the
+  // second works survives long enough to make the question real.
+  if (ironSources < 2 && tryBuild(actor, ['iron'], true)) return true
+  // Sell only when the sale must ask where its beer comes from - one own
+  // brewery plus the merchant's barrel (or a second brewery) is already a
+  // material choice
+  if (ownBeerSources(player) >= 1 && trySell(actor, true)) return true
+  if (hasUnflippedSellable(player)) {
+    const dist = merchantDistances(c)
+    const score = (conn: any) =>
+      Math.min(dist.get(conn.from) ?? 99, dist.get(conn.to) ?? 99)
+    if (tryNetwork(actor, (a, b) => score(a) - score(b))) return true
+  }
+  if (tryBuild(actor, ['iron', 'brewery', 'cotton'])) return true
   if (player.money < 12 && tryLoan(actor)) return true
   return pass(actor)
 }
@@ -525,6 +727,25 @@ describe('Brass Birmingham - Full Game Integration', () => {
     expect(c.winners).toHaveLength(3)
     c.players.forEach((p: any) => expect(p.victoryPoints).toBe(0))
   }, 30000)
+
+  test('full game exercises the resource-source choosing states (beer + iron)', () => {
+    // The deck and merchants shuffle per game, so a single run is not
+    // guaranteed to produce both questions - retry over fresh games (each one
+    // still a complete, invariant-checked full game) and assert the choosing
+    // states were genuinely entered. If they stopped being reachable (e.g.
+    // the auto-skip guard went wrong), every attempt counts zero picks and
+    // this fails loudly.
+    const MAX_ATTEMPTS = 10
+    resetSourcePicks()
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const actor = startGame(2)
+      const actions = playFullGame(actor, sourceChoicePolicy)
+      expectCompletedGame(actor, actions, 2)
+      if (sourcePicks.beer > 0 && sourcePicks.iron > 0) break
+    }
+    expect(sourcePicks.iron).toBeGreaterThan(0)
+    expect(sourcePicks.beer).toBeGreaterThan(0)
+  }, 60000)
 
   test('game handles invalid actions gracefully during integration', () => {
     const actor = startGame(2)

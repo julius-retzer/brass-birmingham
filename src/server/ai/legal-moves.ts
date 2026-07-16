@@ -11,6 +11,12 @@
 import { type CityId, cities, connections } from '../../data/board'
 import { type Card, type IndustryType } from '../../data/cards'
 import { type GameEvent, type GameStoreSnapshot } from '../../store/gameStore'
+import {
+  type BeerSourceOption,
+  type IronSourceOption,
+  pendingBeerChoice,
+  pendingIronChoice,
+} from '../../store/shared/resourceSources'
 
 export interface LegalMove {
   event: GameEvent
@@ -40,6 +46,26 @@ export function describeCard(card: Card): string {
     case 'wild_industry':
       return 'Wild industry'
   }
+}
+
+/** Names a source the way a player would think of it, bonus and all. */
+function describeBeerOption(option: BeerSourceOption): string {
+  if (option.source.kind === 'merchant') {
+    const bonus = option.merchantBonus
+    return `the ${cityName(option.source.location)} merchant's barrel${
+      bonus ? ` (bonus: ${bonus.type} +${bonus.value})` : ''
+    }`
+  }
+  const where = `the brewery at ${cityName(option.source.location)}`
+  return option.own ? `your own ${where}` : `${option.ownerName}'s ${where}`
+}
+
+function describeIronOption(option: IronSourceOption): string {
+  if (option.source.kind === 'market') {
+    return option.price ? `the market (£${option.price}/cube)` : 'the market'
+  }
+  const where = `the iron works at ${cityName(option.source.location)}`
+  return option.own ? `your own ${where}` : `${option.ownerName}'s ${where}`
 }
 
 const TOP_LEVEL: Array<{ event: GameEvent; label: string }> = [
@@ -142,6 +168,28 @@ export function enumerateLegalMoves(snapshot: GameStoreSnapshot): LegalMove[] {
           merchant,
         },
         `Sell ${ind.type} at ${cityName(ind.location)} to the ${cityName(merchant)} merchant`,
+      )
+    }
+  }
+
+  // The source steps: the machine only stops here when the answer could
+  // differ, and only offers sources it considers legal — so enumerate what it
+  // offers and let can() do the filtering, exactly like every other step.
+  const beerChoice = pendingBeerChoice(ctx)
+  if (beerChoice?.hasChoice) {
+    for (const option of beerChoice.options) {
+      push(
+        { type: 'SELECT_BEER_SOURCE', source: option.source },
+        `Take a beer from ${describeBeerOption(option)}`,
+      )
+    }
+  }
+  const ironChoice = pendingIronChoice(ctx)
+  if (ironChoice?.hasChoice) {
+    for (const option of ironChoice.options) {
+      push(
+        { type: 'SELECT_IRON_SOURCE', source: option.source },
+        `Take an iron from ${describeIronOption(option)}`,
       )
     }
   }

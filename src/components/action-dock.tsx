@@ -12,6 +12,14 @@ import {
   type Player,
 } from '~/store/gameStore'
 import { isDevelopable } from '~/store/shared/gameUtils'
+import {
+  type BeerSourceOption,
+  type IronSourceOption,
+  beerSourceKey,
+  ironSourceKey,
+  pendingBeerChoice,
+  pendingIronChoice,
+} from '~/store/shared/resourceSources'
 import { CardChip } from './cards'
 import {
   doubleLinkDisabledReason,
@@ -218,6 +226,182 @@ function DevelopTilePicker({
         Develop lowest available
       </button>
     </Flow>
+  )
+}
+
+/* ----- beer source picker ----- */
+
+/** What taking a barrel from this source actually does to the board. */
+function beerSourceCaption(option: BeerSourceOption): string {
+  if (option.source.kind === 'merchant') {
+    const bonus = option.merchantBonus
+    if (!bonus) return 'The barrel beside the merchant tile.'
+    const reward =
+      bonus.type === 'money'
+        ? `£${bonus.value}`
+        : bonus.type === 'victoryPoints'
+          ? `${bonus.value} VP`
+          : bonus.type === 'income'
+            ? `+${bonus.value} income`
+            : 'a free Develop'
+    return `Collects the merchant bonus: ${reward}.`
+  }
+  if (!option.flipsOwnerTile) return 'Flips nothing.'
+  return option.own
+    ? 'Flips your brewery when its last barrel goes — your income advances.'
+    : `Flips ${option.ownerName}'s brewery when its last barrel goes — their income advances.`
+}
+
+function beerSourceTitle(option: BeerSourceOption): string {
+  if (option.source.kind === 'merchant') {
+    return `${cityName(option.source.location)} merchant's barrel`
+  }
+  const where = `brewery at ${cityName(option.source.location)}`
+  return option.own ? `Your ${where}` : `${option.ownerName}'s ${where}`
+}
+
+/**
+ * Which beer to drink. The rules make every barrel's source a player choice,
+ * and a consequential one (see the captions) — the engine used to pick
+ * silently, which put merchant bonuses out of reach of anyone holding beer.
+ *
+ * A click assigns the next barrel; clicking once the last one is assigned
+ * starts the allocation over, so a single-barrel sale behaves like a radio.
+ */
+function BeerSourcePicker({
+  options,
+  required,
+  picks,
+  onPick,
+}: {
+  options: BeerSourceOption[]
+  required: number
+  /** Barrels assigned so far — the machine's own record, not UI staging. */
+  picks: BeerSourceOption['source'][]
+  onPick: (source: BeerSourceOption['source']) => void
+}) {
+  const takenFrom = (option: BeerSourceOption) =>
+    picks.filter((p) => beerSourceKey(p) === beerSourceKey(option.source))
+      .length
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {required > 1 && (
+        <Note>
+          Beer {Math.min(picks.length + 1, required)} of {required} — each
+          barrel may come from a different source.
+        </Note>
+      )}
+      {options.map((option) => {
+        const taken = takenFrom(option)
+        const full = taken >= option.available
+        return (
+          <button
+            key={beerSourceKey(option.source)}
+            type="button"
+            className="bb2-option"
+            data-testid="beer-source"
+            data-selected={taken > 0}
+            disabled={full && picks.length < required}
+            onClick={() => onPick(option.source)}
+          >
+            <IndustryGlyph type="brewery" size={16} />
+            <span className="flex flex-col text-left">
+              <b>
+                {beerSourceTitle(option)}
+                {required > 1 && taken > 0 && ` ×${taken}`}
+              </b>
+              <span
+                className="text-[12px]"
+                style={{ color: 'rgba(231,215,177,.55)' }}
+              >
+                {beerSourceCaption(option)}
+              </span>
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ----- iron source picker ----- */
+
+function ironSourceTitle(option: IronSourceOption): string {
+  if (option.source.kind === 'market') {
+    return option.price ? `The market — £${option.price} a cube` : 'The market'
+  }
+  const where = `iron works at ${cityName(option.source.location)}`
+  return option.own ? `Your ${where}` : `${option.ownerName}'s ${where}`
+}
+
+function ironSourceCaption(option: IronSourceOption): string {
+  // Only the market costs money; a works is free whether or not this cube
+  // flips it (flipsOwnerTile is false for a works that keeps cubes after).
+  if (option.source.kind === 'market') return 'Costs money; flips nothing.'
+  return option.own
+    ? 'Free — flips your works when its last cube goes, advancing your income.'
+    : `Free — flips ${option.ownerName}'s works when its last cube goes, advancing their income.`
+}
+
+/**
+ * Which iron to use. The rules let iron come from ANY unflipped works, and
+ * whose works empties decides whose income advances — so this is a choice,
+ * not bookkeeping. Left untouched, the engine picks as it always has (works
+ * in turn, then the market).
+ */
+function IronSourcePicker({
+  options,
+  required,
+  picks,
+  onPick,
+}: {
+  options: IronSourceOption[]
+  required: number
+  picks: IronSourceOption['source'][]
+  onPick: (source: IronSourceOption['source']) => void
+}) {
+  const takenFrom = (option: IronSourceOption) =>
+    picks.filter((p) => ironSourceKey(p) === ironSourceKey(option.source))
+      .length
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Note>
+        {required > 1
+          ? `Iron ${Math.min(picks.length + 1, required)} of ${required} — each cube may come from a different works.`
+          : 'Where does the iron come from?'}
+      </Note>
+      {options.map((option) => {
+        const taken = takenFrom(option)
+        const full = taken >= option.available
+        return (
+          <button
+            key={ironSourceKey(option.source)}
+            type="button"
+            className="bb2-option"
+            data-testid="iron-source"
+            data-selected={taken > 0}
+            disabled={full && picks.length < required}
+            onClick={() => onPick(option.source)}
+          >
+            <IndustryGlyph type="iron" size={16} />
+            <span className="flex flex-col text-left">
+              <b>
+                {ironSourceTitle(option)}
+                {required > 1 && taken > 0 && ` ×${taken}`}
+              </b>
+              <span
+                className="text-[12px]"
+                style={{ color: 'rgba(231,215,177,.55)' }}
+              >
+                {ironSourceCaption(option)}
+              </span>
+            </span>
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -469,7 +653,6 @@ export function ActionDock({
 }: ActionDockProps) {
   const is = (path: string) => snapshot.matches(path as never)
   const can = (event: GameEvent) => snapshot.can(event)
-  const cancel = () => send({ type: 'CANCEL' })
   const c = snapshot.context
 
   // The six card-consuming actions — shared by the idle chooser and the
@@ -521,6 +704,8 @@ export function ActionDock({
       icon: <ScoutIcon size={15} />,
     },
   ]
+
+  const cancel = () => send({ type: 'CANCEL' })
 
   /* ---------- choose an action ---------- */
   if (is('playing.action.selectingAction')) {
@@ -781,6 +966,34 @@ export function ActionDock({
     )
   }
 
+  // The machine stops here only when the iron could come from more than one
+  // works; it never asks about the market, which the rules make a fallback
+  // rather than an alternative (p.5).
+  if (
+    is('playing.action.building.choosingIronSource') ||
+    is('playing.action.developing.choosingIronSource')
+  ) {
+    const choice = pendingIronChoice(c)
+    const building = is('playing.action.building.choosingIronSource')
+    return (
+      <Flow
+        action={building ? 'Build' : 'Develop'}
+        steps={building ? buildSteps : ['Card', 'Tiles', 'Confirm']}
+        active={building ? 3 : 2}
+        onCancel={cancel}
+      >
+        {choice && (
+          <IronSourcePicker
+            options={choice.options}
+            required={choice.required}
+            picks={c.chosenIronSources ?? []}
+            onPick={(source) => send({ type: 'SELECT_IRON_SOURCE', source })}
+          />
+        )}
+      </Flow>
+    )
+  }
+
   /* ---------- NETWORK ---------- */
   const netSteps = ['Card', 'Route', 'Confirm']
   if (is('playing.action.networking.selectingCard')) {
@@ -845,6 +1058,27 @@ export function ActionDock({
         onCancel={cancel}
       >
         <Note>Choose the second rail route on the map.</Note>
+      </Flow>
+    )
+  }
+  if (is('playing.action.networking.choosingDoubleLinkBeer')) {
+    const choice = pendingBeerChoice(c)
+    return (
+      <Flow
+        action="Network"
+        steps={['Card', 'Route', 'Route II', 'Beer', 'Confirm']}
+        active={3}
+        onCancel={cancel}
+      >
+        <Note>Which brewery supplies the beer for the second rail?</Note>
+        {choice && (
+          <BeerSourcePicker
+            options={choice.options}
+            required={choice.required}
+            picks={c.chosenBeerSources ?? []}
+            onPick={(source) => send({ type: 'SELECT_BEER_SOURCE', source })}
+          />
+        )}
       </Flow>
     )
   }
@@ -934,6 +1168,36 @@ export function ActionDock({
       </Flow>
     )
   }
+  /**
+   * The machine holds the sale still and asks where its beer comes from — but
+   * only when the answer could differ. When one source must supply it all it
+   * never stops here, and the sale flips on the first click as it always has.
+   */
+  if (is('playing.action.selling.choosingBeerSource')) {
+    const choice = pendingBeerChoice(c)
+    const sale = c.pendingSale
+    return (
+      <Flow
+        action="Sell"
+        steps={['Card', 'Goods', 'Beer']}
+        active={2}
+        onCancel={cancel}
+      >
+        <Note>
+          Where does the beer for {industryLabel(sale?.industryType ?? 'goods')}{' '}
+          at {cityName(sale?.location)} come from?
+        </Note>
+        {choice && (
+          <BeerSourcePicker
+            options={choice.options}
+            required={choice.required}
+            picks={c.chosenBeerSources ?? []}
+            onPick={(source) => send({ type: 'SELECT_BEER_SOURCE', source })}
+          />
+        )}
+      </Flow>
+    )
+  }
   if (is('playing.action.selling.selectingSale')) {
     const sales: Array<{
       location: CityId
@@ -967,6 +1231,7 @@ export function ActionDock({
       }
     }
     const sold = c.salesMadeThisAction
+
     return (
       <Flow
         action="Sell"

@@ -17,6 +17,7 @@ import {
   sellIronToMarket, 
   isLocationConnectedToMerchant
 } from '../market/marketActions'
+import type { IronSource } from '../shared/resourceSources'
 import {
   canCityAccommodateIndustryType,
   canOverbuildIndustry,
@@ -235,6 +236,9 @@ export function buildIndustryTile(
   currentPlayer: Player,
   tile: IndustryTile,
   updatedHand: Card[],
+  /** The player's choice of which iron works (or the market) each cube comes
+   * from; omit to let the engine pick. */
+  ironSources?: IronSource[],
 ): IndustryBuildResult {
   let updatedPlayersFromResources = context.players
   let updatedCoalMarket = [...context.coalMarket]
@@ -313,7 +317,11 @@ export function buildIndustryTile(
     const ironResult = consumeIronFromSources(
       { ...context, players: updatedPlayersFromResources },
       tile.ironRequired,
+      ironSources,
     )
+    if (!ironResult.success) {
+      throw new Error(ironResult.errorMessage || 'Iron consumption failed')
+    }
     ironCost = ironResult.ironCost
     updatedPlayersFromResources = ironResult.updatedPlayers
     updatedIronMarket = ironResult.updatedIronMarket

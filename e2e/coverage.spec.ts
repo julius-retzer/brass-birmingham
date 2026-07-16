@@ -94,7 +94,23 @@ test('Network: rail-era double-link build (two routes, £15 + coal + beer)', asy
     page.getByText('Choose the second rail route on the map.'),
   ).toBeVisible()
 
-  await clickRoute(page, 'belper|leek')
+  // The second-rail route is curved; a single mouse click on the bowed stroke
+  // can miss, so retry until the machine leaves the route-picking step.
+  const secondPrompt = page.getByText(
+    'Choose the second rail route on the map.',
+  )
+  await expect(async () => {
+    await clickRoute(page, 'belper|leek')
+    await expect(secondPrompt).toBeHidden({ timeout: 1000 })
+  }).toPass()
+
+  // Whether a Beer step appears depends on how many breweries reach the second
+  // rail (see beer-source.spec for the picker itself). Answer it if it's there,
+  // then confirm — either way the double build completes.
+  const beer = page.getByTestId('beer-source')
+  if ((await beer.count()) > 0) {
+    await beer.first().click()
+  }
   const confirm = page.getByTestId('confirm-action')
   await expect(confirm).toBeEnabled()
   await confirm.click()
@@ -118,6 +134,24 @@ test('Sell: gated with an explanation when nothing can be sold', async ({
   await expect(sell).toContainText('No goods you can sell right now')
 })
 
+/**
+ * Stage a sale and see it through. A sale whose beer could come from more than
+ * one place stops at the machine's beer step; assigning the last (here, only)
+ * barrel flips the industry. A single-source sale never stops.
+ */
+async function takeSale(page: Page, index = 0) {
+  await page.getByTestId('sale-option').nth(index).click()
+  const sources = page.getByTestId('beer-source')
+  if (
+    await sources
+      .first()
+      .isVisible()
+      .catch(() => false)
+  ) {
+    await sources.first().click()
+  }
+}
+
 test('Sell: multi-sale — flip two industries in one action', async ({
   page,
 }) => {
@@ -130,9 +164,9 @@ test('Sell: multi-sale — flip two industries in one action', async ({
   await page.locator('button.bb2-card:not([disabled])').first().click()
 
   // First sale, then a second one from the refreshed option list.
-  await page.getByTestId('sale-option').first().click()
+  await takeSale(page)
   await expect(page.getByText(/Flipped 1 industry this action/)).toBeVisible()
-  await page.getByTestId('sale-option').first().click()
+  await takeSale(page)
   await expect(page.getByText(/Flipped 2 industries this action/)).toBeVisible()
 
   await page.getByTestId('confirm-action').click()
@@ -324,7 +358,7 @@ test('Undo: the first action of a turn can be taken back in full', async ({
   // First action: sell one industry.
   await page.getByTestId('action-sell').click()
   await page.locator('button.bb2-card:not([disabled])').first().click()
-  await page.getByTestId('sale-option').first().click()
+  await takeSale(page)
   await expect(page.getByText(/Flipped 1 industry this action/)).toBeVisible()
   await page.getByTestId('confirm-action').click()
   await expect(

@@ -185,6 +185,53 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   being sold to. Merchants are per-slot entries (a location can appear
   twice), shuffled from the official tile pool at setup; blanks buy
   nothing and hold no beer.
+- RESOURCE SOURCE CHOICE (beer + iron, added 2026-07-16) is a FIRST-CLASS
+  MACHINE STATE, engine-owned. `src/store/shared/resourceSources.ts` is the
+  single place that knows which sources are legal, what a step needs and what
+  taking each one does (`getBeer/IronSourceOptions`; step selectors
+  `pendingBeerChoice`/`pendingIronChoice` → `{required, options, hasChoice}`;
+  `beer/ironChoiceSatisfied`; `canChoose{Beer,Iron}Source`). UI and the AI
+  driver only RENDER those and send the pick — never re-derive legality or
+  unit counts (captain's rule).
+  - The machine has explicit choosing steps entered like the card step:
+    `selling.choosingBeerSource` (executes the staged sale on exit),
+    `networking.choosingDoubleLinkBeer`, and `building`/`developing`.
+    `choosingIronSource`. Each has an `always` transition guarded by
+    `{beer,iron}ChoiceSatisfied` that AUTO-SKIPS it when <2 materially
+    distinct sources exist — so a single-source action never stops, and the
+    ~54 existing pins (which pass no source) stay green because the skip is
+    transparent. The staged sale + picks live in CONTEXT
+    (`pendingSale`, `chosenBeerSources`, `chosenIronSources`), set by
+    `stageSale`/`choose{Beer,Iron}Source`, cleared by `clearSelections`.
+    Events: `SELECT_BEER_SOURCE`/`SELECT_IRON_SOURCE` (one unit each, guarded
+    by `canChoose*`); the last unit satisfies the guard and the `always`
+    advances. No `beerSources`/`ironSources` params on the intents anymore.
+  - Merchant beer is only offered on a sale (never a network action, rules
+    p.9); the IRON MARKET is a FALLBACK not an alternative (rules p.5) — it is
+    never offered as a choice while any unflipped works has iron, though
+    consumption still falls back to it for cubes the works can't cover.
+  - These context fields are backfilled in `rehydrateSnapshot`
+    (`src/server/ai/driver.ts`) AND read defensively (`?? []`) everywhere,
+    because demo fixtures and pre-deploy saved/MP games were frozen without
+    them — a missing field must never crash the actor (it did: the picker's
+    `.filter` on `undefined` tripped the SaveRecoveryBoundary).
+  - `SELECT_BEER_SOURCE`/`SELECT_IRON_SOURCE` MUST be in the mp `ALLOWED_EVENTS`
+    whitelist (`src/server/mp/intent.ts`) or networked humans get hard-stuck in
+    every choosing state (the server enters it via the whitelisted SELECT_SALE
+    but then refuses the pick). `explainRefusal` names an off-offer pick; pinned
+    by `src/server/mp/intent.test.ts`.
+  - Double-link beer reachability is judged against the POST-placement network
+    (both rails on the board) via `withProvisionalDoubleLink` — enumeration,
+    the `canCompleteDoubleLink` guard and execution must all use it or they
+    disagree. `choosingDoubleLinkBeer` resets `chosenBeerSources` on entry (and
+    `clearSecondLink`/the success return clear it) so a cancelled-and-reselected
+    double link re-asks instead of inheriting a stale pick.
+  - Coal is deliberately excluded (closest-mine rule, not a choice). The
+    staged sale/picks reference only public board state, so
+    `filterSnapshotForSeat` needs nothing; a forged MP pick is refused by the
+    same guard. Pinned by `gameStore.sourcechoice.test.ts`,
+    `legal-moves.test.ts`, `intent.test.ts`, `e2e/beer-source.spec.ts` +
+    `?demo=beerchoice`.
 - Link scoring: 1 VP per •-• icon on built industry tiles in the two
   adjacent locations, plus `GAME_CONSTANTS.MERCHANT_LINK_ICONS` (2) at
   merchant locations.
@@ -255,7 +302,12 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
 - Integration tests (`gameStore.integration.test.ts`) drive full games
   through the event surface with a guard-probing policy; if you add
   guards, keep CANCEL paths reachable so the driver can unwind
-  (`unwind()` helper).
+  (`unwind()` helper). The greedy policy's organic games NEVER hit the
+  source-choice states (measured beer=0 iron=0) — that coverage comes from
+  the steered `sourceChoicePolicy` full-game test, which counts accepted
+  picks in `answerSourceSteps` (`sourcePicks`) and asserts beer>0 AND
+  iron>0; don't weaken that assert, it is the only full-game pin on the
+  choosing states.
 - `src/store/build`, `src/store/market`, `src/store/network` hold the
   real split-out action modules (`buildActions.ts`, `marketActions.ts`);
   network logic itself actually lives in `shared/gameUtils.ts`
@@ -433,11 +485,30 @@ When updating this file, preserve this bar for all agents and keep entries conci
 ## E2E suite (Playwright, added 2026-07-12)
 
 - `pnpm exec playwright test` — `webServer` boots the dev server on :3199
-  with `SKIP_ENV_VALIDATION=1`. 13 journey tests in `e2e/`, ~13s,
-  `retries: 0` — if a test needs retries, fix or delete it. All specs are
-  offline EXCEPT `multiplayer.spec.ts` + `ai-opponent.spec.ts`, which drive
-  the real DB-backed mp service and need a live DATABASE_URL in `.env`
-  (they skip, visibly, when none is present — guard in `e2e/db-available.ts`).
+  with `SKIP_ENV_VALIDATION=1`. 31 journey tests in `e2e/`, ~3.5m (offline
+  subset stays under a minute), `retries: 0` — if a test needs retries, fix
+  or delete it. All specs are offline EXCEPT `multiplayer.spec.ts` +
+  `ai-opponent.spec.ts` + `mp-playthrough.spec.ts`, which drive the real
+  DB-backed mp service and need a live DATABASE_URL in `.env` (they skip,
+  visibly, when none is present — guard in `e2e/db-available.ts`). Those DB
+  specs widen their per-expect timeout to 15s (`expect.configure`) and set
+  long test timeouts — every assertion is a POST + SSE round trip against a
+  network database; do NOT read a slow run as a product bug before checking
+  DB contention.
+- `mp-playthrough.spec.ts` (2026-07-17) is the capstone: two real browsers
+  play a scripted-but-adaptive canal opening through the UI — network, loan,
+  scout, wild-card builds, a SELL that stops at the beer-source picker (own
+  brewery vs merchant barrel), a DEVELOP that stops at the iron-source
+  picker (two rival works, market not offered), a mid-flow CANCEL, and a
+  forged off-offer SELECT_BEER_SOURCE POSTed raw and refused by name. The
+  SAME opening runs offline (no DB) through `applyIntent` in
+  `src/server/mp/playthrough.test.ts`, with the shared site-planning in
+  `src/test/mp-opening-plan.ts` — when the e2e breaks but the offline twin
+  passes, suspect UI/transport, not the engine. GOTCHA the pair encodes:
+  in MP EVERY click posts an intent and the dock swallows clicks while one
+  is in flight — anchor each click on the NEXT step's UI, and take whose
+  turn it is from the wire's `currentPlayerIndex`, never from a page's
+  possibly-stale dock.
 - Selector policy: `data-testid` spine for structure (action-*, confirm-
   action, cancel-action, mat-<id>/treasury, journal-entry, pass-curtain,
   reveal-hand, card-<id>, era-plate, round-chip, sale-option; map uses
@@ -447,7 +518,10 @@ When updating this file, preserve this bar for all agents and keep entries conci
   misses the fat hit-stroke on bowed paths. Use the `clickRoute` helper in
   `e2e/coverage.spec.ts` (getPointAtLength midpoint + mouse click).
 - Fixtures: e2e boots `?demo` / `?demo=sell` / `?demo=eraend` /
-  `?demo=gameend` / `?demo=wilds` / `?era=rail`. Regenerating ANY fixture invalidates
+  `?demo=gameend` / `?demo=wilds` / `?demo=beerchoice` / `?demo=ironchoice`
+  (a Develop facing 2+ unflipped works — the iron picker, `iron-source.spec`)
+  / `?demo=doublebeer` (a double rail whose beer has 2+ sources —
+  `double-link-beer.spec`) / `?era=rail`. Regenerating ANY fixture invalidates
   pinned test literals — regenerate ONE at a time with
   `GENERATE_DEMO=1 pnpm vitest run src/components/demo/generate-demo.test.ts -t "<name> fixture"`
   and re-pin the affected spec (£ values, card ids, route pairs, winner).

@@ -36,6 +36,12 @@ import {
   consumeIronFromSources,
 } from './market/marketActions'
 import { getCurrentPlayer } from './shared/gameUtils'
+import {
+  beerSourceKey,
+  ironSourceKey,
+  pendingBeerChoice,
+  pendingIronChoice,
+} from './shared/resourceSources'
 
 const money = (amount: number) => `£${amount}`
 
@@ -230,6 +236,29 @@ export function explainRefusal(
       // validateSale already produces the exact reason (missing beer, no
       // merchant, not connected) — the guard just throws it away.
       return validateSale(context, event).error ?? null
+
+    case 'SELECT_BEER_SOURCE': {
+      // canChooseBeerSource refuses a source this step never offered.
+      const choice = pendingBeerChoice(context)
+      if (!choice?.hasChoice) return 'There is no beer source to choose here.'
+      const offered = choice.options.some(
+        (o) => beerSourceKey(o.source) === beerSourceKey(event.source),
+      )
+      return offered
+        ? null
+        : 'That beer source is not available for this action.'
+    }
+
+    case 'SELECT_IRON_SOURCE': {
+      const choice = pendingIronChoice(context)
+      if (!choice?.hasChoice) return 'There is no iron source to choose here.'
+      const offered = choice.options.some(
+        (o) => ironSourceKey(o.source) === ironSourceKey(event.source),
+      )
+      return offered
+        ? null
+        : 'That iron source is not available for this action.'
+    }
 
     case 'CHOOSE_DOUBLE_LINK_BUILD':
       return explainSecondLinkOffer(context)

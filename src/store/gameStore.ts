@@ -945,6 +945,13 @@ export const gameStore = setup({
 
       const totalCost = linkCost + coalCost
 
+      if (currentPlayer.money < totalCost) {
+        return {
+          lastError: `Insufficient funds. Cost: £${totalCost}, Available: £${currentPlayer.money}`,
+          errorContext: 'network' as const,
+        }
+      }
+
       // Get player state after coal consumption, if any
       const playerAfterCoal =
         context.era === 'rail' && coalResult
@@ -1152,6 +1159,13 @@ export const gameStore = setup({
 
       totalCost += coalCost
 
+      if (currentPlayer.money < totalCost) {
+        return {
+          lastError: `Insufficient funds. Cost: £${totalCost}, Available: £${currentPlayer.money}`,
+          errorContext: 'network' as const,
+        }
+      }
+
       // Get final player state with beer consumption applied
       const finalPlayerAfterBeer =
         beerResult.updatedPlayers[context.currentPlayerIndex]!
@@ -1312,6 +1326,13 @@ export const gameStore = setup({
       const ironCost = ironResult.ironCost
       const updatedPlayersFromIron = ironResult.updatedPlayers
       const updatedIronMarket = ironResult.updatedIronMarket
+
+      if (currentPlayer.money < ironCost) {
+        return {
+          lastError: `Insufficient funds. Cost: £${ironCost}, Available: £${currentPlayer.money}`,
+          errorContext: 'develop' as const,
+        }
+      }
 
       const updatedHand = removeCardFromHand(
         currentPlayer,
@@ -2370,6 +2391,12 @@ export const gameStore = setup({
         return false
       }
 
+      const linkCost =
+        context.era === 'canal'
+          ? GAME_CONSTANTS.CANAL_LINK_COST
+          : GAME_CONSTANTS.RAIL_LINK_COST
+      let coalCost = 0
+
       // Check coal availability for rail era links
       if (context.era === 'rail') {
         const coalResult = consumeCoalFromSources(
@@ -2380,9 +2407,11 @@ export const gameStore = setup({
         if (!coalResult.success) {
           return false
         }
+        coalCost = coalResult.coalCost
       }
 
-      return true
+      // Brass has no debt: the player must be able to pay the full cost
+      return getCurrentPlayer(context).money >= linkCost + coalCost
     },
     canBuildLink: ({ context, event }) => {
       if (event.type !== 'SELECT_LINK' && event.type !== 'SELECT_SECOND_LINK') {
@@ -2403,6 +2432,16 @@ export const gameStore = setup({
       }
 
       const currentPlayer = getCurrentPlayer(context)
+
+      // Brass has no debt. Coal cost isn't known until a link is picked, so
+      // this only gates on the base cost; hasSelectedLink checks cost + coal.
+      const baseLinkCost =
+        context.era === 'canal'
+          ? GAME_CONSTANTS.CANAL_LINK_COST
+          : GAME_CONSTANTS.RAIL_LINK_COST
+      if (currentPlayer.money < baseLinkCost) {
+        return false
+      }
 
       // Exception: If player has no industries or links on board, can build anywhere
       const hasNoTilesOnBoard =
@@ -2609,8 +2648,15 @@ export const gameStore = setup({
     hasSelectedSecondLink: ({ context }) => context.selectedSecondLink !== null,
 
     hasSelectedTilesForDevelop: ({ context }) => {
+      const canAffordIron = (tileCount: number) =>
+        getCurrentPlayer(context).money >=
+        consumeIronFromSources(context, tileCount).ironCost
+
       // Allow confirmation if tiles are selected OR for backward compatibility
-      if (context.selectedTilesForDevelop.length > 0) return true
+      if (context.selectedTilesForDevelop.length > 0) {
+        // Brass has no debt: the iron for the selected tiles must be payable
+        return canAffordIron(context.selectedTilesForDevelop.length)
+      }
 
       // For backward compatibility, check if there are any developable tiles
       const currentPlayer = getCurrentPlayer(context)
@@ -2631,7 +2677,8 @@ export const gameStore = setup({
             (tile) => industryType !== 'pottery' || !tile.hasLightbulbIcon,
           )
         if (developableTiles.length > 0) {
-          return true
+          // The auto-select fallback develops exactly one tile
+          return canAffordIron(1)
         }
       }
       return false
@@ -2655,7 +2702,53 @@ export const gameStore = setup({
         // No merchant beer for Network actions
       )
 
-      return beerCheckResult.success
+      if (!beerCheckResult.success) {
+        return false
+      }
+
+      // Brass has no debt: £15 plus the coal for both links must be payable
+      const firstCoal = consumeCoalFromSources(
+        context,
+        context.selectedLink.from,
+        1,
+      )
+      if (!firstCoal.success) {
+        return false
+      }
+      // Mirror execution: the second link is on the board (and so part of the
+      // player's network) before its coal is sourced
+      const playerWithLinks = firstCoal.updatedPlayers[
+        context.currentPlayerIndex
+      ]!
+      const secondCoal = consumeCoalFromSources(
+        {
+          ...context,
+          players: updatePlayerInList(
+            firstCoal.updatedPlayers,
+            context.currentPlayerIndex,
+            {
+              ...playerWithLinks,
+              links: [
+                ...playerWithLinks.links,
+                { ...context.selectedLink, type: 'rail' as const },
+                { ...context.selectedSecondLink, type: 'rail' as const },
+              ],
+            },
+          ),
+          coalMarket: firstCoal.updatedCoalMarket,
+        },
+        context.selectedSecondLink.from,
+        1,
+      )
+      if (!secondCoal.success) {
+        return false
+      }
+
+      const totalCost =
+        GAME_CONSTANTS.RAIL_DOUBLE_LINK_COST +
+        firstCoal.coalCost +
+        secondCoal.coalCost
+      return getCurrentPlayer(context).money >= totalCost
     },
   },
 }).createMachine({

@@ -522,7 +522,12 @@ When updating this file, preserve this bar for all agents and keep entries conci
   fail). This mirrors the CI workflow (`.github/workflows/ci.yml`, per-run
   branch off `ci`). Credential `NEON_API_KEY` (brass-project-scoped Neon key):
   LOCAL — put it in `.env.local` (gitignored via `.env*.local`; never committed
-  / printed); CI — the `NEON_API_KEY` repo secret (a plain env var, which also
+  / printed), which `.worktreeinclude` copies into pooled worktrees ALONGSIDE
+  `.env` (without it a worktree silently degrades to `.env`'s shared `dev`
+  branch — the exact interference this whole mechanism prevents; mint a
+  project-scoped key via `neonctl api /organizations/<org>/api_keys -X POST -d
+  '{"key_name":...,"project_id":"muddy-night-85782525"}'`); CI — the
+  `NEON_API_KEY` repo secret (a plain env var, which also
   overrides `.env.local` in disposable worktrees). `NEON_PROJECT_ID` is likewise
   overridable but defaults to the brass project. FALLBACK PRECEDENCE (offline
   never hard-fails, and tests must NEVER hit `dev`): (1) `NEON_API_KEY` present
@@ -535,7 +540,17 @@ When updating this file, preserve this bar for all agents and keep entries conci
   (beforeAll, `src/test/db-schema.ts`) migrates it idempotently — so a stale
   `test` branch is brought current by the same harness step the ephemeral path
   uses. Keep `TEST_DATABASE_URL` (not the plain `DATABASE_URL`) pointed at the
-  `test` branch for the no-key / `TEST_DB_BRANCH=0` path.
+  `test` branch for the no-key / `TEST_DB_BRANCH=0` path. That idempotent apply
+  must swallow BOTH "already exists" (re-run over a populated branch) AND the
+  parallel-CREATE race: two DB suites run in separate vitest workers against ONE
+  branch, so when a table is absent (a fresh migration not yet on the `ci`
+  parent) both issue the same `CREATE TABLE` at once and the loser gets a
+  `23505` on `pg_catalog` (NOT a polite `42P07`). `isBenignSchemaRace`
+  (`src/test/db-schema.ts`, unit-tested in `db-schema.test.ts`) accepts exactly
+  those; a `23505` on an application table still throws. Re-migrate the `ci`
+  parent after adding a table (`neonctl connection-string ci --project-id
+  muddy-night-85782525` → `pnpm db:migrate`) so ephemeral branches inherit it —
+  but the race handler is the safety net for the window before that.
 - DEPLOY (Vercel, wired 2026-07-15): ship is direct-PR → Vercel Git
   integration (project `brass-birmingham`, prod branch = `main`, PR previews
   on). The Neon<->Vercel native integration (store "brass") manages the

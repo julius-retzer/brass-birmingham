@@ -7,3 +7,10 @@
 # app; see the CI/local-db notes in CLAUDE.md. Without this, `pnpm dev`
 # fails env validation unless SKIP_ENV_VALIDATION=1 is set.
 .env
+
+# Carries NEON_API_KEY, which is what buys a test run its OWN ephemeral Neon
+# branch (src/test/global-db-branch.ts). Without it a worktree silently falls
+# back to .env's DATABASE_URL — the shared `dev` branch — so concurrent runs in
+# pooled worktrees clobber each other's rows. That is the exact interference the
+# per-run branch exists to prevent, so this file has to travel with .env.
+.env.local

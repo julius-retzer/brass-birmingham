@@ -1,20 +1,50 @@
 // Apply the shipped Drizzle migrations to the connected DB for tests.
 //
-// The multiplayer suites run against a real (Neon/Postgres) database — set
-// DATABASE_URL to a dev branch. Rather than depend on a driver-specific
-// runtime migrator, we execute the generated migration SQL directly, which is
-// robust across drivers and exercises the exact SQL that ships. Re-running is
-// safe: an "already exists" error on the CREATE TABLE is ignored so tests can
-// share a persistent dev branch across runs.
+// The multiplayer suites run against a real (Neon/Postgres) database, normally
+// the per-run ephemeral branch from src/test/global-db-branch.ts. Rather than
+// depend on a driver-specific runtime migrator, we execute the generated
+// migration SQL directly, which is robust across drivers and exercises the exact
+// SQL that ships. Applying is safe both when the objects already exist and when
+// parallel workers create them at the same instant — see isBenignSchemaRace.
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { sql } from 'drizzle-orm'
 import { db } from '~/server/db'
 
-function isAlreadyExists(err: unknown): boolean {
+/**
+ * Is this failure just "the object is already there"?
+ *
+ * Two shapes, both benign:
+ *
+ *  - The object EXISTS ALREADY (42P07 duplicate_table / 42710 duplicate_object,
+ *    or an "already exists" message when no code surfaces). Re-running the
+ *    shipped migrations over a populated branch.
+ *
+ *  - The object was created CONCURRENTLY, a hair before us. vitest runs the DB
+ *    suites in parallel workers against ONE database; when the branch is missing
+ *    a table (an ephemeral branch off a `ci` parent that predates the migration)
+ *    both workers issue the same CREATE at once. The loser does NOT get 42P07 —
+ *    CREATE TABLE isn't atomic against a concurrent twin, so Postgres surfaces
+ *    its own catalog unique-index violation (23505 on pg_catalog) instead. The
+ *    winner's object is committed by then, so the loser can safely carry on.
+ *
+ * 23505 is accepted ONLY against pg_catalog: a unique violation on an
+ * application table is a real defect and must still throw. drizzle wraps the
+ * driver error, so walk the cause chain.
+ */
+export function isBenignSchemaRace(err: unknown): boolean {
   for (let e = err; e; e = (e as { cause?: unknown }).cause) {
-    const { code, message } = e as { code?: string; message?: string }
-    if (code === '42P07' || /already exists/i.test(message ?? '')) return true
+    if (typeof e !== 'object') return false
+    const { code, message, schema } = e as {
+      code?: string
+      message?: string
+      schema?: string
+    }
+    if (code === '42P07' || code === '42710') return true
+    if (code === '23505' && schema === 'pg_catalog') return true
+    // Only trust the message when no code pinned the failure — an unrelated
+    // error carrying these words shouldn't slip through.
+    if (!code && /already exists/i.test(message ?? '')) return true
   }
   return false
 }
@@ -32,10 +62,7 @@ async function apply(): Promise<void> {
       try {
         await db.execute(sql.raw(trimmed))
       } catch (err) {
-        // Idempotent: the object may already exist on a shared dev branch.
-        // drizzle wraps the driver error, so walk the cause chain looking for
-        // Postgres 42P07 (duplicate_table) / an "already exists" message.
-        if (!isAlreadyExists(err)) throw err
+        if (!isBenignSchemaRace(err)) throw err
       }
     }
   }

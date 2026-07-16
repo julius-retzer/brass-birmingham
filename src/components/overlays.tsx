@@ -1,8 +1,13 @@
 'use client'
 
-// Full-screen moments: the pass-the-device curtain and the final scoring.
-import { useMemo, useState } from 'react'
-import { type Merchant, type Player } from '~/store/gameStore'
+// Full-screen moments: the round-end curtain, the pass-the-device curtain and
+// the final scoring.
+import { useEffect, useMemo, useState } from 'react'
+import {
+  type Merchant,
+  type Player,
+  type RoundSummary,
+} from '~/store/gameStore'
 import { BoardMap, PLAYER_FILL } from './board/board-map'
 import { CardBack } from './cards'
 import { IncomeIcon, LaurelIcon, PoundIcon } from './icons'
@@ -11,6 +16,255 @@ import {
   annotationsFor,
   buildBreakdown,
 } from './vp-breakdown'
+
+/** Height of one turn-order row, in px — the animation translates by it. */
+const ORDER_ROW = 46
+
+/**
+ * The round-end interstitial: announces the round that closed, what each
+ * player spent, and animates the spend-driven reordering of the turn order.
+ *
+ * Everything rendered here comes from the engine's own RoundSummary — the
+ * order switch is the one the machine installed, not a recomputed guess.
+ */
+export function RoundCurtain({
+  summary,
+  players,
+  onDismiss,
+  autoDismissMs,
+}: {
+  summary: RoundSummary
+  players: Player[]
+  onDismiss: () => void
+  /** When set, the curtain lifts itself after this long (multiplayer). */
+  autoDismissMs?: number
+}) {
+  // The reorder animates from the old ranking to the new one shortly after
+  // mount, so the switch is legible as a movement rather than a jump cut.
+  const [settled, setSettled] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setSettled(true), 850)
+    return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    if (!autoDismissMs) return
+    const t = setTimeout(onDismiss, autoDismissMs)
+    return () => clearTimeout(t)
+  }, [autoDismissMs, onDismiss])
+
+  // Any key lifts the curtain — it is an announcement, never a prompt.
+  useEffect(() => {
+    const onKey = () => onDismiss()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onDismiss])
+
+  const byId = useMemo(() => new Map(players.map((p) => [p.id, p])), [players])
+  const spendRows = summary.previousOrder
+    .map((id) => byId.get(id))
+    .filter((p): p is Player => Boolean(p))
+  const topSpend = Math.max(
+    1,
+    ...Object.values(summary.spending).map((v) => Math.abs(v)),
+  )
+
+  return (
+    <div
+      className="bb2-curtain fixed inset-0 z-[60] flex flex-col items-center justify-center gap-7 overflow-y-auto p-6"
+      data-testid="round-curtain"
+      style={{
+        background:
+          'radial-gradient(900px 600px at 50% 25%, rgba(214,168,84,.07), transparent 60%), linear-gradient(180deg, rgba(16,13,10,.98), rgba(12,10,8,.99))',
+      }}
+      // A stray click anywhere dismisses; the button below is the signposted way.
+      onClick={onDismiss}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Round ${summary.round} complete`}
+    >
+      <div className="bb2-seal-pop flex flex-col items-center gap-2 text-center">
+        <span
+          className="text-[11px] font-semibold uppercase tracking-[0.34em]"
+          style={{ color: 'rgba(231,215,177,.5)' }}
+        >
+          {summary.era} era
+        </span>
+        <span
+          className="bb2-display text-5xl font-black"
+          style={{ color: 'var(--bb-parchment-bright)' }}
+        >
+          Round {summary.round} complete
+        </span>
+        {summary.eraEnded && (
+          <span
+            className="bb2-chip mt-1"
+            style={{ color: 'var(--bb-brass-bright)' }}
+            data-testid="curtain-era-note"
+          >
+            deck spent — the {summary.era} era closes
+          </span>
+        )}
+      </div>
+
+      <div className="flex w-full max-w-4xl flex-col gap-6 lg:flex-row lg:items-start lg:justify-center">
+        {/* ---------- what everyone spent ---------- */}
+        <section className="flex-1">
+          <h3
+            className="mb-3 text-[11px] font-semibold uppercase tracking-[0.28em]"
+            style={{ color: 'rgba(231,215,177,.5)' }}
+          >
+            Spent this round
+          </h3>
+          <ul className="flex flex-col gap-2">
+            {spendRows.map((p) => {
+              const spent = summary.spending[p.id] ?? 0
+              const income = summary.income[p.id]
+              return (
+                <li
+                  key={p.id}
+                  className="flex items-center gap-3"
+                  data-testid={`curtain-spend-${p.id}`}
+                >
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ background: PLAYER_FILL[p.color] }}
+                  />
+                  <span
+                    className="w-24 shrink-0 truncate text-[13px]"
+                    style={{ color: 'var(--bb-parchment)' }}
+                  >
+                    {p.name}
+                  </span>
+                  {/* Spend bar — relative weight is the thing that decides order. */}
+                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-[rgba(231,215,177,.08)]">
+                    <span
+                      className="bb2-spend-bar block h-full rounded-full"
+                      style={{
+                        width: `${(spent / topSpend) * 100}%`,
+                        background: PLAYER_FILL[p.color],
+                      }}
+                    />
+                  </span>
+                  <span
+                    className="w-12 shrink-0 text-right text-[13px] font-bold tabular-nums"
+                    style={{ color: 'var(--bb-parchment-bright)' }}
+                  >
+                    £{spent}
+                  </span>
+                  {income !== undefined && (
+                    <span
+                      className="w-14 shrink-0 text-right text-[11px] tabular-nums"
+                      style={{
+                        color:
+                          income >= 0 ? 'rgba(150,200,150,.75)' : '#e0968b',
+                      }}
+                      title="income collected at round end"
+                    >
+                      {income >= 0 ? '+' : '−'}£{Math.abs(income)}
+                    </span>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+
+        {/* ---------- the order switch ---------- */}
+        <section className="flex-1">
+          <h3
+            className="mb-3 text-[11px] font-semibold uppercase tracking-[0.28em]"
+            style={{ color: 'rgba(231,215,177,.5)' }}
+          >
+            Turn order — round {summary.round + 1}
+          </h3>
+          <div
+            className="relative"
+            style={{ height: summary.newOrder.length * ORDER_ROW }}
+            data-testid="curtain-order"
+          >
+            {summary.newOrder.map((id) => {
+              const p = byId.get(id)
+              if (!p) return null
+              const from = summary.previousOrder.indexOf(id)
+              const to = summary.newOrder.indexOf(id)
+              const rank = settled ? to : from
+              const moved = to - from
+              return (
+                <div
+                  key={id}
+                  className="bb2-order-row absolute inset-x-0 flex items-center gap-3 rounded border px-3 py-2"
+                  data-testid={`curtain-order-${id}`}
+                  data-rank={to + 1}
+                  style={{
+                    transform: `translateY(${rank * ORDER_ROW}px)`,
+                    borderColor:
+                      settled && to === 0
+                        ? 'var(--bb-brass)'
+                        : 'var(--bb-brass-hairline)',
+                    background: 'rgba(20,16,11,.7)',
+                  }}
+                >
+                  <span
+                    className="bb2-display w-5 shrink-0 text-center text-[15px] font-black tabular-nums"
+                    style={{ color: 'var(--bb-brass-bright)' }}
+                  >
+                    {rank + 1}
+                  </span>
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ background: PLAYER_FILL[p.color] }}
+                  />
+                  <span
+                    className="flex-1 truncate text-[13px]"
+                    style={{ color: 'var(--bb-parchment-bright)' }}
+                  >
+                    {p.name}
+                  </span>
+                  {moved !== 0 && (
+                    <span
+                      className="text-[11px] font-bold tabular-nums transition-opacity duration-300"
+                      style={{
+                        opacity: settled ? 1 : 0,
+                        color: moved < 0 ? 'rgba(150,200,150,.85)' : '#e0968b',
+                      }}
+                    >
+                      {moved < 0 ? '▲' : '▼'} {Math.abs(moved)}
+                    </span>
+                  )}
+                  {settled && to === 0 && (
+                    <span
+                      className="text-[10px] uppercase tracking-[0.2em]"
+                      style={{ color: 'var(--bb-brass)' }}
+                    >
+                      leads
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <p
+            className="mt-3 text-[11px] italic"
+            style={{ color: 'rgba(231,215,177,.45)' }}
+          >
+            The lightest spender leads the next round; equal spenders keep their
+            order.
+          </p>
+        </section>
+      </div>
+
+      <button
+        type="button"
+        className="bb2-confirm max-w-xs"
+        data-testid="round-curtain-dismiss"
+        onClick={onDismiss}
+      >
+        Begin round {summary.round + 1}
+      </button>
+    </div>
+  )
+}
 
 export function PassGate({
   player,

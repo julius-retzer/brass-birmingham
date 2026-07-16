@@ -46,6 +46,7 @@ const createTestContext = (overrides: Partial<GameState> = {}): GameState => {
     spentMoney: 0,
     playerSpending: {},
     turnOrder: [],
+    roundSummary: null,
     isFinalRound: false,
     selectedLink: null,
     selectedSecondLink: null,

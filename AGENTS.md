@@ -406,6 +406,19 @@ When updating this file, preserve this bar for all agents and keep entries conci
   passesToGameOver in generate-demo.test.ts) so a freeze condition is
   asserted by the machine's own guards, never re-implemented.
 
+- ROUND CURTAIN (2026-07-16): `nextPlayer` records a `RoundSummary` in context
+  (`context.roundSummary`) when a round completes — the round that ended, its
+  spends, the previous + installed turn orders, the income settlement as a real
+  money delta, and `eraEnded`. It exists because `nextPlayer` overwrites
+  `playerSpending`/`turnOrder` in the SAME assign that reorders, so nothing
+  downstream could otherwise see what a round did; never recompute the order
+  switch in the UI, render from the summary. `RoundCurtain` (`overlays.tsx`) is
+  shared by both surfaces: hotseat (`game.tsx`, z-60, sits ABOVE the pass gate —
+  any e2e loop that passes turns must dismiss it, see `coverage.spec.ts`) and
+  multiplayer (`mp-game.tsx`, `MP_CURTAIN_MS` auto-lift, since nobody hands the
+  device on). Both seed "already seen" from the booted snapshot so a resume/join
+  never replays an old round. The summary is PUBLIC (spends and turn order are
+  visible at any table) and passes `filterSnapshotForSeat` unfiltered.
 - UNDO (2026-07-15) is HOTSEAT-ONLY and shell-level: `game.tsx` snapshots the
   machine at turn start (`turnAnchor`) and remounts from it; one action
   undoable while the same player still has an action left. Multiplayer undo

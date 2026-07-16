@@ -569,6 +569,35 @@ button.bb2-card {
   animation: bb2-curtain 0.35s ease both;
 }
 
+/* Round curtain: a turn-order row slides from its old rank to its new one. */
+.bb2-order-row {
+  transition: transform 0.7s cubic-bezier(0.34, 1.2, 0.5, 1), border-color 0.4s
+    ease;
+}
+
+.bb2-spend-bar {
+  transform-origin: left center;
+  animation: bb2-spend-grow 0.6s 0.15s ease both;
+}
+
+@keyframes bb2-spend-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* The reorder is decorative; motion-sensitive players get the end state. */
+@media (prefers-reduced-motion: reduce) {
+  .bb2-order-row,
+  .bb2-spend-bar {
+    transition: none;
+    animation: none;
+  }
+}
+
 @keyframes bb2-seal-pop {
   0% {
     transform: scale(0.6) rotate(-8deg);

@@ -88,6 +88,7 @@ const createTestGameState = (
     spentMoney: 0,
     playerSpending: {},
     turnOrder: [],
+    roundSummary: null,
     isFinalRound: false,
     selectedLink: null,
     selectedSecondLink: null,

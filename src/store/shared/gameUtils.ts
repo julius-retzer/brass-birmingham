@@ -15,6 +15,16 @@ import {
   advanceIncomeSpaces,
   incomeLevelForSpace,
 } from '../../data/incomeTrack'
+import type { IndustryTile } from '../../data/industryTiles'
+
+/**
+ * Pottery tiles showing the lightbulb icon (levels 1 and 3) can only be
+ * removed from a Player Mat via Build, never via Develop (rulebook p.7,
+ * "Potteries and the Lightbulb Icon").
+ */
+export function isDevelopable(tile: Pick<IndustryTile, 'type' | 'hasLightbulbIcon'>): boolean {
+  return tile.type !== 'pottery' || !tile.hasLightbulbIcon
+}
 
 /**
  * Marker movement for a FLIPPED tile: advance by the tile's printed

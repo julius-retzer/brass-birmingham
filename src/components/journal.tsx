@@ -114,6 +114,9 @@ function JournalRow({ item }: { item: JournalItem }) {
         </div>
         {item.details.length > 0 && (
           <div className="bb2-jdetail">
+            {/* Leading space keeps the row's textContent word-separated
+                across the line break (copy/paste, text-matching tests). */}
+            {' '}
             {/* Merchant bonuses and mid-action tile flips stay demoted but
                 glow warmer so they still catch a scanning eye. */}
             {item.details.map((detail, i) => (

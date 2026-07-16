@@ -36,9 +36,11 @@ test('the iron picker offers every works but never the market, and the develop c
   await expect(confirm).toBeEnabled()
   await confirm.click()
 
+  // The journal renders the tile count as a chip and the iron consumption
+  // as a demoted detail line — same words, restructured.
   await expect(
     page
-      .getByText(/developed \(removed 1 tile, 1 iron from iron works \(free\)/)
+      .getByText(/developed removed 1 tile 1 iron from iron works \(free\)/)
       .first(),
   ).toBeVisible()
 })
@@ -54,7 +56,7 @@ test('backing out of the iron step consumes nothing', async ({ page }) => {
 
   // Back on the tile step; no tile was scrapped, no iron or money moved.
   await expect(page.getByTestId('develop-lowest')).toBeVisible()
-  await expect(page.getByText(/developed \(removed/)).toHaveCount(0)
+  await expect(page.getByText(/developed removed/)).toHaveCount(0)
   expect(
     await page.locator('[data-testid="treasury"]').allTextContents(),
   ).toEqual(treasuries)

@@ -161,6 +161,41 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
 - You have ai-docs/brass-birmingham-rules.mdc the rules, but you can search the web for clarifications, if needed
 ## Engine Notes (game loop, added 2026-07-08)
 
+- XSTATE IS PINNED AT 5.32.x (upgraded 2026-07-17). Graph traversal lives in
+  CORE since 5.20 — import from `xstate/graph`; do NOT add `@xstate/graph`,
+  it would only drift out of version-match. `@xstate/react` 6.x is a major on
+  its own versioning but peers on xstate ^5.28 (no v6 engine involved). The
+  machine sets `options: { maxIterations: 1000 }` — a defensive cap on the
+  `always` chains that surfaces a regressed guard's infinite loop as an actor
+  error instead of a hung request. It can only fire on a bug; do not raise it
+  to silence one.
+- PROBES ARE PURE (2026-07-17). Anything asking the engine a hypothetical
+  ("if I picked this city, would the build still complete?") uses
+  `transition(gameStore, snapshot, event)` — no actor, no side effects,
+  `always` chains resolved, and the unexecuted-actions half of the tuple is
+  always empty because this machine is assign-only. The pattern is ONE restore
+  at the boundary then pure chains: `transition()` rejects raw persisted JSON
+  (no resolved state nodes), so `createActor(...,{snapshot}).getSnapshot()`
+  is still needed once — and it must still go through `rehydrateSnapshot`'s
+  deep clone, because `getPersistedSnapshot()` shares nested refs with the
+  live context. One restored snapshot may be REUSED as the base for many
+  probes: transitions never mutate the snapshot they start from (verified
+  against executed CONFIRMs that spend money and place tiles). Sites:
+  `driver.ts` (`applyPure`/`tryApplyEvent`/`flowDeadEnd`), `game.tsx`
+  (`probeSnapshot`/`probeStep`). `applyIntent` stays actor-based on purpose —
+  it needs the restore anyway and persists the result.
+- STATECHART SHAPE is pinned by `gameStore.graph.test.ts` — a `xstate/graph`
+  sweep asserting invariants over every reachable wizard state (CANCEL always
+  unwinds to the chooser without consuming the action; no dead ends; the
+  source-choice steps never settle with nothing to pick). A new action flow is
+  covered the day it lands, so prefer extending the invariants over
+  hand-writing another CANCEL case. TWO gotchas: (1) nodes MUST be keyed on
+  state VALUE via `serializeState` — context (money, hands, board) makes a
+  default context-keyed traversal non-terminating and it blows the limit
+  outright; (2) the alphabet is `candidateMoves` (`legal-moves.ts`), split from
+  `enumerateLegalMoves` so payloads stay fixture-real and the sweep cannot
+  drift from what the AI sees. `enumerateLegalMoves` = `candidateMoves` minus
+  the AI-only card-first suppression, then `can()`.
 - The XState machine (`src/store/gameStore.ts`) now runs a full game
   end-to-end: eras end automatically when the draw deck and all hands are
   exhausted (flag `eraEndPending`, set by the `nextPlayer` action when a

@@ -27,7 +27,7 @@ import { computeHoverCities } from '../hover-highlight'
 import { GameOverScreen } from '../overlays'
 import { PlayerLedger } from '../player-ledger'
 import { PlayerRail } from '../player-rail'
-import { JournalPanel, MarketsPanel } from '../side-panels'
+import { CollapsiblePanel, JournalPanel, MarketsPanel } from '../side-panels'
 import { didBecomeMyTurn, playTurnChime, titleForTurn } from './turnNotify'
 import { useInFlight } from './use-in-flight'
 
@@ -1296,8 +1296,11 @@ function AiMindPanel({
     .filter((e) => e.rationale !== null || e.fallback)
     .slice(-8)
   return (
-    <div className="bb2-panel flex flex-col gap-2 p-4" data-testid="ai-mind">
-      <span className="bb2-panel-title">The rival&rsquo;s journal</span>
+    <CollapsiblePanel
+      title="The rival’s journal"
+      testId="ai-mind-toggle"
+      panelTestId="ai-mind"
+    >
       {entries.length === 0 ? (
         <p className="text-[12px]" style={{ color: 'rgba(231,215,177,.45)' }}>
           The AI has not moved yet.
@@ -1349,6 +1352,6 @@ function AiMindPanel({
         {ai.usage.calls === 1 ? 'call' : 'calls'}
         {ai.usage.fallbacks > 0 ? ` · ${ai.usage.fallbacks} fallbacks` : ''}
       </p>
-    </div>
+    </CollapsiblePanel>
   )
 }

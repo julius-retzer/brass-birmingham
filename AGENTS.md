@@ -316,6 +316,14 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   without ANTHROPIC_API_KEY (or without a gateway for openai-wire tiers)
   refuses with a clear error. Rationales + cost are PUBLIC in
   `GameView.ai`; the AI's hand stays as hidden as any other seat's.
+- Versus AI is hidden in production (2026-07-16, not ready for prod yet):
+  `aiOpponentsEnabled(vercelEnv)` in `src/lib/features.ts` is the single
+  flag — `false` when `VERCEL_ENV`/`NEXT_PUBLIC_VERCEL_ENV === 'production'`,
+  `true` everywhere else (dev, preview, unset). Gated in two places: the
+  setup screen hides the "Versus AI" charter option, and
+  `POST /api/mp/create` refuses (403) any request for AI opponent seats —
+  the server check exists so a client bypassing the hidden UI still can't
+  create AI seats in prod. Flip the one function to re-enable.
 
 ## CI (GitHub Actions, Neon-per-run added 2026-07-15)
 

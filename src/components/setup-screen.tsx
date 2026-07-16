@@ -5,9 +5,12 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { aiOpponentsEnabled } from '~/lib/features'
 import { AI_TIERS, type AiTierId } from '~/server/ai/types'
 import { type Player } from '~/store/gameStore'
 import { PLAYER_FILL } from './board/board-map'
+
+const AI_ENABLED = aiOpponentsEnabled(process.env.NEXT_PUBLIC_VERCEL_ENV)
 
 const COLORS: Player['color'][] = ['red', 'blue', 'green', 'yellow']
 const CHARACTERS: Player['character'][] = [
@@ -123,7 +126,11 @@ export function SetupScreen({
       >
         <span className="bb2-panel-title">Company charter</span>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div
+          className={
+            AI_ENABLED ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-2 gap-2'
+          }
+        >
           <button
             type="button"
             className="bb2-option justify-center py-2"
@@ -146,17 +153,19 @@ export function SetupScreen({
               Play online
             </span>
           </button>
-          <button
-            type="button"
-            className="bb2-option justify-center py-2"
-            data-selected={mode === 'ai'}
-            data-testid="mode-ai"
-            onClick={() => setMode('ai')}
-          >
-            <span className="text-[11.5px] font-bold uppercase tracking-[0.14em]">
-              Versus AI
-            </span>
-          </button>
+          {AI_ENABLED && (
+            <button
+              type="button"
+              className="bb2-option justify-center py-2"
+              data-selected={mode === 'ai'}
+              data-testid="mode-ai"
+              onClick={() => setMode('ai')}
+            >
+              <span className="text-[11.5px] font-bold uppercase tracking-[0.14em]">
+                Versus AI
+              </span>
+            </button>
+          )}
         </div>
 
         <div className="flex flex-col gap-2">

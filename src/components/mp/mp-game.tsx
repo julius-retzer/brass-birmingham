@@ -968,7 +968,14 @@ function MpTable({
   // Exact sale probe on my own filtered snapshot (my hand is real in it).
   const canSellAnything = useMemo(() => {
     if (!myTurn || !state || !me || !ctx) return true
-    if (!is('playing.action.selectingAction')) return true
+    // Both choosers show the Sell plaque: idle and card-first (from
+    // cardSelected the probe's SELL skips the card step; the stray
+    // SELECT_CARD below is simply ignored there).
+    if (
+      !is('playing.action.selectingAction') &&
+      !is('playing.action.cardSelected')
+    )
+      return true
     const sellable = me.industries.filter(
       (i) => !i.flipped && SELLABLE.includes(i.type),
     )

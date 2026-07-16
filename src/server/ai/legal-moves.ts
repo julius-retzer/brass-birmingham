@@ -78,11 +78,22 @@ export function enumerateLegalMoves(snapshot: GameStoreSnapshot): LegalMove[] {
 
   for (const c of TOP_LEVEL) push(c.event, c.label)
 
-  for (const card of me.hand) {
-    push(
-      { type: 'SELECT_CARD', cardId: card.id },
-      `Play card: ${describeCard(card)}`,
-    )
+  // The card-first entry (SELECT_CARD from idle → cardSelected) is a human
+  // ergonomics flow: every move it reaches is also reachable action-first,
+  // so offering it to the model would only widen the decision surface with
+  // a redundant path — and the deterministic fallback (which ranks
+  // SELECT_CARD high for the mid-flow discard steps) would loop through it
+  // instead of taking a turn-consuming action.
+  const atActionChoice = snapshot.matches({
+    playing: { action: 'selectingAction' },
+  } as never)
+  if (!atActionChoice) {
+    for (const card of me.hand) {
+      push(
+        { type: 'SELECT_CARD', cardId: card.id },
+        `Play card: ${describeCard(card)}`,
+      )
+    }
   }
 
   for (const industryType of INDUSTRY_TYPES) {

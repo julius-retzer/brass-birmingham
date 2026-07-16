@@ -714,6 +714,18 @@ export const gameStore = setup({
       return {}
     }),
 
+    // Card-first Scout entry: the card held in cardSelected becomes the
+    // first of the three discards (selectCard may also have auto-picked an
+    // industry tile — clear it, scout never uses one).
+    seedScoutFromSelectedCard: assign(({ context }) => {
+      if (!context.selectedCard) return {}
+      return {
+        selectedCardsForScout: [context.selectedCard],
+        selectedCard: null,
+        selectedIndustryTile: null,
+      }
+    }),
+
     selectLink: assign(({ context, event }) => {
       if (event.type !== 'SELECT_LINK') return {}
       debugLog('selectLink', context, event)
@@ -1606,9 +1618,7 @@ export const gameStore = setup({
               const tileToRemove = tilesWithQuantity
                 .filter((t) => t.quantityAvailable > 0)
                 .map((t) => t.tile)
-                .find(
-                  (t) => t.level === lowestLevel && isDevelopable(t),
-                )
+                .find((t) => t.level === lowestLevel && isDevelopable(t))
 
               if (tileToRemove) {
                 updatedPlayer.industryTilesOnMat = {
@@ -2457,6 +2467,25 @@ export const gameStore = setup({
       const card = findCardInHand(player, event.cardId)
       return card?.type === 'location' || card?.type === 'wild_location'
     },
+    isCardInHand: ({ context, event }) => {
+      if (event.type !== 'SELECT_CARD') return false
+      const player = getCurrentPlayer(context)
+      return findCardInHand(player, event.cardId) !== null
+    },
+    isSelectedCardReclick: ({ context, event }) => {
+      if (event.type !== 'SELECT_CARD') return false
+      return (
+        context.selectedCard !== null &&
+        context.selectedCard.id === event.cardId
+      )
+    },
+    // Card-first BUILD routing — the same split isLocationCard/isIndustryCard
+    // make on the SELECT_CARD event, but read from the already-held card.
+    isSelectedCardLocationKind: ({ context }) =>
+      context.selectedCard?.type === 'location' ||
+      context.selectedCard?.type === 'wild_location',
+    isSelectedCardIndustry: ({ context }) =>
+      context.selectedCard?.type === 'industry',
     canCompleteBuild: ({ context }) => {
       // For REAL location cards, just need card and location (wild location
       // cards fall through to the full tile + location + resources check).
@@ -2985,6 +3014,72 @@ export const gameStore = setup({
                 TAKE_LOAN: 'takingLoan',
                 NETWORK: 'networking',
                 PASS: 'passing',
+                // Card-first entry: picking a hand card before an action
+                // holds it and offers the actions it can start.
+                SELECT_CARD: {
+                  target: 'cardSelected',
+                  actions: 'selectCard',
+                  guard: 'isCardInHand',
+                },
+              },
+            },
+            // A hand card is held but no action chosen yet. Each action
+            // event continues into that action's normal flow PAST its
+            // card step — the held card is carried, never re-asked.
+            cardSelected: {
+              on: {
+                SELECT_CARD: [
+                  {
+                    // Clicking the held card again puts it back.
+                    target: 'selectingAction',
+                    actions: 'clearSelections',
+                    guard: 'isSelectedCardReclick',
+                  },
+                  {
+                    // Clicking another card switches the held card.
+                    actions: 'selectCard',
+                    guard: 'isCardInHand',
+                  },
+                ],
+                BUILD: [
+                  {
+                    // Same routing as the action-first SELECT_CARD split:
+                    // location & wild cards pick the industry next; a real
+                    // industry card (tile auto-picked) goes to the site.
+                    target:
+                      '#brassGame.playing.action.building.selectingIndustryType',
+                    guard: 'isSelectedCardLocationKind',
+                  },
+                  {
+                    target:
+                      '#brassGame.playing.action.building.selectingLocation',
+                    guard: 'isSelectedCardIndustry',
+                  },
+                  {
+                    target:
+                      '#brassGame.playing.action.building.selectingIndustryType',
+                  },
+                ],
+                NETWORK: {
+                  target: '#brassGame.playing.action.networking.selectingLink',
+                },
+                DEVELOP: {
+                  target: '#brassGame.playing.action.developing.selectingTiles',
+                },
+                SELL: {
+                  target: '#brassGame.playing.action.selling.selectingSale',
+                },
+                TAKE_LOAN: {
+                  target: '#brassGame.playing.action.takingLoan.confirmingLoan',
+                },
+                SCOUT: {
+                  target: '#brassGame.playing.action.scouting.selectingCards',
+                  actions: 'seedScoutFromSelectedCard',
+                },
+                CANCEL: {
+                  target: 'selectingAction',
+                  actions: 'clearSelections',
+                },
               },
             },
             building: {

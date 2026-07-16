@@ -296,15 +296,11 @@ describe('Game Store - Build Actions', () => {
     actor.send({ type: 'SELECT_LINK', from: 'coalbrookdale', to: 'shrewsbury' })
     actor.send({ type: 'CONFIRM' })
 
-    // After network action in round 1, it's now player 1's turn
-    // Player 1 passes
-    snapshot = actor.getSnapshot()
+    // After network action in round 1, it's now player 1's turn.
+    // Player 1 passes — PASS discards hand[0] and completes by itself (the
+    // old trailing SELECT_CARD + CONFIRM were no-ops before the card-first
+    // entry made SELECT_CARD meaningful in idle).
     actor.send({ type: 'PASS' })
-    snapshot = actor.getSnapshot()
-    const p1Card =
-      snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
-    actor.send({ type: 'SELECT_CARD', cardId: p1Card.id })
-    actor.send({ type: 'CONFIRM' })
 
     // Now it's round 2, player 0's turn (2 actions available)
     snapshot = actor.getSnapshot()

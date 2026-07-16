@@ -86,6 +86,19 @@ export function getHandSelection(
   snapshot: GameStoreSnapshot,
 ): HandSelection | null {
   const is = (path: string) => snapshot.matches(path as never)
+  // Card-first: the hand is live while idling — playing a card opens the
+  // actions it can start (the machine's cardSelected state). Wording gotcha:
+  // neither hint may contain "choose an action" (the idle dock title, pinned
+  // by e2e getByText, which substring-matches case-insensitively).
+  if (is('playing.action.selectingAction'))
+    return { hint: 'Pick an action — or play a card first', selectedIds: [] }
+  if (is('playing.action.cardSelected')) {
+    const held = snapshot.context.selectedCard
+    return {
+      hint: 'Pick an action for this card — tap it again to put it back',
+      selectedIds: held ? [held.id] : [],
+    }
+  }
   if (is('playing.action.building.selectingCard'))
     return { hint: 'Build — play a card from your hand', selectedIds: [] }
   if (is('playing.action.networking.selectingCard'))
@@ -459,55 +472,59 @@ export function ActionDock({
   const cancel = () => send({ type: 'CANCEL' })
   const c = snapshot.context
 
+  // The six card-consuming actions — shared by the idle chooser and the
+  // card-first chooser (same labels, testids and gating in both).
+  const actionPlaques = (): Array<{
+    label: string
+    event: GameEvent
+    hint: string
+    icon: React.ReactNode
+    blocked?: boolean
+  }> => [
+    {
+      label: 'Build',
+      event: { type: 'BUILD' },
+      hint: 'Place an industry tile',
+      icon: <BuildIcon size={15} />,
+    },
+    {
+      label: 'Network',
+      event: { type: 'NETWORK' },
+      hint: c.era === 'canal' ? 'Canal £3' : 'Rail £5 + coal',
+      icon: <NetworkIcon size={15} />,
+    },
+    {
+      label: 'Develop',
+      event: { type: 'DEVELOP' },
+      hint: 'Remove tiles · 1 iron each',
+      icon: <DevelopIcon size={15} />,
+    },
+    {
+      label: 'Sell',
+      event: { type: 'SELL' },
+      hint: canSellAnything
+        ? 'Flip goods at merchants'
+        : 'No goods you can sell right now',
+      icon: <SellIcon size={15} />,
+      blocked: !canSellAnything,
+    },
+    {
+      label: 'Loan',
+      event: { type: 'TAKE_LOAN' },
+      hint: '+£30 · −3 income',
+      icon: <LoanIcon size={15} />,
+    },
+    {
+      label: 'Scout',
+      event: { type: 'SCOUT' },
+      hint: '3 cards → 2 wilds',
+      icon: <ScoutIcon size={15} />,
+    },
+  ]
+
   /* ---------- choose an action ---------- */
   if (is('playing.action.selectingAction')) {
-    const actions: Array<{
-      label: string
-      event: GameEvent
-      hint: string
-      icon: React.ReactNode
-      blocked?: boolean
-    }> = [
-      {
-        label: 'Build',
-        event: { type: 'BUILD' },
-        hint: 'Place an industry tile',
-        icon: <BuildIcon size={15} />,
-      },
-      {
-        label: 'Network',
-        event: { type: 'NETWORK' },
-        hint: c.era === 'canal' ? 'Canal £3' : 'Rail £5 + coal',
-        icon: <NetworkIcon size={15} />,
-      },
-      {
-        label: 'Develop',
-        event: { type: 'DEVELOP' },
-        hint: 'Remove tiles · 1 iron each',
-        icon: <DevelopIcon size={15} />,
-      },
-      {
-        label: 'Sell',
-        event: { type: 'SELL' },
-        hint: canSellAnything
-          ? 'Flip goods at merchants'
-          : 'No goods you can sell right now',
-        icon: <SellIcon size={15} />,
-        blocked: !canSellAnything,
-      },
-      {
-        label: 'Loan',
-        event: { type: 'TAKE_LOAN' },
-        hint: '+£30 · −3 income',
-        icon: <LoanIcon size={15} />,
-      },
-      {
-        label: 'Scout',
-        event: { type: 'SCOUT' },
-        hint: '3 cards → 2 wilds',
-        icon: <ScoutIcon size={15} />,
-      },
-    ]
+    const actions = actionPlaques()
     return (
       <div className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between gap-2">
@@ -556,6 +573,64 @@ export function ActionDock({
           >
             ↩ Undo first action
           </button>
+        )}
+      </div>
+    )
+  }
+
+  /* ---------- card-first: a card is held, choose its action ---------- */
+  if (is('playing.action.cardSelected')) {
+    const actions = actionPlaques()
+    const anyBlocked = actions.some((a) => !can(a.event) || a.blocked)
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-col gap-1.5">
+            <span className="bb2-panel-title">Play this card</span>
+            {c.selectedCard && (
+              <div
+                className="flex items-center gap-2 text-[12px]"
+                style={{ color: 'rgba(231,215,177,.6)' }}
+              >
+                Holding <CardChip card={c.selectedCard} />
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            className="bb2-ghost-btn"
+            data-testid="cancel-action"
+            onClick={cancel}
+          >
+            Put back
+          </button>
+        </div>
+        <hr className="bb2-rule" />
+        <div className="grid grid-cols-2 gap-2">
+          {actions.map((a) => (
+            <button
+              key={a.label}
+              type="button"
+              className="bb2-plaque"
+              data-testid={`action-${a.label.toLowerCase()}`}
+              disabled={!can(a.event) || a.blocked}
+              onClick={() => send(a.event)}
+            >
+              <span className="bb2-plaque-name">
+                {a.icon}
+                {a.label}
+              </span>
+              <span className="bb2-plaque-hint">{a.hint}</span>
+            </button>
+          ))}
+        </div>
+        {anyBlocked && (
+          <p
+            className="text-[12px] leading-snug"
+            style={{ color: 'rgba(231,215,177,.5)' }}
+          >
+            Greyed actions can't start with this card right now.
+          </p>
         )}
       </div>
     )

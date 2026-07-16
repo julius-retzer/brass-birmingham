@@ -8,6 +8,7 @@ import { createActor } from 'xstate'
 import { cities, cityIndustrySlots, connections } from '../data/board'
 import type { CityId } from '../data/board'
 import { gameStore } from './gameStore'
+import { pendingBeerChoice, pendingIronChoice } from './shared/resourceSources'
 
 let activeActors: ReturnType<typeof createActor>[] = []
 let moneyInvariantViolations: string[] = []
@@ -121,6 +122,42 @@ const turnState = (actor: AnyActor) => {
   }
 }
 
+/**
+ * Answer any source question the machine is asking (beer for a sale, iron for
+ * a build/develop) by taking the first source offered, until every unit is
+ * assigned.
+ *
+ * The driver would otherwise stall on a material choice: SELECT_SALE parks it
+ * in choosingBeerSource, its CONFIRM is ignored, and unwind() abandons the
+ * sale. Today's organic games happen never to produce a 2-source situation
+ * (measured: 0 picks across all runs here), so this changes nothing yet — it
+ * keeps the driver honest the moment one arises, rather than silently playing
+ * fewer sells than the policy claims.
+ */
+const answerSourceSteps = (actor: AnyActor) => {
+  // One pick per unit; bounded so a bug can never spin here.
+  for (let i = 0; i < 8; i++) {
+    const c = ctx(actor)
+    const beer = pendingBeerChoice(c)
+    if (beer?.hasChoice && beer.options[0]) {
+      actor.send({
+        type: 'SELECT_BEER_SOURCE',
+        source: beer.options[0].source,
+      } as any)
+      continue
+    }
+    const iron = pendingIronChoice(c)
+    if (iron?.hasChoice && iron.options[0]) {
+      actor.send({
+        type: 'SELECT_IRON_SOURCE',
+        source: iron.options[0].source,
+      } as any)
+      continue
+    }
+    return
+  }
+}
+
 // Back out of any half-finished action flow (guards can leave us in a
 // confirming sub-state whose only exit is CANCEL)
 const unwind = (actor: AnyActor) => {
@@ -155,6 +192,7 @@ const trySell = (actor: AnyActor): boolean => {
         industryType: industry.type,
         merchant: merchant.location,
       } as any)
+      answerSourceSteps(actor)
     }
   }
 
@@ -189,6 +227,7 @@ const tryBuild = (actor: AnyActor): boolean => {
       const types = [...new Set(slots.flat())]
       for (const industryType of types) {
         actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType } as any)
+        answerSourceSteps(actor)
         const snap = actor.getSnapshot() as any
         if (
           snap.matches({ playing: { action: { building: 'confirmingBuild' } } })
@@ -205,6 +244,7 @@ const tryBuild = (actor: AnyActor): boolean => {
       // Industry card: try candidate locations; guards filter invalid ones
       for (const cityId of cityIds) {
         actor.send({ type: 'SELECT_LOCATION', cityId } as any)
+        answerSourceSteps(actor)
         const snap = actor.getSnapshot() as any
         if (
           snap.matches({ playing: { action: { building: 'confirmingBuild' } } })
@@ -294,6 +334,7 @@ const tryDevelop = (actor: AnyActor): boolean => {
     type: 'SELECT_TILES_FOR_DEVELOP',
     industryTypes: [developableType],
   } as any)
+  answerSourceSteps(actor)
   actor.send({ type: 'CONFIRM' } as any)
   if (actionConsumed(actor, before)) return true
   unwind(actor)

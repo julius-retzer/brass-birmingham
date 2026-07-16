@@ -720,17 +720,26 @@ function GameInner({
     setHoveredCard(null)
   }, [currentPlayer?.id])
 
-  // While the machine is asking WHERE a sale's beer comes from, spotlight the
-  // places it could come from — the choice is about the board, so it belongs
-  // on it. Both the question and the answers are the engine's.
+  // While the machine is asking WHERE beer comes from — a staged sale's
+  // barrels or the double rail's one — spotlight the places it could come
+  // from; the choice is about the board, so it belongs on it. Gated on the
+  // machine STATE (not on pendingSale) so the double-link beer step lights
+  // up too. Both the question and the answers are the engine's.
   const beerCandidateCities = useMemo(() => {
-    if (!ctx.pendingSale) return null
+    if (
+      !state.matches('playing.action.selling.choosingBeerSource' as never) &&
+      !state.matches(
+        'playing.action.networking.choosingDoubleLinkBeer' as never,
+      )
+    ) {
+      return null
+    }
     const choice = pendingBeerChoice(ctx)
     if (!choice?.hasChoice) return null
     return new Set<string>(
       choice.options.map((option) => option.source.location),
     )
-  }, [ctx])
+  }, [state, ctx])
 
   const boardPrompt = useMemo(() => {
     if (pickingSite) {

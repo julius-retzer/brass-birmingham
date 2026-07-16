@@ -65,6 +65,12 @@ export interface IronSourceOption {
   price?: number
   /** Taking this works' LAST cube flips it, advancing its owner's income. */
   flipsOwnerTile: boolean
+  /**
+   * The source may only be reached by the automatic fallback, never by an
+   * explicit pick. Rules p.5: the market opens only when NO unflipped iron
+   * works has iron — while one does, the market is not an alternative.
+   */
+  fallbackOnly?: boolean
 }
 
 /**
@@ -231,7 +237,9 @@ export function getIronSourceOptions(
   }
 
   // The iron market is always reachable (no merchant connection required) and
-  // never runs dry — the top level sells at a fallback price forever.
+  // never runs dry — the top level sells at a fallback price forever. But it
+  // is fallback-ONLY while any unflipped works holds iron (rules p.5): the
+  // planner may spill into it, an explicit pick of it must be refused.
   const cheapest = context.ironMarket.find((level) => level.cubes > 0)
   options.push({
     source: { kind: 'market' },
@@ -241,6 +249,7 @@ export function getIronSourceOptions(
     // always names the market's real cost rather than showing it as free.
     price: cheapest?.price ?? GAME_CONSTANTS.IRON_FALLBACK_PRICE,
     flipsOwnerTile: false,
+    fallbackOnly: options.length > 0,
   })
 
   return options
@@ -275,12 +284,12 @@ export function describeIronSource(
  * auto-pick, unit for unit and log line for log line).
  *
  * A preference naming a source that is not legal here — or that has already
- * been drained — is refused rather than silently re-pointed: the player asked
- * for something specific.
+ * been drained, or that only the fallback may reach — is refused rather than
+ * silently re-pointed: the player asked for something specific.
  */
 export function planResourceSources<
   S,
-  O extends { source: S; available: number },
+  O extends { source: S; available: number; fallbackOnly?: boolean },
 >(
   options: O[],
   required: number,
@@ -319,6 +328,13 @@ export function planResourceSources<
         plan: [],
         allocated: 0,
         error: `${describe(source)} is not a legal source here.`,
+      }
+    }
+    if (byKey.get(key)!.fallbackOnly) {
+      return {
+        plan: [],
+        allocated: 0,
+        error: `${describe(source)} is only a fallback here — it cannot be chosen while another source can still supply this.`,
       }
     }
     if ((remaining.get(key) ?? 0) <= 0) {
@@ -481,9 +497,10 @@ export function ironChoiceForConfirm(
   // falls back to it for any cubes the works cannot cover (at that moment
   // there are no unflipped works left, which is exactly when the rule allows
   // it) — that fallback lives in the planner, not in this choice.
+  // getIronSourceOptions stamps the market `fallbackOnly` whenever a works
+  // exists; both this filter and the planner's refusal key off that one flag.
   const all = getIronSourceOptions(context, currentPlayer)
-  const works = all.filter((option) => option.source.kind === 'ironworks')
-  const options = works.length > 0 ? works : all
+  const options = all.filter((option) => !option.fallbackOnly)
   return {
     resource: 'iron',
     required,

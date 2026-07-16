@@ -104,13 +104,12 @@ test('Network: rail-era double-link build (two routes, £15 + coal + beer)', asy
     await expect(secondPrompt).toBeHidden({ timeout: 1000 })
   }).toPass()
 
-  // Whether a Beer step appears depends on how many breweries reach the second
-  // rail (see beer-source.spec for the picker itself). Answer it if it's there,
-  // then confirm — either way the double build completes.
+  // The second rail brings more than one brewery into reach, so this fixture
+  // always stops at the machine's Beer step (see beer-source.spec for the
+  // picker itself). Assert it, answer it, then confirm.
   const beer = page.getByTestId('beer-source')
-  if ((await beer.count()) > 0) {
-    await beer.first().click()
-  }
+  await expect(beer.first()).toBeVisible()
+  await beer.first().click()
   const confirm = page.getByTestId('confirm-action')
   await expect(confirm).toBeEnabled()
   await confirm.click()
@@ -136,18 +135,17 @@ test('Sell: gated with an explanation when nothing can be sold', async ({
 
 /**
  * Stage a sale and see it through. A sale whose beer could come from more than
- * one place stops at the machine's beer step; assigning the last (here, only)
- * barrel flips the industry. A single-source sale never stops.
+ * one place stops at the machine's beer step; assigning the barrel flips the
+ * industry. A single-source sale never stops. The caller states which case the
+ * fixture puts it in (`expectBeerChoice`) so the step is asserted, not probed —
+ * isVisible()/count() don't auto-wait and silently skipped the pick on a slow
+ * render.
  */
-async function takeSale(page: Page, index = 0) {
-  await page.getByTestId('sale-option').nth(index).click()
-  const sources = page.getByTestId('beer-source')
-  if (
-    await sources
-      .first()
-      .isVisible()
-      .catch(() => false)
-  ) {
+async function takeSale(page: Page, expectBeerChoice: boolean) {
+  await page.getByTestId('sale-option').first().click()
+  if (expectBeerChoice) {
+    const sources = page.getByTestId('beer-source')
+    await expect(sources.first()).toBeVisible()
     await sources.first().click()
   }
 }
@@ -163,10 +161,12 @@ test('Sell: multi-sale — flip two industries in one action', async ({
   await sell.click()
   await page.locator('button.bb2-card:not([disabled])').first().click()
 
-  // First sale, then a second one from the refreshed option list.
-  await takeSale(page)
+  // First sale, then a second one from the refreshed option list. The first
+  // stops at the beer step (own Stafford brewery vs the merchant barrel);
+  // draining the brewery leaves the second sale a single source — no stop.
+  await takeSale(page, true)
   await expect(page.getByText(/Flipped 1 industry this action/)).toBeVisible()
-  await takeSale(page)
+  await takeSale(page, false)
   await expect(page.getByText(/Flipped 2 industries this action/)).toBeVisible()
 
   await page.getByTestId('confirm-action').click()
@@ -355,10 +355,11 @@ test('Undo: the first action of a turn can be taken back in full', async ({
   await expect(treasuryOf(page, 'George')).toHaveText('£9')
   await expect(page.getByTestId('undo-action')).toHaveCount(0)
 
-  // First action: sell one industry.
+  // First action: sell one industry (its beer needs the picker — see the
+  // multi-sale test above for why the first sale of this fixture stops).
   await page.getByTestId('action-sell').click()
   await page.locator('button.bb2-card:not([disabled])').first().click()
-  await takeSale(page)
+  await takeSale(page, true)
   await expect(page.getByText(/Flipped 1 industry this action/)).toBeVisible()
   await page.getByTestId('confirm-action').click()
   await expect(

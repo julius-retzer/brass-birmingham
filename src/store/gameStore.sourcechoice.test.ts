@@ -8,6 +8,8 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { createActor } from 'xstate'
 import { type Merchant, gameStore } from './gameStore'
+import { consumeIronFromSources } from './market/marketActions'
+import { explainRefusal } from './refusal'
 import {
   beerChoiceForSale,
   ironChoiceForConfirm,
@@ -963,5 +965,213 @@ describe('Resource source choice - the engine answers what a step is asking', ()
     expect(choice.required).toBe(2)
     expect(choice.options.map((o) => o.source.kind)).toEqual(['ironworks'])
     expect(choice.hasChoice).toBe(false)
+  })
+})
+
+describe('Iron market is fallback-only — the consumption layer enforces it too', () => {
+  // Regression (PR #26 review): the pick guard already refused an explicit
+  // market pick while a works had iron, but consumeIronFromSources planned
+  // from the UNFILTERED option list — so an explicit market preference
+  // reaching execution bought market iron while unflipped works remained,
+  // violating rules p.5 ("If there are NO unflipped Iron Works, you can
+  // purchase iron from the Iron Market").
+  test('an explicit market pick is refused while any unflipped works has iron', () => {
+    const { actor } = setupGame()
+    const developerIndex = actor.getSnapshot().context.currentPlayerIndex
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: developerIndex,
+      money: 30,
+      industries: [
+        makeIndustry('birmingham', ironTile, { ironCubesOnTile: 1 }),
+      ],
+    })
+
+    const context = actor.getSnapshot().context
+    const result = consumeIronFromSources(context, 1, [{ kind: 'market' }])
+
+    expect(result.success).toBe(false)
+    expect(result.errorMessage).toMatch(/fallback/)
+    // Nothing was bought or drained on the refused attempt
+    expect(result.ironCost).toBe(0)
+    expect(result.updatedIronMarket).toEqual(context.ironMarket)
+  })
+
+  test('the market pick is accepted once no unflipped works remains', () => {
+    const { actor } = setupGame()
+    actor.send({ type: 'TEST_SET_PLAYER_STATE', playerId: 0, industries: [] })
+    actor.send({ type: 'TEST_SET_PLAYER_STATE', playerId: 1, industries: [] })
+
+    const context = actor.getSnapshot().context
+    const result = consumeIronFromSources(context, 1, [{ kind: 'market' }])
+
+    expect(result.success).toBe(true)
+    expect(result.ironCost).toBeGreaterThan(0)
+  })
+
+  test('the automatic fallback still covers cubes the works cannot supply', () => {
+    const { actor } = setupGame()
+    const developerIndex = actor.getSnapshot().context.currentPlayerIndex
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: developerIndex,
+      money: 30,
+      industries: [
+        makeIndustry('birmingham', ironTile, { ironCubesOnTile: 1 }),
+      ],
+    })
+    const developerId = actor.getSnapshot().context.players[developerIndex]!.id
+
+    const context = actor.getSnapshot().context
+    // Prefer the works for cube 1; cube 2 exceeds what any works can give, so
+    // the planner's default falls back to the market — which rules p.5 allows
+    // exactly then (no unflipped works is left holding iron).
+    const result = consumeIronFromSources(context, 2, [
+      { kind: 'ironworks', ownerId: developerId, location: 'birmingham' },
+    ])
+
+    expect(result.success).toBe(true)
+    expect(result.ironCost).toBeGreaterThan(0)
+  })
+})
+
+describe('Refusals name what is wrong with a source pick', () => {
+  // Regression (PR #26 review): explainRefusal only checked MEMBERSHIP of the
+  // picked source in the step's options. A source that IS offered but already
+  // drained by this step's earlier picks fell through to null — the player got
+  // the generic "not legal right now" instead of the actual reason.
+  const developWithTwoWorks = () => {
+    const { actor } = setupGame()
+    const developerIndex = actor.getSnapshot().context.currentPlayerIndex
+    const opponentIndex = developerIndex === 0 ? 1 : 0
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: developerIndex,
+      money: 30,
+      industries: [
+        makeIndustry('birmingham', ironTile, { ironCubesOnTile: 1 }),
+      ],
+    })
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: opponentIndex,
+      industries: [makeIndustry('dudley', ironTile, { ironCubesOnTile: 2 })],
+    })
+    const hand = actor.getSnapshot().context.players[developerIndex]!.hand
+    actor.send({ type: 'DEVELOP' })
+    actor.send({ type: 'SELECT_CARD', cardId: hand[0]!.id })
+    actor.send({
+      type: 'SELECT_TILES_FOR_DEVELOP',
+      industryTypes: ['cotton', 'coal'],
+    })
+    // 2 cubes required, 3 available across two works: the step is open
+    expect(
+      actor.getSnapshot().matches({
+        playing: { action: { developing: 'choosingIronSource' } },
+      }),
+    ).toBe(true)
+    return { actor, developerIndex, opponentIndex }
+  }
+
+  test('an exhausted iron works is refused as exhausted, not "unavailable"', () => {
+    const { actor, developerIndex } = developWithTwoWorks()
+    const developerId = actor.getSnapshot().context.players[developerIndex]!.id
+    const own = {
+      kind: 'ironworks',
+      ownerId: developerId,
+      location: 'birmingham',
+    } as const
+
+    // Its only cube — a second pick from the same works must be refused
+    actor.send({ type: 'SELECT_IRON_SOURCE', source: own })
+    const snap = actor.getSnapshot()
+    const again = { type: 'SELECT_IRON_SOURCE', source: own } as const
+    expect(snap.can(again)).toBe(false)
+    expect(explainRefusal(snap, again)).toBe(
+      'That iron source has already supplied all available cubes.',
+    )
+  })
+
+  test('an explicit market pick while works remain is named as the fallback rule', () => {
+    const { actor } = developWithTwoWorks()
+    const snap = actor.getSnapshot()
+    const pick = {
+      type: 'SELECT_IRON_SOURCE',
+      source: { kind: 'market' },
+    } as const
+    expect(snap.can(pick)).toBe(false)
+    expect(explainRefusal(snap, pick)).toBe(
+      'The iron market is a fallback — it can only be bought from when no unflipped iron works has iron.',
+    )
+  })
+
+  test('a works this step never offered is refused as unavailable', () => {
+    const { actor } = developWithTwoWorks()
+    const snap = actor.getSnapshot()
+    const pick = {
+      type: 'SELECT_IRON_SOURCE',
+      source: { kind: 'ironworks', ownerId: '99', location: 'coventry' },
+    } as const
+    expect(snap.can(pick)).toBe(false)
+    expect(explainRefusal(snap, pick)).toBe(
+      'That iron source is not available for this action.',
+    )
+  })
+
+  test('an exhausted brewery is refused as exhausted, not "unavailable"', () => {
+    // The 2-beer board from the mixed-allocation test: own 1-barrel brewery,
+    // connected opponent brewery and the merchant barrel = 3 for 2 required.
+    const { actor } = setupGame()
+    buildLinkToGloucester(actor)
+    passCurrentPlayer(actor)
+    const sellerIndex = actor.getSnapshot().context.currentPlayerIndex
+    const opponentIndex = sellerIndex === 0 ? 1 : 0
+    actor.send({
+      type: 'TEST_SET_MERCHANTS',
+      merchants: [gloucesterMerchant()],
+    })
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: sellerIndex,
+      money: 20,
+      income: 10,
+      industries: [
+        makeIndustry('worcester', { ...cottonTile, beerRequired: 2 }),
+        makeIndustry('worcester', breweryTile, { beerBarrelsOnTile: 1 }),
+      ],
+    })
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: opponentIndex,
+      industries: [
+        makeIndustry('gloucester', breweryTile, { beerBarrelsOnTile: 1 }),
+      ],
+    })
+    actor.send({ type: 'SELL' })
+    actor.send({
+      type: 'SELECT_CARD',
+      cardId: actor.getSnapshot().context.players[sellerIndex]!.hand[0]!.id,
+    })
+    actor.send({
+      type: 'SELECT_SALE',
+      location: 'worcester',
+      industryType: 'cotton',
+      merchant: 'gloucester',
+    })
+
+    const sellerId = actor.getSnapshot().context.players[sellerIndex]!.id
+    const own = {
+      kind: 'brewery',
+      ownerId: sellerId,
+      location: 'worcester',
+    } as const
+    actor.send({ type: 'SELECT_BEER_SOURCE', source: own })
+
+    const snap = actor.getSnapshot()
+    const again = { type: 'SELECT_BEER_SOURCE', source: own } as const
+    expect(snap.can(again)).toBe(false)
+    expect(explainRefusal(snap, again)).toBe(
+      'That beer source has already supplied all available barrels.',
+    )
   })
 })

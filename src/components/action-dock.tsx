@@ -978,7 +978,14 @@ export function ActionDock({
     return (
       <Flow
         action={building ? 'Build' : 'Develop'}
-        steps={building ? buildSteps : ['Card', 'Tiles', 'Confirm']}
+        // An Iron step joins the rail while the question is open — exactly
+        // like the Beer step on a sale or double rail. Without it the rail
+        // marked Confirm active while the player was still picking iron.
+        steps={
+          building
+            ? ['Card', 'Industry', 'Site', 'Iron', 'Confirm']
+            : ['Card', 'Tiles', 'Iron', 'Confirm']
+        }
         active={building ? 3 : 2}
         onCancel={cancel}
       >

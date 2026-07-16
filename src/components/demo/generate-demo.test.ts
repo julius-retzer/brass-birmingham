@@ -16,7 +16,10 @@ import type { CityId } from '../../data/board'
 import { gameStore } from '../../store/gameStore'
 import {
   getBeerSourceOptions,
+  getIronSourceOptions,
   hasSourceChoice,
+  pendingBeerChoice,
+  pendingIronChoice,
 } from '../../store/shared/resourceSources'
 
 type AnyActor = ReturnType<typeof createActor>
@@ -122,6 +125,75 @@ const tryBuild = (actor: AnyActor): boolean => {
     } else {
       for (const cityId of cityIds) {
         actor.send({ type: 'SELECT_LOCATION', cityId } as any)
+        const snap = actor.getSnapshot() as any
+        if (
+          snap.matches({ playing: { action: { building: 'confirmingBuild' } } })
+        ) {
+          actor.send({ type: 'CONFIRM' } as any)
+          if (actionConsumed(actor, before)) return true
+          unwind(actor)
+          actor.send({ type: 'BUILD' } as any)
+          actor.send({ type: 'SELECT_CARD', cardId: card.id } as any)
+        }
+      }
+    }
+    unwind(actor)
+  }
+  return false
+}
+
+// A build that spends iron may stop at the machine's iron-source step when
+// more than one works could supply it; a steering policy has no preference,
+// so it takes the machine's first offer until the step releases.
+const answerBuildIronAsk = (actor: AnyActor) => {
+  for (let i = 0; i < 4; i++) {
+    const snap = actor.getSnapshot() as any
+    if (
+      !snap.matches({ playing: { action: { building: 'choosingIronSource' } } })
+    ) {
+      return
+    }
+    const choice = pendingIronChoice(ctx(actor))
+    const offer = choice?.options[0]
+    if (!offer) return
+    actor.send({ type: 'SELECT_IRON_SOURCE', source: offer.source } as any)
+  }
+}
+
+// tryBuild, but only for ONE industry — used to bias a steering policy
+// toward iron works / breweries. Answers any iron-source ask with the
+// machine's first offer so a stalled choosing step can't block the build.
+const tryBuildOfType = (actor: AnyActor, wanted: string): boolean => {
+  const player = currentPlayer(actor)
+  if (player.money < 8 || player.hand.length === 0) return false
+  const cityIds = Object.keys(cities).filter(
+    (id) => (cities as any)[id].type === 'city',
+  ) as CityId[]
+  for (const card of player.hand) {
+    if (card.type !== 'location' && card.type !== 'industry') continue
+    if (
+      card.type === 'industry' &&
+      !(card as any).industries?.includes(wanted)
+    ) {
+      continue
+    }
+    const before = turnState(actor)
+    actor.send({ type: 'BUILD' } as any)
+    actor.send({ type: 'SELECT_CARD', cardId: card.id } as any)
+    if (card.type === 'location') {
+      actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: wanted } as any)
+      answerBuildIronAsk(actor)
+      const snap = actor.getSnapshot() as any
+      if (
+        snap.matches({ playing: { action: { building: 'confirmingBuild' } } })
+      ) {
+        actor.send({ type: 'CONFIRM' } as any)
+        if (actionConsumed(actor, before)) return true
+      }
+    } else {
+      for (const cityId of cityIds) {
+        actor.send({ type: 'SELECT_LOCATION', cityId } as any)
+        answerBuildIronAsk(actor)
         const snap = actor.getSnapshot() as any
         if (
           snap.matches({ playing: { action: { building: 'confirmingBuild' } } })
@@ -297,6 +369,166 @@ const beerChoicePossible = (actor: AnyActor): boolean => {
   })
   probe.stop()
   return found
+}
+
+// Cheap engine-enumerated precheck before the expensive clone probes: does
+// the iron question even have two works answers right now? (The market is a
+// rules fallback, never an alternative — it must not count as the choice.)
+const ironWorksChoiceExists = (actor: AnyActor): boolean => {
+  const works = getIronSourceOptions(ctx(actor), currentPlayer(actor)).filter(
+    (o) => o.source.kind === 'ironworks',
+  )
+  return works.length >= 2 && hasSourceChoice(works, 1)
+}
+
+const DEVELOPABLE_TYPES = [
+  'cotton',
+  'coal',
+  'iron',
+  'manufacturer',
+  'pottery',
+  'brewery',
+] as const
+
+/**
+ * From selectingAction, does DEVELOP → card → tile pick LAND AND STAY in
+ * choosingIronSource (i.e. the machine did not auto-skip), and does answering
+ * the machine's own first offer complete the develop? Probed on clones through
+ * the real guards. `viaLowest` probes the "Develop lowest available" path
+ * (CONFIRM from selectingTiles) — the path the e2e journey drives.
+ */
+const ironChoiceReachable = (actor: AnyActor, viaLowest: boolean): boolean => {
+  const player = currentPlayer(actor)
+  if (player.hand.length === 0) return false
+  for (const industryType of DEVELOPABLE_TYPES) {
+    const probe = cloneActor(actor)
+    probe.send({ type: 'DEVELOP' } as any)
+    probe.send({
+      type: 'SELECT_CARD',
+      cardId: currentPlayer(probe).hand[0].id,
+    } as any)
+    if (viaLowest) {
+      probe.send({ type: 'CONFIRM' } as any)
+    } else {
+      probe.send({
+        type: 'SELECT_TILES_FOR_DEVELOP',
+        industryTypes: [industryType],
+      } as any)
+    }
+    let ok = false
+    const snap = probe.getSnapshot() as any
+    if (
+      snap.matches({
+        playing: { action: { developing: 'choosingIronSource' } },
+      })
+    ) {
+      const choice = pendingIronChoice(ctx(probe))
+      const offer = choice?.options[0]
+      if (choice?.hasChoice && choice.options.length >= 2 && offer) {
+        probe.send({ type: 'SELECT_IRON_SOURCE', source: offer.source } as any)
+        const after = probe.getSnapshot() as any
+        if (
+          after.matches({
+            playing: { action: { developing: 'confirmingDevelop' } },
+          }) &&
+          after.can({ type: 'CONFIRM' })
+        ) {
+          probe.send({ type: 'CONFIRM' } as any)
+          ok = ctx(probe).lastError === null
+        }
+      }
+    }
+    probe.stop()
+    if (ok) return true
+    if (viaLowest) return false // one auto-lowest path — no type loop
+  }
+  return false
+}
+
+// Cheap precheck for the double-link beer question: own breweries always
+// count as sources (no connection needed), so a choice needs own barrels at
+// 2+ locations, or 1+ own plus some opponent brewery that MIGHT connect.
+// Only a performance gate — the freeze condition itself is machine-probed.
+const doubleBeerPrecheckOk = (actor: AnyActor): boolean => {
+  const c = ctx(actor)
+  const me = currentPlayer(actor)
+  const hasBarrels = (i: any) =>
+    i.type === 'brewery' && !i.flipped && i.beerBarrelsOnTile > 0
+  const ownLocations = new Set(
+    me.industries.filter(hasBarrels).map((i: any) => i.location),
+  )
+  if (ownLocations.size >= 2) return true
+  const opponentHasBeer = c.players.some(
+    (p: any) => p.id !== me.id && p.industries.some(hasBarrels),
+  )
+  return ownLocations.size >= 1 && opponentHasBeer
+}
+
+/**
+ * Like findCompletableDoublePair, but the pair must STOP at the machine's
+ * beer picker (2+ sources on the post-placement network — no auto-skip) and
+ * still complete after answering with the machine's first offer.
+ */
+const findDoubleBeerPair = (
+  actor: AnyActor,
+): { first: [string, string]; second: [string, string] } | null => {
+  const player = currentPlayer(actor)
+  if (player.hand.length === 0) return null
+  const rails = connections.filter((c) =>
+    (c.types as readonly string[]).includes('rail'),
+  )
+  for (const first of rails) {
+    for (const second of rails) {
+      if (first === second) continue
+      const probe = cloneActor(actor)
+      probe.send({ type: 'NETWORK' } as any)
+      probe.send({
+        type: 'SELECT_CARD',
+        cardId: currentPlayer(probe).hand[0].id,
+      } as any)
+      probe.send({ type: 'SELECT_LINK', from: first.from, to: first.to } as any)
+      probe.send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' } as any)
+      probe.send({
+        type: 'SELECT_SECOND_LINK',
+        from: second.from,
+        to: second.to,
+      } as any)
+      let ok = false
+      const snap = probe.getSnapshot() as any
+      if (
+        snap.matches({
+          playing: { action: { networking: 'choosingDoubleLinkBeer' } },
+        })
+      ) {
+        const choice = pendingBeerChoice(ctx(probe))
+        const offer = choice?.options[0]
+        if (choice?.hasChoice && choice.options.length >= 2 && offer) {
+          probe.send({
+            type: 'SELECT_BEER_SOURCE',
+            source: offer.source,
+          } as any)
+          const after = probe.getSnapshot() as any
+          if (
+            after.matches({
+              playing: { action: { networking: 'confirmingDoubleLink' } },
+            }) &&
+            after.can({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
+          ) {
+            probe.send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' } as any)
+            ok = ctx(probe).lastError === null
+          }
+        }
+      }
+      probe.stop()
+      if (ok) {
+        return {
+          first: [first.from, first.to],
+          second: [second.from, second.to],
+        }
+      }
+    }
+  }
+  return null
 }
 
 // Would a single PASS from this state end the Canal Era?
@@ -619,46 +851,180 @@ describe('demo snapshot generator', () => {
     found.stop()
   })
 
-  test.skipIf(!process.env.GENERATE_DEMO)('generate beer-choice fixture', () => {
-    // Freeze where a sale's beer could come from more than one source, so the
-    // beer-source picker is reachable in the UI and in e2e. Hoard like the
-    // sell fixture: the greedy policy sells the moment it can and would drain
-    // the breweries that make the choice interesting.
-    const hoardingPolicy = (actor: AnyActor): boolean => {
-      const player = currentPlayer(actor)
-      if (tryBuild(actor)) return true
-      if (tryNetwork(actor)) return true
-      if (player.money < 14 && tryLoan(actor)) return true
-      return pass(actor)
-    }
-    let found: AnyActor | null = null
-    for (let attempt = 0; attempt < 100 && !found; attempt++) {
-      const actor = startFreshGame()
-      let actions = 0
-      while (actions < 260 && !actor.getSnapshot().matches('gameOver')) {
-        if (!isSelectingAction(actor)) unwind(actor)
-        if (isSelectingAction(actor) && beerChoicePossible(actor)) {
-          // Drop any transient engine error so the frozen fixture doesn't open
-          // with an unrelated toast (e.g. a prior "Insufficient coal").
-          actor.send({ type: 'CLEAR_ERROR' } as any)
-          found = actor
-          break
-        }
-        hoardingPolicy(actor)
-        actions++
+  test.skipIf(!process.env.GENERATE_DEMO)(
+    'generate beer-choice fixture',
+    () => {
+      // Freeze where a sale's beer could come from more than one source, so the
+      // beer-source picker is reachable in the UI and in e2e. Hoard like the
+      // sell fixture: the greedy policy sells the moment it can and would drain
+      // the breweries that make the choice interesting.
+      const hoardingPolicy = (actor: AnyActor): boolean => {
+        const player = currentPlayer(actor)
+        if (tryBuild(actor)) return true
+        if (tryNetwork(actor)) return true
+        if (player.money < 14 && tryLoan(actor)) return true
+        return pass(actor)
       }
-      if (!found) actor.stop()
-    }
+      let found: AnyActor | null = null
+      for (let attempt = 0; attempt < 100 && !found; attempt++) {
+        const actor = startFreshGame()
+        let actions = 0
+        while (actions < 260 && !actor.getSnapshot().matches('gameOver')) {
+          if (!isSelectingAction(actor)) unwind(actor)
+          if (isSelectingAction(actor) && beerChoicePossible(actor)) {
+            // Drop any transient engine error so the frozen fixture doesn't open
+            // with an unrelated toast (e.g. a prior "Insufficient coal").
+            actor.send({ type: 'CLEAR_ERROR' } as any)
+            found = actor
+            break
+          }
+          hoardingPolicy(actor)
+          actions++
+        }
+        if (!found) actor.stop()
+      }
 
-    expect(found).not.toBeNull()
-    if (!found) return
-    writeFixture(
-      'beer-choice',
-      'Frozen where a sale offers a real beer-source choice (own brewery vs merchant barrel or an opponent).',
-      found,
-    )
-    found.stop()
-  })
+      expect(found).not.toBeNull()
+      if (!found) return
+      writeFixture(
+        'beer-choice',
+        'Frozen where a sale offers a real beer-source choice (own brewery vs merchant barrel or an opponent).',
+        found,
+      )
+      found.stop()
+    },
+  )
+
+  test.skipIf(!process.env.GENERATE_DEMO)(
+    'generate iron-choice fixture',
+    () => {
+      // Freeze where a Develop stops at the iron-source picker: 2+ unflipped
+      // iron works with cubes on the board (any owners), because the rules make
+      // the market a FALLBACK — it is never offered while a works has iron.
+      // Steer by building iron works first and never developing (a develop
+      // would drain the very works that make the choice exist).
+      const tryBuildIronWorks = (actor: AnyActor) =>
+        tryBuildOfType(actor, 'iron')
+      const ironPolicy = (actor: AnyActor): boolean => {
+        const player = currentPlayer(actor)
+        if (tryBuildIronWorks(actor)) return true
+        if (trySell(actor)) return true
+        if (tryBuild(actor)) return true
+        if (tryNetwork(actor)) return true
+        if (player.money < 14 && tryLoan(actor)) return true
+        return pass(actor)
+      }
+      let found: AnyActor | null = null
+      for (let attempt = 0; attempt < 120 && !found; attempt++) {
+        const actor = startFreshGame()
+        let actions = 0
+        while (actions < 260 && !actor.getSnapshot().matches('gameOver')) {
+          if (!isSelectingAction(actor)) unwind(actor)
+          if (
+            isSelectingAction(actor) &&
+            ironWorksChoiceExists(actor) &&
+            ironChoiceReachable(actor, false) &&
+            ironChoiceReachable(actor, true)
+          ) {
+            // Drop any transient engine error so the frozen fixture doesn't
+            // open with an unrelated toast.
+            actor.send({ type: 'CLEAR_ERROR' } as any)
+            found = actor
+            break
+          }
+          ironPolicy(actor)
+          actions++
+        }
+        if (!found) actor.stop()
+      }
+
+      expect(found).not.toBeNull()
+      if (!found) return
+      console.log(
+        'iron-choice fixture: current player',
+        currentPlayer(found).name,
+        `£${currentPlayer(found).money},`,
+        'works sources:',
+        JSON.stringify(
+          getIronSourceOptions(ctx(found), currentPlayer(found))
+            .filter((o) => o.source.kind === 'ironworks')
+            .map((o) => o.source),
+        ),
+      )
+      writeFixture(
+        'iron-choice',
+        `Frozen where a Develop must ask which iron works supplies the cube (2+ unflipped works with iron; the market is excluded by rule while works have cubes). Current player: ${currentPlayer(found).name}.`,
+        found,
+      )
+      found.stop()
+    },
+  )
+
+  test.skipIf(!process.env.GENERATE_DEMO)(
+    'generate double-beer fixture',
+    () => {
+      // Freeze a rail-era state where a completable double rail build stops at
+      // the beer picker: 2+ breweries can pour the second rail's barrel judged
+      // on the POST-placement network (never merchant beer). Steer by building
+      // breweries in the rail era and never selling (a sale drinks the beer).
+      const tryBuildBrewery = (actor: AnyActor) =>
+        tryBuildOfType(actor, 'brewery')
+      const doubleBeerPolicy = (actor: AnyActor): boolean => {
+        const c = ctx(actor)
+        const player = currentPlayer(actor)
+        if (c.era !== 'rail') return greedyPolicy(actor)
+        if (player.money < 20 && tryLoan(actor)) return true
+        if (tryBuildBrewery(actor)) return true
+        if (tryNetwork(actor)) return true
+        if (tryBuild(actor)) return true
+        return pass(actor)
+      }
+      let found: {
+        actor: AnyActor
+        pair: NonNullable<ReturnType<typeof findDoubleBeerPair>>
+      } | null = null
+      for (let attempt = 0; attempt < 120 && !found; attempt++) {
+        const actor = startFreshGame()
+        let actions = 0
+        while (actions < 400 && !actor.getSnapshot().matches('gameOver')) {
+          if (!isSelectingAction(actor)) unwind(actor)
+          const c = ctx(actor)
+          if (
+            c.era === 'rail' &&
+            isSelectingAction(actor) &&
+            currentPlayer(actor).money >= 20 &&
+            doubleBeerPrecheckOk(actor)
+          ) {
+            const pair = findDoubleBeerPair(actor)
+            if (pair) {
+              actor.send({ type: 'CLEAR_ERROR' } as any)
+              found = { actor, pair }
+              break
+            }
+          }
+          doubleBeerPolicy(actor)
+          actions++
+        }
+        if (!found) actor.stop()
+      }
+
+      expect(found).not.toBeNull()
+      if (!found) return
+      console.log(
+        'double-beer fixture pair:',
+        JSON.stringify(found.pair),
+        'current player:',
+        currentPlayer(found.actor).name,
+        `£${currentPlayer(found.actor).money}`,
+      )
+      writeFixture(
+        'double-beer',
+        `Frozen where the double rail build must ask which brewery pours the barrel (2+ sources on the post-placement network). Completable pair: first ${found.pair.first.join('-')}, second ${found.pair.second.join('-')}; current player ${currentPlayer(found.actor).name}.`,
+        found.actor,
+      )
+      found.actor.stop()
+    },
+  )
 
   test.skipIf(!process.env.GENERATE_DEMO)('generate era-end fixture', () => {
     // Freeze one PASS away from the Canal Era ending.

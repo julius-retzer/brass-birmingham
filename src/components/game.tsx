@@ -41,6 +41,8 @@ import { demoSnapshotEraEnd } from './demo/demo-snapshot-era-end'
 import { demoSnapshotGameEnd } from './demo/demo-snapshot-game-end'
 import { demoSnapshotRail } from './demo/demo-snapshot-rail'
 import { demoSnapshotBeerChoice } from './demo/demo-snapshot-beer-choice'
+import { demoSnapshotDoubleBeer } from './demo/demo-snapshot-double-beer'
+import { demoSnapshotIronChoice } from './demo/demo-snapshot-iron-choice'
 import { demoSnapshotSell } from './demo/demo-snapshot-sell'
 import { demoSnapshotWilds } from './demo/demo-snapshot-wilds'
 import { HandTray } from './hand-tray'
@@ -204,7 +206,9 @@ export function Game() {
       // ?demo (canal mid-game), ?demo=sell (multi-sale ready),
       // ?demo=eraend (one PASS from the Rail Era),
       // ?demo=gameend (a few PASSes from final scoring),
-      // ?demo=beerchoice (a sale whose beer has more than one source).
+      // ?demo=beerchoice (a sale whose beer has more than one source),
+      // ?demo=ironchoice (a Develop whose iron has more than one works),
+      // ?demo=doublebeer (a double rail whose beer has more than one source).
       const fixture =
         demoParam === 'sell'
           ? demoSnapshotSell
@@ -216,7 +220,11 @@ export function Game() {
                 ? demoSnapshotWilds
                 : demoParam === 'beerchoice'
                   ? demoSnapshotBeerChoice
-                  : demoSnapshot
+                  : demoParam === 'ironchoice'
+                    ? demoSnapshotIronChoice
+                    : demoParam === 'doublebeer'
+                      ? demoSnapshotDoubleBeer
+                      : demoSnapshot
       setBoot({
         kind: 'demo',
         snapshot: rehydrateSnapshot(fixture),

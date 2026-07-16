@@ -1,5 +1,9 @@
-import { type Page, expect, test } from '@playwright/test'
+import { type Page, expect as baseExpect, test } from '@playwright/test'
 import { NEEDS_DB_MESSAGE, hasDatabaseUrl } from './db-available'
+
+// Every assertion waits on a real POST + SSE round-trip against a real
+// network database; on a contended machine those outlast the 5s default.
+const expect = baseExpect.configure({ timeout: 15_000 })
 
 /**
  * Networked multiplayer journey: two REAL browser contexts (separate
@@ -15,6 +19,9 @@ import { NEEDS_DB_MESSAGE, hasDatabaseUrl } from './db-available'
  */
 
 test.skip(!hasDatabaseUrl, `multiplayer e2e ${NEEDS_DB_MESSAGE}`)
+// One long journey over a REAL network database: ~15 round-trips at ~1s each
+// plus the ~8s chat-wire window blow the 30s default on a slow/contended DB.
+test.setTimeout(150_000)
 
 function treasuryOf(page: Page, name: string) {
   return page
@@ -86,15 +93,20 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
   await host.getByTestId('chat-toggle').click()
   await host.getByTestId('chat-input').fill('good luck!')
   await host.getByTestId('chat-send').click()
-  // the guest sees an unread badge (panel closed), then reads it
-  await expect(guest.getByTestId('chat-unread')).toHaveText('1')
+  // the guest sees an unread badge (panel closed), then reads it — delivery
+  // rides the ~1.2s DB poll, so give a contended database room to breathe
+  await expect(guest.getByTestId('chat-unread')).toHaveText('1', {
+    timeout: 15_000,
+  })
   await guest.getByTestId('chat-toggle').click()
   await expect(guest.getByTestId('chat-list')).toContainText('good luck!')
   await expect(guest.getByTestId('chat-unread')).toHaveCount(0)
   // reply flows back to the host's already-open panel
   await guest.getByTestId('chat-input').fill('you too')
   await guest.getByTestId('chat-send').click()
-  await expect(host.getByTestId('chat-list')).toContainText('you too')
+  await expect(host.getByTestId('chat-list')).toContainText('you too', {
+    timeout: 15_000,
+  })
 
   /* ---- mid-game refresh reclaims the seat from the stored secret ---- */
   await guest.reload()

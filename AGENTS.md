@@ -270,7 +270,12 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
 - Integration tests (`gameStore.integration.test.ts`) drive full games
   through the event surface with a guard-probing policy; if you add
   guards, keep CANCEL paths reachable so the driver can unwind
-  (`unwind()` helper).
+  (`unwind()` helper). The greedy policy's organic games NEVER hit the
+  source-choice states (measured beer=0 iron=0) — that coverage comes from
+  the steered `sourceChoicePolicy` full-game test, which counts accepted
+  picks in `answerSourceSteps` (`sourcePicks`) and asserts beer>0 AND
+  iron>0; don't weaken that assert, it is the only full-game pin on the
+  choosing states.
 - `src/store/build`, `src/store/market`, `src/store/network` hold the
   real split-out action modules (`buildActions.ts`, `marketActions.ts`);
   network logic itself actually lives in `shared/gameUtils.ts`
@@ -448,11 +453,30 @@ When updating this file, preserve this bar for all agents and keep entries conci
 ## E2E suite (Playwright, added 2026-07-12)
 
 - `pnpm exec playwright test` — `webServer` boots the dev server on :3199
-  with `SKIP_ENV_VALIDATION=1`. 22 journey tests in `e2e/`, ~45s,
-  `retries: 0` — if a test needs retries, fix or delete it. All specs are
-  offline EXCEPT `multiplayer.spec.ts` + `ai-opponent.spec.ts`, which drive
-  the real DB-backed mp service and need a live DATABASE_URL in `.env`
-  (they skip, visibly, when none is present — guard in `e2e/db-available.ts`).
+  with `SKIP_ENV_VALIDATION=1`. 31 journey tests in `e2e/`, ~3.5m (offline
+  subset stays under a minute), `retries: 0` — if a test needs retries, fix
+  or delete it. All specs are offline EXCEPT `multiplayer.spec.ts` +
+  `ai-opponent.spec.ts` + `mp-playthrough.spec.ts`, which drive the real
+  DB-backed mp service and need a live DATABASE_URL in `.env` (they skip,
+  visibly, when none is present — guard in `e2e/db-available.ts`). Those DB
+  specs widen their per-expect timeout to 15s (`expect.configure`) and set
+  long test timeouts — every assertion is a POST + SSE round trip against a
+  network database; do NOT read a slow run as a product bug before checking
+  DB contention.
+- `mp-playthrough.spec.ts` (2026-07-17) is the capstone: two real browsers
+  play a scripted-but-adaptive canal opening through the UI — network, loan,
+  scout, wild-card builds, a SELL that stops at the beer-source picker (own
+  brewery vs merchant barrel), a DEVELOP that stops at the iron-source
+  picker (two rival works, market not offered), a mid-flow CANCEL, and a
+  forged off-offer SELECT_BEER_SOURCE POSTed raw and refused by name. The
+  SAME opening runs offline (no DB) through `applyIntent` in
+  `src/server/mp/playthrough.test.ts`, with the shared site-planning in
+  `src/test/mp-opening-plan.ts` — when the e2e breaks but the offline twin
+  passes, suspect UI/transport, not the engine. GOTCHA the pair encodes:
+  in MP EVERY click posts an intent and the dock swallows clicks while one
+  is in flight — anchor each click on the NEXT step's UI, and take whose
+  turn it is from the wire's `currentPlayerIndex`, never from a page's
+  possibly-stale dock.
 - Selector policy: `data-testid` spine for structure (action-*, confirm-
   action, cancel-action, mat-<id>/treasury, journal-entry, pass-curtain,
   reveal-hand, card-<id>, era-plate, round-chip, sale-option; map uses
@@ -462,7 +486,10 @@ When updating this file, preserve this bar for all agents and keep entries conci
   misses the fat hit-stroke on bowed paths. Use the `clickRoute` helper in
   `e2e/coverage.spec.ts` (getPointAtLength midpoint + mouse click).
 - Fixtures: e2e boots `?demo` / `?demo=sell` / `?demo=eraend` /
-  `?demo=gameend` / `?demo=wilds` / `?demo=beerchoice` / `?era=rail`. Regenerating ANY fixture invalidates
+  `?demo=gameend` / `?demo=wilds` / `?demo=beerchoice` / `?demo=ironchoice`
+  (a Develop facing 2+ unflipped works — the iron picker, `iron-source.spec`)
+  / `?demo=doublebeer` (a double rail whose beer has 2+ sources —
+  `double-link-beer.spec`) / `?era=rail`. Regenerating ANY fixture invalidates
   pinned test literals — regenerate ONE at a time with
   `GENERATE_DEMO=1 pnpm vitest run src/components/demo/generate-demo.test.ts -t "<name> fixture"`
   and re-pin the affected spec (£ values, card ids, route pairs, winner).

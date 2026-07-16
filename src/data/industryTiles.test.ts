@@ -4,7 +4,7 @@
 // production component, photographed flat (BoardGameGeek image 4231622 /
 // 4231621, July 2018; archived in ai-docs/reference/), read tile-by-tile.
 // Corroborated 100% by the independent TTS-derived transcription
-// (npow/brass-birmingham js/gameData.js). Rulebook rules text confirms the
+// (npow/brass-brno js/gameData.js). Rulebook rules text confirms the
 // mechanics these stats feed: breweries consume IRON to build (p.7
 // "4b. If you built a brewery"), develop consumes 1 iron per tile,
 // lightbulb pottery may not be developed (p.8), brewery barrels are 1 in

@@ -46,8 +46,8 @@ const start = () => {
     type: 'TEST_SET_PLAYER_HAND',
     playerId: 0,
     hand: [
-      { id: 'c1', type: 'location', location: 'stone', color: 'other' },
-      { id: 'c2', type: 'location', location: 'dudley', color: 'other' },
+      { id: 'c1', type: 'location', location: 'pardubice', color: 'other' },
+      { id: 'c2', type: 'location', location: 'karvina', color: 'other' },
     ],
   } as never)
   return a
@@ -59,7 +59,7 @@ describe('undo — snapshot restore is atomic', () => {
     const anchor = a.getPersistedSnapshot()
     const before = structuredClone(ctxOf(a))
 
-    // Brewery at stone: pays the tile AND buys 1 iron from the market
+    // Brewery at pardubice: pays the tile AND buys 1 iron from the market
     // (always purchasable) — touches money, the iron market, the mat, the
     // hand and the board at once.
     a.send({ type: 'BUILD' } as never)
@@ -93,8 +93,8 @@ describe('undo — snapshot restore is atomic', () => {
       type: 'TEST_SET_PLAYER_HAND',
       playerId: 0,
       hand: [
-        { id: 'c3', type: 'location', location: 'stone', color: 'other' },
-        { id: 'c4', type: 'location', location: 'leek', color: 'other' },
+        { id: 'c3', type: 'location', location: 'pardubice', color: 'other' },
+        { id: 'c4', type: 'location', location: 'liberec', color: 'other' },
       ],
     } as never)
     const anchor = a.getPersistedSnapshot()

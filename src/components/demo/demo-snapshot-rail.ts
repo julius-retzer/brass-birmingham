@@ -705,19 +705,19 @@ export const demoSnapshotRail: unknown = {
           {
             "id": "birmingham_3",
             "type": "location",
-            "location": "birmingham",
+            "location": "brno",
             "color": "other"
           },
           {
             "id": "wolverhampton_1",
             "type": "location",
-            "location": "wolverhampton",
+            "location": "novyjicin",
             "color": "other"
           },
           {
             "id": "uttoxeter_1",
             "type": "location",
-            "location": "uttoxeter",
+            "location": "sumperk",
             "color": "other"
           },
           {
@@ -737,7 +737,7 @@ export const demoSnapshotRail: unknown = {
           {
             "id": "birmingham_1",
             "type": "location",
-            "location": "birmingham",
+            "location": "brno",
             "color": "other"
           },
           {
@@ -750,14 +750,14 @@ export const demoSnapshotRail: unknown = {
           {
             "id": "leek_2",
             "type": "location",
-            "location": "leek",
+            "location": "liberec",
             "color": "other"
           }
         ],
         "links": [],
         "industries": [
           {
-            "location": "coventry",
+            "location": "znojmo",
             "type": "pottery",
             "level": 2,
             "flipped": false,
@@ -1481,13 +1481,13 @@ export const demoSnapshotRail: unknown = {
           {
             "id": "worcester_1",
             "type": "location",
-            "location": "worcester",
+            "location": "zilina",
             "color": "other"
           },
           {
             "id": "worcester_2",
             "type": "location",
-            "location": "worcester",
+            "location": "zilina",
             "color": "other"
           },
           {
@@ -1501,31 +1501,31 @@ export const demoSnapshotRail: unknown = {
           {
             "id": "stafford_1",
             "type": "location",
-            "location": "stafford",
+            "location": "jihlava",
             "color": "other"
           },
           {
             "id": "stoke_2",
             "type": "location",
-            "location": "stoke",
+            "location": "teplice",
             "color": "other"
           },
           {
             "id": "coalbrookdale_2",
             "type": "location",
-            "location": "coalbrookdale",
+            "location": "ostrava",
             "color": "other"
           },
           {
             "id": "coventry_3",
             "type": "location",
-            "location": "coventry",
+            "location": "znojmo",
             "color": "other"
           },
           {
             "id": "dudley_1",
             "type": "location",
-            "location": "dudley",
+            "location": "karvina",
             "color": "other"
           }
         ],
@@ -2226,19 +2226,19 @@ export const demoSnapshotRail: unknown = {
           {
             "id": "stafford_2",
             "type": "location",
-            "location": "stafford",
+            "location": "jihlava",
             "color": "other"
           },
           {
             "id": "coalbrookdale_3",
             "type": "location",
-            "location": "coalbrookdale",
+            "location": "ostrava",
             "color": "other"
           },
           {
             "id": "burton_2",
             "type": "location",
-            "location": "burton",
+            "location": "prerov",
             "color": "other"
           },
           {
@@ -2251,7 +2251,7 @@ export const demoSnapshotRail: unknown = {
           {
             "id": "coalbrookdale_1",
             "type": "location",
-            "location": "coalbrookdale",
+            "location": "ostrava",
             "color": "other"
           },
           {
@@ -2272,7 +2272,7 @@ export const demoSnapshotRail: unknown = {
         "links": [],
         "industries": [
           {
-            "location": "coalbrookdale",
+            "location": "ostrava",
             "type": "coal",
             "level": 2,
             "flipped": false,
@@ -2301,7 +2301,7 @@ export const demoSnapshotRail: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "burton",
+            "location": "prerov",
             "type": "coal",
             "level": 3,
             "flipped": false,
@@ -2330,7 +2330,7 @@ export const demoSnapshotRail: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "coalbrookdale",
+            "location": "ostrava",
             "type": "iron",
             "level": 2,
             "flipped": true,
@@ -2359,7 +2359,7 @@ export const demoSnapshotRail: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "dudley",
+            "location": "karvina",
             "type": "iron",
             "level": 3,
             "flipped": true,
@@ -2388,7 +2388,7 @@ export const demoSnapshotRail: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "nuneaton",
+            "location": "olomouc",
             "type": "brewery",
             "level": 2,
             "flipped": false,
@@ -2509,17 +2509,17 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.444Z"
       },
       {
-        "message": "Eliza built cotton Level 1 at leek for £12 using leek (other)",
+        "message": "Eliza built cotton Level 1 at liberec for £12 using liberec (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.444Z"
       },
       {
-        "message": "Isambard built cotton Level 1 at kidderminster for £12 using kidderminster (other)",
+        "message": "Isambard built cotton Level 1 at frydekmistek for £12 using frydekmistek (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.445Z"
       },
       {
-        "message": "George built coal Level 1 at dudley for £5 using dudley (other)",
+        "message": "George built coal Level 1 at karvina for £5 using karvina (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.445Z"
       },
@@ -2544,7 +2544,7 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.445Z"
       },
       {
-        "message": "George built cotton Level 1 at stoke for £12 using stoke (other)",
+        "message": "George built cotton Level 1 at teplice for £12 using teplice (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.445Z"
       },
@@ -2559,7 +2559,7 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.445Z"
       },
       {
-        "message": "Eliza built brewery Level 1 at stafford for £7 (consumed consumed 1 iron from market for £2) using stafford (other)",
+        "message": "Eliza built brewery Level 1 at jihlava for £7 (consumed consumed 1 iron from market for £2) using jihlava (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.446Z"
       },
@@ -2569,7 +2569,7 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.446Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at coalbrookdale for £7 (consumed consumed 1 iron from market for £2) using coalbrookdale (other)",
+        "message": "Isambard built brewery Level 1 at ostrava for £7 (consumed consumed 1 iron from market for £2) using ostrava (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.446Z"
       },
@@ -2594,7 +2594,7 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.446Z"
       },
       {
-        "message": "Eliza built pottery Level 1 at coventry for £20 (consumed consumed 1 iron from market for £3) using coventry (other)",
+        "message": "Eliza built pottery Level 1 at znojmo for £20 (consumed consumed 1 iron from market for £3) using znojmo (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.446Z"
       },
@@ -2604,22 +2604,22 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.446Z"
       },
       {
-        "message": "Isambard built cotton Level 1 at tamworth for £12 using tamworth (other)",
+        "message": "Isambard built cotton Level 1 at prostejov for £12 using prostejov (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.446Z"
       },
       {
-        "message": "Isambard built cotton Level 1 at worcester for £12 using worcester (other)",
+        "message": "Isambard built cotton Level 1 at zilina for £12 using zilina (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.446Z"
       },
       {
-        "message": "George built cotton Level 1 at stone for £12 using stone (other)",
+        "message": "George built cotton Level 1 at pardubice for £12 using pardubice (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.446Z"
       },
       {
-        "message": "George built coal Level 2 at coalbrookdale for £7 using coalbrookdale (other)",
+        "message": "George built coal Level 2 at ostrava for £7 using ostrava (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.447Z"
       },
@@ -2654,17 +2654,17 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.447Z"
       },
       {
-        "message": "George built coal Level 2 at burton for £7 using burton (other)",
+        "message": "George built coal Level 2 at prerov for £7 using prerov (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.447Z"
       },
       {
-        "message": "Eliza built coal Level 1 at coventry for £5 using coal industry",
+        "message": "Eliza built coal Level 1 at znojmo for £5 using coal industry",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.447Z"
       },
       {
-        "message": "Eliza built pottery Level 2 at coventry for £0 (consumed 1 coal from connected coal mine (free)) (overbuilt own level 1) using pottery industry",
+        "message": "Eliza built pottery Level 2 at znojmo for £0 (consumed 1 coal from connected coal mine (free)) (overbuilt own level 1) using pottery industry",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.447Z"
       },
@@ -2674,7 +2674,7 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.447Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at walsall for £8 (consumed consumed 1 iron from market for £3) using walsall (other)",
+        "message": "Isambard built brewery Level 1 at blansko for £8 (consumed consumed 1 iron from market for £3) using blansko (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.448Z"
       },
@@ -2699,7 +2699,7 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.448Z"
       },
       {
-        "message": "Eliza built cotton Level 1 at birmingham for £12 using birmingham (other)",
+        "message": "Eliza built cotton Level 1 at brno for £12 using brno (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.448Z"
       },
@@ -2709,22 +2709,22 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.448Z"
       },
       {
-        "message": "George built brewery Level 1 at burton for £9 (consumed consumed 1 iron from market for £4) using brewery industry",
+        "message": "George built brewery Level 1 at prerov for £9 (consumed consumed 1 iron from market for £4) using brewery industry",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.448Z"
       },
       {
-        "message": "George built iron Level 1 at dudley for £5 (consumed 1 coal from connected coal mine (free)) (sold 1 iron to market for £4, sold 2 iron to market for £6, sold 1 iron to market for £2) (tile flipped, +3 income) using iron industry",
+        "message": "George built iron Level 1 at karvina for £5 (consumed 1 coal from connected coal mine (free)) (sold 1 iron to market for £4, sold 2 iron to market for £6, sold 1 iron to market for £2) (tile flipped, +3 income) using iron industry",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.448Z"
       },
       {
-        "message": "Isambard built brewery Level 2 at walsall for £9 (consumed consumed 1 iron from market for £2) (overbuilt own level 1) using brewery industry",
+        "message": "Isambard built brewery Level 2 at blansko for £9 (consumed consumed 1 iron from market for £2) (overbuilt own level 1) using brewery industry",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.449Z"
       },
       {
-        "message": "Isambard built coal Level 1 at wolverhampton for £5 using wolverhampton (other)",
+        "message": "Isambard built coal Level 1 at novyjicin for £5 using novyjicin (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.449Z"
       },
@@ -2749,17 +2749,17 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.449Z"
       },
       {
-        "message": "Eliza built coal Level 2 at stone for £7 using stone (other)",
+        "message": "Eliza built coal Level 2 at pardubice for £7 using pardubice (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.449Z"
       },
       {
-        "message": "Eliza built coal Level 2 at cannock for £7 using cannock (other)",
+        "message": "Eliza built coal Level 2 at rosice for £7 using rosice (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.449Z"
       },
       {
-        "message": "George built coal Level 3 at burton for £11 (consumed consumed 1 iron from market for £3) (overbuilt own level 2) using burton (other)",
+        "message": "George built coal Level 3 at prerov for £11 (consumed consumed 1 iron from market for £3) (overbuilt own level 2) using prerov (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.449Z"
       },
@@ -2774,7 +2774,7 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.450Z"
       },
       {
-        "message": "Isambard built manufacturer Level 1 at coventry for £8 (consumed 1 coal from connected coal mine (free)) using coventry (other)",
+        "message": "Isambard built manufacturer Level 1 at znojmo for £8 (consumed 1 coal from connected coal mine (free)) using znojmo (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.450Z"
       },
@@ -2799,22 +2799,22 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.450Z"
       },
       {
-        "message": "Isambard built manufacturer Level 2 at birmingham for £13 (consumed consumed 1 iron from market for £3) using birmingham (other)",
+        "message": "Isambard built manufacturer Level 2 at brno for £13 (consumed consumed 1 iron from market for £3) using brno (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.450Z"
       },
       {
-        "message": "Isambard passed (discarded birmingham (other))",
+        "message": "Isambard passed (discarded brno (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.450Z"
       },
       {
-        "message": "George built pottery Level 1 at stoke for £21 (consumed consumed 1 iron from market for £4) using stoke (other)",
+        "message": "George built pottery Level 1 at teplice for £21 (consumed consumed 1 iron from market for £4) using teplice (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.450Z"
       },
       {
-        "message": "George built iron Level 2 at coalbrookdale for £7 (consumed 1 coal from connected coal mine (free)) (sold 1 iron to market for £4, sold 2 iron to market for £6, sold 1 iron to market for £2) (tile flipped, +3 income) using coalbrookdale (other)",
+        "message": "George built iron Level 2 at ostrava for £7 (consumed 1 coal from connected coal mine (free)) (sold 1 iron to market for £4, sold 2 iron to market for £6, sold 1 iron to market for £2) (tile flipped, +3 income) using ostrava (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.450Z"
       },
@@ -2884,12 +2884,12 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.451Z"
       },
       {
-        "message": "Isambard passed (discarded cannock (other))",
+        "message": "Isambard passed (discarded rosice (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.451Z"
       },
       {
-        "message": "George built brewery Level 1 at uttoxeter for £7 (consumed consumed 1 iron from market for £2) using uttoxeter (other)",
+        "message": "George built brewery Level 1 at sumperk for £7 (consumed consumed 1 iron from market for £2) using sumperk (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.451Z"
       },
@@ -2944,12 +2944,12 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.451Z"
       },
       {
-        "message": "Eliza passed (discarded dudley (other))",
+        "message": "Eliza passed (discarded karvina (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.451Z"
       },
       {
-        "message": "Eliza passed (discarded kidderminster (other))",
+        "message": "Eliza passed (discarded frydekmistek (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.451Z"
       },
@@ -2964,12 +2964,12 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.452Z"
       },
       {
-        "message": "George built cotton Level 1 at worcester for £12 using worcester (other)",
+        "message": "George built cotton Level 1 at zilina for £12 using zilina (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.452Z"
       },
       {
-        "message": "George built iron Level 3 at dudley for £9 (consumed 1 coal from connected coal mine (free), George's coal at dudley flipped (income +4, now -2)) (sold 2 iron to market for £4, sold 2 iron to market for £2) (overbuilt own level 1) using iron industry",
+        "message": "George built iron Level 3 at karvina for £9 (consumed 1 coal from connected coal mine (free), George's coal at karvina flipped (income +4, now -2)) (sold 2 iron to market for £4, sold 2 iron to market for £2) (overbuilt own level 1) using iron industry",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.452Z"
       },
@@ -3019,12 +3019,12 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.452Z"
       },
       {
-        "message": "Eliza passed (discarded redditch (other))",
+        "message": "Eliza passed (discarded bratislava (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.452Z"
       },
       {
-        "message": "Eliza passed (discarded stafford (other))",
+        "message": "Eliza passed (discarded jihlava (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.452Z"
       },
@@ -3104,12 +3104,12 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.452Z"
       },
       {
-        "message": "Eliza passed (discarded coventry (other))",
+        "message": "Eliza passed (discarded znojmo (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.452Z"
       },
       {
-        "message": "Eliza passed (discarded birmingham (other))",
+        "message": "Eliza passed (discarded brno (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.452Z"
       },
@@ -3119,12 +3119,12 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-15T00:13:05.452Z"
       },
       {
-        "message": "Isambard passed (discarded walsall (other))",
+        "message": "Isambard passed (discarded blansko (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.453Z"
       },
       {
-        "message": "George built brewery Level 2 at nuneaton for £7 (consumed 1 iron from iron works (free), George's iron at dudley flipped (income +2, now -7)) using nuneaton (other)",
+        "message": "George built brewery Level 2 at olomouc for £7 (consumed 1 iron from iron works (free), George's iron at karvina flipped (income +2, now -7)) using olomouc (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:13:05.729Z"
       }
@@ -3141,25 +3141,25 @@ export const demoSnapshotRail: unknown = {
       {
         "id": "wolverhampton_2",
         "type": "location",
-        "location": "wolverhampton",
+        "location": "novyjicin",
         "color": "other"
       },
       {
         "id": "kidderminster_2",
         "type": "location",
-        "location": "kidderminster",
+        "location": "frydekmistek",
         "color": "other"
       },
       {
         "id": "stone_2",
         "type": "location",
-        "location": "stone",
+        "location": "pardubice",
         "color": "other"
       },
       {
         "id": "cannock_1",
         "type": "location",
-        "location": "cannock",
+        "location": "rosice",
         "color": "other"
       },
       {
@@ -3181,13 +3181,13 @@ export const demoSnapshotRail: unknown = {
       {
         "id": "leek_1",
         "type": "location",
-        "location": "leek",
+        "location": "liberec",
         "color": "other"
       },
       {
         "id": "tamworth_1",
         "type": "location",
-        "location": "tamworth",
+        "location": "prostejov",
         "color": "other"
       },
       {
@@ -3201,37 +3201,37 @@ export const demoSnapshotRail: unknown = {
       {
         "id": "stone_1",
         "type": "location",
-        "location": "stone",
+        "location": "pardubice",
         "color": "other"
       },
       {
         "id": "dudley_2",
         "type": "location",
-        "location": "dudley",
+        "location": "karvina",
         "color": "other"
       },
       {
         "id": "stoke_3",
         "type": "location",
-        "location": "stoke",
+        "location": "teplice",
         "color": "other"
       },
       {
         "id": "stoke_1",
         "type": "location",
-        "location": "stoke",
+        "location": "teplice",
         "color": "other"
       },
       {
         "id": "cannock_2",
         "type": "location",
-        "location": "cannock",
+        "location": "rosice",
         "color": "other"
       },
       {
         "id": "coventry_2",
         "type": "location",
-        "location": "coventry",
+        "location": "znojmo",
         "color": "other"
       },
       {
@@ -3273,13 +3273,13 @@ export const demoSnapshotRail: unknown = {
       {
         "id": "burton_1",
         "type": "location",
-        "location": "burton",
+        "location": "prerov",
         "color": "other"
       },
       {
         "id": "kidderminster_1",
         "type": "location",
-        "location": "kidderminster",
+        "location": "frydekmistek",
         "color": "other"
       },
       {
@@ -3299,7 +3299,7 @@ export const demoSnapshotRail: unknown = {
       {
         "id": "redditch_1",
         "type": "location",
-        "location": "redditch",
+        "location": "bratislava",
         "color": "other"
       }
     ],
@@ -3307,13 +3307,13 @@ export const demoSnapshotRail: unknown = {
       {
         "id": "coventry_1",
         "type": "location",
-        "location": "coventry",
+        "location": "znojmo",
         "color": "other"
       },
       {
         "id": "birmingham_2",
         "type": "location",
-        "location": "birmingham",
+        "location": "brno",
         "color": "other"
       },
       {
@@ -3326,13 +3326,13 @@ export const demoSnapshotRail: unknown = {
       {
         "id": "walsall_1",
         "type": "location",
-        "location": "walsall",
+        "location": "blansko",
         "color": "other"
       },
       {
         "id": "nuneaton_1",
         "type": "location",
-        "location": "nuneaton",
+        "location": "olomouc",
         "color": "other"
       }
     ],
@@ -3375,7 +3375,7 @@ export const demoSnapshotRail: unknown = {
     "selectedTilesForDevelop": [],
     "merchants": [
       {
-        "location": "shrewsbury",
+        "location": "krakow",
         "industryIcons": [
           "pottery"
         ],
@@ -3384,7 +3384,7 @@ export const demoSnapshotRail: unknown = {
         "hasBeer": true
       },
       {
-        "location": "gloucester",
+        "location": "budapest",
         "industryIcons": [
           "cotton",
           "manufacturer",
@@ -3395,14 +3395,14 @@ export const demoSnapshotRail: unknown = {
         "hasBeer": true
       },
       {
-        "location": "gloucester",
+        "location": "budapest",
         "industryIcons": [],
         "bonusType": "develop",
         "bonusValue": 1,
         "hasBeer": true
       },
       {
-        "location": "oxford",
+        "location": "vienna",
         "industryIcons": [
           "cotton"
         ],
@@ -3411,7 +3411,7 @@ export const demoSnapshotRail: unknown = {
         "hasBeer": true
       },
       {
-        "location": "oxford",
+        "location": "vienna",
         "industryIcons": [
           "cotton",
           "manufacturer",
@@ -3422,7 +3422,7 @@ export const demoSnapshotRail: unknown = {
         "hasBeer": true
       },
       {
-        "location": "warrington",
+        "location": "prague",
         "industryIcons": [
           "manufacturer"
         ],
@@ -3431,7 +3431,7 @@ export const demoSnapshotRail: unknown = {
         "hasBeer": true
       },
       {
-        "location": "warrington",
+        "location": "prague",
         "industryIcons": [],
         "bonusType": "money",
         "bonusValue": 5,

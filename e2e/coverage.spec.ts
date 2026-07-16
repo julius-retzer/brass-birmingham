@@ -10,8 +10,8 @@ import { type Page, expect, test } from '@playwright/test'
  *   ?demo=sell    canal round 9 — George to act, £9; multi-sale possible
  *   ?demo=eraend  canal round 10 — George to act; ONE pass ends the era
  *   ?demo=gameend rail round 8 — Isambard to act; 8 passes reach game over
- *   ?era=rail     rail round 1 — George to act, £21; double derby-burton +
- *                 stone-burton completable (generator-verified)
+ *   ?era=rail     rail round 1 — George to act, £21; double bielsko-prerov +
+ *                 pardubice-prerov completable (generator-verified)
  */
 
 function treasuryOf(page: Page, name: string) {
@@ -88,19 +88,19 @@ test('Network: rail-era double-link build (two routes, £15 + coal + beer)', asy
   await page.locator('button.bb2-card:not([disabled])').first().click()
   await expect(page.getByText('Choose a rail route on the map.')).toBeVisible()
 
-  await clickRoute(page, 'derby|burton')
+  await clickRoute(page, 'bielsko|prerov')
   await page.getByTestId('choose-double-link').click()
   await expect(
     page.getByText('Choose the second rail route on the map.'),
   ).toBeVisible()
 
-  await clickRoute(page, 'stone|burton')
+  await clickRoute(page, 'pardubice|prerov')
   const confirm = page.getByTestId('confirm-action')
   await expect(confirm).toBeEnabled()
   await confirm.click()
 
   await expect(
-    page.getByText(/George built 2 rail links \(derby-burton, stone-burton\)/),
+    page.getByText(/George built 2 rail links \(bielsko-prerov, pardubice-prerov\)/),
   ).toBeVisible()
   // The £15 (+ any market coal) left the treasury; this was George's last
   // action, so the device passes on.
@@ -152,7 +152,7 @@ test('illegal clicks toast and CANCEL unwinds every flow', async ({ page }) => {
   await page.getByTestId('card-brewery_2').click()
   await expect(page.getByText(/Choose a site for your brewery/)).toBeVisible()
   await page
-    .locator('g[data-city="birmingham"]:not([data-legal])')
+    .locator('g[data-city="brno"]:not([data-legal])')
     .click({ force: true })
   await expect(
     page.getByText(/Birmingham is not a legal site for this build/),
@@ -166,7 +166,7 @@ test('illegal clicks toast and CANCEL unwinds every flow', async ({ page }) => {
   await page.getByTestId('action-network').click()
   await page.locator('button.bb2-card:not([disabled])').first().click()
   await expect(page.getByText('Choose a canal route on the map.')).toBeVisible()
-  await clickRoute(page, 'belper|leek') // rail-only corridor
+  await clickRoute(page, 'tesin|liberec') // rail-only corridor
   await expect(page.getByText(/That corridor only carries rail/)).toBeVisible()
   await cancel.click()
   await cancel.click()

@@ -111,7 +111,7 @@ describe('Game Store - Era and Scoring', () => {
       playerId: 0,
       industries: [
         {
-          location: 'birmingham',
+          location: 'brno',
           type: 'coal',
           level: 1, // Should be removed during transition
           flipped: false,
@@ -140,7 +140,7 @@ describe('Game Store - Era and Scoring', () => {
           beerBarrelsOnTile: 0,
         },
         {
-          location: 'coventry',
+          location: 'znojmo',
           type: 'cotton',
           level: 2, // Should remain after transition
           flipped: true,
@@ -176,7 +176,7 @@ describe('Game Store - Era and Scoring', () => {
       playerId: 1,
       industries: [
         {
-          location: 'dudley',
+          location: 'karvina',
           type: 'iron',
           level: 1, // Should be removed during transition
           flipped: false,
@@ -379,7 +379,7 @@ describe('Game Store - Era and Scoring', () => {
       playerId: 0,
       industries: [
         {
-          location: 'birmingham',
+          location: 'brno',
           type: 'cotton',
           level: 2,
           flipped: true, // Should score VPs
@@ -408,7 +408,7 @@ describe('Game Store - Era and Scoring', () => {
           beerBarrelsOnTile: 0,
         },
         {
-          location: 'coventry',
+          location: 'znojmo',
           type: 'coal',
           level: 1,
           flipped: false, // Should NOT score VPs

@@ -282,11 +282,11 @@ export function isLocationConnectedToMerchant(
   location: CityId,
 ): { connected: boolean; connectedMerchants: CityId[] } {
   const merchantLocations: CityId[] = [
-    'warrington',
-    'gloucester',
-    'oxford',
-    'nottingham',
-    'shrewsbury',
+    'prague',
+    'budapest',
+    'vienna',
+    'lemberg',
+    'krakow',
   ]
 
   const connectedMerchants: CityId[] = []

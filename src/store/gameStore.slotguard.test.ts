@@ -50,7 +50,7 @@ const snap = (a: ReturnType<typeof createActor>) =>
 
 describe('build wizard slot guard (brewery@Birmingham bug)', () => {
   it('location card: an industry without a slot at the city is refused at the INDUSTRY step', () => {
-    const a = startWithHand([locationCard('birmingham_x', 'birmingham')])
+    const a = startWithHand([locationCard('birmingham_x', 'brno')])
     a.send({ type: 'BUILD' } as never)
     a.send({ type: 'SELECT_CARD', cardId: 'birmingham_x' } as never)
 
@@ -78,7 +78,7 @@ describe('build wizard slot guard (brewery@Birmingham bug)', () => {
   it('location card: brewery at a city WITH a brewery slot builds end-to-end', () => {
     // Burton has a dedicated brewery slot; brewery L1 needs 1 iron, always
     // purchasable from the market.
-    const a = startWithHand([locationCard('burton_x', 'burton')])
+    const a = startWithHand([locationCard('burton_x', 'prerov')])
     a.send({ type: 'BUILD' } as never)
     a.send({ type: 'SELECT_CARD', cardId: 'burton_x' } as never)
     expect(
@@ -89,7 +89,7 @@ describe('build wizard slot guard (brewery@Birmingham bug)', () => {
     const s = snap(a)
     expect(s.context.lastError).toBeNull()
     expect(s.context.players[0]!.industries).toStrictEqual([
-      expect.objectContaining({ type: 'brewery', location: 'burton' }),
+      expect.objectContaining({ type: 'brewery', location: 'prerov' }),
     ])
     a.stop()
   })
@@ -106,10 +106,10 @@ describe('build wizard slot guard (brewery@Birmingham bug)', () => {
     a.send({ type: 'BUILD' } as never)
     a.send({ type: 'SELECT_CARD', cardId: 'brewery_card_x' } as never)
     a.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'brewery' } as never)
-    expect(snap(a).can({ type: 'SELECT_LOCATION', cityId: 'birmingham' })).toBe(
+    expect(snap(a).can({ type: 'SELECT_LOCATION', cityId: 'brno' })).toBe(
       false,
     )
-    expect(snap(a).can({ type: 'SELECT_LOCATION', cityId: 'burton' })).toBe(
+    expect(snap(a).can({ type: 'SELECT_LOCATION', cityId: 'prerov' })).toBe(
       true,
     )
     a.stop()
@@ -118,13 +118,13 @@ describe('build wizard slot guard (brewery@Birmingham bug)', () => {
   it('execution backstop still rejects an illegal build reached by force', () => {
     // Belt and braces: even if a future guard regression lets the state
     // through, executeBuildAction must refuse and build nothing.
-    const a = startWithHand([locationCard('birmingham_x', 'birmingham')])
+    const a = startWithHand([locationCard('birmingham_x', 'brno')])
     a.send({ type: 'BUILD' } as never)
     a.send({ type: 'SELECT_CARD', cardId: 'birmingham_x' } as never)
     // cotton passes the guard; swap the tile via the wild-location route is
     // not possible here, so assert the CONFIRM validation directly through
-    // a legal-then-illegal sequence: pick cotton, confirm at birmingham
-    // succeeds — then a second brewery attempt at birmingham (fresh actor)
+    // a legal-then-illegal sequence: pick cotton, confirm at brno
+    // succeeds — then a second brewery attempt at brno (fresh actor)
     // is covered by the first test. Here we only pin that CONFIRM with a
     // slotless combination surfaces lastError instead of building.
     a.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'cotton' } as never)

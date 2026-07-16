@@ -90,7 +90,7 @@ test('demo fixture: SVG map pan/zoom + Build action end-to-end', async ({
 
   const legalCity = page.locator('g[data-city][data-legal="true"]')
   await expect(legalCity.first()).toBeVisible()
-  await page.locator('g[data-city="derby"]').click()
+  await page.locator('g[data-city="bielsko"]').click()
 
   const confirm = page.getByTestId('confirm-action')
   await expect(confirm).toBeEnabled()
@@ -99,7 +99,7 @@ test('demo fixture: SVG map pan/zoom + Build action end-to-end', async ({
   // The build consumed money and hit the journal (£5 tile + market iron —
   // deterministic for this fixture).
   await expect(
-    page.getByText(/Eliza built brewery Level 1 at derby/),
+    page.getByText(/Eliza built brewery Level 1 at bielsko/),
   ).toBeVisible()
   const money = await treasuryOf(page, 'Eliza').textContent()
   expect(money).not.toBe('£19')
@@ -115,12 +115,12 @@ test('save → reload → resume: state survives a refresh behind the pass gate'
   await expect(treasuryOf(page, 'Eliza')).toHaveText('£19')
   await page.getByTestId('action-build').click()
   await page.getByTestId('card-brewery_2').click()
-  await page.locator('g[data-city="derby"]').click()
+  await page.locator('g[data-city="bielsko"]').click()
   await page.getByTestId('confirm-action').click()
   // £5 tile + £1 market iron; her last action — the device passes on.
   await expect(treasuryOf(page, 'Eliza')).toHaveText('£13')
   await expect(
-    page.getByText(/Eliza built brewery Level 1 at derby/),
+    page.getByText(/Eliza built brewery Level 1 at bielsko/),
   ).toBeVisible()
 
   // Reload WITHOUT query params: the localStorage save must resume, gated.
@@ -133,7 +133,7 @@ test('save → reload → resume: state survives a refresh behind the pass gate'
   await expect(page.getByTestId('era-plate')).toHaveText('canal era')
   await expect(treasuryOf(page, 'Eliza')).toHaveText('£13')
   await expect(
-    page.getByText(/Eliza built brewery Level 1 at derby/),
+    page.getByText(/Eliza built brewery Level 1 at bielsko/),
   ).toBeVisible()
 })
 

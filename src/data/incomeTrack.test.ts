@@ -1,6 +1,6 @@
 // Pins for the income Progress Track mapping, read space-by-space from the
 // retail board photo (ai-docs/reference/board-retail-day-bgg4231616.jpg)
-// and corroborated by npow/brass-birmingham. Every band boundary below was
+// and corroborated by npow/brass-brno. Every band boundary below was
 // verified against the printed coins on the photographed track.
 import { describe, expect, it } from 'vitest'
 import {

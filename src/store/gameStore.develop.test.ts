@@ -57,7 +57,7 @@ const setupDevelopTest = (actor: ReturnType<typeof createActor>) => {
     playerId: 0,
     industries: [
       {
-        location: 'birmingham',
+        location: 'brno',
         type: 'coal',
         level: 1,
         flipped: false,
@@ -515,7 +515,7 @@ describe('Game Store - Develop Actions', () => {
       money: 50,
       industries: [
         {
-          location: 'birmingham',
+          location: 'brno',
           type: 'iron',
           level: 1,
           flipped: false,

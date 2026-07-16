@@ -58,8 +58,8 @@ const setupGame = () => {
 
 const buildNetworkAction = (
   actor: ReturnType<typeof createActor>,
-  from = 'birmingham',
-  to = 'coventry',
+  from = 'brno',
+  to = 'znojmo',
 ) => {
   const snapshot = actor.getSnapshot()
   const currentPlayer =
@@ -84,8 +84,8 @@ describe('Game Store - Network Actions', () => {
 
     const { cardUsed, from, to } = buildNetworkAction(
       actor,
-      'birmingham',
-      'coventry',
+      'brno',
+      'znojmo',
     )
     snapshot = actor.getSnapshot()
 
@@ -112,7 +112,7 @@ describe('Game Store - Network Actions', () => {
 
     actor.send({ type: 'NETWORK' })
     actor.send({ type: 'SELECT_CARD', cardId: cardToUse.id })
-    actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'coventry' })
+    actor.send({ type: 'SELECT_LINK', from: 'brno', to: 'znojmo' })
 
     let snapshot = actor.getSnapshot()
     expect(
@@ -151,7 +151,7 @@ describe('Game Store - Network Actions', () => {
       playerId: currentPlayerId,
       industries: [
         {
-          location: 'birmingham',
+          location: 'brno',
           type: 'coal',
           level: 1,
           flipped: false,
@@ -186,8 +186,8 @@ describe('Game Store - Network Actions', () => {
 
     const { from, to } = buildNetworkAction(
       actor,
-      'birmingham',
-      'wolverhampton',
+      'brno',
+      'novyjicin',
     )
     snapshot = actor.getSnapshot()
 
@@ -213,7 +213,7 @@ describe('Game Store - Network Actions', () => {
     const { actor } = setupGame()
 
     // First build a link to establish network
-    buildNetworkAction(actor, 'birmingham', 'coventry')
+    buildNetworkAction(actor, 'brno', 'znojmo')
 
     // Pass to next player's turn
     let snapshot = actor.getSnapshot()
@@ -227,7 +227,7 @@ describe('Game Store - Network Actions', () => {
     }
 
     // Now build adjacent link
-    buildNetworkAction(actor, 'coventry', 'nuneaton')
+    buildNetworkAction(actor, 'znojmo', 'olomouc')
     snapshot = actor.getSnapshot()
 
     const player =
@@ -240,8 +240,8 @@ describe('Game Store - Network Actions', () => {
     expect(links.length).toBe(1)
     const link = links[0]!
     expect(
-      (link.from === 'coventry' && link.to === 'nuneaton') ||
-        (link.from === 'nuneaton' && link.to === 'coventry'),
+      (link.from === 'znojmo' && link.to === 'olomouc') ||
+        (link.from === 'olomouc' && link.to === 'znojmo'),
     ).toBe(true)
   })
 
@@ -262,7 +262,7 @@ describe('Game Store - Network Actions', () => {
       money: 50,
       industries: [
         {
-          location: 'birmingham',
+          location: 'brno',
           type: 'brewery',
           level: 2,
           flipped: false,
@@ -292,7 +292,7 @@ describe('Game Store - Network Actions', () => {
         },
         // Add coal mine for initial rail link building
         {
-          location: 'birmingham',
+          location: 'brno',
           type: 'coal',
           level: 1,
           flipped: false,
@@ -324,7 +324,7 @@ describe('Game Store - Network Actions', () => {
     })
 
     // Build initial network to establish connectivity
-    buildNetworkAction(actor, 'birmingham', 'coventry')
+    buildNetworkAction(actor, 'brno', 'znojmo')
     snapshot = actor.getSnapshot()
 
     // Record initial state
@@ -359,7 +359,7 @@ describe('Game Store - Network Actions', () => {
     ).toBe(true)
 
     // Select first link (adjacent to existing network)
-    actor.send({ type: 'SELECT_LINK', from: 'coventry', to: 'nuneaton' })
+    actor.send({ type: 'SELECT_LINK', from: 'znojmo', to: 'olomouc' })
     snapshot = actor.getSnapshot()
     expect(
       snapshot.matches({
@@ -379,8 +379,8 @@ describe('Game Store - Network Actions', () => {
     // Select second link (can be anywhere in network, doesn't need to be adjacent to first link)
     actor.send({
       type: 'SELECT_SECOND_LINK',
-      from: 'birmingham',
-      to: 'wolverhampton',
+      from: 'brno',
+      to: 'novyjicin',
     })
     snapshot = actor.getSnapshot()
     console.log('State after SELECT_SECOND_LINK:', snapshot.value)
@@ -412,19 +412,19 @@ describe('Game Store - Network Actions', () => {
     expect(newLinks).toHaveLength(2)
     expect(newLinks.every((link) => link.type === 'rail')).toBe(true)
 
-    // Verify first link: coventry <-> nuneaton
+    // Verify first link: znojmo <-> olomouc
     const firstLink = newLinks.find(
       (link) =>
-        (link.from === 'coventry' && link.to === 'nuneaton') ||
-        (link.from === 'nuneaton' && link.to === 'coventry'),
+        (link.from === 'znojmo' && link.to === 'olomouc') ||
+        (link.from === 'olomouc' && link.to === 'znojmo'),
     )
     expect(firstLink).toBeDefined()
 
-    // Verify second link: birmingham <-> wolverhampton
+    // Verify second link: brno <-> novyjicin
     const secondLink = newLinks.find(
       (link) =>
-        (link.from === 'birmingham' && link.to === 'wolverhampton') ||
-        (link.from === 'wolverhampton' && link.to === 'birmingham'),
+        (link.from === 'brno' && link.to === 'novyjicin') ||
+        (link.from === 'novyjicin' && link.to === 'brno'),
     )
     expect(secondLink).toBeDefined()
 
@@ -468,7 +468,7 @@ describe('Game Store - Network Actions', () => {
       money: 20,
       industries: [
         {
-          location: 'birmingham',
+          location: 'brno',
           type: 'coal',
           level: 1,
           flipped: false,
@@ -500,7 +500,7 @@ describe('Game Store - Network Actions', () => {
     })
 
     // Build initial network to establish connectivity
-    buildNetworkAction(actor, 'birmingham', 'coventry')
+    buildNetworkAction(actor, 'brno', 'znojmo')
     snapshot = actor.getSnapshot()
 
     // Record initial state
@@ -518,7 +518,7 @@ describe('Game Store - Network Actions', () => {
     actor.send({ type: 'SELECT_CARD', cardId: card.id })
 
     // Select single link (adjacent to existing network)
-    actor.send({ type: 'SELECT_LINK', from: 'coventry', to: 'nuneaton' })
+    actor.send({ type: 'SELECT_LINK', from: 'znojmo', to: 'olomouc' })
 
     // Confirm single link (not choosing double link option)
     actor.send({ type: 'CONFIRM' })
@@ -590,7 +590,7 @@ describe('Game Store - Network Actions', () => {
 
     // Canal era link cost should be £3
     const canalMoney = snapshot.context.players[0]!.money
-    buildNetworkAction(actor, 'birmingham', 'coventry')
+    buildNetworkAction(actor, 'brno', 'znojmo')
     snapshot = actor.getSnapshot()
     const canalCost = canalMoney - snapshot.context.players[0]!.money
 
@@ -641,7 +641,7 @@ describe('Game Store - Network Actions', () => {
       industries: [
         // Own brewery at Birmingham (should be usable for beer)
         {
-          location: 'birmingham',
+          location: 'brno',
           type: 'brewery',
           level: 2,
           flipped: false,
@@ -669,9 +669,9 @@ describe('Game Store - Network Actions', () => {
           ironCubesOnTile: 0,
           beerBarrelsOnTile: 2, // 2 beer available
         },
-        // Add coal mine at birmingham for initial rail link building
+        // Add coal mine at brno for initial rail link building
         {
-          location: 'birmingham',
+          location: 'brno',
           type: 'coal',
           level: 1,
           flipped: false,
@@ -701,7 +701,7 @@ describe('Game Store - Network Actions', () => {
         },
         // Coal mine at Coventry (should be closest to first link)
         {
-          location: 'coventry',
+          location: 'znojmo',
           type: 'coal',
           level: 1,
           flipped: false,
@@ -732,14 +732,14 @@ describe('Game Store - Network Actions', () => {
       ],
     })
 
-    // Set up opponent with brewery at wolverhampton (should be usable if connected to second rail)
+    // Set up opponent with brewery at novyjicin (should be usable if connected to second rail)
     const opponentId = currentPlayerId === 0 ? 1 : 0
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
       playerId: opponentId,
       industries: [
         {
-          location: 'wolverhampton',
+          location: 'novyjicin',
           type: 'brewery',
           level: 1,
           flipped: false,
@@ -771,7 +771,7 @@ describe('Game Store - Network Actions', () => {
     })
 
     // Establish network - build initial link to start network
-    buildNetworkAction(actor, 'birmingham', 'coventry')
+    buildNetworkAction(actor, 'brno', 'znojmo')
     snapshot = actor.getSnapshot()
 
     // Record initial state for tracking changes
@@ -781,11 +781,11 @@ describe('Game Store - Network Actions', () => {
     // Track coal cubes before action
     const coventryCoalBefore =
       snapshot.context.players[currentPlayerId]!.industries.find(
-        (i) => i.location === 'coventry' && i.type === 'coal',
+        (i) => i.location === 'znojmo' && i.type === 'coal',
       )?.coalCubesOnTile || 0
     const birminghamBeerBefore =
       snapshot.context.players[currentPlayerId]!.industries.find(
-        (i) => i.location === 'birmingham' && i.type === 'brewery',
+        (i) => i.location === 'brno' && i.type === 'brewery',
       )?.beerBarrelsOnTile || 0
 
     // Start double rail link action
@@ -795,15 +795,15 @@ describe('Game Store - Network Actions', () => {
     const card = snapshot.context.players[currentPlayerId]!.hand[0]!
     actor.send({ type: 'SELECT_CARD', cardId: card.id })
 
-    // Select first link: coventry <-> nuneaton
-    actor.send({ type: 'SELECT_LINK', from: 'coventry', to: 'nuneaton' })
+    // Select first link: znojmo <-> olomouc
+    actor.send({ type: 'SELECT_LINK', from: 'znojmo', to: 'olomouc' })
     actor.send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })
 
-    // Select second link: birmingham <-> wolverhampton (should connect to opponent's brewery)
+    // Select second link: brno <-> novyjicin (should connect to opponent's brewery)
     actor.send({
       type: 'SELECT_SECOND_LINK',
-      from: 'birmingham',
-      to: 'wolverhampton',
+      from: 'brno',
+      to: 'novyjicin',
     })
 
     // Execute the double network action
@@ -821,7 +821,7 @@ describe('Game Store - Network Actions', () => {
     // 2. First coal should have been consumed from Coventry coal mine (closest to first link)
     const coventryCoalAfter =
       snapshot.context.players[currentPlayerId]!.industries.find(
-        (i) => i.location === 'coventry' && i.type === 'coal',
+        (i) => i.location === 'znojmo' && i.type === 'coal',
       )?.coalCubesOnTile || 0
     expect(coventryCoalAfter).toBeLessThan(coventryCoalBefore) // Coal was consumed from mine
 
@@ -838,7 +838,7 @@ describe('Game Store - Network Actions', () => {
     // 4. Beer should be consumed (preference: own brewery, then connected opponent brewery)
     const birminghamBeerAfter =
       snapshot.context.players[currentPlayerId]!.industries.find(
-        (i) => i.location === 'birmingham' && i.type === 'brewery',
+        (i) => i.location === 'brno' && i.type === 'brewery',
       )?.beerBarrelsOnTile || 0
     expect(birminghamBeerAfter).toBe(birminghamBeerBefore - 1) // Own brewery beer consumed
 
@@ -871,7 +871,7 @@ describe('Game Store - Network Actions', () => {
       industries: [
         // Add coal mine for initial rail link building
         {
-          location: 'birmingham',
+          location: 'brno',
           type: 'coal',
           level: 1,
           flipped: false,
@@ -908,7 +908,7 @@ describe('Game Store - Network Actions', () => {
       playerId: opponentId,
       industries: [
         {
-          location: 'stoke', // Not connected to planned rail links
+          location: 'teplice', // Not connected to planned rail links
           type: 'brewery',
           level: 1,
           flipped: false,
@@ -940,7 +940,7 @@ describe('Game Store - Network Actions', () => {
     })
 
     // Establish minimal network
-    buildNetworkAction(actor, 'birmingham', 'coventry')
+    buildNetworkAction(actor, 'brno', 'znojmo')
 
     // Try to build double rail that cannot access beer
     actor.send({ type: 'NETWORK' })
@@ -951,7 +951,7 @@ describe('Game Store - Network Actions', () => {
     snapshot = actor.getSnapshot()
     console.log('After card selection:', snapshot.value)
 
-    actor.send({ type: 'SELECT_LINK', from: 'coventry', to: 'nuneaton' })
+    actor.send({ type: 'SELECT_LINK', from: 'znojmo', to: 'olomouc' })
     snapshot = actor.getSnapshot()
     console.log('After first link selection:', snapshot.value)
 
@@ -959,11 +959,11 @@ describe('Game Store - Network Actions', () => {
     snapshot = actor.getSnapshot()
     console.log('After choosing double link:', snapshot.value)
 
-    // Second rail to wolverhampton (opponent brewery at stoke is NOT connected)
+    // Second rail to novyjicin (opponent brewery at teplice is NOT connected)
     actor.send({
       type: 'SELECT_SECOND_LINK',
-      from: 'birmingham',
-      to: 'wolverhampton',
+      from: 'brno',
+      to: 'novyjicin',
     })
     snapshot = actor.getSnapshot()
     console.log('After second link selection:', snapshot.value)
@@ -982,7 +982,7 @@ describe('Game Store - Network Actions', () => {
 
     // Since the action should have failed, no new links should be built
     // (The initial network has 1 link, double rail should add 2 more if successful)
-    expect(linksAfterAttempt).toBe(1) // Only the initial birmingham-coventry link
+    expect(linksAfterAttempt).toBe(1) // Only the initial brno-znojmo link
   })
 
   test('double rail coal consumption - different closest coal after network changes', () => {
@@ -1003,7 +1003,7 @@ describe('Game Store - Network Actions', () => {
       industries: [
         // Own brewery for beer
         {
-          location: 'birmingham',
+          location: 'brno',
           type: 'brewery',
           level: 1,
           flipped: false,
@@ -1031,9 +1031,9 @@ describe('Game Store - Network Actions', () => {
           ironCubesOnTile: 0,
           beerBarrelsOnTile: 1,
         },
-        // Add coal mine at birmingham for initial rail link building
+        // Add coal mine at brno for initial rail link building
         {
-          location: 'birmingham',
+          location: 'brno',
           type: 'coal',
           level: 1,
           flipped: false,
@@ -1061,9 +1061,9 @@ describe('Game Store - Network Actions', () => {
           ironCubesOnTile: 0,
           beerBarrelsOnTile: 0,
         },
-        // Coal mine at coventry (initially closest to first link)
+        // Coal mine at znojmo (initially closest to first link)
         {
-          location: 'coventry',
+          location: 'znojmo',
           type: 'coal',
           level: 1,
           flipped: false,
@@ -1091,9 +1091,9 @@ describe('Game Store - Network Actions', () => {
           ironCubesOnTile: 0,
           beerBarrelsOnTile: 0,
         },
-        // Coal mine at wolverhampton (becomes closest to second link after it's built)
+        // Coal mine at novyjicin (becomes closest to second link after it's built)
         {
-          location: 'wolverhampton',
+          location: 'novyjicin',
           type: 'coal',
           level: 1,
           flipped: false,
@@ -1125,29 +1125,29 @@ describe('Game Store - Network Actions', () => {
     })
 
     // Establish initial network
-    buildNetworkAction(actor, 'birmingham', 'coventry')
+    buildNetworkAction(actor, 'brno', 'znojmo')
     let snapshot = actor.getSnapshot()
 
     // Track coal before action
     const coventryCoalBefore =
       snapshot.context.players[currentPlayerId]!.industries.find(
-        (i) => i.location === 'coventry',
+        (i) => i.location === 'znojmo',
       )?.coalCubesOnTile || 0
     const wolverhamptonCoalBefore =
       snapshot.context.players[currentPlayerId]!.industries.find(
-        (i) => i.location === 'wolverhampton',
+        (i) => i.location === 'novyjicin',
       )?.coalCubesOnTile || 0
 
-    // Build double rail: coventry->nuneaton, birmingham->wolverhampton
+    // Build double rail: znojmo->olomouc, brno->novyjicin
     actor.send({ type: 'NETWORK' })
     const card = snapshot.context.players[currentPlayerId]!.hand[0]!
     actor.send({ type: 'SELECT_CARD', cardId: card.id })
-    actor.send({ type: 'SELECT_LINK', from: 'coventry', to: 'nuneaton' })
+    actor.send({ type: 'SELECT_LINK', from: 'znojmo', to: 'olomouc' })
     actor.send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })
     actor.send({
       type: 'SELECT_SECOND_LINK',
-      from: 'birmingham',
-      to: 'wolverhampton',
+      from: 'brno',
+      to: 'novyjicin',
     })
     actor.send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
 
@@ -1156,17 +1156,17 @@ describe('Game Store - Network Actions', () => {
     // Verify different coal mines were used
     const coventryCoalAfter =
       snapshot.context.players[currentPlayerId]!.industries.find(
-        (i) => i.location === 'coventry',
+        (i) => i.location === 'znojmo',
       )?.coalCubesOnTile || 0
     const wolverhamptonCoalAfter =
       snapshot.context.players[currentPlayerId]!.industries.find(
-        (i) => i.location === 'wolverhampton',
+        (i) => i.location === 'novyjicin',
       )?.coalCubesOnTile || 0
 
-    // First coal should come from coventry (closest to first link)
+    // First coal should come from znojmo (closest to first link)
     expect(coventryCoalAfter).toBe(coventryCoalBefore - 1)
 
-    // Second coal should come from wolverhampton (closest to second link after it's built)
+    // Second coal should come from novyjicin (closest to second link after it's built)
     expect(wolverhamptonCoalAfter).toBe(wolverhamptonCoalBefore - 1)
 
     // Total coal consumed should be exactly 2
@@ -1210,10 +1210,10 @@ describe('Game Store - Network Actions', () => {
     // 1. No connected coal mines
     // 2. Market has coal available OR player is connected to merchants for fallback
 
-    // Try to build a rail link from birmingham to coventry
+    // Try to build a rail link from brno to znojmo
     // Birmingham is NOT a merchant location, so this should fail due to no coal access
     try {
-      buildNetworkAction(actor, 'birmingham', 'coventry')
+      buildNetworkAction(actor, 'brno', 'znojmo')
 
       // If we get here, the action succeeded when it should have failed
       snapshot = actor.getSnapshot()
@@ -1233,7 +1233,7 @@ describe('Game Store - Network Actions', () => {
 
     // This validates that coal market access now requires merchant connection:
     // - No connected coal mines available
-    // - No connection to merchants (warrington, gloucester, oxford, nottingham, shrewsbury)
+    // - No connection to merchants (prague, budapest, vienna, lemberg, krakow)
     // - Therefore, no coal can be purchased and rail link fails
   })
 })

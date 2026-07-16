@@ -1,7 +1,7 @@
 // Farm Breweries (rules p.5): the two unnamed brewery-only locations.
 // - build only via Brewery Industry or Wild Industry cards
 // - Cannock connects to the northern one via its own (buildable) link
-// - the kidderminster–worcester link ALSO connects the southern one
+// - the frydekmistek–zilina link ALSO connects the southern one
 //   (no second tile), which must count for network, beer reach and link VP
 import { describe, expect, test } from 'vitest'
 import { createActor } from 'xstate'
@@ -138,7 +138,7 @@ describe('farm breweries: building', () => {
       }),
     ).toBe(true) // did NOT advance
     // …while an ordinary city still works with the same card
-    a.send({ type: 'SELECT_LOCATION', cityId: 'burton' } as any)
+    a.send({ type: 'SELECT_LOCATION', cityId: 'prerov' } as any)
     expect(
       (a.getSnapshot() as any).matches({
         playing: { action: { building: 'confirmingBuild' } },
@@ -149,18 +149,18 @@ describe('farm breweries: building', () => {
 })
 
 describe('farm breweries: network adjacency', () => {
-  test('the cannock link brings the northern farm into the network', () => {
+  test('the rosice link brings the northern farm into the network', () => {
     const a = start()
-    // P1 anchors at cannock, P2 passes throughout
+    // P1 anchors at rosice, P2 passes throughout
     let step = 0
     while (step < 3) {
       if (cur(a).name === 'P1') {
         if (step === 0) {
-          setHand(a, 0, [locCard('cannock', 1)])
-          expect(build(a, 0, 'coal', 'cannock').err).toBeNull()
+          setHand(a, 0, [locCard('rosice', 1)])
+          expect(build(a, 0, 'coal', 'rosice').err).toBeNull()
         } else if (step === 1) {
-          setHand(a, 0, [locCard('cannock', 2)])
-          expect(buildLink(a, 'cannock', 'farmBrewery1')).toBeNull()
+          setHand(a, 0, [locCard('rosice', 2)])
+          expect(buildLink(a, 'rosice', 'farmBrewery1')).toBeNull()
         } else {
           // board is NOT empty now → industry card needs the network;
           // the farm is reachable only through the new link
@@ -176,23 +176,23 @@ describe('farm breweries: network adjacency', () => {
     a.stop()
   })
 
-  test('the kidderminster–worcester link connects the southern farm (3-way)', () => {
+  test('the frydekmistek–zilina link connects the southern farm (3-way)', () => {
     const a = start()
     let step = 0
     while (step < 3) {
       if (cur(a).name === 'P1') {
         if (step === 0) {
-          setHand(a, 0, [locCard('worcester', 1)])
-          expect(build(a, 0, 'cotton', 'worcester').err).toBeNull()
+          setHand(a, 0, [locCard('zilina', 1)])
+          expect(build(a, 0, 'cotton', 'zilina').err).toBeNull()
         } else if (step === 1) {
           // control: with tiles on the board and NO qualifying link, the
           // farm is out of network for an industry card
           setHand(a, 0, [indCard('brewery', 3)])
           const attempt = build(a, 0, 'brewery', 'farmBrewery2')
           expect(attempt.atConfirm && attempt.err === null).toBe(false)
-          // then claim kidderminster–worcester
-          setHand(a, 0, [locCard('worcester', 2)])
-          expect(buildLink(a, 'kidderminster', 'worcester')).toBeNull()
+          // then claim frydekmistek–zilina
+          setHand(a, 0, [locCard('zilina', 2)])
+          expect(buildLink(a, 'frydekmistek', 'zilina')).toBeNull()
         } else {
           setHand(a, 0, [indCard('brewery', 4)])
           expect(build(a, 0, 'brewery', 'farmBrewery2').err).toBeNull()
@@ -210,7 +210,7 @@ describe('farm breweries: network adjacency', () => {
 describe('farm breweries: beer reach and link scoring', () => {
   test("an opponent's farm-brewery beer is reachable through the kidd–worc link", () => {
     const a = start()
-    // gloucester buys cotton but holds NO beer: the sale must drink from
+    // budapest buys cotton but holds NO beer: the sale must drink from
     // P2's farm brewery, reachable only via the kidd–worc link's third
     // connection. Hands are scripted ONCE (hand[0] is always the next
     // planned card) — resetting hands each turn burns the deck via refills
@@ -219,7 +219,7 @@ describe('farm breweries: beer reach and link scoring', () => {
       type: 'TEST_SET_MERCHANTS',
       merchants: [
         {
-          location: 'gloucester',
+          location: 'budapest',
           industryIcons: ['cotton'],
           bonusType: 'develop',
           bonusValue: 1,
@@ -228,21 +228,21 @@ describe('farm breweries: beer reach and link scoring', () => {
       ],
     } as any)
     setHand(a, 0, [
-      locCard('worcester', 1), // r1: build cotton at worcester
-      locCard('worcester', 2), // r2: discard for the worc–gloucester link
-      locCard('worcester', 3), // r2: discard for the sale
-      locCard('stone', 4),
+      locCard('zilina', 1), // r1: build cotton at zilina
+      locCard('zilina', 2), // r2: discard for the worc–budapest link
+      locCard('zilina', 3), // r2: discard for the sale
+      locCard('pardubice', 4),
     ])
     setHand(a, 1, [
-      locCard('worcester', 5), // r1: discard for the kidd–worc link
+      locCard('zilina', 5), // r1: discard for the kidd–worc link
       indCard('brewery', 6), // r2: build the farm brewery
-      locCard('stone', 7), // r2: loan filler
-      locCard('stone', 8),
+      locCard('pardubice', 7), // r2: loan filler
+      locCard('pardubice', 8),
     ])
 
     // round 1 (one action each): P1 cotton, P2 kidd–worc link
-    expect(build(a, 0, 'cotton', 'worcester').err).toBeNull()
-    expect(buildLink(a, 'kidderminster', 'worcester')).toBeNull()
+    expect(build(a, 0, 'cotton', 'zilina').err).toBeNull()
+    expect(buildLink(a, 'frydekmistek', 'zilina')).toBeNull()
 
     // round 2: P2 first (least spender): farm brewery + loan filler
     expect(cur(a).name).toBe('P2')
@@ -253,25 +253,25 @@ describe('farm breweries: beer reach and link scoring', () => {
     a.send({ type: 'CONFIRM' } as any)
     unwind(a)
 
-    // P1: link to gloucester, then the sale
+    // P1: link to budapest, then the sale
     expect(cur(a).name).toBe('P1')
-    expect(buildLink(a, 'worcester', 'gloucester')).toBeNull()
+    expect(buildLink(a, 'zilina', 'budapest')).toBeNull()
     unwind(a)
     a.send({ type: 'SELL' } as any)
     a.send({ type: 'SELECT_CARD', cardId: cur(a).hand[0].id } as any)
     const can = (a.getSnapshot() as any).can({
       type: 'SELECT_SALE',
-      location: 'worcester',
+      location: 'zilina',
       industryType: 'cotton',
-      merchant: 'gloucester',
+      merchant: 'budapest',
     })
     // beer comes from P2's farm brewery through the 3-way link connection
     expect(can).toBe(true)
     a.send({
       type: 'SELECT_SALE',
-      location: 'worcester',
+      location: 'zilina',
       industryType: 'cotton',
-      merchant: 'gloucester',
+      merchant: 'budapest',
     } as any)
     const fb2 = ctx(a).players[1].industries.find(
       (i: any) => i.location === 'farmBrewery2',
@@ -286,8 +286,8 @@ describe('farm breweries: beer reach and link scoring', () => {
     while (step < 2) {
       if (cur(a).name === 'P1') {
         if (step === 0) {
-          setHand(a, 0, [locCard('worcester', 20)])
-          expect(buildLink(a, 'kidderminster', 'worcester')).toBeNull()
+          setHand(a, 0, [locCard('zilina', 20)])
+          expect(buildLink(a, 'frydekmistek', 'zilina')).toBeNull()
         } else {
           setHand(a, 0, [indCard('brewery', 21)])
           expect(build(a, 0, 'brewery', 'farmBrewery2').err).toBeNull()
@@ -296,8 +296,8 @@ describe('farm breweries: beer reach and link scoring', () => {
       } else passTurn(a)
     }
     const vp = calculateLinkVictoryPoints(ctx(a), {
-      from: 'kidderminster',
-      to: 'worcester',
+      from: 'frydekmistek',
+      to: 'zilina',
       type: 'canal',
     } as any)
     // only tile adjacent to the link is the farm brewery — a brewery

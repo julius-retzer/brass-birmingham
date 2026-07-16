@@ -63,11 +63,11 @@ describe('money invariant: treasury can never go negative', () => {
 
     // Guard rejects up front, so UI / multiplayer / AI driver all inherit it
     expect(
-      snapshot.can({ type: 'SELECT_LINK', from: 'birmingham', to: 'coventry' }),
+      snapshot.can({ type: 'SELECT_LINK', from: 'brno', to: 'znojmo' }),
     ).toBe(false)
 
     // Defense in depth: even if the guard is bypassed, nothing commits
-    actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'coventry' })
+    actor.send({ type: 'SELECT_LINK', from: 'brno', to: 'znojmo' })
     actor.send({ type: 'CONFIRM' })
     snapshot = actor.getSnapshot()
     const player = snapshot.context.players[idx]!
@@ -75,8 +75,8 @@ describe('money invariant: treasury can never go negative', () => {
     expect(
       player.links.some(
         (l) =>
-          (l.from === 'birmingham' && l.to === 'coventry') ||
-          (l.from === 'coventry' && l.to === 'birmingham'),
+          (l.from === 'brno' && l.to === 'znojmo') ||
+          (l.from === 'znojmo' && l.to === 'brno'),
       ),
     ).toBe(false)
   })
@@ -93,10 +93,10 @@ describe('money invariant: treasury can never go negative', () => {
     actor.send({ type: 'SELECT_CARD', cardId: card.id })
     snapshot = actor.getSnapshot()
     expect(
-      snapshot.can({ type: 'SELECT_LINK', from: 'birmingham', to: 'coventry' }),
+      snapshot.can({ type: 'SELECT_LINK', from: 'brno', to: 'znojmo' }),
     ).toBe(true)
 
-    actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'coventry' })
+    actor.send({ type: 'SELECT_LINK', from: 'brno', to: 'znojmo' })
     snapshot = actor.getSnapshot()
     expect(snapshot.can({ type: 'CONFIRM' })).toBe(true)
 
@@ -107,8 +107,8 @@ describe('money invariant: treasury can never go negative', () => {
     expect(
       player.links.some(
         (l) =>
-          (l.from === 'birmingham' && l.to === 'coventry') ||
-          (l.from === 'coventry' && l.to === 'birmingham'),
+          (l.from === 'brno' && l.to === 'znojmo') ||
+          (l.from === 'znojmo' && l.to === 'brno'),
       ),
     ).toBe(true)
   })

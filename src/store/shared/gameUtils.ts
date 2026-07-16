@@ -615,7 +615,7 @@ export function canPlaceOrOverbuildIndustry(
   // already has a tile here, the ONLY legal build is an overbuild that
   // REPLACES that same tile (net count stays 1). The Rail Era allows
   // multiple tiles per location. Fixed 2026-07-15 (captain playtest:
-  // coal L1 + iron L1 both landed at coalbrookdale in the Canal Era).
+  // coal L1 + iron L1 both landed at ostrava in the Canal Era).
   if (context.era === 'canal') {
     const me = context.currentPlayerIndex
     const mineHere = context.players[me]!.industries.some(

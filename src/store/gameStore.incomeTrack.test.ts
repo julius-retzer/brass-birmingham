@@ -58,7 +58,7 @@ describe('income track — engine behaviour', () => {
       type: 'TEST_SET_PLAYER_HAND',
       playerId: 0,
       hand: [
-        { id: 'c1', type: 'location', location: 'dudley', color: 'other' },
+        { id: 'c1', type: 'location', location: 'karvina', color: 'other' },
       ],
     } as never)
     a.send({ type: 'TAKE_LOAN' } as never)
@@ -82,7 +82,7 @@ describe('income track — engine behaviour', () => {
       type: 'TEST_SET_PLAYER_HAND',
       playerId: 0,
       hand: [
-        { id: 'c1', type: 'location', location: 'dudley', color: 'other' },
+        { id: 'c1', type: 'location', location: 'karvina', color: 'other' },
       ],
     } as never)
     a.send({ type: 'TAKE_LOAN' } as never)
@@ -104,7 +104,7 @@ describe('income track — engine behaviour', () => {
       playerId: 0,
       industries: [
         {
-          location: 'burton',
+          location: 'prerov',
           type: 'brewery',
           level: 1,
           flipped: false,

@@ -55,9 +55,9 @@ const setupScoutTest = (actor: ReturnType<typeof createActor>) => {
     type: 'TEST_SET_PLAYER_HAND',
     playerId: 0,
     hand: [
-      { id: 'card1', type: 'location', location: 'birmingham', color: 'blue' },
+      { id: 'card1', type: 'location', location: 'brno', color: 'blue' },
       { id: 'card2', type: 'industry', industries: ['coal'] },
-      { id: 'card3', type: 'location', location: 'coventry', color: 'teal' },
+      { id: 'card3', type: 'location', location: 'znojmo', color: 'teal' },
     ],
   })
 
@@ -146,11 +146,11 @@ describe('Game Store - Scout Actions', () => {
         {
           id: 'card1',
           type: 'location',
-          location: 'birmingham',
+          location: 'brno',
           color: 'blue',
         },
         { id: 'card2', type: 'industry', industries: ['coal'] },
-        { id: 'card3', type: 'location', location: 'coventry', color: 'teal' },
+        { id: 'card3', type: 'location', location: 'znojmo', color: 'teal' },
       ],
     })
 

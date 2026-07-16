@@ -23,7 +23,7 @@ export interface IndustryTile {
 
 // Industry tile stats audited 2026-07-14 against the retail player board
 // (official Roxley production photo, BGG image 4231621) and corroborated by
-// the TTS-derived transcription in npow/brass-birmingham. Note: the photos
+// the TTS-derived transcription in npow/brass-brno. Note: the photos
 // in the 2018 rulebook PDF show a PROTOTYPE mat whose Manufacturer IV
 // (£14 / income 7) differs from the production board (£8 / income 6).
 // Every value below is pinned by src/data/industryTiles.test.ts.

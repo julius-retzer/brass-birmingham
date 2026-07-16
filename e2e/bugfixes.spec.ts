@@ -38,7 +38,7 @@ test('wild location card: pick industry, pick ANY city on the map, build', async
   await expect(page.getByText(/Choose a site for your coal/)).toBeVisible()
   const legalCity = page.locator('g[data-city][data-legal="true"]')
   expect(await legalCity.count()).toBeGreaterThan(1) // wild = free choice
-  await page.locator('g[data-city="cannock"]').click()
+  await page.locator('g[data-city="rosice"]').click()
 
   const confirm = page.getByTestId('confirm-action')
   await expect(confirm).toBeEnabled()
@@ -46,7 +46,7 @@ test('wild location card: pick industry, pick ANY city on the map, build', async
 
   await expect(
     page.getByText(
-      /Isambard built coal Level 2 at cannock .* using wild location/,
+      /Isambard built coal Level 2 at rosice .* using wild location/,
     ),
   ).toBeVisible()
 })
@@ -61,11 +61,11 @@ test('wild industry card: pick industry type, then a city, build', async ({
   await page.getByTestId('card-wild_industry_2').click()
 
   // Wild industry has no printed industries — the type step must appear.
-  // (Coal: Isambard owns coal L1 at burton, so this is also a live check
+  // (Coal: Isambard owns coal L1 at prerov, so this is also a live check
   // of the canal one-tile rule — the build must OVERBUILD his own mine.)
   await page.locator('button', { hasText: 'Coal' }).first().click()
   await expect(page.getByText(/Choose a site for your coal/)).toBeVisible()
-  await page.locator('g[data-city="burton"]').click()
+  await page.locator('g[data-city="prerov"]').click()
 
   const confirm = page.getByTestId('confirm-action')
   await expect(confirm).toBeEnabled()
@@ -73,7 +73,7 @@ test('wild industry card: pick industry type, then a city, build', async ({
 
   await expect(
     page.getByText(
-      /Isambard built coal Level 2 at burton.*\(overbuilt own level 1\) using wild industry/,
+      /Isambard built coal Level 2 at prerov.*\(overbuilt own level 1\) using wild industry/,
     ),
   ).toBeVisible()
 })

@@ -62,7 +62,7 @@ const setupGame = () => {
 const buildIndustryAction = (
   actor: ReturnType<typeof createActor>,
   industryType = 'coal',
-  location = 'dudley', // Dudley has a dedicated coal slot
+  location = 'karvina', // Dudley has a dedicated coal slot
 ) => {
   // Get current player index and set them up with suitable card and money
   const snapshot = actor.getSnapshot()
@@ -109,7 +109,7 @@ describe('Game Store - Build Actions', () => {
     const { industryCard, playerWhoBuilt } = buildIndustryAction(
       actor,
       'coal',
-      'dudley',
+      'karvina',
     ) // Dudley has a coal slot
     const snapshot = actor.getSnapshot()
 
@@ -118,7 +118,7 @@ describe('Game Store - Build Actions', () => {
 
     expect(builtIndustry).toBeDefined()
     expect(builtIndustry!.type).toBe('coal')
-    expect(builtIndustry!.location).toBe('dudley')
+    expect(builtIndustry!.location).toBe('karvina')
     expect(snapshot.context.discardPile.length).toBe(1)
     expect(snapshot.context.discardPile[0]!.id).toBe('coal_test')
   })
@@ -130,7 +130,7 @@ describe('Game Store - Build Actions', () => {
     const initialPlayer = snapshot.context.players[0]!
     const initialMoney = 50 // Set by buildIndustryAction
 
-    const { playerWhoBuilt } = buildIndustryAction(actor, 'coal', 'dudley') // Use valid location
+    const { playerWhoBuilt } = buildIndustryAction(actor, 'coal', 'karvina') // Use valid location
     snapshot = actor.getSnapshot()
 
     const updatedPlayer = snapshot.context.players[playerWhoBuilt]!
@@ -148,10 +148,10 @@ describe('Game Store - Build Actions', () => {
     // (Brewery L1 and pottery L1 need IRON, which is always purchasable
     // from the market without a connection — retail board, 2026-07-14.)
     const industryTestCases = [
-      { type: 'coal', location: 'dudley' },
-      { type: 'cotton', location: 'birmingham' },
-      { type: 'pottery', location: 'stoke' },
-      { type: 'brewery', location: 'burton' },
+      { type: 'coal', location: 'karvina' },
+      { type: 'cotton', location: 'brno' },
+      { type: 'pottery', location: 'teplice' },
+      { type: 'brewery', location: 'prerov' },
     ]
 
     industryTestCases.forEach(({ type, location }) => {
@@ -181,8 +181,8 @@ describe('Game Store - Build Actions', () => {
     // (iron works L1 and manufacturer L1 each consume 1 coal — retail
     // board, audited 2026-07-14)
     const industryTestCases = [
-      { type: 'iron', location: 'birmingham' },
-      { type: 'manufacturer', location: 'birmingham' },
+      { type: 'iron', location: 'brno' },
+      { type: 'manufacturer', location: 'brno' },
     ]
 
     industryTestCases.forEach(({ type, location }) => {
@@ -293,7 +293,7 @@ describe('Game Store - Build Actions', () => {
         snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
           .id,
     })
-    actor.send({ type: 'SELECT_LINK', from: 'coalbrookdale', to: 'shrewsbury' })
+    actor.send({ type: 'SELECT_LINK', from: 'ostrava', to: 'krakow' })
     actor.send({ type: 'CONFIRM' })
 
     // After network action in round 1, it's now player 1's turn
@@ -314,11 +314,11 @@ describe('Game Store - Build Actions', () => {
     const player0Links = snapshot.context.players[0]!.links
     expect(player0Links.length).toBeGreaterThan(0)
     expect(player0Links[0]!.type).toBe('canal')
-    expect(player0Links[0]!.from).toBe('coalbrookdale')
-    expect(player0Links[0]!.to).toBe('shrewsbury')
+    expect(player0Links[0]!.from).toBe('ostrava')
+    expect(player0Links[0]!.to).toBe('krakow')
 
     // Build coal mine at Coalbrookdale (connected to the merchant via the link)
-    buildIndustryAction(actor, 'coal', 'coalbrookdale')
+    buildIndustryAction(actor, 'coal', 'ostrava')
     snapshot = actor.getSnapshot()
 
     // The build was done by player 1, so check player 1's industries
@@ -332,7 +332,7 @@ describe('Game Store - Build Actions', () => {
 
     // First verify the coal mine was built
     expect(coalMine).toBeDefined()
-    expect(coalMine!.location).toBe('coalbrookdale')
+    expect(coalMine!.location).toBe('ostrava')
     console.log('[DEBUG] Coal mine built:', coalMine)
     console.log('[DEBUG] Coal cubes on tile:', coalMine!.coalCubesOnTile)
 
@@ -448,7 +448,7 @@ describe('Game Store - Build Actions', () => {
     })
 
     // Build level 1 pottery in Rail Era - should succeed
-    buildIndustryAction(potteryActor, 'pottery', 'stoke')
+    buildIndustryAction(potteryActor, 'pottery', 'teplice')
     const potterySnapshot = potteryActor.getSnapshot()
     const potteryIndustry = potterySnapshot.context.players[
       currentPlayerId
@@ -471,7 +471,7 @@ describe('Game Store - Build Actions', () => {
       // Birmingham has slots: ['cotton','manufacturer'], ['manufacturer'], ['iron'], ['manufacturer']
       const canBuildCotton = canCityAccommodateIndustryType(
         context,
-        'birmingham',
+        'brno',
         'cotton',
       )
       expect(canBuildCotton).toBe(true)
@@ -479,7 +479,7 @@ describe('Game Store - Build Actions', () => {
       // Burton has a dedicated brewery slot
       const canBuildBrewery = canCityAccommodateIndustryType(
         context,
-        'burton',
+        'prerov',
         'brewery',
       )
       expect(canBuildBrewery).toBe(true)
@@ -492,7 +492,7 @@ describe('Game Store - Build Actions', () => {
       // Birmingham doesn't have coal slots, should reject coal mine
       const canBuildCoal = canCityAccommodateIndustryType(
         context,
-        'birmingham',
+        'brno',
         'coal',
       )
       expect(canBuildCoal).toBe(false)
@@ -503,13 +503,13 @@ describe('Game Store - Build Actions', () => {
 
       // Test at Dudley which has simple slots: ['coal'], ['iron']
       // Build a coal mine at Dudley (should occupy the coal slot)
-      buildIndustryAction(actor, 'coal', 'dudley')
+      buildIndustryAction(actor, 'coal', 'karvina')
       let snapshot = actor.getSnapshot()
 
       // Should not be able to build another coal mine (coal slot is occupied)
       const canBuildSecondCoal = canCityAccommodateIndustryType(
         snapshot.context,
-        'dudley',
+        'karvina',
         'coal',
       )
       expect(canBuildSecondCoal).toBe(false)
@@ -517,19 +517,19 @@ describe('Game Store - Build Actions', () => {
       // But should still be able to build iron (iron slot is available)
       const canBuildIron = canCityAccommodateIndustryType(
         snapshot.context,
-        'dudley',
+        'karvina',
         'iron',
       )
       expect(canBuildIron).toBe(true)
 
       // Build iron at Dudley (should occupy the iron slot)
-      buildIndustryAction(actor, 'iron', 'dudley')
+      buildIndustryAction(actor, 'iron', 'karvina')
       snapshot = actor.getSnapshot()
 
       // Now should not be able to build more iron (iron slot occupied)
       const canBuildSecondIron = canCityAccommodateIndustryType(
         snapshot.context,
-        'dudley',
+        'karvina',
         'iron',
       )
       expect(canBuildSecondIron).toBe(false)
@@ -537,7 +537,7 @@ describe('Game Store - Build Actions', () => {
       // And still can't build coal (coal slot occupied)
       const canBuildCoalAgain = canCityAccommodateIndustryType(
         snapshot.context,
-        'dudley',
+        'karvina',
         'coal',
       )
       expect(canBuildCoalAgain).toBe(false)
@@ -549,12 +549,12 @@ describe('Game Store - Build Actions', () => {
       // Leek slots: ['cotton','manufacturer'], ['cotton','coal']
       const canBuildManufacturer = canCityAccommodateIndustryType(
         actor.getSnapshot().context,
-        'leek',
+        'liberec',
         'manufacturer',
       )
       const canBuildCoal = canCityAccommodateIndustryType(
         actor.getSnapshot().context,
-        'leek',
+        'liberec',
         'coal',
       )
 
@@ -562,13 +562,13 @@ describe('Game Store - Build Actions', () => {
       expect(canBuildCoal).toBe(true)
 
       // Build cotton mill (occupies slot 1 with first-fit algorithm)
-      buildIndustryAction(actor, 'cotton', 'leek')
+      buildIndustryAction(actor, 'cotton', 'liberec')
 
       // Manufacturer should not be available (slot 1 is occupied, and
       // manufacturer can only use slot 1)
       const canStillBuildManufacturer = canCityAccommodateIndustryType(
         actor.getSnapshot().context,
-        'leek',
+        'liberec',
         'manufacturer',
       )
       expect(canStillBuildManufacturer).toBe(false)
@@ -587,7 +587,7 @@ describe('Game Store - Build Actions', () => {
       const { playerWhoBuilt } = buildIndustryAction(
         actor,
         'cotton',
-        'birmingham',
+        'brno',
       )
 
       const postSnapshot = actor.getSnapshot()
@@ -601,14 +601,14 @@ describe('Game Store - Build Actions', () => {
       const builtIndustry =
         postSnapshot.context.players[playerWhoBuilt]!.industries[0]
       expect(builtIndustry!.type).toBe('cotton')
-      expect(builtIndustry!.location).toBe('birmingham')
+      expect(builtIndustry!.location).toBe('brno')
     })
 
     test('build action handles slot occupation correctly', () => {
       const { actor } = setupGame()
 
       // First build a coal mine at Stoke (occupy the coal slot)
-      buildIndustryAction(actor, 'coal', 'stoke')
+      buildIndustryAction(actor, 'coal', 'teplice')
 
       const snapshot = actor.getSnapshot()
       const currentPlayerId = snapshot.context.currentPlayerIndex
@@ -634,7 +634,7 @@ describe('Game Store - Build Actions', () => {
       // Check that Stoke can no longer accommodate coal (slot occupied)
       const canAccommodate = canCityAccommodateIndustryType(
         snapshot.context,
-        'stoke',
+        'teplice',
         'coal',
       )
       expect(canAccommodate).toBe(false)
@@ -642,7 +642,7 @@ describe('Game Store - Build Actions', () => {
       // But pottery slot should still be available
       const canAccommodatePottery = canCityAccommodateIndustryType(
         snapshot.context,
-        'stoke',
+        'teplice',
         'pottery',
       )
       expect(canAccommodatePottery).toBe(true)
@@ -656,41 +656,41 @@ describe('Game Store - Build Actions', () => {
 
       // Coventry: ['pottery'], ['manufacturer','coal'], ['iron','manufacturer']
       expect(
-        canCityAccommodateIndustryType(context, 'coventry', 'pottery'),
+        canCityAccommodateIndustryType(context, 'znojmo', 'pottery'),
       ).toBe(true)
       expect(
-        canCityAccommodateIndustryType(context, 'coventry', 'manufacturer'),
+        canCityAccommodateIndustryType(context, 'znojmo', 'manufacturer'),
       ).toBe(true)
-      expect(canCityAccommodateIndustryType(context, 'coventry', 'coal')).toBe(
+      expect(canCityAccommodateIndustryType(context, 'znojmo', 'coal')).toBe(
         true,
       )
-      expect(canCityAccommodateIndustryType(context, 'coventry', 'iron')).toBe(
+      expect(canCityAccommodateIndustryType(context, 'znojmo', 'iron')).toBe(
         true,
       )
       expect(
-        canCityAccommodateIndustryType(context, 'coventry', 'cotton'),
+        canCityAccommodateIndustryType(context, 'znojmo', 'cotton'),
       ).toBe(false)
       expect(
-        canCityAccommodateIndustryType(context, 'coventry', 'brewery'),
+        canCityAccommodateIndustryType(context, 'znojmo', 'brewery'),
       ).toBe(false)
 
       // Stoke: ['cotton','manufacturer'], ['pottery','iron'], ['manufacturer']
-      expect(canCityAccommodateIndustryType(context, 'stoke', 'cotton')).toBe(
+      expect(canCityAccommodateIndustryType(context, 'teplice', 'cotton')).toBe(
         true,
       )
-      expect(canCityAccommodateIndustryType(context, 'stoke', 'pottery')).toBe(
+      expect(canCityAccommodateIndustryType(context, 'teplice', 'pottery')).toBe(
         true,
       )
-      expect(canCityAccommodateIndustryType(context, 'stoke', 'iron')).toBe(
+      expect(canCityAccommodateIndustryType(context, 'teplice', 'iron')).toBe(
         true,
       )
       expect(
-        canCityAccommodateIndustryType(context, 'stoke', 'manufacturer'),
+        canCityAccommodateIndustryType(context, 'teplice', 'manufacturer'),
       ).toBe(true)
-      expect(canCityAccommodateIndustryType(context, 'stoke', 'coal')).toBe(
+      expect(canCityAccommodateIndustryType(context, 'teplice', 'coal')).toBe(
         false,
       )
-      expect(canCityAccommodateIndustryType(context, 'stoke', 'brewery')).toBe(
+      expect(canCityAccommodateIndustryType(context, 'teplice', 'brewery')).toBe(
         false,
       )
     })
@@ -701,39 +701,39 @@ describe('Game Store - Build Actions', () => {
       // Birmingham slots: ['cotton','manufacturer'], ['manufacturer'], ['iron'], ['manufacturer']
       let context = actor.getSnapshot().context
       expect(
-        canCityAccommodateIndustryType(context, 'birmingham', 'cotton'),
+        canCityAccommodateIndustryType(context, 'brno', 'cotton'),
       ).toBe(true)
 
       // Build first cotton mill (occupies slot 1: ['cotton','manufacturer'])
-      buildIndustryAction(actor, 'cotton', 'birmingham')
+      buildIndustryAction(actor, 'cotton', 'brno')
       context = actor.getSnapshot().context
 
       // Cotton only fits slot 1, so no more cotton can be built
       expect(
-        canCityAccommodateIndustryType(context, 'birmingham', 'cotton'),
+        canCityAccommodateIndustryType(context, 'brno', 'cotton'),
       ).toBe(false)
 
       // Manufacturer still fits (slots 2 and 4)
       expect(
-        canCityAccommodateIndustryType(context, 'birmingham', 'manufacturer'),
+        canCityAccommodateIndustryType(context, 'brno', 'manufacturer'),
       ).toBe(true)
-      buildIndustryAction(actor, 'manufacturer', 'birmingham')
+      buildIndustryAction(actor, 'manufacturer', 'brno')
       context = actor.getSnapshot().context
       expect(
-        canCityAccommodateIndustryType(context, 'birmingham', 'manufacturer'),
+        canCityAccommodateIndustryType(context, 'brno', 'manufacturer'),
       ).toBe(true)
 
       // Iron has its dedicated slot 3
       expect(
-        canCityAccommodateIndustryType(context, 'birmingham', 'iron'),
+        canCityAccommodateIndustryType(context, 'brno', 'iron'),
       ).toBe(true)
 
       // Pottery and brewery have no slots in Birmingham
       expect(
-        canCityAccommodateIndustryType(context, 'birmingham', 'pottery'),
+        canCityAccommodateIndustryType(context, 'brno', 'pottery'),
       ).toBe(false)
       expect(
-        canCityAccommodateIndustryType(context, 'birmingham', 'brewery'),
+        canCityAccommodateIndustryType(context, 'brno', 'brewery'),
       ).toBe(false)
     })
   })

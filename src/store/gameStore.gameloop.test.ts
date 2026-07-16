@@ -164,7 +164,7 @@ describe('Game loop - automatic era end and game over', () => {
   test('era scoring: links score per •—• icons (tiles + merchant locations)', () => {
     const { actor } = setup()
 
-    // P0 builds a canal link worcester <-> gloucester (£3)
+    // P0 builds a canal link zilina <-> budapest (£3)
     let s = actor.getSnapshot() as any
     actor.send({ type: 'NETWORK' } as any)
     actor.send({
@@ -173,18 +173,18 @@ describe('Game loop - automatic era end and game over', () => {
     } as any)
     actor.send({
       type: 'SELECT_LINK',
-      from: 'worcester',
-      to: 'gloucester',
+      from: 'zilina',
+      to: 'budapest',
     } as any)
     actor.send({ type: 'CONFIRM' } as any)
 
-    // Give P0 a flipped cotton mill at worcester: 1 link icon + 3 VP
+    // Give P0 a flipped cotton mill at zilina: 1 link icon + 3 VP
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
       playerId: 0,
       industries: [
         {
-          location: 'worcester',
+          location: 'zilina',
           type: 'cotton',
           level: 1,
           flipped: true,
@@ -222,7 +222,7 @@ describe('Game loop - automatic era end and game over', () => {
 
     s = actor.getSnapshot() as any
     const p0 = s.context.players[0]
-    // Link: 1 icon at worcester (cotton tile) + 2 icons at gloucester
+    // Link: 1 icon at zilina (cotton tile) + 2 icons at budapest
     // (merchant location) = 3 VP. Flipped cotton scores its 3 VP.
     expect(p0.victoryPoints).toBe(vpBefore + 3 + 3)
     expect(p0.links).toHaveLength(0)
@@ -236,7 +236,7 @@ describe('Game loop - automatic era end and game over', () => {
       playerId: 0,
       industries: [
         {
-          location: 'worcester',
+          location: 'zilina',
           type: 'cotton',
           level: 2,
           flipped: false,
@@ -359,9 +359,9 @@ describe('Game loop - automatic era end and game over', () => {
     actor.send({ type: 'CONFIRM' } as any)
     actor.send({
       type: 'SELECT_SALE',
-      location: 'birmingham',
+      location: 'brno',
       industryType: 'cotton',
-      merchant: 'gloucester',
+      merchant: 'budapest',
     } as any)
     actor.send({ type: 'CANCEL' } as any)
     actor.send({ type: 'NETWORK' } as any)
@@ -372,7 +372,7 @@ describe('Game loop - automatic era end and game over', () => {
     actor.send({ type: 'CANCEL' } as any)
     actor.send({ type: 'BUILD' } as any)
     actor.send({ type: 'CONFIRM' } as any)
-    actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' } as any)
+    actor.send({ type: 'SELECT_LOCATION', cityId: 'brno' } as any)
     actor.send({ type: 'CANCEL' } as any)
     actor.send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' } as any)
 
@@ -410,7 +410,7 @@ describe('Overbuild in a full city', () => {
     // Dudley has a single coal slot, occupied by our level 1 mine
     const context = makeContext([
       {
-        location: 'dudley',
+        location: 'karvina',
         type: 'coal',
         level: 1,
         flipped: false,
@@ -421,9 +421,9 @@ describe('Overbuild in a full city', () => {
       },
     ])
 
-    expect(canPlaceOrOverbuildIndustry(context, 'dudley', 'coal', 2)).toBe(true)
+    expect(canPlaceOrOverbuildIndustry(context, 'karvina', 'coal', 2)).toBe(true)
     // Same or lower level is not a legal overbuild
-    expect(canPlaceOrOverbuildIndustry(context, 'dudley', 'coal', 1)).toBe(
+    expect(canPlaceOrOverbuildIndustry(context, 'karvina', 'coal', 1)).toBe(
       false,
     )
   })
@@ -433,7 +433,7 @@ describe('Overbuild in a full city', () => {
       [],
       [
         {
-          location: 'dudley',
+          location: 'karvina',
           type: 'coal',
           level: 1,
           flipped: false,
@@ -446,7 +446,7 @@ describe('Overbuild in a full city', () => {
     )
 
     // Coal cubes exist in the market, so opponent overbuild is illegal
-    expect(canPlaceOrOverbuildIndustry(context, 'dudley', 'coal', 2)).toBe(
+    expect(canPlaceOrOverbuildIndustry(context, 'karvina', 'coal', 2)).toBe(
       false,
     )
   })

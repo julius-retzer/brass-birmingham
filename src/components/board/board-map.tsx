@@ -699,12 +699,12 @@ export function BoardMap({
         </g>
 
         {/* the southern Farm Brewery's implicit connection: a spur off the
-            kidderminster—worcester corridor (rules p.5 — one tile connects
+            frydekmistek—zilina corridor (rules p.5 — one tile connects
             all three; no second tile may be placed, so no hit area) */}
         {(() => {
-          const { mid } = routePath('kidderminster', 'worcester')
+          const { mid } = routePath('frydekmistek', 'zilina')
           const fb = cityPos.farmBrewery2
-          const linked = builtLinks.has(linkKey('kidderminster', 'worcester'))
+          const linked = builtLinks.has(linkKey('frydekmistek', 'zilina'))
           return (
             <path
               d={`M ${mid.x} ${mid.y} L ${fb.x} ${fb.y}`}
@@ -913,23 +913,23 @@ export function BoardMap({
 // Index order remains reading order (left→right, top→bottom) so slot
 // assignment and cityIndustrySlots stay untouched.
 const PLATE_GRIDS: Partial<Record<CityId, Array<[number, number]>>> = {
-  birmingham: [
+  brno: [
     [0, 0],
     [1, 0],
     [0, 1],
     [1, 1],
   ],
-  coventry: [
+  znojmo: [
     [0, 0],
     [1, 0],
     [0, 1],
   ],
-  stoke: [
+  teplice: [
     [0, 0],
     [1, 0],
     [0, 1],
   ],
-  coalbrookdale: [
+  ostrava: [
     [0, 0],
     [1, 0],
     [0, 1],

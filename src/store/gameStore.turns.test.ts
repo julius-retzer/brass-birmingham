@@ -113,7 +113,7 @@ describe('Game Store - Turn Order and Rounds', () => {
       type: 'SELECT_CARD',
       cardId: s.context.players[0]!.hand[0]!.id,
     })
-    actor.send({ type: 'SELECT_LINK', from: 'worcester', to: 'gloucester' })
+    actor.send({ type: 'SELECT_LINK', from: 'zilina', to: 'budapest' })
     actor.send({ type: 'CONFIRM' })
 
     // Player 1 passes (spends nothing)
@@ -206,7 +206,7 @@ describe('Game Store - Turn Order and Rounds', () => {
       type: 'SELECT_CARD',
       cardId: s.context.players[0]!.hand[0]!.id,
     })
-    actor.send({ type: 'SELECT_LINK', from: 'worcester', to: 'gloucester' })
+    actor.send({ type: 'SELECT_LINK', from: 'zilina', to: 'budapest' })
     actor.send({ type: 'CONFIRM' })
 
     s = actor.getSnapshot()
@@ -225,7 +225,7 @@ describe('Game Store - Turn Order and Rounds', () => {
       type: 'SELECT_CARD',
       cardId: s.context.players[2]!.hand[0]!.id,
     })
-    actor.send({ type: 'SELECT_LINK', from: 'stoke', to: 'warrington' })
+    actor.send({ type: 'SELECT_LINK', from: 'teplice', to: 'prague' })
     actor.send({ type: 'CONFIRM' })
 
     // New round: P2 (£0) first, then P1 and P3 (£3 each, tie keeps P1 before P3)

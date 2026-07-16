@@ -152,7 +152,7 @@ describe('Game Store - Markets and Resources', () => {
 
     if (industryCard) {
       actor.send({ type: 'SELECT_CARD', cardId: industryCard.id })
-      actor.send({ type: 'SELECT_LOCATION', cityId: 'dudley' }) // Dudley has a coal slot
+      actor.send({ type: 'SELECT_LOCATION', cityId: 'karvina' }) // Dudley has a coal slot
       actor.send({ type: 'CONFIRM' })
 
       const snapshot = actor.getSnapshot()
@@ -186,7 +186,7 @@ describe('Game Store - Markets and Resources', () => {
 
     if (ironCard) {
       actor.send({ type: 'SELECT_CARD', cardId: ironCard.id })
-      actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+      actor.send({ type: 'SELECT_LOCATION', cityId: 'brno' })
       actor.send({ type: 'CONFIRM' })
 
       const snapshot = actor.getSnapshot()
@@ -250,7 +250,7 @@ describe('Game Store - Markets and Resources', () => {
 
     if (breweryCard) {
       actor.send({ type: 'SELECT_CARD', cardId: breweryCard.id })
-      actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+      actor.send({ type: 'SELECT_LOCATION', cityId: 'brno' })
       actor.send({ type: 'CONFIRM' })
 
       const snapshot = actor.getSnapshot()
@@ -285,7 +285,7 @@ describe('Game Store - Markets and Resources', () => {
       playerId: currentPlayerId,
       industries: [
         {
-          location: 'birmingham',
+          location: 'brno',
           type: 'coal',
           level: 1,
           flipped: false,
@@ -314,7 +314,7 @@ describe('Game Store - Markets and Resources', () => {
           beerBarrelsOnTile: 0,
         },
         {
-          location: 'oxford', // Merchant location for market access
+          location: 'vienna', // Merchant location for market access
           type: 'pottery',
           level: 1,
           flipped: false,
@@ -352,7 +352,7 @@ describe('Game Store - Markets and Resources', () => {
       type: 'SELECT_CARD',
       cardId: snapshot.context.players[currentPlayerId]!.hand[0]!.id,
     })
-    actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'coventry' })
+    actor.send({ type: 'SELECT_LINK', from: 'brno', to: 'znojmo' })
     actor.send({ type: 'CONFIRM' })
 
     snapshot = actor.getSnapshot()
@@ -364,7 +364,7 @@ describe('Game Store - Markets and Resources', () => {
 
     // Connected mine should have been depleted (1 coal consumed)
     const coalMine = snapshot.context.players[currentPlayerId]!.industries.find(
-      (i: any) => i.type === 'coal' && i.location === 'birmingham',
+      (i: any) => i.type === 'coal' && i.location === 'brno',
     )
     expect(coalMine).toBeDefined()
     expect(coalMine!.coalCubesOnTile).toBe(0) // Should have used the 1 cube

@@ -66,7 +66,7 @@ describe('validateBuildActionSelections', () => {
   test('throws error when no card is selected', () => {
     const context = createTestContext({
       selectedCard: null,
-      selectedLocation: 'birmingham'
+      selectedLocation: 'brno'
     })
 
     expect(() => validateBuildActionSelections(context)).toThrow('No card selected for build action')
@@ -84,7 +84,7 @@ describe('validateBuildActionSelections', () => {
   test('passes when both card and location are selected', () => {
     const context = createTestContext({
       selectedCard: { id: 'card1', type: 'industry' } as any,
-      selectedLocation: 'birmingham'
+      selectedLocation: 'brno'
     })
 
     expect(() => validateBuildActionSelections(context)).not.toThrow()
@@ -94,8 +94,8 @@ describe('validateBuildActionSelections', () => {
 describe('validateNetworkRequirement', () => {
   test('allows location cards to build anywhere', () => {
     const context = createTestContext({
-      selectedCard: { id: 'card1', type: 'location', location: 'birmingham' } as any,
-      selectedLocation: 'birmingham',
+      selectedCard: { id: 'card1', type: 'location', location: 'brno' } as any,
+      selectedLocation: 'brno',
       players: [{
         ...createTestContext().players[0]!,
         links: [],
@@ -109,7 +109,7 @@ describe('validateNetworkRequirement', () => {
   test('allows wild location cards to build anywhere', () => {
     const context = createTestContext({
       selectedCard: { id: 'card1', type: 'wild_location' } as any,
-      selectedLocation: 'birmingham',
+      selectedLocation: 'brno',
       players: [{
         ...createTestContext().players[0]!,
         links: [],
@@ -123,7 +123,7 @@ describe('validateNetworkRequirement', () => {
   test('allows industry cards when player has no tiles (first build exception)', () => {
     const context = createTestContext({
       selectedCard: { id: 'card1', type: 'industry' } as any,
-      selectedLocation: 'birmingham',
+      selectedLocation: 'brno',
       players: [{
         ...createTestContext().players[0]!,
         links: [],
@@ -137,12 +137,12 @@ describe('validateNetworkRequirement', () => {
   test('allows industry cards in player network (via industry)', () => {
     const context = createTestContext({
       selectedCard: { id: 'card1', type: 'industry' } as any,
-      selectedLocation: 'birmingham',
+      selectedLocation: 'brno',
       players: [{
         ...createTestContext().players[0]!,
         links: [],
         industries: [{
-          location: 'birmingham',
+          location: 'brno',
           type: 'cotton',
           level: 1,
           flipped: false,
@@ -160,12 +160,12 @@ describe('validateNetworkRequirement', () => {
   test('allows industry cards in player network (via link)', () => {
     const context = createTestContext({
       selectedCard: { id: 'card1', type: 'industry' } as any,
-      selectedLocation: 'birmingham',
+      selectedLocation: 'brno',
       players: [{
         ...createTestContext().players[0]!,
         links: [{
-          from: 'birmingham',
-          to: 'coventry',
+          from: 'brno',
+          to: 'znojmo',
           type: 'canal'
         }],
         industries: []
@@ -178,16 +178,16 @@ describe('validateNetworkRequirement', () => {
   test('rejects industry cards outside player network', () => {
     const context = createTestContext({
       selectedCard: { id: 'card1', type: 'industry' } as any,
-      selectedLocation: 'birmingham',
+      selectedLocation: 'brno',
       players: [{
         ...createTestContext().players[0]!,
         links: [{
-          from: 'stoke',
-          to: 'stafford',
+          from: 'teplice',
+          to: 'jihlava',
           type: 'canal'
         }],
         industries: [{
-          location: 'stoke',
+          location: 'teplice',
           type: 'coal',
           level: 1,
           flipped: false,
@@ -205,12 +205,12 @@ describe('validateNetworkRequirement', () => {
   test('rejects wild industry cards outside player network', () => {
     const context = createTestContext({
       selectedCard: { id: 'card1', type: 'wild_industry' } as any,
-      selectedLocation: 'birmingham',
+      selectedLocation: 'brno',
       players: [{
         ...createTestContext().players[0]!,
         links: [],
         industries: [{
-          location: 'stoke', // Different location
+          location: 'teplice', // Different location
           type: 'coal',
           level: 1,
           flipped: false,
@@ -229,7 +229,7 @@ describe('validateNetworkRequirement', () => {
 describe('validateIndustrySlotAvailability', () => {
   test('throws error when no industry tile is selected', () => {
     const context = createTestContext({
-      selectedLocation: 'birmingham',
+      selectedLocation: 'brno',
       selectedIndustryTile: null
     })
 
@@ -238,7 +238,7 @@ describe('validateIndustrySlotAvailability', () => {
 
   test('allows building compatible industry in empty city', () => {
     const context = createTestContext({
-      selectedLocation: 'birmingham',
+      selectedLocation: 'brno',
       selectedIndustryTile: {
         id: 'cotton_1',
         type: 'cotton',
@@ -266,7 +266,7 @@ describe('validateIndustrySlotAvailability', () => {
 
   test('rejects building incompatible industry', () => {
     const context = createTestContext({
-      selectedLocation: 'birmingham',
+      selectedLocation: 'brno',
       selectedIndustryTile: {
         id: 'coal_1',
         type: 'coal', // Birmingham doesn't have coal slots
@@ -294,7 +294,7 @@ describe('validateIndustrySlotAvailability', () => {
 
   test('rejects building in merchant city (no slots)', () => {
     const context = createTestContext({
-      selectedLocation: 'warrington', // Merchant city, no industry slots
+      selectedLocation: 'prague', // Merchant city, no industry slots
       selectedIndustryTile: {
         id: 'cotton_1',
         type: 'cotton',
@@ -322,7 +322,7 @@ describe('validateIndustrySlotAvailability', () => {
 
   test('rejects building when all compatible slots are occupied', () => {
     const context = createTestContext({
-      selectedLocation: 'stoke', // Has ['coal'], ['pottery']
+      selectedLocation: 'teplice', // Has ['coal'], ['pottery']
       selectedIndustryTile: {
         id: 'coal_1',
         type: 'coal',
@@ -346,7 +346,7 @@ describe('validateIndustrySlotAvailability', () => {
       players: [{
         ...createTestContext().players[0]!,
         industries: [{
-          location: 'stoke',
+          location: 'teplice',
           type: 'coal',
           level: 1,
           flipped: false,
@@ -363,7 +363,7 @@ describe('validateIndustrySlotAvailability', () => {
 
   test('allows building when some compatible slots are available', () => {
     const context = createTestContext({
-      selectedLocation: 'birmingham', // Has multiple cotton-compatible slots
+      selectedLocation: 'brno', // Has multiple cotton-compatible slots
       selectedIndustryTile: {
         id: 'cotton_1',
         type: 'cotton',
@@ -387,7 +387,7 @@ describe('validateIndustrySlotAvailability', () => {
       players: [{
         ...createTestContext().players[0]!,
         industries: [{
-          location: 'birmingham',
+          location: 'brno',
           type: 'cotton', // Occupies first cotton slot
           level: 1,
           flipped: false,
@@ -405,7 +405,7 @@ describe('validateIndustrySlotAvailability', () => {
 
   test('handles multi-option slots correctly', () => {
     const context = createTestContext({
-      selectedLocation: 'birmingham', // Slot 1: ['cotton', 'iron']
+      selectedLocation: 'brno', // Slot 1: ['cotton', 'iron']
       selectedIndustryTile: {
         id: 'iron_1',
         type: 'iron',
@@ -429,7 +429,7 @@ describe('validateIndustrySlotAvailability', () => {
       players: [{
         ...createTestContext().players[0]!,
         industries: [{
-          location: 'birmingham',
+          location: 'brno',
           type: 'cotton', // Occupies the shared slot 1
           level: 1,
           flipped: false,

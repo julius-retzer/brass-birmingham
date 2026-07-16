@@ -12,13 +12,13 @@ export interface Merchant {
   name: string
   industries: IndustryType[] // Which industries can be sold here
   bonus: MerchantBonus
-  victoryPointsGranted?: number // For Nottingham and Shrewsbury
+  victoryPointsGranted?: number // For Lemberg and Krakow
 }
 
 export const merchants: Record<string, Merchant> = {
-  warrington: {
-    id: 'warrington',
-    name: 'Warrington',
+  prague: {
+    id: 'prague',
+    name: 'Prague',
     industries: ['cotton', 'manufacturer', 'pottery'], // Markets can accept multiple industries
     bonus: {
       type: 'money',
@@ -26,9 +26,9 @@ export const merchants: Record<string, Merchant> = {
       description: 'Receive £5 from the Bank',
     },
   },
-  gloucester: {
-    id: 'gloucester',
-    name: 'Gloucester',
+  budapest: {
+    id: 'budapest',
+    name: 'Budapest',
     industries: ['cotton', 'manufacturer', 'pottery'],
     bonus: {
       type: 'develop',
@@ -36,9 +36,9 @@ export const merchants: Record<string, Merchant> = {
       description: 'Remove 1 lowest level tile from Player Mat (no iron cost)',
     },
   },
-  oxford: {
-    id: 'oxford',
-    name: 'Oxford',
+  vienna: {
+    id: 'vienna',
+    name: 'Vienna',
     industries: ['cotton', 'manufacturer', 'pottery'],
     bonus: {
       type: 'income',
@@ -46,9 +46,9 @@ export const merchants: Record<string, Merchant> = {
       description: 'Advance Income Marker 2 spaces',
     },
   },
-  nottingham: {
-    id: 'nottingham',
-    name: 'Nottingham',
+  lemberg: {
+    id: 'lemberg',
+    name: 'Lemberg',
     industries: ['cotton', 'manufacturer', 'pottery'],
     bonus: {
       type: 'victoryPoints',
@@ -57,9 +57,9 @@ export const merchants: Record<string, Merchant> = {
     },
     victoryPointsGranted: 2,
   },
-  shrewsbury: {
-    id: 'shrewsbury',
-    name: 'Shrewsbury',
+  krakow: {
+    id: 'krakow',
+    name: 'Krakow',
     industries: ['cotton', 'manufacturer', 'pottery'],
     bonus: {
       type: 'victoryPoints',

@@ -36,7 +36,7 @@ const oldSave = () => ({
 
         industries: [
           {
-            location: 'uttoxeter',
+            location: 'sumperk',
             type: 'brewery',
             tile: { ...OLD_BREWERY_1 },
           },

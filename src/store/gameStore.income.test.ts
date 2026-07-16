@@ -235,7 +235,7 @@ describe('Game Store - Income Collection', () => {
         money: 5, // Can only pay £5 of the £10 owed
         industries: [
           {
-            location: 'birmingham',
+            location: 'brno',
             type: 'coal',
             level: 1,
             flipped: false,
@@ -274,7 +274,7 @@ describe('Game Store - Income Collection', () => {
       // Create multiple industries
       const industries = [
         {
-          location: 'birmingham' as const,
+          location: 'brno' as const,
           type: 'coal' as const,
           level: 1,
           flipped: false,
@@ -284,7 +284,7 @@ describe('Game Store - Income Collection', () => {
           beerBarrelsOnTile: 0,
         },
         {
-          location: 'stoke' as const,
+          location: 'teplice' as const,
           type: 'cotton' as const,
           level: 1,
           flipped: false,
@@ -294,7 +294,7 @@ describe('Game Store - Income Collection', () => {
           beerBarrelsOnTile: 0,
         },
         {
-          location: 'dudley' as const,
+          location: 'karvina' as const,
           type: 'iron' as const,
           level: 1,
           flipped: false,
@@ -338,7 +338,7 @@ describe('Game Store - Income Collection', () => {
 
       // Create one small industry
       const industry = {
-        location: 'birmingham' as const,
+        location: 'brno' as const,
         type: 'coal' as const,
         level: 1,
         flipped: false,
@@ -397,7 +397,7 @@ describe('Game Store - Income Collection', () => {
 
       for (const { cost, expectedSaleValue } of testCases) {
         const industry = {
-          location: 'birmingham' as const,
+          location: 'brno' as const,
           type: 'coal' as const,
           level: 1,
           flipped: false,
@@ -438,7 +438,7 @@ describe('Game Store - Income Collection', () => {
       // Create three industries
       const industries = [
         {
-          location: 'birmingham' as const,
+          location: 'brno' as const,
           type: 'coal' as const,
           level: 1,
           flipped: false,
@@ -448,7 +448,7 @@ describe('Game Store - Income Collection', () => {
           beerBarrelsOnTile: 0,
         },
         {
-          location: 'stoke' as const,
+          location: 'teplice' as const,
           type: 'cotton' as const,
           level: 1,
           flipped: false,
@@ -458,7 +458,7 @@ describe('Game Store - Income Collection', () => {
           beerBarrelsOnTile: 0,
         },
         {
-          location: 'dudley' as const,
+          location: 'karvina' as const,
           type: 'iron' as const,
           level: 1,
           flipped: false,

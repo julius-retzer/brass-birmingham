@@ -1,6 +1,6 @@
 // Regression tests for bugs found in the 2026-07-13 bug hunt.
 // Written TDD-first: each test encodes the RULES-CORRECT behaviour
-// (ai-docs/brass-birmingham-rules.mdc), not the pre-fix behaviour.
+// (ai-docs/brass-brno-rules.mdc), not the pre-fix behaviour.
 import { describe, expect, test } from 'vitest'
 import { createActor } from 'xstate'
 import { gameStore } from './gameStore'
@@ -104,13 +104,13 @@ describe('bugfix: wild location card can complete a build', () => {
     expect(
       matches(a, { playing: { action: { building: 'selectingLocation' } } }),
     ).toBe(true)
-    a.send({ type: 'SELECT_LOCATION', cityId: 'dudley' } as any)
+    a.send({ type: 'SELECT_LOCATION', cityId: 'karvina' } as any)
     expect(
       matches(a, { playing: { action: { building: 'confirmingBuild' } } }),
     ).toBe(true)
     a.send({ type: 'CONFIRM' } as any)
     expect(ctx(a).lastError).toBeNull()
-    expect(industriesAt(a, 'dudley')).toEqual([
+    expect(industriesAt(a, 'karvina')).toEqual([
       { who: 'P1', type: 'coal', level: 1 },
     ])
     a.stop()
@@ -140,10 +140,10 @@ describe('bugfix: wild industry card can complete a build', () => {
     expect(
       matches(a, { playing: { action: { building: 'selectingLocation' } } }),
     ).toBe(true)
-    a.send({ type: 'SELECT_LOCATION', cityId: 'dudley' } as any)
+    a.send({ type: 'SELECT_LOCATION', cityId: 'karvina' } as any)
     a.send({ type: 'CONFIRM' } as any)
     expect(ctx(a).lastError).toBeNull()
-    expect(industriesAt(a, 'dudley')).toEqual([
+    expect(industriesAt(a, 'karvina')).toEqual([
       { who: 'P1', type: 'coal', level: 1 },
     ])
     a.stop()
@@ -151,7 +151,7 @@ describe('bugfix: wild industry card can complete a build', () => {
 })
 
 describe('bugfix: free same-type slots are usable (no forced overbuild)', () => {
-  test('worcester has two cotton slots — one mill per player coexists', () => {
+  test('zilina has two cotton slots — one mill per player coexists', () => {
     // Canal rule (2026-07-15): a single player may hold only ONE tile per
     // location, so the two slots are filled by DIFFERENT players; the
     // point pinned here is that P2's build lands in the FREE slot instead
@@ -160,12 +160,12 @@ describe('bugfix: free same-type slots are usable (no forced overbuild)', () => 
     let builds = 0
     for (let i = 0; i < 10 && builds < 2; i++) {
       const idx = cur(a).name === 'P1' ? 0 : 1
-      setHand(a, idx, [locCard('worcester', i)])
-      const err = buildViaLocationCard(a, 'worcester', 'cotton')
+      setHand(a, idx, [locCard('zilina', i)])
+      const err = buildViaLocationCard(a, 'zilina', 'cotton')
       expect(err).toBeNull()
       builds++
     }
-    expect(industriesAt(a, 'worcester').sort((x: any, y: any) =>
+    expect(industriesAt(a, 'zilina').sort((x: any, y: any) =>
       x.who.localeCompare(y.who),
     )).toEqual([
       { who: 'P1', type: 'cotton', level: 1 },
@@ -176,16 +176,16 @@ describe('bugfix: free same-type slots are usable (no forced overbuild)', () => 
 })
 
 describe('bugfix: own overbuild works when no free slot remains', () => {
-  test('dudley has one coal slot — own coal L1 upgrades to L2 in place', () => {
+  test('karvina has one coal slot — own coal L1 upgrades to L2 in place', () => {
     const a = startGame()
-    // P1 owns 1× coal L1 (retail mat): build it at dudley, build the
-    // first L2 at cannock, then rebuild at dudley. Its only coal-capable
+    // P1 owns 1× coal L1 (retail mat): build it at karvina, build the
+    // first L2 at rosice, then rebuild at karvina. Its only coal-capable
     // slot is occupied by P1's own L1 → must overbuild (with the second
     // L2 from the mat).
     const plan: Array<[string, string]> = [
-      ['dudley', 'coal'],
-      ['cannock', 'coal'],
-      ['dudley', 'coal'],
+      ['karvina', 'coal'],
+      ['rosice', 'coal'],
+      ['karvina', 'coal'],
     ]
     const errors: (string | null)[] = []
     for (let i = 0; i < 16 && errors.length < plan.length; i++) {
@@ -196,11 +196,11 @@ describe('bugfix: own overbuild works when no free slot remains', () => {
       } else passTurn(a)
     }
     expect(errors).toEqual([null, null, null])
-    // dudley holds exactly ONE coal entry, upgraded in place to level 2
-    expect(industriesAt(a, 'dudley')).toEqual([
+    // karvina holds exactly ONE coal entry, upgraded in place to level 2
+    expect(industriesAt(a, 'karvina')).toEqual([
       { who: 'P1', type: 'coal', level: 2 },
     ])
-    expect(industriesAt(a, 'cannock')).toEqual([
+    expect(industriesAt(a, 'rosice')).toEqual([
       { who: 'P1', type: 'coal', level: 2 },
     ])
     a.stop()
@@ -209,7 +209,7 @@ describe('bugfix: own overbuild works when no free slot remains', () => {
 
 describe('unchanged: illegal overbuilds still rejected', () => {
   test("opponent's cotton cannot be overbuilt when the city is full", () => {
-    // Under the canal one-tile rule the two worcester slots are filled by
+    // Under the canal one-tile rule the two zilina slots are filled by
     // P1 and P2; P3 (holding a HIGHER cotton after spending their L1)
     // attacks a full city — refused: only coal/iron may overbuild an
     // opponent.
@@ -240,23 +240,23 @@ describe('unchanged: illegal overbuilds still rejected', () => {
     for (let i = 0; i < 30 && p3Err === undefined; i++) {
       const idx = playerIdx()
       if (idx < 2 && filled < 2) {
-        setHand(a, idx, [locCard('worcester', i)])
-        expect(buildViaLocationCard(a, 'worcester', 'cotton')).toBeNull()
+        setHand(a, idx, [locCard('zilina', i)])
+        expect(buildViaLocationCard(a, 'zilina', 'cotton')).toBeNull()
         filled++
       } else if (idx === 2 && !p3Spent) {
         // burn P3's cotton L1 elsewhere so their next cotton is L2
-        setHand(a, 2, [locCard('leek', i)])
-        expect(buildViaLocationCard(a, 'leek', 'cotton')).toBeNull()
+        setHand(a, 2, [locCard('liberec', i)])
+        expect(buildViaLocationCard(a, 'liberec', 'cotton')).toBeNull()
         p3Spent = true
       } else if (idx === 2 && filled >= 2) {
-        setHand(a, 2, [locCard('worcester', i + 40)])
-        p3Err = buildViaLocationCard(a, 'worcester', 'cotton')
+        setHand(a, 2, [locCard('zilina', i + 40)])
+        p3Err = buildViaLocationCard(a, 'zilina', 'cotton')
       } else passTurn(a)
     }
     expect(p3Err).toBeTruthy() // rejected with a reason
-    expect(industriesAt(a, 'worcester')).toHaveLength(2) // both mills intact
+    expect(industriesAt(a, 'zilina')).toHaveLength(2) // both mills intact
     expect(
-      industriesAt(a, 'worcester').every((x: any) => x.who !== 'P3'),
+      industriesAt(a, 'zilina').every((x: any) => x.who !== 'P3'),
     ).toBe(true)
     a.stop()
   })
@@ -265,7 +265,7 @@ describe('unchanged: illegal overbuilds still rejected', () => {
 describe('pinned: develop removes one or two tiles per action', () => {
   test('two tiles of different industries in one develop action', () => {
     const a = startGame()
-    setHand(a, 0, [locCard('stoke', 1), locCard('stoke', 2)])
+    setHand(a, 0, [locCard('teplice', 1), locCard('teplice', 2)])
     const matCount = (t: string) =>
       (ctx(a).players[0].industryTilesOnMat[t] ?? []).reduce(
         (n: number, x: any) => n + x.quantityAvailable,

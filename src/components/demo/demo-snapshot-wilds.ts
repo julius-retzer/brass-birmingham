@@ -736,13 +736,13 @@ export const demoSnapshotWilds: unknown = {
           {
             "id": "leek_2",
             "type": "location",
-            "location": "leek",
+            "location": "liberec",
             "color": "other"
           },
           {
             "id": "kidderminster_1",
             "type": "location",
-            "location": "kidderminster",
+            "location": "frydekmistek",
             "color": "other"
           },
           {
@@ -756,7 +756,7 @@ export const demoSnapshotWilds: unknown = {
         "links": [],
         "industries": [
           {
-            "location": "cannock",
+            "location": "rosice",
             "type": "coal",
             "level": 1,
             "flipped": false,
@@ -785,7 +785,7 @@ export const demoSnapshotWilds: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "birmingham",
+            "location": "brno",
             "type": "cotton",
             "level": 1,
             "flipped": false,
@@ -1531,13 +1531,13 @@ export const demoSnapshotWilds: unknown = {
           {
             "id": "stoke_1",
             "type": "location",
-            "location": "stoke",
+            "location": "teplice",
             "color": "other"
           },
           {
             "id": "cannock_1",
             "type": "location",
-            "location": "cannock",
+            "location": "rosice",
             "color": "other"
           },
           {
@@ -1551,7 +1551,7 @@ export const demoSnapshotWilds: unknown = {
         "links": [],
         "industries": [
           {
-            "location": "burton",
+            "location": "prerov",
             "type": "coal",
             "level": 1,
             "flipped": false,
@@ -1580,7 +1580,7 @@ export const demoSnapshotWilds: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "nuneaton",
+            "location": "olomouc",
             "type": "brewery",
             "level": 1,
             "flipped": false,
@@ -2304,43 +2304,43 @@ export const demoSnapshotWilds: unknown = {
           {
             "id": "birmingham_1",
             "type": "location",
-            "location": "birmingham",
+            "location": "brno",
             "color": "other"
           },
           {
             "id": "walsall_1",
             "type": "location",
-            "location": "walsall",
+            "location": "blansko",
             "color": "other"
           },
           {
             "id": "kidderminster_2",
             "type": "location",
-            "location": "kidderminster",
+            "location": "frydekmistek",
             "color": "other"
           },
           {
             "id": "stone_1",
             "type": "location",
-            "location": "stone",
+            "location": "pardubice",
             "color": "other"
           },
           {
             "id": "wolverhampton_1",
             "type": "location",
-            "location": "wolverhampton",
+            "location": "novyjicin",
             "color": "other"
           },
           {
             "id": "coalbrookdale_2",
             "type": "location",
-            "location": "coalbrookdale",
+            "location": "ostrava",
             "color": "other"
           },
           {
             "id": "coalbrookdale_3",
             "type": "location",
-            "location": "coalbrookdale",
+            "location": "ostrava",
             "color": "other"
           },
           {
@@ -2354,7 +2354,7 @@ export const demoSnapshotWilds: unknown = {
         "links": [],
         "industries": [
           {
-            "location": "walsall",
+            "location": "blansko",
             "type": "brewery",
             "level": 1,
             "flipped": false,
@@ -2383,7 +2383,7 @@ export const demoSnapshotWilds: unknown = {
             "beerBarrelsOnTile": 1
           },
           {
-            "location": "dudley",
+            "location": "karvina",
             "type": "coal",
             "level": 1,
             "flipped": false,
@@ -2412,7 +2412,7 @@ export const demoSnapshotWilds: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "coventry",
+            "location": "znojmo",
             "type": "pottery",
             "level": 1,
             "flipped": false,
@@ -2441,7 +2441,7 @@ export const demoSnapshotWilds: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "uttoxeter",
+            "location": "sumperk",
             "type": "brewery",
             "level": 1,
             "flipped": false,
@@ -2572,7 +2572,7 @@ export const demoSnapshotWilds: unknown = {
         "timestamp": "2026-07-15T00:08:26.710Z"
       },
       {
-        "message": "George built brewery Level 1 at walsall for £7 (consumed consumed 1 iron from market for £2) using brewery industry",
+        "message": "George built brewery Level 1 at blansko for £7 (consumed consumed 1 iron from market for £2) using brewery industry",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.710Z"
       },
@@ -2597,27 +2597,27 @@ export const demoSnapshotWilds: unknown = {
         "timestamp": "2026-07-15T00:08:26.710Z"
       },
       {
-        "message": "Eliza built coal Level 1 at cannock for £5 using cannock (other)",
+        "message": "Eliza built coal Level 1 at rosice for £5 using rosice (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.710Z"
       },
       {
-        "message": "Eliza built cotton Level 1 at birmingham for £12 using birmingham (other)",
+        "message": "Eliza built cotton Level 1 at brno for £12 using brno (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.710Z"
       },
       {
-        "message": "Isambard built coal Level 1 at burton for £5 using burton (other)",
+        "message": "Isambard built coal Level 1 at prerov for £5 using prerov (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.711Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at nuneaton for £7 (consumed consumed 1 iron from market for £2) using nuneaton (other)",
+        "message": "Isambard built brewery Level 1 at olomouc for £7 (consumed consumed 1 iron from market for £2) using olomouc (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.711Z"
       },
       {
-        "message": "George built coal Level 1 at dudley for £5 using dudley (other)",
+        "message": "George built coal Level 1 at karvina for £5 using karvina (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.711Z"
       },
@@ -2647,12 +2647,12 @@ export const demoSnapshotWilds: unknown = {
         "timestamp": "2026-07-15T00:08:26.711Z"
       },
       {
-        "message": "George built pottery Level 1 at coventry for £20 (consumed consumed 1 iron from market for £3) using coventry (other)",
+        "message": "George built pottery Level 1 at znojmo for £20 (consumed consumed 1 iron from market for £3) using znojmo (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.711Z"
       },
       {
-        "message": "George built brewery Level 1 at uttoxeter for £8 (consumed consumed 1 iron from market for £3) using uttoxeter (other)",
+        "message": "George built brewery Level 1 at sumperk for £8 (consumed consumed 1 iron from market for £3) using sumperk (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.711Z"
       },
@@ -2666,13 +2666,13 @@ export const demoSnapshotWilds: unknown = {
       {
         "id": "stafford_2",
         "type": "location",
-        "location": "stafford",
+        "location": "jihlava",
         "color": "other"
       },
       {
         "id": "worcester_1",
         "type": "location",
-        "location": "worcester",
+        "location": "zilina",
         "color": "other"
       },
       {
@@ -2685,7 +2685,7 @@ export const demoSnapshotWilds: unknown = {
       {
         "id": "tamworth_1",
         "type": "location",
-        "location": "tamworth",
+        "location": "prostejov",
         "color": "other"
       },
       {
@@ -2706,31 +2706,31 @@ export const demoSnapshotWilds: unknown = {
       {
         "id": "dudley_1",
         "type": "location",
-        "location": "dudley",
+        "location": "karvina",
         "color": "other"
       },
       {
         "id": "stafford_1",
         "type": "location",
-        "location": "stafford",
+        "location": "jihlava",
         "color": "other"
       },
       {
         "id": "leek_1",
         "type": "location",
-        "location": "leek",
+        "location": "liberec",
         "color": "other"
       },
       {
         "id": "coventry_3",
         "type": "location",
-        "location": "coventry",
+        "location": "znojmo",
         "color": "other"
       },
       {
         "id": "worcester_2",
         "type": "location",
-        "location": "worcester",
+        "location": "zilina",
         "color": "other"
       },
       {
@@ -2743,31 +2743,31 @@ export const demoSnapshotWilds: unknown = {
       {
         "id": "redditch_1",
         "type": "location",
-        "location": "redditch",
+        "location": "bratislava",
         "color": "other"
       },
       {
         "id": "coalbrookdale_1",
         "type": "location",
-        "location": "coalbrookdale",
+        "location": "ostrava",
         "color": "other"
       },
       {
         "id": "birmingham_2",
         "type": "location",
-        "location": "birmingham",
+        "location": "brno",
         "color": "other"
       },
       {
         "id": "coventry_2",
         "type": "location",
-        "location": "coventry",
+        "location": "znojmo",
         "color": "other"
       },
       {
         "id": "burton_2",
         "type": "location",
-        "location": "burton",
+        "location": "prerov",
         "color": "other"
       },
       {
@@ -2780,7 +2780,7 @@ export const demoSnapshotWilds: unknown = {
       {
         "id": "stoke_2",
         "type": "location",
-        "location": "stoke",
+        "location": "teplice",
         "color": "other"
       }
     ],
@@ -2802,19 +2802,19 @@ export const demoSnapshotWilds: unknown = {
       {
         "id": "stone_2",
         "type": "location",
-        "location": "stone",
+        "location": "pardubice",
         "color": "other"
       },
       {
         "id": "wolverhampton_2",
         "type": "location",
-        "location": "wolverhampton",
+        "location": "novyjicin",
         "color": "other"
       },
       {
         "id": "stoke_3",
         "type": "location",
-        "location": "stoke",
+        "location": "teplice",
         "color": "other"
       },
       {
@@ -2835,31 +2835,31 @@ export const demoSnapshotWilds: unknown = {
       {
         "id": "cannock_2",
         "type": "location",
-        "location": "cannock",
+        "location": "rosice",
         "color": "other"
       },
       {
         "id": "birmingham_3",
         "type": "location",
-        "location": "birmingham",
+        "location": "brno",
         "color": "other"
       },
       {
         "id": "burton_1",
         "type": "location",
-        "location": "burton",
+        "location": "prerov",
         "color": "other"
       },
       {
         "id": "nuneaton_1",
         "type": "location",
-        "location": "nuneaton",
+        "location": "olomouc",
         "color": "other"
       },
       {
         "id": "dudley_2",
         "type": "location",
-        "location": "dudley",
+        "location": "karvina",
         "color": "other"
       },
       {
@@ -2873,13 +2873,13 @@ export const demoSnapshotWilds: unknown = {
       {
         "id": "coventry_1",
         "type": "location",
-        "location": "coventry",
+        "location": "znojmo",
         "color": "other"
       },
       {
         "id": "uttoxeter_1",
         "type": "location",
-        "location": "uttoxeter",
+        "location": "sumperk",
         "color": "other"
       },
       {
@@ -2930,7 +2930,7 @@ export const demoSnapshotWilds: unknown = {
     "selectedTilesForDevelop": [],
     "merchants": [
       {
-        "location": "shrewsbury",
+        "location": "krakow",
         "industryIcons": [
           "manufacturer"
         ],
@@ -2939,7 +2939,7 @@ export const demoSnapshotWilds: unknown = {
         "hasBeer": true
       },
       {
-        "location": "gloucester",
+        "location": "budapest",
         "industryIcons": [
           "cotton",
           "manufacturer",
@@ -2950,7 +2950,7 @@ export const demoSnapshotWilds: unknown = {
         "hasBeer": true
       },
       {
-        "location": "gloucester",
+        "location": "budapest",
         "industryIcons": [
           "cotton"
         ],
@@ -2959,14 +2959,14 @@ export const demoSnapshotWilds: unknown = {
         "hasBeer": true
       },
       {
-        "location": "oxford",
+        "location": "vienna",
         "industryIcons": [],
         "bonusType": "income",
         "bonusValue": 2,
         "hasBeer": false
       },
       {
-        "location": "oxford",
+        "location": "vienna",
         "industryIcons": [
           "pottery"
         ],
@@ -2975,14 +2975,14 @@ export const demoSnapshotWilds: unknown = {
         "hasBeer": true
       },
       {
-        "location": "warrington",
+        "location": "prague",
         "industryIcons": [],
         "bonusType": "money",
         "bonusValue": 5,
         "hasBeer": false
       },
       {
-        "location": "warrington",
+        "location": "prague",
         "industryIcons": [
           "cotton",
           "manufacturer",

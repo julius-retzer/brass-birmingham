@@ -97,7 +97,7 @@ const tileAt = (a: AnyActor, playerIdx: number, city: string, type: string) =>
 describe('VERIFY: iron auto-sale to market on build', () => {
   test('A. partial fit: iron L1 (4 cubes) with 2 empty £1 spaces', () => {
     const a = start()
-    // P2 builds the coal mine at dudley (canal one-tile rule: P1 may not
+    // P2 builds the coal mine at karvina (canal one-tile rule: P1 may not
     // stack a second own tile there); P1's iron works then consumes from
     // the opponent's mine at the same location — no market connection.
     let coalDone = false
@@ -105,15 +105,15 @@ describe('VERIFY: iron auto-sale to market on build', () => {
     const log: string[] = []
     while (!ironDone) {
       if (cur(a).name === 'P2' && !coalDone) {
-        setHand(a, 1, [locCard('dudley', 90)])
-        const err = build(a, 'dudley', 'coal')
+        setHand(a, 1, [locCard('karvina', 90)])
+        const err = build(a, 'karvina', 'coal')
         log.push(`build#0 (coal, P2): err=${err}`)
         coalDone = true
       } else if (cur(a).name === 'P1' && coalDone) {
-        setHand(a, 0, [locCard('dudley', 1)])
+        setHand(a, 0, [locCard('karvina', 1)])
         const before = ctx(a).players[0].money
         const marketBefore = ironRow(a)
-        const err = build(a, 'dudley', 'iron')
+        const err = build(a, 'karvina', 'iron')
         const after = ctx(a).players[0].money
         log.push(
           `build#1 (iron): err=${err} money £${before}→£${after} (Δ${after - before})`,
@@ -123,7 +123,7 @@ describe('VERIFY: iron auto-sale to market on build', () => {
         ironDone = true
       } else passTurn(a)
     }
-    const tile = tileAt(a, 0, 'dudley', 'iron')
+    const tile = tileAt(a, 0, 'karvina', 'iron')
     log.push(
       `iron tile: cubes=${tile?.ironCubesOnTile} flipped=${tile?.flipped}`,
     )
@@ -152,7 +152,7 @@ describe('VERIFY: iron auto-sale to market on build', () => {
     // Two develops consume 2 iron from the market (cheapest occupied = £2
     // row) → empties: 2×£1 + 2×£2 = room for all 4 cubes of iron L1.
     // Interleaved with P2's turns (no passes — the scripted deck is small):
-    // P2 builds the coal mine at dudley, and P1's iron works consumes from
+    // P2 builds the coal mine at karvina, and P1's iron works consumes from
     // that opponent mine (the canal one-tile rule forbids P1 stacking an
     // own mine + iron works there).
     let develops = 0
@@ -163,22 +163,22 @@ describe('VERIFY: iron auto-sale to market on build', () => {
     while (!ironDone) {
       if (cur(a).name === 'P2') {
         if (!coalDone) {
-          setHand(a, 1, [locCard('dudley', 91)])
-          const err = build(a, 'dudley', 'coal')
+          setHand(a, 1, [locCard('karvina', 91)])
+          const err = build(a, 'karvina', 'coal')
           log.push(`build#0 (coal, P2): err=${err}`)
           coalDone = true
         } else passTurn(a)
       } else if (develops < 2) {
-        setHand(a, 0, [locCard('dudley', develops + 10)])
+        setHand(a, 0, [locCard('karvina', develops + 10)])
         const err = develop(a, 'cotton')
         log.push(
           `develop#${develops}: err=${err} market: ${ironRow(a).join(' ')}`,
         )
         develops++
       } else if (coalDone) {
-        setHand(a, 0, [locCard('dudley', 21)])
+        setHand(a, 0, [locCard('karvina', 21)])
         const before = ctx(a).players[0].money
-        const err = build(a, 'dudley', 'iron')
+        const err = build(a, 'karvina', 'iron')
         const after = ctx(a).players[0].money
         log.push(
           `build#1 (iron): err=${err} money £${before}→£${after} (Δ${after - before})`,
@@ -186,7 +186,7 @@ describe('VERIFY: iron auto-sale to market on build', () => {
         ironDone = true
       } else passTurn(a)
     }
-    const tile = tileAt(a, 0, 'dudley', 'iron')
+    const tile = tileAt(a, 0, 'karvina', 'iron')
     log.push(`iron market after: ${ironRow(a).join(' ')}`)
     log.push(
       `iron tile: cubes=${tile?.ironCubesOnTile} flipped=${tile?.flipped}`,
@@ -225,12 +225,12 @@ describe('VERIFY: coal control (market connection required)', () => {
     let built = false
     while (!built) {
       if (cur(a).name === 'P1') {
-        setHand(a, 0, [locCard('dudley', 30)])
+        setHand(a, 0, [locCard('karvina', 30)])
         const before = ctx(a).players[0].money
         const marketBefore = coalRow(a)
-        const err = build(a, 'dudley', 'coal')
+        const err = build(a, 'karvina', 'coal')
         const after = ctx(a).players[0].money
-        const tile = tileAt(a, 0, 'dudley', 'coal')
+        const tile = tileAt(a, 0, 'karvina', 'coal')
         console.log(
           [
             '--- COAL UNCONNECTED ---',
@@ -246,34 +246,34 @@ describe('VERIFY: coal control (market connection required)', () => {
     a.stop()
   })
 
-  test('C2. coal mine CONNECTED to a merchant (coalbrookdale—shrewsbury): auto-sale', () => {
+  test('C2. coal mine CONNECTED to a merchant (ostrava—krakow): auto-sale', () => {
     const a = start()
-    // P1: link coalbrookdale—shrewsbury (canal), then coal at coalbrookdale.
+    // P1: link ostrava—krakow (canal), then coal at ostrava.
     let step = 0
     const log: string[] = []
     while (step < 2) {
       if (cur(a).name === 'P1') {
         if (step === 0) {
-          setHand(a, 0, [locCard('coalbrookdale', 40)])
+          setHand(a, 0, [locCard('ostrava', 40)])
           unwind(a)
           a.send({ type: 'NETWORK' } as any)
           a.send({ type: 'SELECT_CARD', cardId: cur(a).hand[0].id } as any)
           a.send({
             type: 'SELECT_LINK',
-            from: 'coalbrookdale',
-            to: 'shrewsbury',
+            from: 'ostrava',
+            to: 'krakow',
           } as any)
           a.send({ type: 'CONFIRM' } as any)
           log.push(`link err=${ctx(a).lastError}`)
           a.send({ type: 'CLEAR_ERROR' } as any)
           unwind(a)
         } else {
-          setHand(a, 0, [locCard('coalbrookdale', 41)])
+          setHand(a, 0, [locCard('ostrava', 41)])
           const before = ctx(a).players[0].money
           const marketBefore = coalRow(a)
-          const err = build(a, 'coalbrookdale', 'coal')
+          const err = build(a, 'ostrava', 'coal')
           const after = ctx(a).players[0].money
-          const tile = tileAt(a, 0, 'coalbrookdale', 'coal')
+          const tile = tileAt(a, 0, 'ostrava', 'coal')
           log.push(
             `coal build err=${err} money £${before}→£${after} (Δ${after - before}, tile costs £5)`,
           )
@@ -293,7 +293,7 @@ describe('VERIFY: coal control (market connection required)', () => {
       } else passTurn(a)
     }
     console.log(['--- COAL CONNECTED ---', ...log].join('\n'))
-    const tile = tileAt(a, 0, 'coalbrookdale', 'coal')
+    const tile = tileAt(a, 0, 'ostrava', 'coal')
     expect(coalRow(a)[0]).toBe('£1:2/2') // the one empty £1 space filled
     expect(tile?.coalCubesOnTile).toBe(1)
     expect(tile?.flipped).toBe(false)
@@ -304,12 +304,12 @@ describe('VERIFY: coal control (market connection required)', () => {
 describe('VERIFY: merchant beer sells their goods and grants the bonus', () => {
   test('sale drinks the merchant barrel and applies the merchant bonus', () => {
     const a = start()
-    // one merchant: gloucester buys cotton, HOLDS BEER, pays a £5 bonus
+    // one merchant: budapest buys cotton, HOLDS BEER, pays a £5 bonus
     a.send({
       type: 'TEST_SET_MERCHANTS',
       merchants: [
         {
-          location: 'gloucester',
+          location: 'budapest',
           industryIcons: ['cotton'],
           bonusType: 'money',
           bonusValue: 5,
@@ -319,18 +319,18 @@ describe('VERIFY: merchant beer sells their goods and grants the bonus', () => {
     } as any)
     // hands scripted ONCE (see AGENTS.md gotcha): cotton, link discard, sale discard
     setHand(a, 0, [
-      locCard('worcester', 60),
-      locCard('worcester', 61),
-      locCard('worcester', 62),
-      locCard('stone', 63),
+      locCard('zilina', 60),
+      locCard('zilina', 61),
+      locCard('zilina', 62),
+      locCard('pardubice', 63),
     ])
 
-    // round 1: P1 builds cotton at worcester; P2 passes
+    // round 1: P1 builds cotton at zilina; P2 passes
     unwind(a)
     a.send({ type: 'BUILD' } as any)
     a.send({ type: 'SELECT_CARD', cardId: cur(a).hand[0].id } as any)
     a.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'cotton' } as any)
-    a.send({ type: 'SELECT_LOCATION', cityId: 'worcester' } as any)
+    a.send({ type: 'SELECT_LOCATION', cityId: 'zilina' } as any)
     a.send({ type: 'CONFIRM' } as any)
     expect(ctx(a).lastError).toBeNull()
     unwind(a)
@@ -345,7 +345,7 @@ describe('VERIFY: merchant beer sells their goods and grants the bonus', () => {
     }
     a.send({ type: 'NETWORK' } as any)
     a.send({ type: 'SELECT_CARD', cardId: cur(a).hand[0].id } as any)
-    a.send({ type: 'SELECT_LINK', from: 'worcester', to: 'gloucester' } as any)
+    a.send({ type: 'SELECT_LINK', from: 'zilina', to: 'budapest' } as any)
     a.send({ type: 'CONFIRM' } as any)
     expect(ctx(a).lastError).toBeNull()
     unwind(a)
@@ -355,21 +355,21 @@ describe('VERIFY: merchant beer sells their goods and grants the bonus', () => {
     a.send({ type: 'SELECT_CARD', cardId: cur(a).hand[0].id } as any)
     a.send({
       type: 'SELECT_SALE',
-      location: 'worcester',
+      location: 'zilina',
       industryType: 'cotton',
-      merchant: 'gloucester',
+      merchant: 'budapest',
     } as any)
 
     const c = ctx(a)
     const cotton = c.players[0].industries.find(
-      (i: any) => i.location === 'worcester',
+      (i: any) => i.location === 'zilina',
     )
     expect(cotton.flipped).toBe(true) // the sale happened
     expect(c.merchants[0].hasBeer).toBe(false) // the merchant barrel was drunk
     expect(c.players[0].money).toBe(moneyBefore + 5) // £5 merchant bonus paid
     expect(
       c.logs.some((l: any) =>
-        l.message.includes('beer from merchant at gloucester'),
+        l.message.includes('beer from merchant at budapest'),
       ),
     ).toBe(true)
     a.stop()

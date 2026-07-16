@@ -114,7 +114,7 @@ describe('Game Store - Card Selection Auto-behavior', () => {
         {
           id: 'stoke_test',
           type: 'location',
-          location: 'stoke',
+          location: 'teplice',
           color: 'blue',
         },
       ],

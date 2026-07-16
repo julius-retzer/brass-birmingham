@@ -64,165 +64,165 @@ interface IndustryDefinition {
 // Base definitions for all cards
 const locations: Record<string, LocationDefinition> = {
   // Derbyshire (White)
-  belper: {
+  tesin: {
     type: 'location',
-    location: 'belper',
+    location: 'tesin',
     color: 'other',
     twoPlayers: 0,
     threePlayers: 0,
     fourPlayers: 2,
   },
-  derby: {
+  bielsko: {
     type: 'location',
-    location: 'derby',
+    location: 'bielsko',
     color: 'other',
     twoPlayers: 0,
     threePlayers: 0,
     fourPlayers: 3,
   },
   // North Staffordshire (Blue)
-  leek: {
+  liberec: {
     type: 'location',
-    location: 'leek',
+    location: 'liberec',
     color: 'other',
     twoPlayers: 0,
     threePlayers: 2,
     fourPlayers: 2,
   },
-  stoke: {
+  teplice: {
     type: 'location',
-    location: 'stoke',
+    location: 'teplice',
     color: 'other',
     twoPlayers: 0,
     threePlayers: 3,
     fourPlayers: 3,
   },
-  stone: {
+  pardubice: {
     type: 'location',
-    location: 'stone',
+    location: 'pardubice',
     color: 'other',
     twoPlayers: 0,
     threePlayers: 2,
     fourPlayers: 2,
   },
-  uttoxeter: {
+  sumperk: {
     type: 'location',
-    location: 'uttoxeter',
+    location: 'sumperk',
     color: 'other',
     twoPlayers: 0,
     threePlayers: 1,
     fourPlayers: 2,
   },
   // Staffordshire (Pink)
-  stafford: {
+  jihlava: {
     type: 'location',
-    location: 'stafford',
+    location: 'jihlava',
     color: 'other',
     twoPlayers: 2,
     threePlayers: 2,
     fourPlayers: 2,
   },
-  burton: {
+  prerov: {
     type: 'location',
-    location: 'burton',
+    location: 'prerov',
     color: 'other',
     twoPlayers: 2,
     threePlayers: 2,
     fourPlayers: 2,
   },
-  cannock: {
+  rosice: {
     type: 'location',
-    location: 'cannock',
+    location: 'rosice',
     color: 'other',
     twoPlayers: 2,
     threePlayers: 2,
     fourPlayers: 2,
   },
-  tamworth: {
+  prostejov: {
     type: 'location',
-    location: 'tamworth',
+    location: 'prostejov',
     color: 'other',
     twoPlayers: 1,
     threePlayers: 1,
     fourPlayers: 1,
   },
-  walsall: {
+  blansko: {
     type: 'location',
-    location: 'walsall',
+    location: 'blansko',
     color: 'other',
     twoPlayers: 1,
     threePlayers: 1,
     fourPlayers: 1,
   },
   // Black Country (Yellow)
-  coalbrookdale: {
+  ostrava: {
     type: 'location',
-    location: 'coalbrookdale',
+    location: 'ostrava',
     color: 'other',
     twoPlayers: 3,
     threePlayers: 3,
     fourPlayers: 3,
   },
-  dudley: {
+  karvina: {
     type: 'location',
-    location: 'dudley',
+    location: 'karvina',
     color: 'other',
     twoPlayers: 2,
     threePlayers: 2,
     fourPlayers: 2,
   },
-  kidderminster: {
+  frydekmistek: {
     type: 'location',
-    location: 'kidderminster',
+    location: 'frydekmistek',
     color: 'other',
     twoPlayers: 2,
     threePlayers: 2,
     fourPlayers: 2,
   },
-  wolverhampton: {
+  novyjicin: {
     type: 'location',
-    location: 'wolverhampton',
+    location: 'novyjicin',
     color: 'other',
     twoPlayers: 2,
     threePlayers: 2,
     fourPlayers: 2,
   },
-  worcester: {
+  zilina: {
     type: 'location',
-    location: 'worcester',
+    location: 'zilina',
     color: 'other',
     twoPlayers: 2,
     threePlayers: 2,
     fourPlayers: 2,
   },
   // Birmingham Area (Purple)
-  birmingham: {
+  brno: {
     type: 'location',
-    location: 'birmingham',
+    location: 'brno',
     color: 'other',
     twoPlayers: 3,
     threePlayers: 3,
     fourPlayers: 3,
   },
-  coventry: {
+  znojmo: {
     type: 'location',
-    location: 'coventry',
+    location: 'znojmo',
     color: 'other',
     twoPlayers: 3,
     threePlayers: 3,
     fourPlayers: 3,
   },
-  nuneaton: {
+  olomouc: {
     type: 'location',
-    location: 'nuneaton',
+    location: 'olomouc',
     color: 'other',
     twoPlayers: 1,
     threePlayers: 1,
     fourPlayers: 1,
   },
-  redditch: {
+  bratislava: {
     type: 'location',
-    location: 'redditch',
+    location: 'bratislava',
     color: 'other',
     twoPlayers: 1,
     threePlayers: 1,

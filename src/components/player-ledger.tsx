@@ -27,7 +27,7 @@ const INDUSTRY_TYPES: IndustryType[] = [
 ]
 
 const LABEL: Record<IndustryType, string> = {
-  cotton: 'Cotton Mill',
+  cotton: 'Textile Mill',
   coal: 'Coal Mine',
   iron: 'Iron Works',
   manufacturer: 'Manufacturer',

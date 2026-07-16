@@ -32,19 +32,19 @@ describe('computeHoverCities', () => {
     const wildLoc: WildLocationCard = { id: 'wl', type: 'wild_location' }
     const wildInd: WildIndustryCard = { id: 'wi', type: 'wild_industry' }
     expect(computeHoverCities(wildLoc, null)).toBeNull()
-    expect(computeHoverCities(wildInd, new Set(['birmingham']))).toBeNull()
+    expect(computeHoverCities(wildInd, new Set(['brno']))).toBeNull()
   })
 
   test('location card spotlights exactly its printed city', () => {
     // Independent of the player network — a location card names one city.
-    const set = computeHoverCities(locationCard('derby'), null)
-    expect(set).toEqual(new Set(['derby']))
+    const set = computeHoverCities(locationCard('bielsko'), null)
+    expect(set).toEqual(new Set(['bielsko']))
 
     const withNetwork = computeHoverCities(
-      locationCard('derby'),
-      new Set(['birmingham']),
+      locationCard('bielsko'),
+      new Set(['brno']),
     )
-    expect(withNetwork).toEqual(new Set(['derby']))
+    expect(withNetwork).toEqual(new Set(['bielsko']))
   })
 
   test('industry card with no presence highlights every matching slot (anywhere)', () => {
@@ -54,28 +54,28 @@ describe('computeHoverCities', () => {
       .filter(([, slots]) => slots.some((slot) => slot.includes('coal')))
       .map(([city]) => city)
     expect(set).toEqual(new Set(expected))
-    // Sanity: coalbrookdale has a coal slot; worcester (cotton-only) does not.
-    expect(set.has('coalbrookdale')).toBe(true)
-    expect(set.has('worcester')).toBe(false)
+    // Sanity: ostrava has a coal slot; zilina (cotton-only) does not.
+    expect(set.has('ostrava')).toBe(true)
+    expect(set.has('zilina')).toBe(false)
   })
 
   test('industry card is scoped to the network once the player has presence', () => {
-    // birmingham has an iron slot; coalbrookdale also has iron but is out of
+    // brno has an iron slot; ostrava also has iron but is out of
     // network, so it must NOT be highlighted.
-    const network = new Set<CityId>(['birmingham', 'worcester'])
+    const network = new Set<CityId>(['brno', 'zilina'])
     const set = computeHoverCities(industryCard('iron'), network)!
-    expect(set.has('birmingham')).toBe(true) // in network + has iron slot
-    expect(set.has('coalbrookdale')).toBe(false) // has iron slot but out of network
-    expect(set.has('worcester')).toBe(false) // in network but cotton-only, no iron slot
+    expect(set.has('brno')).toBe(true) // in network + has iron slot
+    expect(set.has('ostrava')).toBe(false) // has iron slot but out of network
+    expect(set.has('zilina')).toBe(false) // in network but cotton-only, no iron slot
   })
 
   test('a card naming several industries matches a slot accepting any of them', () => {
-    // worcester slots are cotton-only; a cotton/manufacturer card still hits it.
+    // zilina slots are cotton-only; a cotton/manufacturer card still hits it.
     const set = computeHoverCities(
       industryCard('cotton', 'manufacturer'),
-      new Set<CityId>(['worcester']),
+      new Set<CityId>(['zilina']),
     )!
-    expect(set).toEqual(new Set(['worcester']))
+    expect(set).toEqual(new Set(['zilina']))
   })
 
   test('null network is treated as no presence (anywhere)', () => {

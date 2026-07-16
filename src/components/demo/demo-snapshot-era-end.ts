@@ -2092,14 +2092,14 @@ export const demoSnapshotEraEnd: unknown = {
           {
             "id": "stafford_1",
             "type": "location",
-            "location": "stafford",
+            "location": "jihlava",
             "color": "other"
           }
         ],
         "links": [],
         "industries": [
           {
-            "location": "redditch",
+            "location": "bratislava",
             "type": "coal",
             "level": 2,
             "flipped": false,
@@ -2128,7 +2128,7 @@ export const demoSnapshotEraEnd: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "worcester",
+            "location": "zilina",
             "type": "cotton",
             "level": 1,
             "flipped": false,
@@ -2157,7 +2157,7 @@ export const demoSnapshotEraEnd: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "coventry",
+            "location": "znojmo",
             "type": "coal",
             "level": 3,
             "flipped": false,
@@ -2186,7 +2186,7 @@ export const demoSnapshotEraEnd: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "stafford",
+            "location": "jihlava",
             "type": "brewery",
             "level": 1,
             "flipped": false,
@@ -2215,7 +2215,7 @@ export const demoSnapshotEraEnd: unknown = {
             "beerBarrelsOnTile": 1
           },
           {
-            "location": "wolverhampton",
+            "location": "novyjicin",
             "type": "coal",
             "level": 3,
             "flipped": false,
@@ -2244,7 +2244,7 @@ export const demoSnapshotEraEnd: unknown = {
             "beerBarrelsOnTile": 0
           },
           {
-            "location": "cannock",
+            "location": "rosice",
             "type": "coal",
             "level": 4,
             "flipped": false,
@@ -2365,17 +2365,17 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.693Z"
       },
       {
-        "message": "Eliza built coal Level 1 at burton for £5 using burton (other)",
+        "message": "Eliza built coal Level 1 at prerov for £5 using prerov (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.694Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at nuneaton for £7 (consumed consumed 1 iron from market for £2) using nuneaton (other)",
+        "message": "Isambard built brewery Level 1 at olomouc for £7 (consumed consumed 1 iron from market for £2) using olomouc (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.694Z"
       },
       {
-        "message": "George built brewery Level 1 at coalbrookdale for £7 (consumed consumed 1 iron from market for £2) using coalbrookdale (other)",
+        "message": "George built brewery Level 1 at ostrava for £7 (consumed consumed 1 iron from market for £2) using ostrava (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.694Z"
       },
@@ -2400,7 +2400,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.694Z"
       },
       {
-        "message": "Eliza built coal Level 2 at dudley for £7 using dudley (other)",
+        "message": "Eliza built coal Level 2 at karvina for £7 using karvina (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.694Z"
       },
@@ -2410,7 +2410,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.695Z"
       },
       {
-        "message": "Isambard built coal Level 1 at leek for £5 using leek (other)",
+        "message": "Isambard built coal Level 1 at liberec for £5 using liberec (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.695Z"
       },
@@ -2420,7 +2420,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.695Z"
       },
       {
-        "message": "George built coal Level 1 at coalbrookdale for £5 using coal industry",
+        "message": "George built coal Level 1 at ostrava for £5 using coal industry",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.695Z"
       },
@@ -2450,32 +2450,32 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.695Z"
       },
       {
-        "message": "Isambard built pottery Level 1 at coventry for £20 (consumed consumed 1 iron from market for £3) using coventry (other)",
+        "message": "Isambard built pottery Level 1 at znojmo for £20 (consumed consumed 1 iron from market for £3) using znojmo (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.696Z"
       },
       {
-        "message": "Isambard built cotton Level 1 at nuneaton for £12 using cotton/manufacturer industry",
+        "message": "Isambard built cotton Level 1 at olomouc for £12 using cotton/manufacturer industry",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.696Z"
       },
       {
-        "message": "George built cotton Level 1 at stone for £12 using stone (other)",
+        "message": "George built cotton Level 1 at pardubice for £12 using pardubice (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.696Z"
       },
       {
-        "message": "George built iron Level 1 at coalbrookdale for £5 (consumed 1 coal from connected coal mine (free)) (sold 1 iron to market for £3, sold 2 iron to market for £4, sold 1 iron to market for £1) (tile flipped, +3 income) using iron industry",
+        "message": "George built iron Level 1 at ostrava for £5 (consumed 1 coal from connected coal mine (free)) (sold 1 iron to market for £3, sold 2 iron to market for £4, sold 1 iron to market for £1) (tile flipped, +3 income) using iron industry",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.696Z"
       },
       {
-        "message": "Eliza built cotton Level 1 at birmingham for £12 using birmingham (other)",
+        "message": "Eliza built cotton Level 1 at brno for £12 using brno (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.697Z"
       },
       {
-        "message": "Eliza built cotton Level 1 at stoke for £12 using stoke (other)",
+        "message": "Eliza built cotton Level 1 at teplice for £12 using teplice (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.697Z"
       },
@@ -2505,12 +2505,12 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.697Z"
       },
       {
-        "message": "George built cotton Level 1 at worcester for £12 using worcester (other)",
+        "message": "George built cotton Level 1 at zilina for £12 using zilina (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.697Z"
       },
       {
-        "message": "George built coal Level 2 at kidderminster for £7 using kidderminster (other)",
+        "message": "George built coal Level 2 at frydekmistek for £7 using frydekmistek (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.698Z"
       },
@@ -2520,7 +2520,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.698Z"
       },
       {
-        "message": "Eliza built pottery Level 1 at coventry for £18 (consumed consumed 1 iron from market for £1) using coventry (other)",
+        "message": "Eliza built pottery Level 1 at znojmo for £18 (consumed consumed 1 iron from market for £1) using znojmo (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.698Z"
       },
@@ -2530,7 +2530,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.699Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at nuneaton for £7 (consumed consumed 1 iron from market for £2) using brewery industry",
+        "message": "Isambard built brewery Level 1 at olomouc for £7 (consumed consumed 1 iron from market for £2) using brewery industry",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.699Z"
       },
@@ -2555,17 +2555,17 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.699Z"
       },
       {
-        "message": "Isambard built brewery Level 2 at nuneaton for £9 (consumed consumed 1 iron from market for £2) (overbuilt own level 1) using brewery industry",
+        "message": "Isambard built brewery Level 2 at olomouc for £9 (consumed consumed 1 iron from market for £2) (overbuilt own level 1) using brewery industry",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.699Z"
       },
       {
-        "message": "Isambard built brewery Level 2 at burton for £10 (consumed consumed 1 iron from market for £3) using burton (other)",
+        "message": "Isambard built brewery Level 2 at prerov for £10 (consumed consumed 1 iron from market for £3) using prerov (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.700Z"
       },
       {
-        "message": "Eliza built coal Level 2 at tamworth for £7 using tamworth (other)",
+        "message": "Eliza built coal Level 2 at prostejov for £7 using prostejov (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.700Z"
       },
@@ -2580,7 +2580,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.701Z"
       },
       {
-        "message": "George built coal Level 2 at redditch for £7 using redditch (other)",
+        "message": "George built coal Level 2 at bratislava for £7 using bratislava (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.701Z"
       },
@@ -2610,22 +2610,22 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.701Z"
       },
       {
-        "message": "Eliza built brewery Level 1 at walsall for £8 (consumed consumed 1 iron from market for £3) using walsall (other)",
+        "message": "Eliza built brewery Level 1 at blansko for £8 (consumed consumed 1 iron from market for £3) using blansko (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.701Z"
       },
       {
-        "message": "Eliza built cotton Level 1 at tamworth for £12 using cotton/manufacturer industry",
+        "message": "Eliza built cotton Level 1 at prostejov for £12 using cotton/manufacturer industry",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.702Z"
       },
       {
-        "message": "George built cotton Level 1 at worcester for £12 using cotton/manufacturer industry",
+        "message": "George built cotton Level 1 at zilina for £12 using cotton/manufacturer industry",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.702Z"
       },
       {
-        "message": "George built coal Level 3 at coventry for £12 (consumed consumed 1 iron from market for £4) using coventry (other)",
+        "message": "George built coal Level 3 at znojmo for £12 (consumed consumed 1 iron from market for £4) using znojmo (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.702Z"
       },
@@ -2635,7 +2635,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.703Z"
       },
       {
-        "message": "Isambard built brewery Level 3 at burton for £13 (consumed consumed 1 iron from market for £4) (overbuilt own level 2) using brewery industry",
+        "message": "Isambard built brewery Level 3 at prerov for £13 (consumed consumed 1 iron from market for £4) (overbuilt own level 2) using brewery industry",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.703Z"
       },
@@ -2670,12 +2670,12 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.703Z"
       },
       {
-        "message": "Isambard built coal Level 2 at coalbrookdale for £7 using coalbrookdale (other)",
+        "message": "Isambard built coal Level 2 at ostrava for £7 using ostrava (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.703Z"
       },
       {
-        "message": "Isambard passed (discarded leek (other))",
+        "message": "Isambard passed (discarded liberec (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.703Z"
       },
@@ -2685,7 +2685,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.704Z"
       },
       {
-        "message": "Eliza passed (discarded stoke (other))",
+        "message": "Eliza passed (discarded teplice (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.704Z"
       },
@@ -2695,7 +2695,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.704Z"
       },
       {
-        "message": "George built brewery Level 1 at stafford for £10 (consumed consumed 1 iron from market for £5) using stafford (other)",
+        "message": "George built brewery Level 1 at jihlava for £10 (consumed consumed 1 iron from market for £5) using jihlava (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.705Z"
       },
@@ -2740,7 +2740,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.705Z"
       },
       {
-        "message": "Eliza passed (discarded cannock (other))",
+        "message": "Eliza passed (discarded rosice (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.705Z"
       },
@@ -2750,7 +2750,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.705Z"
       },
       {
-        "message": "Isambard passed (discarded stone (other))",
+        "message": "Isambard passed (discarded pardubice (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.705Z"
       },
@@ -2760,7 +2760,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.705Z"
       },
       {
-        "message": "George built coal Level 3 at wolverhampton for £13 (consumed consumed 1 iron from market for £5) using wolverhampton (other)",
+        "message": "George built coal Level 3 at novyjicin for £13 (consumed consumed 1 iron from market for £5) using novyjicin (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.706Z"
       },
@@ -2800,27 +2800,27 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.706Z"
       },
       {
-        "message": "Eliza passed (discarded stoke (other))",
+        "message": "Eliza passed (discarded teplice (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.706Z"
       },
       {
-        "message": "Eliza passed (discarded worcester (other))",
+        "message": "Eliza passed (discarded zilina (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.706Z"
       },
       {
-        "message": "Isambard passed (discarded dudley (other))",
+        "message": "Isambard passed (discarded karvina (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.707Z"
       },
       {
-        "message": "Isambard passed (discarded kidderminster (other))",
+        "message": "Isambard passed (discarded frydekmistek (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.707Z"
       },
       {
-        "message": "George built coal Level 4 at cannock for £16 (consumed consumed 1 iron from general supply for £6) using cannock (other)",
+        "message": "George built coal Level 4 at rosice for £16 (consumed consumed 1 iron from general supply for £6) using rosice (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.707Z"
       },
@@ -2865,7 +2865,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.708Z"
       },
       {
-        "message": "Eliza passed (discarded uttoxeter (other))",
+        "message": "Eliza passed (discarded sumperk (other))",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.708Z"
       }
@@ -2875,37 +2875,37 @@ export const demoSnapshotEraEnd: unknown = {
       {
         "id": "burton_2",
         "type": "location",
-        "location": "burton",
+        "location": "prerov",
         "color": "other"
       },
       {
         "id": "nuneaton_1",
         "type": "location",
-        "location": "nuneaton",
+        "location": "olomouc",
         "color": "other"
       },
       {
         "id": "coalbrookdale_3",
         "type": "location",
-        "location": "coalbrookdale",
+        "location": "ostrava",
         "color": "other"
       },
       {
         "id": "dudley_1",
         "type": "location",
-        "location": "dudley",
+        "location": "karvina",
         "color": "other"
       },
       {
         "id": "wolverhampton_1",
         "type": "location",
-        "location": "wolverhampton",
+        "location": "novyjicin",
         "color": "other"
       },
       {
         "id": "leek_2",
         "type": "location",
-        "location": "leek",
+        "location": "liberec",
         "color": "other"
       },
       {
@@ -2932,7 +2932,7 @@ export const demoSnapshotEraEnd: unknown = {
       {
         "id": "coventry_3",
         "type": "location",
-        "location": "coventry",
+        "location": "znojmo",
         "color": "other"
       },
       {
@@ -2946,7 +2946,7 @@ export const demoSnapshotEraEnd: unknown = {
       {
         "id": "stone_2",
         "type": "location",
-        "location": "stone",
+        "location": "pardubice",
         "color": "other"
       },
       {
@@ -2959,37 +2959,37 @@ export const demoSnapshotEraEnd: unknown = {
       {
         "id": "birmingham_3",
         "type": "location",
-        "location": "birmingham",
+        "location": "brno",
         "color": "other"
       },
       {
         "id": "stoke_3",
         "type": "location",
-        "location": "stoke",
+        "location": "teplice",
         "color": "other"
       },
       {
         "id": "worcester_2",
         "type": "location",
-        "location": "worcester",
+        "location": "zilina",
         "color": "other"
       },
       {
         "id": "kidderminster_1",
         "type": "location",
-        "location": "kidderminster",
+        "location": "frydekmistek",
         "color": "other"
       },
       {
         "id": "coalbrookdale_2",
         "type": "location",
-        "location": "coalbrookdale",
+        "location": "ostrava",
         "color": "other"
       },
       {
         "id": "coventry_1",
         "type": "location",
-        "location": "coventry",
+        "location": "znojmo",
         "color": "other"
       },
       {
@@ -3016,13 +3016,13 @@ export const demoSnapshotEraEnd: unknown = {
       {
         "id": "burton_1",
         "type": "location",
-        "location": "burton",
+        "location": "prerov",
         "color": "other"
       },
       {
         "id": "tamworth_1",
         "type": "location",
-        "location": "tamworth",
+        "location": "prostejov",
         "color": "other"
       },
       {
@@ -3043,13 +3043,13 @@ export const demoSnapshotEraEnd: unknown = {
       {
         "id": "redditch_1",
         "type": "location",
-        "location": "redditch",
+        "location": "bratislava",
         "color": "other"
       },
       {
         "id": "walsall_1",
         "type": "location",
-        "location": "walsall",
+        "location": "blansko",
         "color": "other"
       },
       {
@@ -3071,13 +3071,13 @@ export const demoSnapshotEraEnd: unknown = {
       {
         "id": "coventry_2",
         "type": "location",
-        "location": "coventry",
+        "location": "znojmo",
         "color": "other"
       },
       {
         "id": "birmingham_2",
         "type": "location",
-        "location": "birmingham",
+        "location": "brno",
         "color": "other"
       },
       {
@@ -3090,13 +3090,13 @@ export const demoSnapshotEraEnd: unknown = {
       {
         "id": "coalbrookdale_1",
         "type": "location",
-        "location": "coalbrookdale",
+        "location": "ostrava",
         "color": "other"
       },
       {
         "id": "leek_1",
         "type": "location",
-        "location": "leek",
+        "location": "liberec",
         "color": "other"
       },
       {
@@ -3109,7 +3109,7 @@ export const demoSnapshotEraEnd: unknown = {
       {
         "id": "stoke_2",
         "type": "location",
-        "location": "stoke",
+        "location": "teplice",
         "color": "other"
       },
       {
@@ -3122,13 +3122,13 @@ export const demoSnapshotEraEnd: unknown = {
       {
         "id": "stafford_2",
         "type": "location",
-        "location": "stafford",
+        "location": "jihlava",
         "color": "other"
       },
       {
         "id": "cannock_1",
         "type": "location",
-        "location": "cannock",
+        "location": "rosice",
         "color": "other"
       },
       {
@@ -3142,7 +3142,7 @@ export const demoSnapshotEraEnd: unknown = {
       {
         "id": "stone_1",
         "type": "location",
-        "location": "stone",
+        "location": "pardubice",
         "color": "other"
       },
       {
@@ -3155,43 +3155,43 @@ export const demoSnapshotEraEnd: unknown = {
       {
         "id": "wolverhampton_2",
         "type": "location",
-        "location": "wolverhampton",
+        "location": "novyjicin",
         "color": "other"
       },
       {
         "id": "birmingham_1",
         "type": "location",
-        "location": "birmingham",
+        "location": "brno",
         "color": "other"
       },
       {
         "id": "stoke_1",
         "type": "location",
-        "location": "stoke",
+        "location": "teplice",
         "color": "other"
       },
       {
         "id": "worcester_1",
         "type": "location",
-        "location": "worcester",
+        "location": "zilina",
         "color": "other"
       },
       {
         "id": "dudley_2",
         "type": "location",
-        "location": "dudley",
+        "location": "karvina",
         "color": "other"
       },
       {
         "id": "kidderminster_2",
         "type": "location",
-        "location": "kidderminster",
+        "location": "frydekmistek",
         "color": "other"
       },
       {
         "id": "cannock_2",
         "type": "location",
-        "location": "cannock",
+        "location": "rosice",
         "color": "other"
       },
       {
@@ -3212,7 +3212,7 @@ export const demoSnapshotEraEnd: unknown = {
       {
         "id": "uttoxeter_1",
         "type": "location",
-        "location": "uttoxeter",
+        "location": "sumperk",
         "color": "other"
       }
     ],
@@ -3253,7 +3253,7 @@ export const demoSnapshotEraEnd: unknown = {
     "selectedTilesForDevelop": [],
     "merchants": [
       {
-        "location": "shrewsbury",
+        "location": "krakow",
         "industryIcons": [
           "manufacturer"
         ],
@@ -3262,7 +3262,7 @@ export const demoSnapshotEraEnd: unknown = {
         "hasBeer": true
       },
       {
-        "location": "gloucester",
+        "location": "budapest",
         "industryIcons": [
           "cotton",
           "manufacturer",
@@ -3273,21 +3273,21 @@ export const demoSnapshotEraEnd: unknown = {
         "hasBeer": true
       },
       {
-        "location": "gloucester",
+        "location": "budapest",
         "industryIcons": [],
         "bonusType": "develop",
         "bonusValue": 1,
         "hasBeer": false
       },
       {
-        "location": "oxford",
+        "location": "vienna",
         "industryIcons": [],
         "bonusType": "income",
         "bonusValue": 2,
         "hasBeer": false
       },
       {
-        "location": "oxford",
+        "location": "vienna",
         "industryIcons": [
           "cotton"
         ],
@@ -3296,7 +3296,7 @@ export const demoSnapshotEraEnd: unknown = {
         "hasBeer": true
       },
       {
-        "location": "warrington",
+        "location": "prague",
         "industryIcons": [
           "cotton",
           "manufacturer",
@@ -3307,7 +3307,7 @@ export const demoSnapshotEraEnd: unknown = {
         "hasBeer": true
       },
       {
-        "location": "warrington",
+        "location": "prague",
         "industryIcons": [
           "pottery"
         ],

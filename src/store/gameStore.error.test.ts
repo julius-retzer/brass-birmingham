@@ -95,14 +95,14 @@ describe('Error State System', () => {
     // Try to select Birmingham location - this should be rejected by the state machine
     const canSelectBirmingham = snapshot.can({
       type: 'SELECT_LOCATION',
-      cityId: 'birmingham',
+      cityId: 'brno',
     })
     expect(canSelectBirmingham).toBe(false)
 
     // Valid coal locations should still be selectable (e.g., Dudley has a coal slot)
     const canSelectDudley = snapshot.can({
       type: 'SELECT_LOCATION',
-      cityId: 'dudley',
+      cityId: 'karvina',
     })
     expect(canSelectDudley).toBe(true)
 
@@ -144,12 +144,12 @@ describe('Error State System', () => {
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: 'coal_test' })
     actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'coal' })
-    actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    actor.send({ type: 'SELECT_LOCATION', cityId: 'brno' })
     actor.send({ type: 'CONFIRM' })
 
     snapshot = actor.getSnapshot()
     expect(snapshot.context.lastError).toContain(
-      'Cannot build coal at birmingham',
+      'Cannot build coal at brno',
     )
 
     // Now do a valid build - should clear error
@@ -175,7 +175,7 @@ describe('Error State System', () => {
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: 'coal_test2' })
     actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'coal' })
-    actor.send({ type: 'SELECT_LOCATION', cityId: 'stoke' }) // Valid location for coal
+    actor.send({ type: 'SELECT_LOCATION', cityId: 'teplice' }) // Valid location for coal
     actor.send({ type: 'CONFIRM' })
 
     snapshot = actor.getSnapshot()
@@ -188,7 +188,7 @@ describe('Error State System', () => {
     const player = snapshot.context.players[0]!
     expect(player.industries.length).toBe(1)
     expect(player.industries[0]!.type).toBe('coal')
-    expect(player.industries[0]!.location).toBe('stoke')
+    expect(player.industries[0]!.location).toBe('teplice')
   })
 
   test('can manually clear error state', () => {

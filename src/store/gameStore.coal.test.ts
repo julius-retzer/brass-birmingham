@@ -58,8 +58,8 @@ const setupGame = () => {
 
 const buildNetworkAction = (
   actor: ReturnType<typeof createActor>,
-  from = 'birmingham',
-  to = 'coventry',
+  from = 'brno',
+  to = 'znojmo',
 ) => {
   const snapshot = actor.getSnapshot()
   const currentPlayer =
@@ -85,14 +85,14 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
 
       const currentPlayerId = snapshot.context.currentPlayerIndex
 
-      // Set up: player has coal mine at birmingham, building link from birmingham
+      // Set up: player has coal mine at brno, building link from brno
       actor.send({
         type: 'TEST_SET_PLAYER_STATE',
         playerId: currentPlayerId,
         money: 100,
         industries: [
           {
-            location: 'birmingham',
+            location: 'brno',
             type: 'coal',
             level: 1,
             flipped: false,
@@ -130,8 +130,8 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
         snapshot.context.players[currentPlayerId]!.industries[0]!
           .coalCubesOnTile
 
-      // Build rail link from birmingham (should use connected coal mine for free)
-      buildNetworkAction(actor, 'birmingham', 'coventry')
+      // Build rail link from brno (should use connected coal mine for free)
+      buildNetworkAction(actor, 'brno', 'znojmo')
       snapshot = actor.getSnapshot()
 
       // Verify link was built
@@ -159,14 +159,14 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
 
       const currentPlayerId = snapshot.context.currentPlayerIndex
 
-      // Set up: player has industry at warrington (merchant location)
+      // Set up: player has industry at prague (merchant location)
       actor.send({
         type: 'TEST_SET_PLAYER_STATE',
         playerId: currentPlayerId,
         money: 100,
         industries: [
           {
-            location: 'warrington', // Merchant location
+            location: 'prague', // Merchant location
             type: 'pottery',
             level: 1,
             flipped: false,
@@ -202,8 +202,8 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
       const initialMoney = snapshot.context.players[currentPlayerId]!.money
       const initialCoalMarket = [...snapshot.context.coalMarket]
 
-      // Build rail link from warrington (should use coal market)
-      buildNetworkAction(actor, 'warrington', 'birmingham')
+      // Build rail link from prague (should use coal market)
+      buildNetworkAction(actor, 'prague', 'brno')
       snapshot = actor.getSnapshot()
 
       // Verify link was built
@@ -240,7 +240,7 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
         money: 100,
         industries: [
           {
-            location: 'gloucester', // Merchant location
+            location: 'budapest', // Merchant location
             type: 'pottery',
             level: 1,
             flipped: false,
@@ -284,8 +284,8 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
       // For this test, we'll validate that the fallback logic exists
       // In practice, the £8 fallback would be used when market is empty
 
-      // Build rail link from gloucester (merchant location)
-      buildNetworkAction(actor, 'gloucester', 'birmingham')
+      // Build rail link from budapest (merchant location)
+      buildNetworkAction(actor, 'budapest', 'brno')
       snapshot = actor.getSnapshot()
 
       // Verify link was built (would use fallback price if market empty)
@@ -338,8 +338,8 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
         ) {
           actor.send({
             type: 'SELECT_LINK',
-            from: 'birmingham',
-            to: 'coventry',
+            from: 'brno',
+            to: 'znojmo',
           })
           snapshot = actor.getSnapshot()
 
@@ -376,7 +376,7 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
         playerId: opponentId,
         industries: [
           {
-            location: 'stoke', // Coal mine at stoke
+            location: 'teplice', // Coal mine at teplice
             type: 'coal',
             level: 1,
             flipped: false,
@@ -417,7 +417,7 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
       // Try to build rail link - should fail (no connection to coal mine or merchants)
       let linkBuildSucceeded = false
       try {
-        buildNetworkAction(actor, 'birmingham', 'coventry')
+        buildNetworkAction(actor, 'brno', 'znojmo')
         linkBuildSucceeded = true
       } catch (error) {
         expect(error).toBeDefined()
@@ -444,7 +444,7 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
         money: 100,
         industries: [
           {
-            location: 'birmingham',
+            location: 'brno',
             type: 'coal',
             level: 1,
             flipped: false,
@@ -478,7 +478,7 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
       // Try to build rail link - should fail (connected mine exhausted, no merchant access)
       let linkBuildSucceeded = false
       try {
-        buildNetworkAction(actor, 'birmingham', 'coventry')
+        buildNetworkAction(actor, 'brno', 'znojmo')
         linkBuildSucceeded = true
       } catch (error) {
         expect(error).toBeDefined()
@@ -533,8 +533,8 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
         ) {
           actor.send({
             type: 'SELECT_LINK',
-            from: 'birmingham',
-            to: 'coventry',
+            from: 'brno',
+            to: 'znojmo',
           })
           snapshot = actor.getSnapshot()
 
@@ -566,7 +566,7 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
 
       if (industryCard) {
         actor.send({ type: 'SELECT_CARD', cardId: industryCard.id })
-        actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+        actor.send({ type: 'SELECT_LOCATION', cityId: 'brno' })
 
         // This would complete the build action and create a coal mine
         // Then rail links could be built using the coal mine
@@ -592,7 +592,7 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
         money: 100,
         industries: [
           {
-            location: 'birmingham', // Non-merchant location
+            location: 'brno', // Non-merchant location
             type: 'pottery',
             level: 1,
             flipped: false,
@@ -624,12 +624,12 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
       })
 
       // Strategy: Build link TO a merchant location to gain market access
-      // This validates that connecting to warrington enables coal market access
+      // This validates that connecting to prague enables coal market access
 
       // First verify that building from non-merchant fails
       let failedFromNonMerchant = false
       try {
-        buildNetworkAction(actor, 'birmingham', 'coventry') // Neither merchant
+        buildNetworkAction(actor, 'brno', 'znojmo') // Neither merchant
         snapshot = actor.getSnapshot()
         if (snapshot.context.players[currentPlayerId]!.links.length === 0) {
           failedFromNonMerchant = true

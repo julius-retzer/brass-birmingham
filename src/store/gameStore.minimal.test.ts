@@ -153,7 +153,7 @@ describe('Minimal XState Test', () => {
     // Test a simple manual version of the location creation logic
     const sampleLocation = {
       type: 'location',
-      location: 'birmingham',
+      location: 'brno',
       color: 'other',
       twoPlayers: 2,
       threePlayers: 3,

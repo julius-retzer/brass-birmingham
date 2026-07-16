@@ -209,7 +209,7 @@ export interface GameView {
 const hiddenCard = (tag: string, i: number) => ({
   id: `hidden-${tag}-${i}`,
   type: 'location',
-  location: 'birmingham',
+  location: 'brno',
   color: 'other',
 })
 

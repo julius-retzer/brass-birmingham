@@ -335,34 +335,34 @@ type MerchantTileGoods = IndustryType[]
 const MERCHANT_LOCATION_BONUSES: Partial<
   Record<CityId, { bonusType: Merchant['bonusType']; bonusValue: number }>
 > = {
-  warrington: { bonusType: 'money', bonusValue: 5 },
-  gloucester: { bonusType: 'develop', bonusValue: 1 },
-  oxford: { bonusType: 'income', bonusValue: 2 },
-  nottingham: { bonusType: 'victoryPoints', bonusValue: 3 },
-  shrewsbury: { bonusType: 'victoryPoints', bonusValue: 4 },
+  prague: { bonusType: 'money', bonusValue: 5 },
+  budapest: { bonusType: 'develop', bonusValue: 1 },
+  vienna: { bonusType: 'income', bonusValue: 2 },
+  lemberg: { bonusType: 'victoryPoints', bonusValue: 3 },
+  krakow: { bonusType: 'victoryPoints', bonusValue: 4 },
 }
 
 const MERCHANT_SLOTS_BY_PLAYER_COUNT: Record<number, CityId[]> = {
-  2: ['shrewsbury', 'gloucester', 'gloucester', 'oxford', 'oxford'],
+  2: ['krakow', 'budapest', 'budapest', 'vienna', 'vienna'],
   3: [
-    'shrewsbury',
-    'gloucester',
-    'gloucester',
-    'oxford',
-    'oxford',
-    'warrington',
-    'warrington',
+    'krakow',
+    'budapest',
+    'budapest',
+    'vienna',
+    'vienna',
+    'prague',
+    'prague',
   ],
   4: [
-    'shrewsbury',
-    'gloucester',
-    'gloucester',
-    'oxford',
-    'oxford',
-    'warrington',
-    'warrington',
-    'nottingham',
-    'nottingham',
+    'krakow',
+    'budapest',
+    'budapest',
+    'vienna',
+    'vienna',
+    'prague',
+    'prague',
+    'lemberg',
+    'lemberg',
   ],
 }
 

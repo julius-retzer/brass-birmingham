@@ -1,6 +1,6 @@
 // The income Progress Track, audited 2026-07-15 against the retail board
 // (ai-docs/reference/board-retail-day-bgg4231616.jpg — the numbered track
-// runs around the board edge) and corroborated by the npow/brass-birmingham
+// runs around the board edge) and corroborated by the npow/brass-brno
 // transcription. Structure printed on the board:
 //
 //   spaces  0-10  → levels -10..0   (1 space per level)

@@ -484,7 +484,7 @@ describe('Brass Birmingham - Full Game Integration', () => {
 
     // 3p merchant setup includes Warrington
     expect(
-      c.merchants.filter((m: any) => m.location === 'warrington'),
+      c.merchants.filter((m: any) => m.location === 'prague'),
     ).toHaveLength(2)
   }, 30000)
 
@@ -501,7 +501,7 @@ describe('Brass Birmingham - Full Game Integration', () => {
 
     // 4p merchant setup includes Nottingham (9 merchant slots total)
     expect(
-      c.merchants.filter((m: any) => m.location === 'nottingham'),
+      c.merchants.filter((m: any) => m.location === 'lemberg'),
     ).toHaveLength(2)
     expect(c.merchants).toHaveLength(9)
   }, 30000)
@@ -527,7 +527,7 @@ describe('Brass Birmingham - Full Game Integration', () => {
     }).not.toThrow()
 
     expect(() => {
-      actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' } as any)
+      actor.send({ type: 'SELECT_LOCATION', cityId: 'brno' } as any)
       actor.send({ type: 'CONFIRM' } as any)
     }).not.toThrow()
 

@@ -2,7 +2,7 @@
 // retail game board (official Roxley production component, BGG image
 // 4231616, archived as ai-docs/reference/board-retail-day-bgg4231616.jpg)
 // and corroborated 100% by the independent TTS-derived transcription in
-// npow/brass-birmingham (js/gameData.js CONNECTIONS).
+// npow/brass-brno (js/gameData.js CONNECTIONS).
 //
 // The audit found NO deviations — these pins freeze the verified state.
 // Do not change a slot or connection without re-verifying against the
@@ -33,64 +33,64 @@ describe('board graph — pinned to the retail board', () => {
 
   it('city industry slots match the printed board exactly', () => {
     expect(cityIndustrySlots).toStrictEqual({
-      birmingham: [
+      brno: [
         ['cotton', 'manufacturer'],
         ['manufacturer'],
         ['iron'],
         ['manufacturer'],
       ],
-      coventry: [
+      znojmo: [
         ['pottery'],
         ['manufacturer', 'coal'],
         ['iron', 'manufacturer'],
       ],
-      nuneaton: [
+      olomouc: [
         ['manufacturer', 'brewery'],
         ['cotton', 'coal'],
       ],
-      redditch: [['manufacturer', 'coal'], ['iron']],
-      wolverhampton: [['manufacturer'], ['manufacturer', 'coal']],
-      coalbrookdale: [['iron', 'brewery'], ['iron'], ['coal']],
-      dudley: [['coal'], ['iron']],
-      kidderminster: [['cotton', 'coal'], ['cotton']],
-      worcester: [['cotton'], ['cotton']],
-      stafford: [['manufacturer', 'brewery'], ['pottery']],
-      burton: [['manufacturer', 'coal'], ['brewery']],
-      cannock: [['manufacturer', 'coal'], ['coal']],
-      tamworth: [
+      bratislava: [['manufacturer', 'coal'], ['iron']],
+      novyjicin: [['manufacturer'], ['manufacturer', 'coal']],
+      ostrava: [['iron', 'brewery'], ['iron'], ['coal']],
+      karvina: [['coal'], ['iron']],
+      frydekmistek: [['cotton', 'coal'], ['cotton']],
+      zilina: [['cotton'], ['cotton']],
+      jihlava: [['manufacturer', 'brewery'], ['pottery']],
+      prerov: [['manufacturer', 'coal'], ['brewery']],
+      rosice: [['manufacturer', 'coal'], ['coal']],
+      prostejov: [
         ['cotton', 'coal'],
         ['cotton', 'coal'],
       ],
-      walsall: [
+      blansko: [
         ['iron', 'manufacturer'],
         ['manufacturer', 'brewery'],
       ],
-      leek: [
+      liberec: [
         ['cotton', 'manufacturer'],
         ['cotton', 'coal'],
       ],
-      stoke: [
+      teplice: [
         ['cotton', 'manufacturer'],
         ['pottery', 'iron'],
         ['manufacturer'],
       ],
-      stone: [
+      pardubice: [
         ['cotton', 'brewery'],
         ['manufacturer', 'coal'],
       ],
-      uttoxeter: [
+      sumperk: [
         ['manufacturer', 'brewery'],
         ['cotton', 'brewery'],
       ],
-      belper: [['cotton', 'manufacturer'], ['coal'], ['pottery']],
-      derby: [['cotton', 'brewery'], ['cotton', 'manufacturer'], ['iron']],
+      tesin: [['cotton', 'manufacturer'], ['coal'], ['pottery']],
+      bielsko: [['cotton', 'brewery'], ['cotton', 'manufacturer'], ['iron']],
       farmBrewery1: [['brewery']],
       farmBrewery2: [['brewery']],
-      warrington: [],
-      gloucester: [],
-      oxford: [],
-      nottingham: [],
-      shrewsbury: [],
+      prague: [],
+      budapest: [],
+      vienna: [],
+      lemberg: [],
+      krakow: [],
     })
   })
 
@@ -104,16 +104,16 @@ describe('board graph — pinned to the retail board', () => {
     expect(got.size).toBe(39)
 
     const RAIL_ONLY: Array<[string, string]> = [
-      ['belper', 'leek'],
-      ['derby', 'uttoxeter'],
-      ['stone', 'uttoxeter'],
-      ['burton', 'cannock'],
-      ['tamworth', 'walsall'],
-      ['birmingham', 'nuneaton'],
-      ['birmingham', 'redditch'],
-      ['coventry', 'nuneaton'],
+      ['tesin', 'liberec'],
+      ['bielsko', 'sumperk'],
+      ['pardubice', 'sumperk'],
+      ['prerov', 'rosice'],
+      ['prostejov', 'blansko'],
+      ['brno', 'olomouc'],
+      ['brno', 'bratislava'],
+      ['znojmo', 'olomouc'],
     ]
-    const CANAL_ONLY: Array<[string, string]> = [['burton', 'walsall']]
+    const CANAL_ONLY: Array<[string, string]> = [['prerov', 'blansko']]
 
     for (const [a, b] of RAIL_ONLY) {
       expect(got.get(key(a, b)), `${a}|${b}`).toBe('rail')
@@ -133,7 +133,7 @@ describe('board graph — pinned to the retail board', () => {
   it('the farm-brewery spur and 3-way link are modelled (rules p.5)', () => {
     expect(
       connections.find(
-        (c) => key(c.from, c.to) === key('cannock', 'farmBrewery1'),
+        (c) => key(c.from, c.to) === key('rosice', 'farmBrewery1'),
       )?.types,
     ).toStrictEqual(['canal', 'rail'])
     // the southern farm brewery has NO corridor of its own…
@@ -144,10 +144,10 @@ describe('board graph — pinned to the retail board', () => {
           (c.to as string) === 'farmBrewery2',
       ),
     ).toBe(false)
-    // …the kidderminster—worcester tile connects it instead
-    expect(linkConnectedLocations('kidderminster', 'worcester')).toStrictEqual([
-      'kidderminster',
-      'worcester',
+    // …the frydekmistek—zilina tile connects it instead
+    expect(linkConnectedLocations('frydekmistek', 'zilina')).toStrictEqual([
+      'frydekmistek',
+      'zilina',
       'farmBrewery2',
     ])
   })
@@ -191,7 +191,7 @@ describe('merchants — pinned to the retail board', () => {
         .map((m) => m.location)
         .sort(),
     ).toStrictEqual(
-      ['gloucester', 'gloucester', 'oxford', 'oxford', 'shrewsbury'].sort(),
+      ['budapest', 'budapest', 'vienna', 'vienna', 'krakow'].sort(),
     )
     expect(
       merchantsFor(3)
@@ -199,13 +199,13 @@ describe('merchants — pinned to the retail board', () => {
         .sort(),
     ).toStrictEqual(
       [
-        'gloucester',
-        'gloucester',
-        'oxford',
-        'oxford',
-        'shrewsbury',
-        'warrington',
-        'warrington',
+        'budapest',
+        'budapest',
+        'vienna',
+        'vienna',
+        'krakow',
+        'prague',
+        'prague',
       ].sort(),
     )
     expect(
@@ -214,15 +214,15 @@ describe('merchants — pinned to the retail board', () => {
         .sort(),
     ).toStrictEqual(
       [
-        'gloucester',
-        'gloucester',
-        'nottingham',
-        'nottingham',
-        'oxford',
-        'oxford',
-        'shrewsbury',
-        'warrington',
-        'warrington',
+        'budapest',
+        'budapest',
+        'lemberg',
+        'lemberg',
+        'vienna',
+        'vienna',
+        'krakow',
+        'prague',
+        'prague',
       ].sort(),
     )
   })
@@ -234,10 +234,10 @@ describe('merchants — pinned to the retail board', () => {
         `${m.bonusType}:${m.bonusValue}`,
       ]),
     )
-    expect(byLocation.get('warrington')).toBe('money:5')
-    expect(byLocation.get('gloucester')).toBe('develop:1')
-    expect(byLocation.get('oxford')).toBe('income:2')
-    expect(byLocation.get('nottingham')).toBe('victoryPoints:3')
-    expect(byLocation.get('shrewsbury')).toBe('victoryPoints:4')
+    expect(byLocation.get('prague')).toBe('money:5')
+    expect(byLocation.get('budapest')).toBe('develop:1')
+    expect(byLocation.get('vienna')).toBe('income:2')
+    expect(byLocation.get('lemberg')).toBe('victoryPoints:3')
+    expect(byLocation.get('krakow')).toBe('victoryPoints:4')
   })
 })

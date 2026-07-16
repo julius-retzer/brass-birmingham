@@ -54,7 +54,7 @@ describe('Game Store - Auto flipping and resource priority', () => {
       playerId: 0,
       industries: [
         {
-          location: 'birmingham',
+          location: 'brno',
           type: 'iron',
           level: 1,
           flipped: false,
@@ -109,7 +109,7 @@ describe('Game Store - Auto flipping and resource priority', () => {
       money: 50,
       industries: [
         {
-          location: 'birmingham',
+          location: 'brno',
           type: 'iron',
           level: 1,
           flipped: false,

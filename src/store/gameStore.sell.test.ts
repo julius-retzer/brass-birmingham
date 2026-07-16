@@ -92,7 +92,7 @@ const makeIndustry = (
 })
 
 const gloucesterMerchant = (overrides: Partial<Merchant> = {}): Merchant => ({
-  location: 'gloucester',
+  location: 'budapest',
   industryIcons: ['cotton', 'manufacturer'],
   bonusType: 'money',
   bonusValue: 5,
@@ -100,7 +100,7 @@ const gloucesterMerchant = (overrides: Partial<Merchant> = {}): Merchant => ({
   ...overrides,
 })
 
-// Build a canal link worcester <-> gloucester with the current player so the
+// Build a canal link zilina <-> budapest with the current player so the
 // industry location is connected to the merchant (virgin-board exception
 // allows building anywhere)
 const buildLinkToGloucester = (actor: any) => {
@@ -113,7 +113,7 @@ const buildLinkToGloucester = (actor: any) => {
       snapshot.context.players[snapshot.context.currentPlayerIndex]!.hand[0]!
         .id,
   })
-  actor.send({ type: 'SELECT_LINK', from: 'worcester', to: 'gloucester' })
+  actor.send({ type: 'SELECT_LINK', from: 'zilina', to: 'budapest' })
   actor.send({ type: 'CONFIRM' })
 }
 
@@ -148,7 +148,7 @@ describe('Game Store - Sell Actions', () => {
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
       playerId: sellerIndex,
-      industries: [makeIndustry('worcester', cottonTile)],
+      industries: [makeIndustry('zilina', cottonTile)],
       money: 20,
       income: 10,
     })
@@ -165,9 +165,9 @@ describe('Game Store - Sell Actions', () => {
     })
     actor.send({
       type: 'SELECT_SALE',
-      location: 'worcester',
+      location: 'zilina',
       industryType: 'cotton',
-      merchant: 'gloucester',
+      merchant: 'budapest',
     })
     actor.send({ type: 'CONFIRM' })
 
@@ -183,7 +183,7 @@ describe('Game Store - Sell Actions', () => {
 
     // Merchant beer consumed from the merchant sold to, money bonus applied
     const merchant = snapshot.context.merchants.find(
-      (m) => m.location === 'gloucester',
+      (m) => m.location === 'budapest',
     )!
     expect(merchant.hasBeer).toBe(false)
     expect(seller.money).toBe(25) // 20 + £5 bonus
@@ -212,8 +212,8 @@ describe('Game Store - Sell Actions', () => {
       type: 'TEST_SET_PLAYER_STATE',
       playerId: sellerIndex,
       industries: [
-        makeIndustry('worcester', cottonTile),
-        makeIndustry('worcester', manufacturerTile),
+        makeIndustry('zilina', cottonTile),
+        makeIndustry('zilina', manufacturerTile),
       ],
       money: 20,
       income: 10,
@@ -231,15 +231,15 @@ describe('Game Store - Sell Actions', () => {
     })
     actor.send({
       type: 'SELECT_SALE',
-      location: 'worcester',
+      location: 'zilina',
       industryType: 'cotton',
-      merchant: 'gloucester',
+      merchant: 'budapest',
     })
     actor.send({
       type: 'SELECT_SALE',
-      location: 'worcester',
+      location: 'zilina',
       industryType: 'manufacturer',
-      merchant: 'gloucester',
+      merchant: 'budapest',
     })
     actor.send({ type: 'CONFIRM' })
 
@@ -295,7 +295,7 @@ describe('Game Store - Sell Actions', () => {
   test('sell action - rejected when not connected to the chosen merchant', () => {
     const { actor } = setupGame()
 
-    // No links built - worcester is not connected to gloucester
+    // No links built - zilina is not connected to budapest
     actor.send({
       type: 'TEST_SET_MERCHANTS',
       merchants: [gloucesterMerchant()],
@@ -303,7 +303,7 @@ describe('Game Store - Sell Actions', () => {
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
       playerId: 0,
-      industries: [makeIndustry('worcester', cottonTile)],
+      industries: [makeIndustry('zilina', cottonTile)],
       money: 20,
       income: 10,
     })
@@ -316,9 +316,9 @@ describe('Game Store - Sell Actions', () => {
     })
     actor.send({
       type: 'SELECT_SALE',
-      location: 'worcester',
+      location: 'zilina',
       industryType: 'cotton',
-      merchant: 'gloucester',
+      merchant: 'budapest',
     })
 
     snapshot = actor.getSnapshot()
@@ -345,7 +345,7 @@ describe('Game Store - Sell Actions', () => {
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
       playerId: sellerIndex,
-      industries: [makeIndustry('worcester', cottonTile)],
+      industries: [makeIndustry('zilina', cottonTile)],
       money: 20,
       income: 10,
     })
@@ -358,9 +358,9 @@ describe('Game Store - Sell Actions', () => {
     })
     actor.send({
       type: 'SELECT_SALE',
-      location: 'worcester',
+      location: 'zilina',
       industryType: 'cotton',
-      merchant: 'gloucester',
+      merchant: 'budapest',
     })
 
     snapshot = actor.getSnapshot()
@@ -387,7 +387,7 @@ describe('Game Store - Sell Actions', () => {
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
       playerId: sellerIndex,
-      industries: [makeIndustry('worcester', cottonTile)],
+      industries: [makeIndustry('zilina', cottonTile)],
       money: 20,
       income: 10,
     })
@@ -400,9 +400,9 @@ describe('Game Store - Sell Actions', () => {
     })
     actor.send({
       type: 'SELECT_SALE',
-      location: 'worcester',
+      location: 'zilina',
       industryType: 'cotton',
-      merchant: 'gloucester',
+      merchant: 'budapest',
     })
 
     snapshot = actor.getSnapshot()

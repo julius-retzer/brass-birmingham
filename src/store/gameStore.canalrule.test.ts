@@ -1,8 +1,8 @@
 // Canal-era one-tile rule (captain playtest bug, 2026-07-15): "During the
 // Canal Era, each player may place a maximum of 1 of their Industry tiles
-// in each location" (ai-docs/brass-birmingham-rules.mdc p.7, restated on
+// in each location" (ai-docs/brass-brno-rules.mdc p.7, restated on
 // p.4). The Rail Era allows multiple tiles per location. Before the fix,
-// coal L1 + iron L1 both landed at coalbrookdale in the Canal Era.
+// coal L1 + iron L1 both landed at ostrava in the Canal Era.
 import { describe, expect, it } from 'vitest'
 import { createActor } from 'xstate'
 import { gameStore } from './gameStore'
@@ -75,15 +75,15 @@ const buildAs = (a: AnyActor, cardId: string, industryType: string) => {
 }
 
 describe('canal era: max ONE of your tiles per location', () => {
-  it("the captain's repro is dead: coal then iron at coalbrookdale — second build refused", () => {
+  it("the captain's repro is dead: coal then iron at ostrava — second build refused", () => {
     const a = start()
     untilP1(a)
-    giveCard(a, 'cb1', 'coalbrookdale')
+    giveCard(a, 'cb1', 'ostrava')
     expect(buildAs(a, 'cb1', 'coal')).toBeNull()
-    expect(tilesAt(a, 'coalbrookdale')).toStrictEqual(['coalL1'])
+    expect(tilesAt(a, 'ostrava')).toStrictEqual(['coalL1'])
 
     untilP1(a)
-    giveCard(a, 'cb2', 'coalbrookdale')
+    giveCard(a, 'cb2', 'ostrava')
     // the guard refuses at the industry step…
     a.send({ type: 'BUILD' } as never)
     a.send({ type: 'SELECT_CARD', cardId: 'cb2' } as never)
@@ -93,34 +93,34 @@ describe('canal era: max ONE of your tiles per location', () => {
     // …and forcing on anyway builds nothing
     a.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'iron' } as never)
     a.send({ type: 'CONFIRM' } as never)
-    expect(tilesAt(a, 'coalbrookdale')).toStrictEqual(['coalL1'])
+    expect(tilesAt(a, 'ostrava')).toStrictEqual(['coalL1'])
     a.stop()
   })
 
   it('a DIFFERENT location is of course still open', () => {
     const a = start()
     untilP1(a)
-    giveCard(a, 'cb1', 'coalbrookdale')
+    giveCard(a, 'cb1', 'ostrava')
     expect(buildAs(a, 'cb1', 'coal')).toBeNull()
     untilP1(a)
-    giveCard(a, 'du1', 'dudley')
+    giveCard(a, 'du1', 'karvina')
     // (coal again — the mat's next coal is L2, canal-legal, needs nothing)
     expect(buildAs(a, 'du1', 'coal')).toBeNull()
-    expect(tilesAt(a, 'dudley')).toStrictEqual(['coalL2'])
+    expect(tilesAt(a, 'karvina')).toStrictEqual(['coalL2'])
     a.stop()
   })
 
   it('replacing your OWN tile (overbuild) stays legal — the count stays at one', () => {
     const a = start()
     untilP1(a)
-    giveCard(a, 'cb1', 'coalbrookdale')
+    giveCard(a, 'cb1', 'ostrava')
     expect(buildAs(a, 'cb1', 'coal')).toBeNull()
     untilP1(a)
-    giveCard(a, 'cb2', 'coalbrookdale')
+    giveCard(a, 'cb2', 'ostrava')
     // coal L2 replaces the own L1 in place — even though the city has a
     // second coal-capable slot free, the canal rule forces the overbuild
     expect(buildAs(a, 'cb2', 'coal')).toBeNull()
-    expect(tilesAt(a, 'coalbrookdale')).toStrictEqual(['coalL2'])
+    expect(tilesAt(a, 'ostrava')).toStrictEqual(['coalL2'])
     a.stop()
   })
 })
@@ -128,21 +128,21 @@ describe('canal era: max ONE of your tiles per location', () => {
 describe('rail era: multiple tiles per location are allowed', () => {
   it('a second tile by the same player at the same location builds fine', () => {
     const a = start()
-    // Consume the single-copy canal-only L1s first (coal at dudley, iron
-    // at birmingham via a link for coal reach) — otherwise the mat's
+    // Consume the single-copy canal-only L1s first (coal at karvina, iron
+    // at brno via a link for coal reach) — otherwise the mat's
     // lowest tiles are unbuildable in the Rail Era.
     untilP1(a)
-    giveCard(a, 'du1', 'dudley')
+    giveCard(a, 'du1', 'karvina')
     expect(buildAs(a, 'du1', 'coal')).toBeNull()
     untilP1(a)
-    giveCard(a, 'lk1', 'dudley')
+    giveCard(a, 'lk1', 'karvina')
     a.send({ type: 'NETWORK' } as never)
     a.send({ type: 'SELECT_CARD', cardId: 'lk1' } as never)
-    a.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'dudley' } as never)
+    a.send({ type: 'SELECT_LINK', from: 'brno', to: 'karvina' } as never)
     a.send({ type: 'CONFIRM' } as never)
     expect(snap(a).context.lastError).toBeNull()
     untilP1(a)
-    giveCard(a, 'bh1', 'birmingham')
+    giveCard(a, 'bh1', 'brno')
     expect(buildAs(a, 'bh1', 'iron')).toBeNull()
 
     a.send({ type: 'TRIGGER_CANAL_ERA_END' } as never)
@@ -160,20 +160,20 @@ describe('rail era: multiple tiles per location are allowed', () => {
         {
           id: 'cb1',
           type: 'location',
-          location: 'coalbrookdale',
+          location: 'ostrava',
           color: 'other',
         },
         {
           id: 'cb2',
           type: 'location',
-          location: 'coalbrookdale',
+          location: 'ostrava',
           color: 'other',
         },
       ],
     } as never)
     expect(buildAs(a, 'cb1', 'coal')).toBeNull()
     expect(buildAs(a, 'cb2', 'iron')).toBeNull()
-    expect(tilesAt(a, 'coalbrookdale')).toStrictEqual(['coalL2', 'ironL2'])
+    expect(tilesAt(a, 'ostrava')).toStrictEqual(['coalL2', 'ironL2'])
     a.stop()
   })
 })

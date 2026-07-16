@@ -18,6 +18,7 @@ import { createActor } from 'xstate'
 import { Toaster } from '~/components/ui/sonner'
 import { type CityId, cities, connections } from '~/data/board'
 import { type Card, type IndustryType } from '~/data/cards'
+import { type InspectFn, useXstateInspect } from '~/lib/xstate-inspector'
 import {
   type GameEvent,
   type GameStoreSnapshot,
@@ -174,6 +175,10 @@ interface Boot {
 export function Game() {
   const [boot, setBoot] = useState<Boot | null>(null)
   const [generation, setGeneration] = useState(0)
+  // Dev-only: wait for the Stately Inspector to attach before creating the
+  // actor so its first transitions are captured. `ready` is true from the
+  // first render when the inspector is disabled (the default) — no change.
+  const { ready: inspectReady, inspect } = useXstateInspect()
 
   // Boot decision is client-only (localStorage + query params), behind a
   // mount gate so SSR and hydration always agree.
@@ -231,7 +236,7 @@ export function Game() {
     setBoot({ kind: 'fresh', resumed: false })
   }, [])
 
-  if (!boot) {
+  if (!boot || !inspectReady) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <span
@@ -299,6 +304,7 @@ export function Game() {
       <GameInner
         key={`${boot.kind}-${boot.resumed}-${generation}`}
         boot={boot}
+        inspect={inspect}
         onNewGame={newGame}
         onRestoreSnapshot={restoreSnapshot}
       />
@@ -350,17 +356,19 @@ class SaveRecoveryBoundary extends Component<
 
 function GameInner({
   boot,
+  inspect,
   onNewGame,
   onRestoreSnapshot,
 }: {
   boot: Boot
+  inspect?: InspectFn
   onNewGame: () => void
   onRestoreSnapshot: (snapshot: unknown) => void
 }) {
-  const [state, send, actorRef] = useMachine(
-    gameStore,
-    boot.snapshot ? { snapshot: boot.snapshot as never } : undefined,
-  )
+  const [state, send, actorRef] = useMachine(gameStore, {
+    ...(boot.snapshot ? { snapshot: boot.snapshot as never } : {}),
+    ...(inspect ? { inspect } : {}),
+  })
   // Demo showcases reveal immediately; resumed & fresh games always gate so
   // a refresh never exposes the incoming player's hand.
   const [revealedFor, setRevealedFor] = useState<string | null>(() =>

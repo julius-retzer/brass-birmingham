@@ -47,6 +47,7 @@
     "@biomejs/biome": "1.9.4",
     "@neondatabase/api-client": "^2.7.3",
     "@playwright/test": "^1.61.1",
+    "@statelyai/inspect": "^0.7.2",
     "@types/eslint": "^8.56.10",
     "@types/node": "^20.14.10",
     "@types/react": "^18.3.3",

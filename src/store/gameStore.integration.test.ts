@@ -10,6 +10,7 @@ import type { CityId } from '../data/board'
 import { gameStore } from './gameStore'
 
 let activeActors: ReturnType<typeof createActor>[] = []
+let moneyInvariantViolations: string[] = []
 
 afterEach(() => {
   activeActors.forEach((actor) => {
@@ -18,6 +19,9 @@ afterEach(() => {
     } catch {}
   })
   activeActors = []
+  const violations = moneyInvariantViolations
+  moneyInvariantViolations = []
+  expect(violations).toEqual([])
 })
 
 const PLAYER_TEMPLATES = [
@@ -50,6 +54,17 @@ const PLAYER_TEMPLATES = [
 const startGame = (playerCount: number) => {
   const actor = createActor(gameStore)
   activeActors.push(actor)
+  // Global invariant: Brass has no debt, so no event may ever leave a player
+  // with a negative treasury (see gameStore.money.test.ts). Violations are
+  // collected rather than thrown - a throw inside a subscriber does not
+  // propagate out of send() - and asserted in afterEach.
+  actor.subscribe((snapshot) => {
+    for (const player of (snapshot as any).context.players) {
+      if (player.money < 0) {
+        moneyInvariantViolations.push(`${player.name} has £${player.money}`)
+      }
+    }
+  })
   actor.start()
   const players = PLAYER_TEMPLATES.slice(0, playerCount).map((p) => ({
     ...p,

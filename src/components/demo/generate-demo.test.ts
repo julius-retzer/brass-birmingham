@@ -14,6 +14,10 @@ import { createActor } from 'xstate'
 import { cities, cityIndustrySlots, connections } from '../../data/board'
 import type { CityId } from '../../data/board'
 import { gameStore } from '../../store/gameStore'
+import {
+  getBeerSourceOptions,
+  hasSourceChoice,
+} from '../../store/shared/resourceSources'
 
 type AnyActor = ReturnType<typeof createActor>
 
@@ -259,6 +263,40 @@ const multiSalePossible = (actor: AnyActor): boolean => {
   const second = saleOptions(probe)
   probe.stop()
   return second.length >= 1
+}
+
+/**
+ * Is there a sale here whose beer could come from more than one place? Asked
+ * of the engine itself — saleOptions probes the machine's guards, and the
+ * source list is the engine's own enumeration, not a re-implementation.
+ */
+const beerChoicePossible = (actor: AnyActor): boolean => {
+  const player = currentPlayer(actor)
+  if (player.hand.length === 0) return false
+  const probe = cloneActor(actor)
+  probe.send({ type: 'SELL' } as any)
+  probe.send({
+    type: 'SELECT_CARD',
+    cardId: currentPlayer(probe).hand[0].id,
+  } as any)
+  const found = saleOptions(probe).some((sale) => {
+    const c = ctx(probe)
+    const me = currentPlayer(probe)
+    const industry = me.industries.find(
+      (i: any) => i.location === sale.location && i.type === sale.industryType,
+    )
+    if (!industry) return false
+    const options = getBeerSourceOptions(
+      c,
+      sale.location as CityId,
+      me,
+      sale.merchant as CityId,
+      sale.industryType as never,
+    )
+    return hasSourceChoice(options, industry.tile.beerRequired)
+  })
+  probe.stop()
+  return found
 }
 
 // Would a single PASS from this state end the Canal Era?
@@ -576,6 +614,44 @@ describe('demo snapshot generator', () => {
     writeFixture(
       'sell',
       'Frozen where the current player can multi-sell (2+ industries in one Sell action).',
+      found,
+    )
+    found.stop()
+  })
+
+  test.skipIf(!process.env.GENERATE_DEMO)('generate beer-choice fixture', () => {
+    // Freeze where a sale's beer could come from more than one source, so the
+    // beer-source picker is reachable in the UI and in e2e. Hoard like the
+    // sell fixture: the greedy policy sells the moment it can and would drain
+    // the breweries that make the choice interesting.
+    const hoardingPolicy = (actor: AnyActor): boolean => {
+      const player = currentPlayer(actor)
+      if (tryBuild(actor)) return true
+      if (tryNetwork(actor)) return true
+      if (player.money < 14 && tryLoan(actor)) return true
+      return pass(actor)
+    }
+    let found: AnyActor | null = null
+    for (let attempt = 0; attempt < 100 && !found; attempt++) {
+      const actor = startFreshGame()
+      let actions = 0
+      while (actions < 260 && !actor.getSnapshot().matches('gameOver')) {
+        if (!isSelectingAction(actor)) unwind(actor)
+        if (isSelectingAction(actor) && beerChoicePossible(actor)) {
+          found = actor
+          break
+        }
+        hoardingPolicy(actor)
+        actions++
+      }
+      if (!found) actor.stop()
+    }
+
+    expect(found).not.toBeNull()
+    if (!found) return
+    writeFixture(
+      'beer-choice',
+      'Frozen where a sale offers a real beer-source choice (own brewery vs merchant barrel or an opponent).',
       found,
     )
     found.stop()

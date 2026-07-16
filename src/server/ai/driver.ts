@@ -41,6 +41,10 @@ export function rehydrateSnapshot(persisted: unknown): unknown {
     context?: {
       coalMarket?: Array<{ maxCubes: number | null }>
       ironMarket?: Array<{ maxCubes: number | null }>
+      pendingSale?: unknown
+      chosenBeerSources?: unknown
+      chosenIronSources?: unknown
+      pendingIronStep?: unknown
     }
   }
   for (const market of [clone.context?.coalMarket, clone.context?.ironMarket]) {
@@ -48,6 +52,17 @@ export function rehydrateSnapshot(persisted: unknown): unknown {
     for (const row of market) {
       if (row && row.maxCubes === null) row.maxCubes = Infinity
     }
+  }
+  // Source-choice fields were added after some snapshots were frozen (demo
+  // fixtures, and any game persisted before this shipped). Backfill their
+  // empty defaults so a rehydrated old snapshot has the shape the machine
+  // expects; the engine reads them defensively too, as belt and braces.
+  const ctx = clone.context
+  if (ctx) {
+    if (ctx.pendingSale === undefined) ctx.pendingSale = null
+    if (!Array.isArray(ctx.chosenBeerSources)) ctx.chosenBeerSources = []
+    if (!Array.isArray(ctx.chosenIronSources)) ctx.chosenIronSources = []
+    if (ctx.pendingIronStep === undefined) ctx.pendingIronStep = null
   }
   return clone
 }

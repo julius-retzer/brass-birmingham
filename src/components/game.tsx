@@ -40,10 +40,12 @@ import { demoSnapshot } from './demo/demo-snapshot'
 import { demoSnapshotEraEnd } from './demo/demo-snapshot-era-end'
 import { demoSnapshotGameEnd } from './demo/demo-snapshot-game-end'
 import { demoSnapshotRail } from './demo/demo-snapshot-rail'
+import { demoSnapshotBeerChoice } from './demo/demo-snapshot-beer-choice'
 import { demoSnapshotSell } from './demo/demo-snapshot-sell'
 import { demoSnapshotWilds } from './demo/demo-snapshot-wilds'
 import { HandTray } from './hand-tray'
 import { computeHoverCities } from './hover-highlight'
+import { pendingBeerChoice } from '~/store/shared/resourceSources'
 import { GameOverScreen, PassGate, RoundCurtain } from './overlays'
 import { OpenMatButton, PlayerLedger } from './player-ledger'
 import { PlayerRail } from './player-rail'
@@ -201,7 +203,8 @@ export function Game() {
       // Named engine-generated fixtures for demos and e2e journeys:
       // ?demo (canal mid-game), ?demo=sell (multi-sale ready),
       // ?demo=eraend (one PASS from the Rail Era),
-      // ?demo=gameend (a few PASSes from final scoring).
+      // ?demo=gameend (a few PASSes from final scoring),
+      // ?demo=beerchoice (a sale whose beer has more than one source).
       const fixture =
         demoParam === 'sell'
           ? demoSnapshotSell
@@ -211,7 +214,9 @@ export function Game() {
               ? demoSnapshotGameEnd
               : demoParam === 'wilds'
                 ? demoSnapshotWilds
-                : demoSnapshot
+                : demoParam === 'beerchoice'
+                  ? demoSnapshotBeerChoice
+                  : demoSnapshot
       setBoot({
         kind: 'demo',
         snapshot: rehydrateSnapshot(fixture),
@@ -369,6 +374,7 @@ function GameInner({
     ...(boot.snapshot ? { snapshot: boot.snapshot as never } : {}),
     ...(inspect ? { inspect } : {}),
   })
+
   // Demo showcases reveal immediately; resumed & fresh games always gate so
   // a refresh never exposes the incoming player's hand.
   const [revealedFor, setRevealedFor] = useState<string | null>(() =>
@@ -706,6 +712,21 @@ function GameInner({
     setHoveredCard(null)
   }, [currentPlayer?.id])
 
+  // While the dock asks WHERE a sale's beer comes from, spotlight the places
+  // it could come from — the choice is about the board, so it belongs on it.
+  // The candidates are the engine's own enumeration, never a UI guess.
+  // While the machine is asking WHERE a sale's beer comes from, spotlight the
+  // places it could come from — the choice is about the board, so it belongs
+  // on it. Both the question and the answers are the engine's.
+  const beerCandidateCities = useMemo(() => {
+    if (!ctx.pendingSale) return null
+    const choice = pendingBeerChoice(ctx)
+    if (!choice?.hasChoice) return null
+    return new Set<string>(
+      choice.options.map((option) => option.source.location),
+    )
+  }, [ctx])
+
   const boardPrompt = useMemo(() => {
     if (pickingSite) {
       const t = ctx.selectedIndustryTile?.type
@@ -910,7 +931,9 @@ function GameInner({
               networkColor={
                 needsReveal ? null : PLAYER_FILL[currentPlayer.color]
               }
-              hoverCities={needsReveal ? null : hoverCities}
+              hoverCities={
+                needsReveal ? null : (beerCandidateCities ?? hoverCities)
+              }
             />
           </div>
         </div>

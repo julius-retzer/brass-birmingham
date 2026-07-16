@@ -5,11 +5,20 @@ import type { GameState, Player } from '../gameStore'
 import {
   calculateNetworkDistance,
   checkAndFlipIndustryTilesLogic,
-  findAvailableBreweries,
-  findAvailableIronWorks,
   findConnectedCoalMines,
   getCurrentPlayer,
 } from '../shared/gameUtils'
+import {
+  type BeerSource,
+  type IronSource,
+  beerSourceKey,
+  describeBeerSource,
+  describeIronSource,
+  getBeerSourceOptions,
+  getIronSourceOptions,
+  ironSourceKey,
+  planResourceSources,
+} from '../shared/resourceSources'
 
 export function consumeCoalFromSources(
   context: GameState,
@@ -177,86 +186,99 @@ export function consumeCoalFromSources(
   }
 }
 
+/**
+ * Consume iron for a build or develop.
+ *
+ * `preferredSources` is the player's choice of WHICH iron works (or the
+ * market) each cube comes from — the rules let iron come from any unflipped
+ * works. Omit it and the engine keeps its historic auto-pick: every works in
+ * turn, then the market cheapest-first.
+ */
 export function consumeIronFromSources(
   context: GameState,
   ironRequired: number,
+  preferredSources?: IronSource[],
 ): {
+  success: boolean
   updatedPlayers: Player[]
   updatedIronMarket: Array<{ price: number; cubes: number; maxCubes: number }>
   ironCost: number
   logDetails: string[]
+  errorMessage?: string
 } {
-  let ironConsumed = 0
   let ironCost = 0
   const logDetails: string[] = []
   let updatedPlayers = [...context.players]
   const updatedIronMarket = context.ironMarket.map((level) => ({ ...level }))
 
-  // First, try to consume from any available iron works (free)
-  const availableIronWorks = findAvailableIronWorks(context)
+  const currentPlayer = getCurrentPlayer(context)
+  const options = getIronSourceOptions(context, currentPlayer)
+  const { plan, error } = planResourceSources(
+    options,
+    ironRequired,
+    preferredSources,
+    ironSourceKey,
+    (source) => describeIronSource(source, context),
+  )
 
-  for (const ironWorks of availableIronWorks) {
-    if (ironConsumed >= ironRequired) break
-
-    if (ironWorks.ironCubesOnTile > 0) {
-      // Consume as many cubes as possible from this iron works (up to requirement)
-      const cubesToConsume = Math.min(
-        ironWorks.ironCubesOnTile,
-        ironRequired - ironConsumed,
-      )
-
-      // Find the player who owns this iron works and update it
-      updatedPlayers = updatedPlayers.map((player) => ({
-        ...player,
-        industries: player.industries.map((industry) =>
-          industry === ironWorks
-            ? {
-                ...industry,
-                ironCubesOnTile: industry.ironCubesOnTile - cubesToConsume,
-              }
-            : industry,
-        ),
-      }))
-
-      ironConsumed += cubesToConsume
-      if (cubesToConsume === 1) {
-        logDetails.push(`1 iron from iron works (free)`)
-      } else {
-        logDetails.push(`${cubesToConsume} iron from iron works (free)`)
-      }
+  if (error) {
+    return {
+      success: false,
+      updatedPlayers: context.players,
+      updatedIronMarket: context.ironMarket,
+      ironCost: 0,
+      logDetails,
+      errorMessage: error,
     }
   }
 
-  // If still need iron, consume from iron market (cheapest first)
-  while (ironConsumed < ironRequired) {
-    let foundIron = false
-
-    // Find cheapest available iron (price levels in order)
-    for (const level of updatedIronMarket) {
-      if (level.cubes > 0) {
-        level.cubes--
-        ironCost += level.price
-        ironConsumed++
-        logDetails.push(`consumed 1 iron from market for £${level.price}`)
-        foundIron = true
-        break
-      }
-    }
-
-    // If market is empty, still buy at fallback price (infinite capacity fallback)
-    if (!foundIron) {
-      const fallbackLevel = updatedIronMarket.find(
-        (l) => l.price === GAME_CONSTANTS.IRON_FALLBACK_PRICE,
-      )
-      if (fallbackLevel) {
-        // Don't decrement cubes for infinite capacity level
+  for (const { option, count } of plan) {
+    if (option.source.kind === 'market') {
+      // Cheapest cube first — the rules price the market, not the player
+      for (let cube = 0; cube < count; cube++) {
+        const level = updatedIronMarket.find((l) => l.cubes > 0)
+        if (level) {
+          level.cubes--
+          ironCost += level.price
+          logDetails.push(`consumed 1 iron from market for £${level.price}`)
+          continue
+        }
+        // An empty market still sells, at the fallback price, forever
         ironCost += GAME_CONSTANTS.IRON_FALLBACK_PRICE
-        ironConsumed++
         logDetails.push(
           `consumed 1 iron from general supply for £${GAME_CONSTANTS.IRON_FALLBACK_PRICE}`,
         )
       }
+      continue
     }
+
+    const { ownerId, location: worksLocation } = option.source
+    let cubesLeftToTake = count
+    updatedPlayers = updatedPlayers.map((player) =>
+      player.id !== ownerId
+        ? player
+        : {
+            ...player,
+            industries: player.industries.map((industry) => {
+              if (
+                cubesLeftToTake <= 0 ||
+                industry.type !== 'iron' ||
+                industry.flipped ||
+                industry.location !== worksLocation ||
+                industry.ironCubesOnTile <= 0
+              ) {
+                return industry
+              }
+              const taken = Math.min(industry.ironCubesOnTile, cubesLeftToTake)
+              cubesLeftToTake -= taken
+              return {
+                ...industry,
+                ironCubesOnTile: industry.ironCubesOnTile - taken,
+              }
+            }),
+          },
+    )
+    logDetails.push(`${count} iron from iron works (free)`)
   }
 
   // Check for auto-flipping after iron consumption
@@ -273,7 +295,13 @@ export function consumeIronFromSources(
     logDetails.push(...autoFlipResult.logs.map((log) => log.message))
   }
 
-  return { updatedPlayers, updatedIronMarket, ironCost, logDetails }
+  return {
+    success: true,
+    updatedPlayers,
+    updatedIronMarket,
+    ironCost,
+    logDetails,
+  }
 }
 
 // Helper function to check if a location is connected to any merchant
@@ -408,6 +436,16 @@ export function sellIronToMarket(
   }
 }
 
+/**
+ * Consume beer for a sale or a double rail link.
+ *
+ * `preferredSources` is the player's choice of WHERE each barrel comes from —
+ * the rules make that a choice, and it matters: draining your own brewery
+ * flips it and advances your income, draining an opponent's does the same for
+ * them, and taking the merchant's barrel is the only way to collect its bonus.
+ * Omit it and the engine keeps its historic auto-pick: own breweries, then
+ * connected opponent breweries, then merchant beer.
+ */
 export function consumeBeerFromSources(
   context: GameState,
   location: CityId,
@@ -417,6 +455,7 @@ export function consumeBeerFromSources(
   // by its location and, when given, the good it buys)
   merchantBeerLocation?: CityId,
   merchantGoodsType?: IndustryType,
+  preferredSources?: BeerSource[],
 ): {
   success: boolean
   updatedPlayers: Player[]
@@ -449,112 +488,104 @@ export function consumeBeerFromSources(
   }> = []
 
   const currentPlayer = getCurrentPlayer(context)
-  const { ownBreweries, connectedBreweries } = findAvailableBreweries(
+  const options = getBeerSourceOptions(
     context,
     location,
     currentPlayer,
+    merchantBeerLocation,
+    merchantGoodsType,
+  )
+  const {
+    plan,
+    allocated,
+    error: planError,
+  } = planResourceSources(
+    options,
+    beerRequired,
+    preferredSources,
+    beerSourceKey,
+    (source) => describeBeerSource(source, context),
   )
 
-  // First, consume from own breweries (free, no connection required).
-  // A single brewery may supply multiple barrels if it has them.
-  for (const brewery of ownBreweries) {
-    if (beerConsumed >= beerRequired) break
-
-    const barrelsToConsume = Math.min(
-      brewery.beerBarrelsOnTile,
-      beerRequired - beerConsumed,
-    )
-    if (barrelsToConsume <= 0) continue
-
-    updatedPlayers = updatedPlayers.map((player) =>
-      player.id === currentPlayer.id
-        ? {
-            ...player,
-            industries: player.industries.map((industry) =>
-              industry === brewery
-                ? {
-                    ...industry,
-                    beerBarrelsOnTile:
-                      industry.beerBarrelsOnTile - barrelsToConsume,
-                  }
-                : industry,
-            ),
-          }
-        : player,
-    )
-
-    beerConsumed += barrelsToConsume
-    logDetails.push(
-      `${barrelsToConsume} beer from own brewery at ${brewery.location} (free)`,
-    )
+  if (planError) {
+    return {
+      success: false,
+      updatedPlayers: context.players,
+      updatedResources: context.resources,
+      updatedMerchants: context.merchants,
+      merchantBonusesCollected: [],
+      logDetails,
+      errorMessage: planError,
+    }
   }
 
-  // If still need beer, consume from connected opponent breweries
-  for (const brewery of connectedBreweries) {
-    if (beerConsumed >= beerRequired) break
-
-    const barrelsToConsume = Math.min(
-      brewery.beerBarrelsOnTile,
-      beerRequired - beerConsumed,
-    )
-    if (barrelsToConsume <= 0) continue
-
-    updatedPlayers = updatedPlayers.map((player) => ({
-      ...player,
-      industries: player.industries.map((industry) =>
-        industry === brewery
-          ? {
-              ...industry,
-              beerBarrelsOnTile: industry.beerBarrelsOnTile - barrelsToConsume,
-            }
-          : industry,
-      ),
-    }))
-
-    beerConsumed += barrelsToConsume
-    logDetails.push(
-      `${barrelsToConsume} beer from connected opponent brewery at ${brewery.location} (free)`,
-    )
-  }
-
-  // If still need beer and this is a Sell action, consume the beer beside the
-  // merchant tile being sold to (and collect its bonus)
-  if (merchantBeerLocation && updatedMerchants && beerConsumed < beerRequired) {
-    const distance = calculateNetworkDistance(
-      context,
-      location,
-      merchantBeerLocation,
-    )
-
-    if (distance !== Infinity) {
-      const merchantIndex = updatedMerchants.findIndex(
+  for (const { option, count } of plan) {
+    if (option.source.kind === 'merchant') {
+      const merchantIndex = (updatedMerchants ?? []).findIndex(
         (merchant) =>
-          merchant.location === merchantBeerLocation &&
+          merchant.location === option.source.location &&
           merchant.hasBeer &&
           (!merchantGoodsType ||
             merchant.industryIcons.includes(merchantGoodsType)),
       )
+      if (merchantIndex === -1 || !updatedMerchants) continue
 
-      if (merchantIndex !== -1) {
-        const merchant = updatedMerchants[merchantIndex]!
-        updatedMerchants = updatedMerchants.map((m, index) =>
-          index === merchantIndex ? { ...m, hasBeer: false } : m,
-        )
-        beerConsumed++
-        merchantBonusesCollected.push({
-          type: merchant.bonusType,
-          value: merchant.bonusValue,
-          merchantLocation: merchant.location,
-        })
-        logDetails.push(
-          `1 beer from merchant at ${merchant.location} (${merchant.bonusType} +${merchant.bonusValue})`,
-        )
-      }
+      const merchant = updatedMerchants[merchantIndex]!
+      updatedMerchants = updatedMerchants.map((m, index) =>
+        index === merchantIndex ? { ...m, hasBeer: false } : m,
+      )
+      beerConsumed++
+      merchantBonusesCollected.push({
+        type: merchant.bonusType,
+        value: merchant.bonusValue,
+        merchantLocation: merchant.location,
+      })
+      logDetails.push(
+        `1 beer from merchant at ${merchant.location} (${merchant.bonusType} +${merchant.bonusValue})`,
+      )
+      continue
     }
+
+    const { ownerId, location: breweryLocation } = option.source
+    let barrelsLeftToTake = count
+    updatedPlayers = updatedPlayers.map((player) =>
+      player.id !== ownerId
+        ? player
+        : {
+            ...player,
+            industries: player.industries.map((industry) => {
+              if (
+                barrelsLeftToTake <= 0 ||
+                industry.type !== 'brewery' ||
+                industry.flipped ||
+                industry.location !== breweryLocation ||
+                industry.beerBarrelsOnTile <= 0
+              ) {
+                return industry
+              }
+              const taken = Math.min(
+                industry.beerBarrelsOnTile,
+                barrelsLeftToTake,
+              )
+              barrelsLeftToTake -= taken
+              return {
+                ...industry,
+                beerBarrelsOnTile: industry.beerBarrelsOnTile - taken,
+              }
+            }),
+          },
+    )
+
+    beerConsumed += count
+    logDetails.push(
+      option.own
+        ? `${count} beer from own brewery at ${breweryLocation} (free)`
+        : `${count} beer from connected opponent brewery at ${breweryLocation} (free)`,
+    )
   }
 
   // If still need beer, action fails - cannot consume beer from general supply
-  if (beerConsumed < beerRequired) {
+  if (beerConsumed < beerRequired || allocated < beerRequired) {
     return {
       success: false,
       updatedPlayers: context.players, // Return original state

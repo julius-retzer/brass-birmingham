@@ -806,6 +806,22 @@ describe('Game Store - Network Actions', () => {
       to: 'wolverhampton',
     })
 
+    // Own brewery AND the opponent's connected one can both supply the barrel,
+    // so the machine stops to ask which — this test wants the own brewery.
+    expect(
+      actor.getSnapshot().matches({
+        playing: { action: { networking: 'choosingDoubleLinkBeer' } },
+      }),
+    ).toBe(true)
+    actor.send({
+      type: 'SELECT_BEER_SOURCE',
+      source: {
+        kind: 'brewery',
+        ownerId: snapshot.context.players[currentPlayerId]!.id,
+        location: 'birmingham',
+      },
+    })
+
     // Execute the double network action
     actor.send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
     snapshot = actor.getSnapshot()

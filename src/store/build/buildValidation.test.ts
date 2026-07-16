@@ -56,6 +56,10 @@ const createTestContext = (overrides: Partial<GameState> = {}): GameState => {
     merchants: [],
     lastError: null,
     salesMadeThisAction: 0,
+    pendingSale: null,
+    chosenBeerSources: [],
+    chosenIronSources: [],
+    pendingIronStep: null,
     eraEndPending: false,
     winners: null,
     errorContext: null

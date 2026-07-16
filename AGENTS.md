@@ -153,6 +153,41 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   being sold to. Merchants are per-slot entries (a location can appear
   twice), shuffled from the official tile pool at setup; blanks buy
   nothing and hold no beer.
+- RESOURCE SOURCE CHOICE (beer + iron, added 2026-07-16) is a FIRST-CLASS
+  MACHINE STATE, engine-owned. `src/store/shared/resourceSources.ts` is the
+  single place that knows which sources are legal, what a step needs and what
+  taking each one does (`getBeer/IronSourceOptions`; step selectors
+  `pendingBeerChoice`/`pendingIronChoice` → `{required, options, hasChoice}`;
+  `beer/ironChoiceSatisfied`; `canChoose{Beer,Iron}Source`). UI and the AI
+  driver only RENDER those and send the pick — never re-derive legality or
+  unit counts (captain's rule).
+  - The machine has explicit choosing steps entered like the card step:
+    `selling.choosingBeerSource` (executes the staged sale on exit),
+    `networking.choosingDoubleLinkBeer`, and `building`/`developing`.
+    `choosingIronSource`. Each has an `always` transition guarded by
+    `{beer,iron}ChoiceSatisfied` that AUTO-SKIPS it when <2 materially
+    distinct sources exist — so a single-source action never stops, and the
+    ~54 existing pins (which pass no source) stay green because the skip is
+    transparent. The staged sale + picks live in CONTEXT
+    (`pendingSale`, `chosenBeerSources`, `chosenIronSources`), set by
+    `stageSale`/`choose{Beer,Iron}Source`, cleared by `clearSelections`.
+    Events: `SELECT_BEER_SOURCE`/`SELECT_IRON_SOURCE` (one unit each, guarded
+    by `canChoose*`); the last unit satisfies the guard and the `always`
+    advances. No `beerSources`/`ironSources` params on the intents anymore.
+  - Merchant beer is only offered on a sale (never a network action, rules
+    p.9); the IRON MARKET is a FALLBACK not an alternative (rules p.5) — it is
+    never offered as a choice while any unflipped works has iron, though
+    consumption still falls back to it for cubes the works can't cover.
+  - These context fields are backfilled in `rehydrateSnapshot`
+    (`src/server/ai/driver.ts`) AND read defensively (`?? []`) everywhere,
+    because demo fixtures and pre-deploy saved/MP games were frozen without
+    them — a missing field must never crash the actor (it did: the picker's
+    `.filter` on `undefined` tripped the SaveRecoveryBoundary).
+  - Coal is deliberately excluded (closest-mine rule, not a choice). The
+    staged sale/picks reference only public board state, so
+    `filterSnapshotForSeat` needs nothing; a forged MP pick is refused by the
+    same guard. Pinned by `gameStore.sourcechoice.test.ts`,
+    `legal-moves.test.ts`, `e2e/beer-source.spec.ts` + `?demo=beerchoice`.
 - Link scoring: 1 VP per •-• icon on built industry tiles in the two
   adjacent locations, plus `GAME_CONSTANTS.MERCHANT_LINK_ICONS` (2) at
   merchant locations.
@@ -401,7 +436,7 @@ When updating this file, preserve this bar for all agents and keep entries conci
 ## E2E suite (Playwright, added 2026-07-12)
 
 - `pnpm exec playwright test` — `webServer` boots the dev server on :3199
-  with `SKIP_ENV_VALIDATION=1`. 13 journey tests in `e2e/`, ~13s,
+  with `SKIP_ENV_VALIDATION=1`. 22 journey tests in `e2e/`, ~45s,
   `retries: 0` — if a test needs retries, fix or delete it. All specs are
   offline EXCEPT `multiplayer.spec.ts` + `ai-opponent.spec.ts`, which drive
   the real DB-backed mp service and need a live DATABASE_URL in `.env`
@@ -415,7 +450,7 @@ When updating this file, preserve this bar for all agents and keep entries conci
   misses the fat hit-stroke on bowed paths. Use the `clickRoute` helper in
   `e2e/coverage.spec.ts` (getPointAtLength midpoint + mouse click).
 - Fixtures: e2e boots `?demo` / `?demo=sell` / `?demo=eraend` /
-  `?demo=gameend` / `?demo=wilds` / `?era=rail`. Regenerating ANY fixture invalidates
+  `?demo=gameend` / `?demo=wilds` / `?demo=beerchoice` / `?era=rail`. Regenerating ANY fixture invalidates
   pinned test literals — regenerate ONE at a time with
   `GENERATE_DEMO=1 pnpm vitest run src/components/demo/generate-demo.test.ts -t "<name> fixture"`
   and re-pin the affected spec (£ values, card ids, route pairs, winner).

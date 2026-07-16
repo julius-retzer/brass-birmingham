@@ -74,6 +74,16 @@ import {
   updatePlayerInList,
   validateIndustryBuildLocation,
 } from './shared/gameUtils'
+import {
+  type BeerSource,
+  type IronSource,
+  beerChoiceSatisfied,
+  canChooseBeerSource,
+  canChooseIronSource,
+  ironChoiceSatisfied,
+  pendingBeerChoice,
+  pendingIronChoice,
+} from './shared/resourceSources'
 
 export type LogEntryType = 'system' | 'action' | 'info' | 'error'
 
@@ -238,6 +248,29 @@ export interface GameState {
   merchants: Merchant[]
   // Sell action state - number of industries flipped during the current Sell action
   salesMadeThisAction: number
+  /**
+   * The sale staged while its beer source is being chosen — the machine's own
+   * step, not UI staging. Null outside `selling.choosingBeerSource`.
+   */
+  pendingSale: {
+    location: CityId
+    industryType: IndustryType
+    merchant: CityId
+  } | null
+  /**
+   * Where the player chose to take the pending action's beer / iron from, one
+   * entry per unit. Empty = the engine's default pick. Public board
+   * references only (no card data), so multiplayer need not filter them.
+   */
+  chosenBeerSources: BeerSource[]
+  chosenIronSources: IronSource[]
+  /**
+   * Which action the open iron-source step belongs to — set on entry to the
+   * choosing state, so the engine never has to infer build-vs-develop from
+   * context (the fields collide: an industry Develop card also sets
+   * `selectedIndustryTile`). Null outside a choosingIronSource state.
+   */
+  pendingIronStep: 'build' | 'develop' | null
   // Set when a round completes with the draw deck and all hands exhausted;
   // drives the automatic era-end transition
   eraEndPending: boolean
@@ -317,6 +350,16 @@ type GameEvent =
       location: CityId
       industryType: IndustryType
       merchant: CityId
+    }
+  | {
+      /** Take one barrel from this source (the `choosingBeerSource` step). */
+      type: 'SELECT_BEER_SOURCE'
+      source: BeerSource
+    }
+  | {
+      /** Take one cube from this source (the `choosingIronSource` step). */
+      type: 'SELECT_IRON_SOURCE'
+      source: IronSource
     }
   | {
       type: 'CONFIRM'
@@ -490,7 +533,12 @@ const SELLABLE_INDUSTRY_TYPES: IndustryType[] = [
 // (src/store/refusal.ts) — which surfaces the `error` the guard discards.
 export const validateSale = (
   context: GameState,
-  event: { location: CityId; industryType: IndustryType; merchant: CityId },
+  event: {
+    location: CityId
+    industryType: IndustryType
+    merchant: CityId
+    beerSources?: BeerSource[]
+  },
 ): {
   isValid: boolean
   error?: string
@@ -537,13 +585,16 @@ export const validateSale = (
   }
 
   // Required beer must be consumable (merchant beer only from the
-  // icon-matching tile at the merchant being sold to)
+  // icon-matching tile at the merchant being sold to). A source the player
+  // chose must itself be legal, so the guard sees the same answer execution
+  // will give.
   const beerCheck = consumeBeerFromSources(
     context,
     event.location,
     industry.tile.beerRequired,
     event.merchant,
     industry.type,
+    event.beerSources,
   )
   if (!beerCheck.success) {
     return {
@@ -651,6 +702,10 @@ export const gameStore = setup({
         selectedTilesForDevelop: [],
         merchants: createMerchantsForPlayerCount(playerCount),
         salesMadeThisAction: 0,
+        pendingSale: null,
+        chosenBeerSources: [],
+        chosenIronSources: [],
+        pendingIronStep: null,
         eraEndPending: false,
         winners: null,
         lastError: null,
@@ -864,6 +919,7 @@ export const gameStore = setup({
             currentPlayer,
             tile,
             updatedHand,
+            context.chosenIronSources ?? [],
           )
         } catch (error) {
           return {
@@ -1097,7 +1153,7 @@ export const gameStore = setup({
       errorContext: null,
     }),
 
-    executeDoubleNetworkAction: assign(({ context }) => {
+    executeDoubleNetworkAction: assign(({ context, event }) => {
       const currentPlayer = getCurrentPlayer(context)
       if (
         !context.selectedCard ||
@@ -1223,6 +1279,9 @@ export const gameStore = setup({
         context.selectedSecondLink.to,
         1,
         // No merchant beer for Network actions
+        undefined,
+        undefined,
+        context.chosenBeerSources ?? [],
       )
 
       if (!beerResult.success) {
@@ -1397,7 +1456,17 @@ export const gameStore = setup({
       const ironRequired = tilesRemoved
 
       // Use enhanced iron consumption logic
-      const ironResult = consumeIronFromSources(context, ironRequired)
+      const ironResult = consumeIronFromSources(
+        context,
+        ironRequired,
+        context.chosenIronSources ?? [],
+      )
+      if (!ironResult.success) {
+        return {
+          lastError: ironResult.errorMessage ?? 'Iron consumption failed',
+          errorContext: 'develop' as const,
+        }
+      }
       const ironCost = ironResult.ironCost
       const updatedPlayersFromIron = ironResult.updatedPlayers
       const updatedIronMarket = ironResult.updatedIronMarket
@@ -1490,11 +1559,15 @@ export const gameStore = setup({
     // Execute a single sale within a Sell action: flip one chosen industry,
     // consuming beer (merchant beer comes from the merchant being sold to).
     // The Sell action may repeat this for multiple industries before CONFIRM.
-    executeSingleSale: assign(({ context, event }) => {
-      if (event.type !== 'SELECT_SALE') return {}
+    executeStagedSale: assign(({ context }) => {
+      const event = context.pendingSale
+      if (!event) return {}
       const currentPlayer = getCurrentPlayer(context)
 
-      const validation = validateSale(context, event)
+      const validation = validateSale(context, {
+        ...event,
+        beerSources: context.chosenBeerSources ?? [],
+      })
       if (!validation.isValid) {
         return {
           lastError: validation.error ?? 'Invalid sale',
@@ -1515,6 +1588,7 @@ export const gameStore = setup({
         industryToSell.tile.beerRequired,
         event.merchant,
         industryToSell.type,
+        context.chosenBeerSources ?? [],
       )
 
       if (!beerResult.success) {
@@ -1689,6 +1763,8 @@ export const gameStore = setup({
         ...routeCardsToDiscard(context, [context.selectedCard]),
         selectedCard: null,
         salesMadeThisAction: 0,
+        pendingSale: null,
+        chosenBeerSources: [],
         actionsRemaining: context.actionsRemaining - 1,
         lastError: null,
         errorContext: null,
@@ -2068,6 +2144,60 @@ export const gameStore = setup({
       selectedLink: null,
       selectedLocation: null,
       selectedIndustryTile: null,
+      pendingSale: null,
+      chosenBeerSources: [],
+      chosenIronSources: [],
+      pendingIronStep: null,
+    }),
+
+    /** Hold a sale still while the player says where its beer comes from. */
+    stageSale: assign(({ event }) => {
+      if (event.type !== 'SELECT_SALE') return {}
+      return {
+        pendingSale: {
+          location: event.location,
+          industryType: event.industryType,
+          merchant: event.merchant,
+        },
+        chosenBeerSources: [],
+      }
+    }),
+
+    clearStagedSale: assign({ pendingSale: null, chosenBeerSources: [] }),
+
+    // Entered from either build or develop — record which, and start the pick
+    // list fresh. pendingIronChoice reads this rather than guessing.
+    enterBuildIronStep: assign({
+      pendingIronStep: 'build' as const,
+      chosenIronSources: [],
+    }),
+    enterDevelopIronStep: assign({
+      pendingIronStep: 'develop' as const,
+      chosenIronSources: [],
+    }),
+
+    /**
+     * Assign one barrel. Picking again once every barrel is spoken for starts
+     * the allocation over, so a single-barrel step behaves like a radio.
+     */
+    chooseBeerSource: assign(({ context, event }) => {
+      if (event.type !== 'SELECT_BEER_SOURCE') return {}
+      const required = pendingBeerChoice(context)?.required ?? 0
+      const picks = context.chosenBeerSources ?? []
+      return {
+        chosenBeerSources:
+          picks.length >= required ? [event.source] : [...picks, event.source],
+      }
+    }),
+
+    chooseIronSource: assign(({ context, event }) => {
+      if (event.type !== 'SELECT_IRON_SOURCE') return {}
+      const required = pendingIronChoice(context)?.required ?? 0
+      const picks = context.chosenIronSources ?? []
+      return {
+        chosenIronSources:
+          picks.length >= required ? [event.source] : [...picks, event.source],
+      }
     }),
 
     selectLocation: assign(({ context, event }) => {
@@ -2522,6 +2652,18 @@ export const gameStore = setup({
 
       return true
     },
+    /** The source question this step asks is answered (or there was none). */
+    beerChoiceSatisfied: ({ context }) => beerChoiceSatisfied(context),
+    ironChoiceSatisfied: ({ context }) => ironChoiceSatisfied(context),
+
+    /** Only a source this step actually offers may be picked. */
+    canChooseBeerSource: ({ context, event }) =>
+      event.type === 'SELECT_BEER_SOURCE' &&
+      canChooseBeerSource(context, event.source),
+    canChooseIronSource: ({ context, event }) =>
+      event.type === 'SELECT_IRON_SOURCE' &&
+      canChooseIronSource(context, event.source),
+
     canExecuteSale: ({ context, event }) => {
       if (event.type !== 'SELECT_SALE') return false
       return validateSale(context, event).isValid
@@ -2810,9 +2952,15 @@ export const gameStore = setup({
     hasSelectedSecondLink: ({ context }) => context.selectedSecondLink !== null,
 
     hasSelectedTilesForDevelop: ({ context }) => {
-      const canAffordIron = (tileCount: number) =>
-        getCurrentPlayer(context).money >=
-        consumeIronFromSources(context, tileCount).ironCost
+      const canAffordIron = (tileCount: number) => {
+        const iron = consumeIronFromSources(
+          context,
+          tileCount,
+          context.chosenIronSources ?? [],
+        )
+        // Brass has no debt, and a source the player named must be legal
+        return iron.success && getCurrentPlayer(context).money >= iron.ironCost
+      }
 
       // Allow confirmation if tiles are selected OR for backward compatibility
       if (context.selectedTilesForDevelop.length > 0) {
@@ -2860,6 +3008,9 @@ export const gameStore = setup({
         context.selectedSecondLink.to,
         1,
         // No merchant beer for Network actions
+        undefined,
+        undefined,
+        context.chosenBeerSources ?? [],
       )
 
       if (!beerCheckResult.success) {
@@ -2944,6 +3095,10 @@ export const gameStore = setup({
     selectedTilesForDevelop: [],
     merchants: [],
     salesMadeThisAction: 0,
+    pendingSale: null,
+    chosenBeerSources: [],
+    chosenIronSources: [],
+    pendingIronStep: null,
     eraEndPending: false,
     winners: null,
     // Error state
@@ -3142,13 +3297,34 @@ export const gameStore = setup({
                 selectingLocation: {
                   on: {
                     SELECT_LOCATION: {
-                      target: 'confirmingBuild',
+                      target: 'choosingIronSource',
                       actions: 'selectLocation',
                       guard: 'canSelectLocation',
                     },
                     CANCEL: {
                       target: 'selectingCard',
                       actions: 'clearCard',
+                    },
+                  },
+                },
+                /**
+                 * Which iron works (or the market) pays for this build. Skipped
+                 * whenever the tile needs no iron, or only one source could
+                 * supply it — which is most builds.
+                 */
+                choosingIronSource: {
+                  entry: 'enterBuildIronStep',
+                  always: [
+                    { guard: 'ironChoiceSatisfied', target: 'confirmingBuild' },
+                  ],
+                  on: {
+                    SELECT_IRON_SOURCE: {
+                      actions: 'chooseIronSource',
+                      guard: 'canChooseIronSource',
+                    },
+                    CANCEL: {
+                      target: 'selectingLocation',
+                      actions: 'clearLocation',
                     },
                   },
                 },
@@ -3185,16 +3361,36 @@ export const gameStore = setup({
                 selectingTiles: {
                   on: {
                     SELECT_TILES_FOR_DEVELOP: {
-                      target: 'confirmingDevelop',
+                      target: 'choosingIronSource',
                       actions: 'selectTilesForDevelop',
                     },
                     CONFIRM: {
-                      target: 'confirmingDevelop',
+                      target: 'choosingIronSource',
                       // Don't run selectTilesForDevelop action - use auto-selection in executeDevelopAction
                     },
                     CANCEL: {
                       target: 'selectingCard',
                       actions: 'clearSelections',
+                    },
+                  },
+                },
+                /** One cube per scrapped tile — from any unflipped works. */
+                choosingIronSource: {
+                  entry: 'enterDevelopIronStep',
+                  always: [
+                    {
+                      guard: 'ironChoiceSatisfied',
+                      target: 'confirmingDevelop',
+                    },
+                  ],
+                  on: {
+                    SELECT_IRON_SOURCE: {
+                      actions: 'chooseIronSource',
+                      guard: 'canChooseIronSource',
+                    },
+                    CANCEL: {
+                      target: 'selectingTiles',
+                      actions: 'clearTilesForDevelop',
                     },
                   },
                 },
@@ -3230,10 +3426,14 @@ export const gameStore = setup({
                 },
                 selectingSale: {
                   on: {
-                    // Each SELECT_SALE flips one industry; the player may
-                    // repeat for multiple industries before confirming
+                    // Each sale flips one industry; the player may repeat for
+                    // multiple industries before confirming. The sale is
+                    // STAGED here and executed by choosingBeerSource, which
+                    // asks where its beer comes from — or skips straight
+                    // through when there is nothing to ask.
                     SELECT_SALE: {
-                      actions: 'executeSingleSale',
+                      target: 'choosingBeerSource',
+                      actions: 'stageSale',
                       guard: 'canExecuteSale',
                     },
                     CONFIRM: {
@@ -3246,6 +3446,33 @@ export const gameStore = setup({
                       target: 'selectingCard',
                       actions: 'clearSelections',
                       guard: 'hasNotSoldThisAction',
+                    },
+                  },
+                },
+                /**
+                 * Where does this sale's beer come from? A real step, like
+                 * choosing a card — but only when the answer could differ:
+                 * `beerChoiceSatisfied` is already true when one source must
+                 * supply it all, so the machine passes straight through and
+                 * the engine picks as it always has.
+                 */
+                choosingBeerSource: {
+                  always: [
+                    {
+                      guard: 'beerChoiceSatisfied',
+                      target: 'selectingSale',
+                      actions: 'executeStagedSale',
+                    },
+                  ],
+                  on: {
+                    SELECT_BEER_SOURCE: {
+                      actions: 'chooseBeerSource',
+                      guard: 'canChooseBeerSource',
+                    },
+                    CANCEL: {
+                      // Nothing was flipped yet — the staged sale is free to drop
+                      target: 'selectingSale',
+                      actions: 'clearStagedSale',
                     },
                   },
                 },
@@ -3350,12 +3577,34 @@ export const gameStore = setup({
                 selectingSecondLink: {
                   on: {
                     SELECT_SECOND_LINK: {
-                      target: 'confirmingDoubleLink',
+                      target: 'choosingDoubleLinkBeer',
                       actions: 'selectSecondLink',
                       guard: 'canBuildLink',
                     },
                     CANCEL: {
                       target: 'confirmingLink',
+                      actions: 'clearSecondLink',
+                    },
+                  },
+                },
+                /**
+                 * The double rail's one barrel — never merchant beer (rules
+                 * p.9). Skipped when only one brewery can supply it.
+                 */
+                choosingDoubleLinkBeer: {
+                  always: [
+                    {
+                      guard: 'beerChoiceSatisfied',
+                      target: 'confirmingDoubleLink',
+                    },
+                  ],
+                  on: {
+                    SELECT_BEER_SOURCE: {
+                      actions: 'chooseBeerSource',
+                      guard: 'canChooseBeerSource',
+                    },
+                    CANCEL: {
+                      target: 'selectingSecondLink',
                       actions: 'clearSecondLink',
                     },
                   },

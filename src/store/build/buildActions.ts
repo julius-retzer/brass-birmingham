@@ -1,7 +1,10 @@
 import type { GameState, Player } from '../gameStore'
 import type { Card, IndustryCard, LocationCard } from '../../data/cards'
 import type { IndustryTile } from '../../data/industryTiles'
-import { decrementTileQuantity } from '../../data/industryTiles'
+import {
+  canBuildTileInEra,
+  decrementTileQuantity,
+} from '../../data/industryTiles'
 import type { CityId } from '../../data/board'
 import {
   advanceIncomeSpaces,
@@ -196,12 +199,24 @@ export function validateCardIndustryMatching(card: Card, selectedIndustryTile: I
   }
 }
 
-export function validateTileEraCompatibility(context: GameState, tile: IndustryTile): void {
-  if (context.era === 'canal' && !tile.canBuildInCanalEra) {
-    throw new Error(`Cannot build ${tile.type} Level ${tile.level} in Canal Era`)
+/**
+ * Why a tile's slot is barred this era, phrased so the player knows the way
+ * out: a canal-only tile (blue half-circle) is removed with Develop, not
+ * skipped (rules p.7).
+ */
+export function eraRestrictionMessage(
+  tile: IndustryTile,
+  era: GameState['era'],
+): string {
+  if (era === 'rail') {
+    return `Cannot build ${tile.type} Level ${tile.level} in the Rail Era — it is a canal-era tile; Develop to remove it first`
   }
-  if (context.era === 'rail' && !tile.canBuildInRailEra) {
-    throw new Error(`Cannot build ${tile.type} Level ${tile.level} in Rail Era`)
+  return `Cannot build ${tile.type} Level ${tile.level} in the Canal Era — it is a rail-era tile`
+}
+
+export function validateTileEraCompatibility(context: GameState, tile: IndustryTile): void {
+  if (!canBuildTileInEra(tile, context.era)) {
+    throw new Error(eraRestrictionMessage(tile, context.era))
   }
 }
 

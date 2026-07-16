@@ -188,10 +188,18 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   builder already has a tile there, the build MUST replace it (own
   overbuild) even when another slot is free; enforced in
   `canPlaceOrOverbuildIndustry` + `buildIndustryTile`, pinned by
-  `gameStore.canalrule.test.ts`. Known adjacent gap: in the Rail Era the
-  guard auto-SKIPS unbuildable canal-only L1 mat tiles to the next level,
-  but rules p.7 say those tiles must be removed via Develop first (and the
-  era-ignorant `selectIndustryType` action can disagree with the guard).
+  `gameStore.canalrule.test.ts`.
+  ONLY THE MAT'S LOWEST TILE IS EVER BUILDABLE (era rule, fixed 2026-07-16):
+  rules p.4 step 2 takes the lowest tile, p.7 bars tiles showing the era's
+  half-circle — so a barred tile BLOCKS its industry until Develop removes
+  it; never fall through to the next level (that is a free Develop). Ask
+  `getBuildableTileInEra` (`src/data/industryTiles.ts`) rather than
+  filtering a mat by era and taking the lowest of the remainder — that
+  inversion was the bug, in `selectCard` + `canSelectIndustryType` + the
+  mat UI's "next tile" highlight alike. Which tiles are barred is tile
+  data (`canBuildInCanalEra`/`canBuildInRailEra`, incl. the L1-Pottery
+  rail exception), never a level check. Pinned by
+  `gameStore.railera.test.ts`.
   Wild cards route through the full build flow: wild location picks
   industry then ANY city; wild industry picks industry then a network
   city. Regression tests: `gameStore.bugfixes.test.ts`, `e2e/bugfixes.spec.ts`.

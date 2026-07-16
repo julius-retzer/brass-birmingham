@@ -26,10 +26,12 @@ import {
   isAiTierId,
 } from '../ai/types'
 import {
+  type AiPeek,
   type ChatMessage,
   type GameRecord,
   type SeatRecord,
   appendChatMessage,
+  loadAiPeek,
   loadChatSince,
   loadGame,
   loadRecentChat,
@@ -609,19 +611,39 @@ export async function getChatDelta(
 /* ---------------- the AI turn runner ---------------- */
 
 /**
+ * Decide, from the CHEAP peek (no snapshot jsonb), whether the AI turn-runner
+ * should even start: only when the game is actively playing, has an AI seat,
+ * and the current player is that AI seat. A human-turn, lobby, finished, or
+ * all-human game returns false — so the caller never pays the full-row read.
+ */
+export function isAiSeatTurn(peek: AiPeek | null): boolean {
+  if (!peek) return false
+  if (peek.phase !== 'playing') return false
+  if (peek.currentPlayerIndex === null) return false
+  if (!peek.seats.some((s) => s.kind === 'ai')) return false
+  const seat = peek.seats[peek.currentPlayerIndex]
+  return !!seat && seat.kind === 'ai' && !!seat.aiTier
+}
+
+/**
  * Start the AI turn-runner for this game unless one is already in flight, and
  * return the promise that settles when the current run finishes. Safe to call
  * from anywhere (create/join/act/stream-connect) — it no-ops instantly when
  * the current player is human or the game is over. Callers on a serverless
  * request path should `waitUntil(kickAiTurns(token))` so the instance isn't
  * frozen out from under the (detached) runner after the response returns.
+ *
+ * EGRESS: the poll (`stream/route.ts`) re-kicks every ~1.2s per open tab. The
+ * gate below is a CHEAP peek (`loadAiPeek`, <1KB) — the full-row `loadGame`
+ * inside `runAiTurns` (28–65KB) is paid ONLY when it is genuinely an AI's
+ * turn. Before this, every idle tick read the whole snapshot and discarded it.
  */
 export function kickAiTurns(token: string): Promise<void> {
   const existing = aiPromise.get(token)
   if (existing) return existing
   if (aiRunning.has(token)) return Promise.resolve()
   aiRunning.add(token)
-  const p = runAiTurns(token)
+  const p = maybeRunAiTurns(token)
     .catch(() => {
       // the runner never propagates — a failed decision is logged in-game
     })
@@ -632,6 +654,13 @@ export function kickAiTurns(token: string): Promise<void> {
     })
   aiPromise.set(token, p)
   return p
+}
+
+/** Cheap gate → full runner. Reads only the peek unless it's an AI's turn. */
+async function maybeRunAiTurns(token: string): Promise<void> {
+  const peek = await loadAiPeek(token)
+  if (!isAiSeatTurn(peek)) return
+  await runAiTurns(token)
 }
 
 /** Model calls per AI turn before the driver goes safety-first (cost cap). */

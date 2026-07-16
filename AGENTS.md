@@ -47,6 +47,10 @@ when the pin changes.
 **Formatting:**
 - `pnpm format:write` - Format files with Prettier
 - `pnpm format:check` - Check formatting with Prettier
+- GOTCHA: the enforced style is **Biome** (single quotes, no semicolons; `pnpm lint`
+  is what CI runs). Prettier's config disagrees (double quotes, semicolons), so
+  `pnpm format:write` rewrites the WHOLE repo to a different style — do NOT run it.
+  Format touched files with `pnpm exec biome format --write <files>` instead.
 
 ## Architecture
 
@@ -412,7 +416,15 @@ When updating this file, preserve this bar for all agents and keep entries conci
   version-guarded path (`applyView` in `mp-game.tsx`). `kickAiTurns` returns
   its runner promise; the act/chat routes `waitUntil()` it (`@vercel/functions`)
   so a serverless instance isn't frozen out from under a multi-step AI turn,
-  and the stream poll re-kicks a stalled AI each tick. Do NOT add
+  and the stream poll re-kicks a stalled AI each tick. EGRESS (fixed
+  2026-07-16): the per-tick `kickAiTurns` must NOT read the full game row — it
+  used to `loadGame` (incl. the 28–65KB snapshot jsonb) on EVERY poll tick, even
+  for human-turn/finished/no-AI games, which burned ~4GB of Neon egress in ~2
+  days. It now gates on the cheap `loadAiPeek` (phase + seats + a jsonb-extracted
+  `currentPlayerIndex`, <1KB) via `isAiSeatTurn`, and only falls through to the
+  full `loadGame` in `runAiTurns` when it is genuinely an AI's turn (pinned by
+  `src/server/mp/egress.test.ts`, ~98% smaller per tick). The client also pauses
+  its EventSource after 60s hidden (`mp-game.tsx`). Do NOT add
   WebSockets/LISTEN-NOTIFY/an external pub-sub (decision doc §5). Wire tests:
   `gameStore.multiplayer.test.ts` (act/chat view shape + hidden-info + chat
   seq delivery / bounded tail / `getChatDelta`) + `e2e/multiplayer.spec.ts`

@@ -1,0 +1,9 @@
+# Files to copy from the main checkout into freshly prepared worktrees.
+# Only gitignored files are eligible — tracked files are already shared.
+# Format: gitignore-compatible globs.
+
+# ─── Environment & secrets ────────────────────────────────────────────
+# Dev needs DATABASE_URL (Neon "dev" branch connection string) to boot the
+# app; see the CI/local-db notes in CLAUDE.md. Without this, `pnpm dev`
+# fails env validation unless SKIP_ENV_VALIDATION=1 is set.
+.env

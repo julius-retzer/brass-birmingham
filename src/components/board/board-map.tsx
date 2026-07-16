@@ -470,7 +470,7 @@ export function BoardMap({
               fontSize: 13.5,
             }}
           >
-            Birmingham &amp; the West Midlands
+            Austria-Hungary · Bohemia &amp; Moravia
           </text>
           <text
             x="127"

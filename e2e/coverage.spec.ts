@@ -30,17 +30,40 @@ async function revealIfGated(page: Page) {
 }
 
 /**
- * Click a map route ON its stroke. Routes are curved (routeBow), so the
- * bounding-box centre Playwright would click can miss the fat hit-stroke
- * entirely — compute the true path midpoint and click that with the mouse.
+ * Activate a map route. Routes are curved AND, on a dense graph, short links
+ * are fully covered by their end-plates and by longer routes' fat 22px
+ * hit-strokes drawn on top — so no mouse point on the stroke is reliably the
+ * topmost element. Legal route hit-paths are keyboard-activatable buttons
+ * (tabIndex + Enter/Space → onLinkClick), which is overlap-immune, so drive
+ * legal routes that way. Illegal routes (used to assert the toast) are not
+ * focusable, so fall back to a mouse click walked along the path to a point
+ * where this route is actually the topmost hit element.
  */
 async function clickRoute(page: Page, conn: string) {
   const path = page.locator(`path[data-conn="${conn}"]`)
+  const legal = (await path.getAttribute('data-legal')) === 'true'
+  if (legal) {
+    await path.evaluate((el) => (el as SVGPathElement).focus())
+    await page.keyboard.press('Enter')
+    return
+  }
   const pt = await path.evaluate((el) => {
     const p = el as unknown as SVGPathElement
-    const mid = p.getPointAtLength(p.getTotalLength() / 2)
-    const sp = new DOMPoint(mid.x, mid.y).matrixTransform(p.getScreenCTM()!)
-    return { x: sp.x, y: sp.y }
+    const len = p.getTotalLength()
+    const screenAt = (frac: number) => {
+      const q = p.getPointAtLength(len * frac)
+      return new DOMPoint(q.x, q.y).matrixTransform(p.getScreenCTM()!)
+    }
+    const fracs = [0.5]
+    for (let k = 1; k <= 9; k++) fracs.push(0.5 + k * 0.045, 0.5 - k * 0.045)
+    for (const f of fracs) {
+      if (f < 0.06 || f > 0.94) continue
+      const sp = screenAt(f)
+      const top = document.elementFromPoint(sp.x, sp.y) as Element | null
+      if (top === p) return { x: sp.x, y: sp.y }
+    }
+    const mid = screenAt(0.5)
+    return { x: mid.x, y: mid.y }
   })
   await page.mouse.click(pt.x, pt.y)
 }
@@ -155,7 +178,7 @@ test('illegal clicks toast and CANCEL unwinds every flow', async ({ page }) => {
     .locator('g[data-city="brno"]:not([data-legal])')
     .click({ force: true })
   await expect(
-    page.getByText(/Birmingham is not a legal site for this build/),
+    page.getByText(/Brno is not a legal site for this build/),
   ).toBeVisible()
   // Unwind from deep inside the flow.
   await cancel.click()

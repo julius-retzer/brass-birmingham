@@ -258,7 +258,13 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   for REAL pointers while synthetic `dispatchEvent` clicks still pass (so
   automated tests won't catch it). Capture only after drag movement starts.
   When browser-verifying board clicks, use trusted input (axi `click @ref`),
-  not `dispatchEvent`.
+  not `dispatchEvent`. For ROUTES specifically, axi `click @ref` also misses:
+  it aims at the a11y node's bbox centre, which on a bowed path lies off the
+  hit-stroke (same root cause as the Playwright `clickRoute` helper). Routes
+  are keyboard-activatable when legal, so focus + Enter is the reliable
+  manual path:
+  `axi eval 'document.querySelector("[data-conn=\"belper|leek\"]").focus()'`
+  then `axi press Enter`.
 - The engine's `canBuildLink` guard does NOT check era or the board graph
   (documented rules gap) — the UI enforces era in `legalLinks`/`onLinkClick`
   (`game.tsx`), so keep that filter if the guard ever changes.

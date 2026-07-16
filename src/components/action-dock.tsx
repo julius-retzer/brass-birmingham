@@ -14,6 +14,10 @@ import {
 import { isDevelopable } from '~/store/shared/gameUtils'
 import { CardChip } from './cards'
 import {
+  doubleLinkDisabledReason,
+  showsDoubleLinkOption,
+} from './double-link-availability'
+import {
   BuildIcon,
   CanalIcon,
   DevelopIcon,
@@ -338,6 +342,50 @@ function Confirm({
       </button>
       {(disabled || refused) && reason && (
         <p className="text-[12.5px] leading-snug" style={{ color: '#d68d80' }}>
+          {reason}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The Rail-Era "two rails for one action" option. It renders DISABLED rather
+ * than vanishing when the machine refuses it: a player with no beer in reach
+ * otherwise saw a plain single-rail confirm and had no way to learn double
+ * rail exists at all.
+ */
+function DoubleLinkOption({
+  enabled,
+  reason,
+  onClick,
+}: {
+  enabled: boolean
+  /** Why it is refused — only read when `enabled` is false. */
+  reason: string
+  onClick: () => void
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <button
+        type="button"
+        className="bb2-option justify-center"
+        data-testid="choose-double-link"
+        disabled={!enabled}
+        title={enabled ? undefined : reason}
+        onClick={onClick}
+      >
+        <RailIcon size={14} />
+        <span className="text-[12px] font-semibold">
+          Build two rails — £15 + 2 coal + 1 beer
+        </span>
+      </button>
+      {!enabled && (
+        <p
+          className="text-[12.5px] leading-snug"
+          data-testid="double-link-reason"
+          style={{ color: '#d68d80' }}
+        >
           {reason}
         </p>
       )}
@@ -703,18 +751,12 @@ export function ActionDock({
         >
           Lay the {c.era === 'canal' ? 'canal' : 'track'}
         </Confirm>
-        {can({ type: 'CHOOSE_DOUBLE_LINK_BUILD' }) && (
-          <button
-            type="button"
-            className="bb2-option justify-center"
-            data-testid="choose-double-link"
+        {showsDoubleLinkOption(c) && (
+          <DoubleLinkOption
+            enabled={can({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })}
+            reason={doubleLinkDisabledReason(c)}
             onClick={() => send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })}
-          >
-            <RailIcon size={14} />
-            <span className="text-[12px] font-semibold">
-              Build two rails — £15 + 2 coal + 1 beer
-            </span>
-          </button>
+          />
         )}
       </Flow>
     )

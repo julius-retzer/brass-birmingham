@@ -1,5 +1,25 @@
 # CLAUDE.md
 
+> **BRANCH: `fm/brass-austria-impl` — Austria-Hungary edition.** This is a
+> long-lived ALTERNATIVE branch (NOT for merge to `main`) carrying a strict
+> 1:1 reskin of the board to Austria-Hungary (Bohemia/Moravia core). The
+> engine, tile stats, income track and ALL mechanics are byte-identical to
+> `main` — only the board's city ids/names, connection ids, merchant set
+> (Vienna/Budapest/Prague/Krakow/Lemberg), display labels ("Textile Mill")
+> and `board-data.ts` geometry changed. Design source of truth:
+> `../firstmate/data/brass-austria-map-design/report.md`.
+> - Every id was renamed 1:1 across the whole repo (see the mapping in the
+>   `feat(map)` commit). To keep engine behaviour and all pinned test
+>   arithmetic identical, the 6 demo fixtures were NOT regenerated
+>   (`shuffleArray` is unseeded → random) — instead the ORIGINAL committed
+>   fixtures were renamed in place (verify with
+>   `git show origin/main:<fixture> | perl <rename> | diff - <fixture>`).
+> - KNOWN pre-existing e2e failure (also fails on clean `main` LOCALLY, and
+>   e2e is NOT run in CI): `coverage.spec.ts` rail double-link — the
+>   `canCompleteDoubleLink` guard sources coal from the (still unconnected)
+>   first link's endpoint, so confirm stays disabled. Not a reskin
+>   regression.
+
 Look at ai-docs for more guidelines and examples.
 
 MOST IMPORTANT IS TO HAVE ai-docs/brass-birmingham-rules.mdc ALWAYS IN YOUR MIND.

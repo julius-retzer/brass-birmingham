@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { aiOpponentsEnabled } from '~/lib/features'
 import { isAiTierId } from '~/server/ai/types'
 import { createGame } from '~/server/mp/game'
 
@@ -15,6 +16,15 @@ export async function POST(req: Request) {
     const opponents = (body.opponents ?? []).map((o) =>
       isAiTierId(o) ? o : ('human' as const),
     )
+    if (
+      opponents.some((o) => o !== 'human') &&
+      !aiOpponentsEnabled(process.env.VERCEL_ENV)
+    ) {
+      return NextResponse.json(
+        { error: 'AI opponents are not available in production yet' },
+        { status: 403 },
+      )
+    }
     const result = await createGame(
       String(body.name ?? ''),
       Number(body.playerCount ?? 0),

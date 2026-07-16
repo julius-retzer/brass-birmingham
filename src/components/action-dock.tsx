@@ -11,6 +11,7 @@ import {
   type GameStoreSnapshot,
   type Player,
 } from '~/store/gameStore'
+import { isDevelopable } from '~/store/shared/gameUtils'
 import { CardChip } from './cards'
 import {
   BuildIcon,
@@ -125,14 +126,12 @@ function DevelopTilePicker({
   const developable = INDUSTRY_TYPES.filter((t) => {
     const tiles = currentPlayer.industryTilesOnMat[t] || []
     return tiles.some(
-      (tw) =>
-        tw.quantityAvailable > 0 &&
-        !(t === 'pottery' && tw.tile.hasLightbulbIcon),
+      (tw) => tw.quantityAvailable > 0 && isDevelopable(tw.tile),
     )
   })
   const available = (t: IndustryType) =>
     (currentPlayer.industryTilesOnMat[t] || [])
-      .filter((tw) => !(t === 'pottery' && tw.tile.hasLightbulbIcon))
+      .filter((tw) => isDevelopable(tw.tile))
       .reduce((n, tw) => n + tw.quantityAvailable, 0)
   const total = Object.values(counts).reduce((a, b) => a + (b ?? 0), 0)
   const selection = developable.flatMap((t) =>

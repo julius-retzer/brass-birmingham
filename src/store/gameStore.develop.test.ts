@@ -390,89 +390,21 @@ describe('Game Store - Develop Actions', () => {
     // Test skipped - needs proper tile management implementation
   })
 
-  test.skip('develop action - pottery with lightbulb icon cannot be developed', () => {
-    // SKIPPED: TEST_SET_PLAYER_STATE doesn't support industryTilesOnMat property
+  test('develop action - pottery with lightbulb icon cannot be developed', () => {
+    // A fresh game already seeds every player with the full pottery set
+    // (pottery_1..5, with levels 1 and 3 flagged hasLightbulbIcon), so no
+    // special TEST_SET_PLAYER_STATE plumbing is needed.
     const { actor } = setupGame()
 
-    // Set up player with pottery tile that has lightbulb icon
-    actor.send({
-      type: 'TEST_SET_PLAYER_STATE',
-      playerId: 0,
-      money: 50,
-    })
+    const potteryQuantity = (level: number) =>
+      actor
+        .getSnapshot()
+        .context.players[0]!.industryTilesOnMat.pottery.find(
+          (t) => t.tile.level === level,
+        )!.quantityAvailable
 
-    // TODO: Implement proper tile management for testing
-    /*
-    industryTilesOnMat: {
-        pottery: [
-          {
-            id: 'pottery_1',
-            type: 'pottery',
-            level: 1,
-            cost: 5,
-            victoryPoints: 1,
-            incomeSpaces: 1,
-            linkScoringIcons: 1,
-            coalRequired: 1,
-            ironRequired: 0,
-            beerRequired: 1,
-            beerProduced: 0,
-            coalProduced: 0,
-            ironProduced: 0,
-            canBuildInCanalEra: true,
-            canBuildInRailEra: true,
-            hasLightbulbIcon: true, // Cannot be developed!
-            incomeAdvancement: 2,
-          },
-          {
-            id: 'pottery_2',
-            type: 'pottery',
-            level: 2,
-            cost: 7,
-            victoryPoints: 2,
-            incomeSpaces: 1,
-            linkScoringIcons: 1,
-            coalRequired: 1,
-            ironRequired: 0,
-            beerRequired: 1,
-            beerProduced: 0,
-            coalProduced: 0,
-            ironProduced: 0,
-            canBuildInCanalEra: true,
-            canBuildInRailEra: true,
-            hasLightbulbIcon: false,
-            incomeAdvancement: 2,
-          },
-        ],
-        coal: [
-          {
-            id: 'coal_1',
-            type: 'coal',
-            level: 1,
-            cost: 5,
-            victoryPoints: 1,
-            incomeSpaces: 1,
-            linkScoringIcons: 1,
-            coalRequired: 0,
-            ironRequired: 0,
-            beerRequired: 0,
-            beerProduced: 0,
-            coalProduced: 2,
-            ironProduced: 0,
-            canBuildInCanalEra: true,
-            canBuildInRailEra: false,
-            hasLightbulbIcon: false,
-            incomeAdvancement: 2,
-          },
-        ],
-      },
-    })
-
-    let snapshot = actor.getSnapshot()
-    const initialPotteryTiles =
-      snapshot.context.players[0]!.industryTilesOnMat.pottery.length
-    const initialCoalTiles =
-      snapshot.context.players[0]!.industryTilesOnMat.coal.length
+    expect(potteryQuantity(1)).toBe(1)
+    expect(potteryQuantity(3)).toBe(1)
 
     // Perform develop action
     actor.send({ type: 'DEVELOP' })
@@ -481,28 +413,23 @@ describe('Game Store - Develop Actions', () => {
     const card = actor.getSnapshot().context.players[0]!.hand[0]!
     actor.send({ type: 'SELECT_CARD', cardId: card.id })
 
-    // Try to develop pottery with lightbulb - should be blocked or skip to other tiles
-    actor.send({ type: 'CONFIRM' }) // Move to confirmingDevelop state
-    actor.send({ type: 'CONFIRM' }) // Actually execute the develop action
-    snapshot = actor.getSnapshot()
+    // Deliberately try to develop two pottery tiles - if unguarded, this
+    // would hit the lowest-level tile (pottery_1) first.
+    actor.send({
+      type: 'SELECT_TILES_FOR_DEVELOP',
+      industryTypes: ['pottery', 'pottery'],
+    })
+    actor.send({ type: 'CONFIRM' })
 
-    const finalPotteryTiles =
-      snapshot.context.players[0]!.industryTilesOnMat.pottery.length
-    const finalCoalTiles =
-      snapshot.context.players[0]!.industryTilesOnMat.coal.length
+    const snapshot = actor.getSnapshot()
+    expect(snapshot.context.lastError).toBeNull()
 
-    // If pottery tile was removed, it should NOT be the one with lightbulb
-    if (finalPotteryTiles < initialPotteryTiles) {
-      const removedPotteryTiles =
-        snapshot.context.players[0]!.industryTilesOnMat.pottery
-      // Lightbulb pottery should still be present
-      expect(
-        removedPotteryTiles.some((tile) => tile.hasLightbulbIcon === true),
-      ).toBe(true)
-    }
-
-    */
-    // Test skipped - needs proper tile management implementation
+    // Lightbulb tiles (levels 1 and 3) must remain untouched; the engine
+    // must skip past them to the next non-lightbulb tiles instead.
+    expect(potteryQuantity(1)).toBe(1)
+    expect(potteryQuantity(3)).toBe(1)
+    expect(potteryQuantity(2)).toBe(0)
+    expect(potteryQuantity(4)).toBe(0)
   })
 
   test('develop action - can develop 1 or 2 tiles consuming 1 iron each', () => {

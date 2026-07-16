@@ -62,6 +62,7 @@ import {
   getCardDescription,
   getCurrentPlayer,
   incomeAfterFlip,
+  isDevelopable,
   isFirstRound,
   isLocationInPlayerNetwork,
   removeCardFromHand,
@@ -1349,9 +1350,7 @@ export const gameStore = setup({
           const developableTiles = tilesWithQuantity
             .filter((t) => t.quantityAvailable > 0)
             .map((t) => t.tile)
-            .filter(
-              (tile) => industryType !== 'pottery' || !tile.hasLightbulbIcon,
-            )
+            .filter(isDevelopable)
           if (developableTiles.length > 0) {
             availableTypes.push(industryType)
           }
@@ -1396,9 +1395,7 @@ export const gameStore = setup({
         const developableTiles = tilesWithQuantity
           .filter((t) => t.quantityAvailable > 0)
           .map((t) => t.tile)
-          .filter(
-            (tile) => industryType !== 'pottery' || !tile.hasLightbulbIcon,
-          )
+          .filter(isDevelopable)
 
         if (developableTiles.length > 0) {
           // Decrement quantity of the lowest level tile
@@ -1568,7 +1565,7 @@ export const gameStore = setup({
                 const tile = tileWithQty.tile
 
                 // Skip pottery tiles with lightbulb icon
-                if (tile.type === 'pottery' && tile.hasLightbulbIcon) {
+                if (!isDevelopable(tile)) {
                   continue
                 }
 
@@ -1587,9 +1584,7 @@ export const gameStore = setup({
                 .filter((t) => t.quantityAvailable > 0)
                 .map((t) => t.tile)
                 .find(
-                  (t) =>
-                    t.level === lowestLevel &&
-                    !(t.type === 'pottery' && t.hasLightbulbIcon),
+                  (t) => t.level === lowestLevel && isDevelopable(t),
                 )
 
               if (tileToRemove) {
@@ -2076,9 +2071,7 @@ export const gameStore = setup({
         const developableTiles = tilesWithQuantity
           .filter((t) => t.quantityAvailable > 0)
           .map((t) => t.tile)
-          .filter(
-            (tile) => industryType !== 'pottery' || !tile.hasLightbulbIcon,
-          )
+          .filter(isDevelopable)
 
         if (developableTiles.length > 0) {
           validTiles.push(industryType)
@@ -2753,9 +2746,7 @@ export const gameStore = setup({
         const developableTiles = tilesWithQuantity
           .filter((t) => t.quantityAvailable > 0)
           .map((t) => t.tile)
-          .filter(
-            (tile) => industryType !== 'pottery' || !tile.hasLightbulbIcon,
-          )
+          .filter(isDevelopable)
         if (developableTiles.length > 0) {
           // The auto-select fallback develops exactly one tile
           return canAffordIron(1)

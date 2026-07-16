@@ -209,7 +209,13 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   - Merchant beer is only offered on a sale (never a network action, rules
     p.9); the IRON MARKET is a FALLBACK not an alternative (rules p.5) — it is
     never offered as a choice while any unflipped works has iron, though
-    consumption still falls back to it for cubes the works can't cover.
+    consumption still falls back to it for cubes the works can't cover. Both
+    layers enforce it off ONE flag — `fallbackOnly` on the option
+    (`getIronSourceOptions`): the choice filters it out, and the planner
+    refuses an EXPLICIT fallback-only preference at execution too. Both
+    layers enforce it off ONE flag — `fallbackOnly` on the option
+    (`getIronSourceOptions`): the choice filters it out, and the planner
+    refuses an EXPLICIT fallback-only preference at execution too.
   - These context fields are backfilled in `rehydrateSnapshot`
     (`src/server/ai/driver.ts`) AND read defensively (`?? []`) everywhere,
     because demo fixtures and pre-deploy saved/MP games were frozen without

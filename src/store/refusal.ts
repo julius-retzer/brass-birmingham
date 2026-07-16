@@ -38,6 +38,8 @@ import {
 import { getCurrentPlayer } from './shared/gameUtils'
 import {
   beerSourceKey,
+  canChooseBeerSource,
+  canChooseIronSource,
   ironSourceKey,
   pendingBeerChoice,
   pendingIronChoice,
@@ -238,25 +240,34 @@ export function explainRefusal(
       return validateSale(context, event).error ?? null
 
     case 'SELECT_BEER_SOURCE': {
-      // canChooseBeerSource refuses a source this step never offered.
+      // Delegate to the guard's own validator, then tell apart the two ways
+      // it says no: a source this step offered but the earlier picks already
+      // drained, vs one it never offered at all.
       const choice = pendingBeerChoice(context)
       if (!choice?.hasChoice) return 'There is no beer source to choose here.'
+      if (canChooseBeerSource(context, event.source)) return null
       const offered = choice.options.some(
         (o) => beerSourceKey(o.source) === beerSourceKey(event.source),
       )
       return offered
-        ? null
+        ? 'That beer source has already supplied all available barrels.'
         : 'That beer source is not available for this action.'
     }
 
     case 'SELECT_IRON_SOURCE': {
       const choice = pendingIronChoice(context)
       if (!choice?.hasChoice) return 'There is no iron source to choose here.'
+      if (canChooseIronSource(context, event.source)) return null
+      // The market is absent from the offer exactly when a works has iron —
+      // name the fallback rule rather than a bare "unavailable" (rules p.5).
+      if (event.source.kind === 'market') {
+        return 'The iron market is a fallback — it can only be bought from when no unflipped iron works has iron.'
+      }
       const offered = choice.options.some(
         (o) => ironSourceKey(o.source) === ironSourceKey(event.source),
       )
       return offered
-        ? null
+        ? 'That iron source has already supplied all available cubes.'
         : 'That iron source is not available for this action.'
     }
 

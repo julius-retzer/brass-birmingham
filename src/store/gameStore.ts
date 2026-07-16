@@ -369,9 +369,6 @@ type GameEvent =
       type: 'CANCEL'
     }
   | {
-      type: 'BUILD_SECOND_LINK'
-    }
-  | {
       type: 'CHOOSE_DOUBLE_LINK_BUILD'
     }
   | {

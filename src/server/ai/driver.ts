@@ -262,7 +262,6 @@ const FALLBACK_PRIORITY: GameEvent['type'][] = [
   'DEVELOP',
   'SELL',
   'SCOUT',
-  'BUILD_SECOND_LINK',
   'CHOOSE_DOUBLE_LINK_BUILD',
   'CANCEL',
 ]

@@ -18,5 +18,10 @@ export default defineConfig({
     // Relaxes env validation so suites that import the DB layer can load;
     // DB-backed suites provision their own schema via ensureTestSchema().
     setupFiles: ['./src/test/setup-db.ts'],
+    // Gives each local run its own throwaway Neon branch (created here,
+    // exported as DATABASE_URL, deleted in teardown). Escape hatches +
+    // offline fallback live in the module. See AGENTS.md "Local test DB
+    // isolation".
+    globalSetup: ['./src/test/global-db-branch.ts'],
   },
 })

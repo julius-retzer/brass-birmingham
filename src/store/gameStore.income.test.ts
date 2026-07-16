@@ -60,13 +60,10 @@ const advanceRound = (actor: ReturnType<typeof createActor>) => {
       const currentPlayer =
         snapshot.context.players[snapshot.context.currentPlayerIndex]!
       if (currentPlayer.hand.length > 0) {
+        // PASS discards hand[0] and completes by itself. (This helper used
+        // to also send SELECT_CARD + CONFIRM — harmless no-ops before the
+        // card-first entry made SELECT_CARD meaningful in idle.)
         actor.send({ type: 'PASS' })
-        snapshot = actor.getSnapshot()
-        const cardId =
-          snapshot.context.players[snapshot.context.currentPlayerIndex]!
-            .hand[0]!.id
-        actor.send({ type: 'SELECT_CARD', cardId })
-        actor.send({ type: 'CONFIRM' })
       }
     }
   }

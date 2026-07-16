@@ -203,6 +203,18 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   Wild cards route through the full build flow: wild location picks
   industry then ANY city; wild industry picks industry then a network
   city. Regression tests: `gameStore.bugfixes.test.ts`, `e2e/bugfixes.spec.ts`.
+- CARD-FIRST entry (2026-07-16): `playing.action.cardSelected` — SELECT_CARD
+  from idle holds a hand card and offers its actions; each action event then
+  jumps PAST that action's own selectingCard step (BUILD routes by the HELD
+  card's type exactly like the action-first SELECT_CARD split; SCOUT seeds
+  `selectedCardsForScout` via `seedScoutFromSelectedCard`). Re-click/CANCEL
+  returns to idle; PASS stays idle-only. Machine-owned — the UI only renders
+  the state (`getHandSelection` + the dock's cardSelected branch). The AI's
+  `legal-moves.ts` deliberately does NOT offer the entry (redundant surface;
+  the deterministic fallback would loop through it). Pinned by
+  `gameStore.cardfirst.test.ts` + `e2e/card-first.spec.ts`. GOTCHA: a stray
+  SELECT_CARD in idle is no longer a silent no-op — scripted tests must not
+  send one unless they mean it (two old suites did, after PASS; fixed).
 - ENGINE-TEST GOTCHA: never call TEST_SET_PLAYER_HAND repeatedly in a
   scripted scenario — every end-of-turn refill then draws a full hand from
   the draw pile, burning the deck in ~3 rounds and ending the era mid-test

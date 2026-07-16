@@ -544,7 +544,17 @@ function GameInner({
   // and ask the machine's own guards (audit: Sell used to demand a discard
   // before revealing there was nothing to sell).
   const canSellAnything = useMemo(() => {
-    if (!is('playing.action.selectingAction') || !currentPlayer) return true
+    // Gates the Sell plaque in both choosers: idle and card-first (from
+    // cardSelected the probe's SELL skips the card step; the stray
+    // SELECT_CARD below is simply ignored there).
+    if (
+      !(
+        is('playing.action.selectingAction') ||
+        is('playing.action.cardSelected')
+      ) ||
+      !currentPlayer
+    )
+      return true
     const sellable = currentPlayer.industries.filter(
       (i) => !i.flipped && SELLABLE.includes(i.type),
     )

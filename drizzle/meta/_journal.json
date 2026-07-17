@@ -15,6 +15,13 @@
       "when": 1784155157521,
       "tag": "0001_needy_peter_quill",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784286927201,
+      "tag": "0002_colossal_shadow_king",
+      "breakpoints": true
     }
   ]
 }

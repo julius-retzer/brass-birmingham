@@ -79,6 +79,24 @@ export function rehydrate(snapshot: unknown): unknown {
   return clone
 }
 
+/**
+ * Does the intent log need a replay CHECKPOINT for this accepted transition?
+ *
+ * The engine is deterministic given the setup snapshot and the event stream,
+ * with ONE exception: the canal→rail era transition reshuffles the discard +
+ * draw piles into a fresh deck and deals new hands (`Math.random`, see
+ * `eraTransitionToRail` in gameStore.ts). An event-sourced replay cannot
+ * reproduce that shuffle, so the log row for the intent that crossed the
+ * boundary must carry the full resulting snapshot; replay re-bases on it
+ * (`replayIntentLog` in replay.ts). Returns the checkpoint payload (the
+ * `after` snapshot) or null when none is needed.
+ */
+export function eraCheckpoint(before: unknown, after: unknown): unknown | null {
+  const eraOf = (s: unknown) =>
+    (s as { context?: { era?: string } } | null)?.context?.era
+  return eraOf(before) !== eraOf(after) ? after : null
+}
+
 export type IntentOutcome =
   | { ok: true; next: unknown; gameOver: boolean }
   | { ok: false; error: string }

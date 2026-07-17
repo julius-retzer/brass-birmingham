@@ -10,7 +10,6 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { createActor } from 'xstate'
 import { gameStore } from '../../store/gameStore'
 import { STEP_SAFETY_BUDGET, aiDecideAndApply } from '../ai/driver'
-import { applyIntent, rehydrate } from './intent'
 import {
   gatewayBaseUrl,
   hasAnthropicKey,
@@ -25,6 +24,7 @@ import {
   emptyUsageTotals,
   isAiTierId,
 } from '../ai/types'
+import { applyIntent, eraCheckpoint, rehydrate } from './intent'
 import {
   type AiPeek,
   type ChatMessage,
@@ -338,7 +338,15 @@ export async function createGame(
   if (game.seats.every((s) => s.claimed)) {
     startEngine(game)
   }
-  await saveGame(game)
+  // A started engine writes the intent log's 'setup' record atomically with
+  // the row: setup shuffles are random, so replay must start from this exact
+  // captured snapshot (see replay.ts).
+  await saveGame(
+    game,
+    game.snapshot !== null
+      ? { kind: 'setup', seatId: null, payload: game.snapshot }
+      : undefined,
+  )
   void kickAiTurns(token)
   return { token, seatId: 0, seatSecret: secret }
 }
@@ -377,12 +385,21 @@ export async function joinGame(
     seat.claimed = true
     seat.name = name.slice(0, 24) || `Player ${seat.seatId + 1}`
     seat.secretHash = hash(secret)
-    if (game.phase === 'lobby' && game.seats.every((s) => s.claimed)) {
+    const startedNow =
+      game.phase === 'lobby' && game.seats.every((s) => s.claimed)
+    if (startedNow) {
       startEngine(game)
     }
     game.version++
     game.updatedAt = new Date().toISOString()
-    await saveGame(game)
+    // When THIS join started the engine, capture the initial snapshot as the
+    // intent log's 'setup' record (see createGame).
+    await saveGame(
+      game,
+      startedNow
+        ? { kind: 'setup', seatId: null, payload: game.snapshot }
+        : undefined,
+    )
     broadcast(token)
     void kickAiTurns(token)
     return { seatId: seat.seatId, seatSecret: secret }
@@ -440,11 +457,22 @@ export async function actInGame(
     const outcome = applyIntent(game.snapshot, seatId, event)
     if (!outcome.ok) return { ok: false, error: outcome.error }
 
+    // Log the ACCEPTED event exactly as executed, atomically with the
+    // snapshot it produced (refusals never reach here and are not logged —
+    // they don't mutate state, so replay doesn't need them). An intent that
+    // crossed the era boundary carries the resulting snapshot as a replay
+    // checkpoint — the rail deck reshuffle is nondeterministic.
+    const checkpoint = eraCheckpoint(game.snapshot, outcome.next)
     game.snapshot = outcome.next
     if (outcome.gameOver) game.phase = 'over'
     game.version++
     game.updatedAt = new Date().toISOString()
-    await saveGame(game)
+    await saveGame(game, {
+      kind: 'intent',
+      seatId,
+      payload: event,
+      snapshotAfter: checkpoint,
+    })
     broadcast(token)
     void kickAiTurns(token)
     // Return the actor's OWN fresh per-seat view so the client applies its
@@ -703,7 +731,15 @@ async function runAiTurns(token: string): Promise<void> {
       ai.usage.fallbacks += outcome.usage.fallbacks
       game.version++
       game.updatedAt = new Date().toISOString()
-      await saveGame(game)
+      // AI moves land in the same intent log as human ones: one applied
+      // engine event per decision, attributed to the AI seat (with the same
+      // era-boundary replay checkpoint as actInGame).
+      await saveGame(game, {
+        kind: 'intent',
+        seatId: seat.seatId,
+        payload: outcome.move.event,
+        snapshotAfter: eraCheckpoint(peek.snapshot, outcome.snapshot),
+      })
       aiThinking.delete(token)
       broadcast(token)
       return engineDone

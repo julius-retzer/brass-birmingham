@@ -760,6 +760,24 @@ When updating this file, preserve this bar for all agents and keep entries conci
   "create a branch per preview deployment". Previews sit behind Vercel
   Deployment Protection (SSO) — viewable only when logged into the Vercel
   account.
+- INTENT LOG (2026-07-17): every ACCEPTED state-mutating engine write appends
+  one row to the append-only `game_intents` table (PK token+seq, chat pattern;
+  swept with the game) — the machine-replayable record for bug reproduction,
+  independent of the human-readable journal. Written ATOMICALLY with the
+  snapshot via `saveGame(game, intentLog)` (store.ts): ONE data-modifying-CTE
+  statement whose log INSERT selects FROM the version-guarded upsert's
+  RETURNING, so a lost concurrent write inserts NO phantom row. `kind='setup'`
+  rows carry the full initial snapshot (setup shuffles are random); refusals
+  are never logged (they don't mutate state). GOTCHA — the engine is
+  replay-deterministic EXCEPT the canal→rail transition (deck reshuffle,
+  `Math.random` in `eraTransitionToRail`): the intent crossing it must carry
+  `snapshot_after` (`eraCheckpoint` in intent.ts, called by actInGame AND the
+  AI runner) and `replayIntentLog` (replay.ts, pure/offline) re-bases there.
+  Server-side only: never in any client view, never read on the stream poll.
+  Reconstruct a bug-report game: `BB_REPLAY_TOKEN=<token> pnpm vitest run
+  src/server/mp/intentlog.test.ts -t 'BB_REPLAY_TOKEN'` (DATABASE_URL at the
+  branch holding it). Pinned by replay.test.ts (offline FULL mock-AI game,
+  both eras) + intentlog.test.ts (DB round-trip, concurrency, sweep).
 - Chat (normalized out 2026-07-16): chat lives in its OWN append-only
   `chat_messages` table (PK = game token + monotonic per-game `seq`, which is
   the wire `id`), NOT the game jsonb row. A POST /api/mp/chat appends ONE row

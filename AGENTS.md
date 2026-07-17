@@ -442,6 +442,16 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
 - The hand tray (`hand-tray.tsx`) doubles as the card selector for every
   discard step; which steps select cards is centralized in
   `getHandSelection()` (`action-dock.tsx`).
+- HOVER-TO-LOCATE (2026-07-17): hovering/focusing any city NAME (journal,
+  source pickers, sale list, dock steps, ledger, card chips) spotlights its
+  plate on the map. Shared plumbing is `src/components/locate.tsx` (context +
+  `CityName` + `useLocateCity`); each surface owns the state and feeds
+  BoardMap's `locatedCity` prop (`data-located` on the `g[data-city]`, teal
+  `LocateMark`, deliberately distinct from the brass legal pulse;
+  reduced-motion drops the ping). Journal names resolve via `segmentPlaces`
+  (journal-model.ts) — by raw city ID, never display-name matching. The state
+  is ONE `cityId|null` on purpose so brass-card-map-sync (pan-into-view for
+  hovered cards) can reuse it.
 
 ## AI opponents (added 2026-07-15)
 

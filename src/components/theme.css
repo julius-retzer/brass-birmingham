@@ -518,6 +518,55 @@ button.bb2-card {
   cursor: pointer;
 }
 
+/* hover-to-locate: the "here it is" surveyor's mark. Deliberately NOT the
+   brass legal pulse — teal, outward ping, faster rhythm — so it reads as
+   "found it", never "this is a legal choice". */
+@keyframes bb2-locate-ping {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.95;
+  }
+  70%,
+  100% {
+    transform: scale(1.12);
+    opacity: 0;
+  }
+}
+.bb2-locate-ping {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bb2-locate-ping 1.1s ease-out infinite;
+}
+
+/* the name affordance — a quiet dotted underline that brightens on hover,
+   so hover-to-locate is discoverable wherever a city is named */
+.bb2-locate-name {
+  text-decoration: underline dotted;
+  text-decoration-color: rgba(231, 215, 177, 0.4);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  border-radius: 2px;
+}
+.bb2-locate-name:hover,
+.bb2-locate-name:focus-visible,
+button:hover .bb2-locate-name,
+button:focus-visible .bb2-locate-name {
+  text-decoration-color: var(--bb-brass-bright);
+  color: var(--bb-parchment-bright);
+}
+.bb2-locate-name:focus-visible {
+  outline: none;
+  background: rgba(230, 189, 99, 0.14);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bb2-locate-ping {
+    animation: none;
+    opacity: 0.9;
+    transform: none;
+  }
+}
+
 /* ---------------- journal ---------------- */
 
 .bb2-journal {

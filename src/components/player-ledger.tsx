@@ -6,7 +6,6 @@
 // level (cost, VP, resource needs, next-buildable highlight), plus the
 // works and routes already on the board.
 import { useEffect } from 'react'
-import { type CityId, cities } from '~/data/board'
 import { type IndustryType } from '~/data/cards'
 import { type Player } from '~/store/gameStore'
 import { PLAYER_FILL } from './board/board-map'
@@ -18,6 +17,7 @@ import {
   MatIcon,
   RailIcon,
 } from './icons'
+import { CityName } from './locate'
 
 const INDUSTRY_TYPES: IndustryType[] = [
   'cotton',
@@ -38,8 +38,6 @@ const LABEL: Record<IndustryType, string> = {
 }
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII']
-
-const cityName = (id: CityId) => cities[id]?.name ?? id
 
 export function PlayerLedger({
   player,
@@ -371,7 +369,7 @@ export function PlayerLedger({
                     {LABEL[ind.type]} {ROMAN[ind.level] ?? ind.level}
                   </span>
                   <span style={{ color: 'rgba(231,215,177,.5)' }}>
-                    at {cityName(ind.location)}
+                    at <CityName cityId={ind.location} />
                   </span>
                   {ind.flipped && (
                     <span
@@ -407,7 +405,7 @@ export function PlayerLedger({
                   ) : (
                     <RailIcon size={13} />
                   )}
-                  {cityName(l.from)} — {cityName(l.to)}
+                  <CityName cityId={l.from} /> — <CityName cityId={l.to} />
                 </div>
               ))}
               {player.links.length === 0 && (

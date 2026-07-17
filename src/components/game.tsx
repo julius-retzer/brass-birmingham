@@ -47,6 +47,7 @@ import { demoSnapshotSell } from './demo/demo-snapshot-sell'
 import { demoSnapshotWilds } from './demo/demo-snapshot-wilds'
 import { HandTray } from './hand-tray'
 import { computeHoverCities } from './hover-highlight'
+import { LocateCityProvider, useLocateCityState } from './locate'
 import { pendingBeerChoice } from '~/store/shared/resourceSources'
 import { GameOverScreen, PassGate, RoundCurtain } from './overlays'
 import { OpenMatButton, PlayerLedger } from './player-ledger'
@@ -400,6 +401,9 @@ function GameInner({
   )
   const [ledgerFor, setLedgerFor] = useState<string | null>(null)
   const [hoveredCard, setHoveredCard] = useState<Card | null>(null)
+  // Hover-to-locate: which city's NAME (journal, pickers, ledger…) is under
+  // the cursor/focus right now — its plate gets the map's surveyor's mark.
+  const locateState = useLocateCityState()
   // The round the player has already seen the curtain for. Seeded from the
   // booted snapshot so resuming a save mid-game never replays an old round's
   // curtain; a round ending in play bumps roundSummary.round past it.
@@ -875,171 +879,174 @@ function GameInner({
     : null
 
   return (
-    <div className="flex min-h-screen flex-col lg:h-screen lg:overflow-hidden">
-      {/* ---------- masthead ---------- */}
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-2 pt-3">
-        <div className="flex items-baseline gap-2">
+    <LocateCityProvider value={locateState}>
+      <div className="flex min-h-screen flex-col lg:h-screen lg:overflow-hidden">
+        {/* ---------- masthead ---------- */}
+        <header className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-2 pt-3">
+          <div className="flex items-baseline gap-2">
+            <span
+              className="bb2-display text-[22px] font-black leading-none tracking-[0.14em]"
+              style={{ color: 'var(--bb-brass-bright)' }}
+            >
+              BRASS
+            </span>
+            <span
+              className="bb2-display text-[13px] italic"
+              style={{ color: 'rgba(231,215,177,.55)' }}
+            >
+              Birmingham
+            </span>
+          </div>
+
           <span
-            className="bb2-display text-[22px] font-black leading-none tracking-[0.14em]"
-            style={{ color: 'var(--bb-brass-bright)' }}
+            className={`bb2-era-plate ${ctx.era === 'canal' ? 'bb2-era-canal' : 'bb2-era-rail'}`}
+            data-testid="era-plate"
           >
-            BRASS
+            {ctx.era} era
           </span>
-          <span
-            className="bb2-display text-[13px] italic"
-            style={{ color: 'rgba(231,215,177,.55)' }}
-          >
-            Birmingham
+          <span className="bb2-chip" data-testid="round-chip">
+            Round {ctx.round}
           </span>
+          <span className="bb2-chip">
+            Actions
+            <span className="flex items-center gap-1">
+              {Array.from({ length: maxActions }, (_, i) => (
+                <span
+                  key={i}
+                  className="bb2-pip"
+                  data-spent={i >= ctx.actionsRemaining}
+                />
+              ))}
+            </span>
+          </span>
+          {boot.kind !== 'fresh' && (
+            <span
+              className="bb2-chip hidden sm:inline-flex"
+              style={{ color: 'var(--bb-brass)', borderStyle: 'dashed' }}
+            >
+              Demonstration ledger
+            </span>
+          )}
+
+          <div className="ml-auto flex items-center gap-3">
+            <NewGameButton onConfirm={onNewGame} />
+          </div>
+        </header>
+
+        {/* ---------- player rail ---------- */}
+        <PlayerRail
+          players={ctx.players}
+          currentPlayerId={currentPlayer.id}
+          turnOrder={ctx.turnOrder}
+          playerSpending={ctx.playerSpending}
+          onOpenLedger={(id) => setLedgerFor(id)}
+        />
+
+        {/* ---------- main: board + dock ---------- */}
+        <div className="flex min-h-0 flex-col gap-3 px-3 pb-3 lg:flex-1 lg:flex-row">
+          <div className="bb2-board-frame h-[52vh] min-h-[320px] lg:h-auto lg:min-h-0 lg:flex-1">
+            <div className="bb2-board-inner pb-9 lg:pb-[84px]">
+              <BoardMap
+                players={ctx.players}
+                era={ctx.era}
+                merchants={ctx.merchants}
+                legalCities={legalCities}
+                legalLinks={legalLinks}
+                selectedCity={inBuildFlow ? ctx.selectedLocation : null}
+                selectedLinks={selectedLinks}
+                prompt={boardPrompt}
+                onCityClick={onCityClick}
+                onLinkClick={onLinkClick}
+                networkCities={needsReveal ? null : networkCities}
+                networkColor={
+                  needsReveal ? null : PLAYER_FILL[currentPlayer.color]
+                }
+                hoverCities={
+                  needsReveal ? null : (beerCandidateCities ?? hoverCities)
+                }
+                locatedCity={locateState.locatedCity}
+              />
+            </div>
+          </div>
+
+          <aside className="flex w-full flex-none flex-col gap-3 pb-44 lg:w-[380px] lg:overflow-y-auto lg:pb-0">
+            <div className="bb2-panel flex flex-col gap-3 p-4">
+              {!needsReveal && (
+                <ActionDock
+                  snapshot={state as GameStoreSnapshot}
+                  send={send}
+                  currentPlayer={currentPlayer}
+                  canSellAnything={canSellAnything}
+                  viableIndustries={viableIndustries}
+                  confirmOutcome={confirmOutcome}
+                  actionsLeft={{
+                    remaining: ctx.actionsRemaining,
+                    max: maxActions,
+                  }}
+                  legalSiteCount={pickingSite ? (legalCities?.size ?? 0) : null}
+                  onUndo={canUndo ? onUndo : null}
+                />
+              )}
+              {!needsReveal && (
+                <OpenMatButton onClick={() => setLedgerFor(currentPlayer.id)} />
+              )}
+            </div>
+            <MarketsPanel
+              coalMarket={ctx.coalMarket}
+              ironMarket={ctx.ironMarket}
+            />
+            <JournalPanel logs={ctx.logs} players={ctx.players} />
+          </aside>
         </div>
 
-        <span
-          className={`bb2-era-plate ${ctx.era === 'canal' ? 'bb2-era-canal' : 'bb2-era-rail'}`}
-          data-testid="era-plate"
-        >
-          {ctx.era} era
-        </span>
-        <span className="bb2-chip" data-testid="round-chip">
-          Round {ctx.round}
-        </span>
-        <span className="bb2-chip">
-          Actions
-          <span className="flex items-center gap-1">
-            {Array.from({ length: maxActions }, (_, i) => (
-              <span
-                key={i}
-                className="bb2-pip"
-                data-spent={i >= ctx.actionsRemaining}
-              />
-            ))}
-          </span>
-        </span>
-        {boot.kind !== 'fresh' && (
-          <span
-            className="bb2-chip hidden sm:inline-flex"
-            style={{ color: 'var(--bb-brass)', borderStyle: 'dashed' }}
-          >
-            Demonstration ledger
-          </span>
+        {/* ---------- hand tray ---------- */}
+        {!needsReveal && (
+          <HandTray
+            hand={currentPlayer.hand}
+            canSelect={
+              handSel
+                ? (cardId) => state.can({ type: 'SELECT_CARD', cardId })
+                : null
+            }
+            onSelect={(cardId) => send({ type: 'SELECT_CARD', cardId })}
+            selectedIds={handSel?.selectedIds ?? []}
+            hint={handSel?.hint ?? null}
+            onHoverCard={setHoveredCard}
+          />
         )}
 
-        <div className="ml-auto flex items-center gap-3">
-          <NewGameButton onConfirm={onNewGame} />
-        </div>
-      </header>
-
-      {/* ---------- player rail ---------- */}
-      <PlayerRail
-        players={ctx.players}
-        currentPlayerId={currentPlayer.id}
-        turnOrder={ctx.turnOrder}
-        playerSpending={ctx.playerSpending}
-        onOpenLedger={(id) => setLedgerFor(id)}
-      />
-
-      {/* ---------- main: board + dock ---------- */}
-      <div className="flex min-h-0 flex-col gap-3 px-3 pb-3 lg:flex-1 lg:flex-row">
-        <div className="bb2-board-frame h-[52vh] min-h-[320px] lg:h-auto lg:min-h-0 lg:flex-1">
-          <div className="bb2-board-inner pb-9 lg:pb-[84px]">
-            <BoardMap
-              players={ctx.players}
-              era={ctx.era}
-              merchants={ctx.merchants}
-              legalCities={legalCities}
-              legalLinks={legalLinks}
-              selectedCity={inBuildFlow ? ctx.selectedLocation : null}
-              selectedLinks={selectedLinks}
-              prompt={boardPrompt}
-              onCityClick={onCityClick}
-              onLinkClick={onLinkClick}
-              networkCities={needsReveal ? null : networkCities}
-              networkColor={
-                needsReveal ? null : PLAYER_FILL[currentPlayer.color]
-              }
-              hoverCities={
-                needsReveal ? null : (beerCandidateCities ?? hoverCities)
-              }
-            />
-          </div>
-        </div>
-
-        <aside className="flex w-full flex-none flex-col gap-3 pb-44 lg:w-[380px] lg:overflow-y-auto lg:pb-0">
-          <div className="bb2-panel flex flex-col gap-3 p-4">
-            {!needsReveal && (
-              <ActionDock
-                snapshot={state as GameStoreSnapshot}
-                send={send}
-                currentPlayer={currentPlayer}
-                canSellAnything={canSellAnything}
-                viableIndustries={viableIndustries}
-                confirmOutcome={confirmOutcome}
-                actionsLeft={{
-                  remaining: ctx.actionsRemaining,
-                  max: maxActions,
-                }}
-                legalSiteCount={pickingSite ? (legalCities?.size ?? 0) : null}
-                onUndo={canUndo ? onUndo : null}
-              />
-            )}
-            {!needsReveal && (
-              <OpenMatButton onClick={() => setLedgerFor(currentPlayer.id)} />
-            )}
-          </div>
-          <MarketsPanel
-            coalMarket={ctx.coalMarket}
-            ironMarket={ctx.ironMarket}
+        {/* ---------- overlays ---------- */}
+        {ledgerPlayer && (
+          <PlayerLedger
+            player={ledgerPlayer}
+            era={ctx.era}
+            isCurrent={ledgerPlayer.id === currentPlayer.id}
+            onClose={() => setLedgerFor(null)}
           />
-          <JournalPanel logs={ctx.logs} players={ctx.players} />
-        </aside>
-      </div>
+        )}
 
-      {/* ---------- hand tray ---------- */}
-      {!needsReveal && (
-        <HandTray
-          hand={currentPlayer.hand}
-          canSelect={
-            handSel
-              ? (cardId) => state.can({ type: 'SELECT_CARD', cardId })
-              : null
-          }
-          onSelect={(cardId) => send({ type: 'SELECT_CARD', cardId })}
-          selectedIds={handSel?.selectedIds ?? []}
-          hint={handSel?.hint ?? null}
-          onHoverCard={setHoveredCard}
-        />
-      )}
-
-      {/* ---------- overlays ---------- */}
-      {ledgerPlayer && (
-        <PlayerLedger
-          player={ledgerPlayer}
-          era={ctx.era}
-          isCurrent={ledgerPlayer.id === currentPlayer.id}
-          onClose={() => setLedgerFor(null)}
-        />
-      )}
-
-      {/* Round end announces itself above the pass gate: what everyone spent
+        {/* Round end announces itself above the pass gate: what everyone spent
           and how the turn order moved because of it. */}
-      {ctx.roundSummary && ctx.roundSummary.round !== curtainSeen && (
-        <RoundCurtain
-          summary={ctx.roundSummary}
-          players={ctx.players}
-          onDismiss={() => setCurtainSeen(ctx.roundSummary!.round)}
-        />
-      )}
+        {ctx.roundSummary && ctx.roundSummary.round !== curtainSeen && (
+          <RoundCurtain
+            summary={ctx.roundSummary}
+            players={ctx.players}
+            onDismiss={() => setCurtainSeen(ctx.roundSummary!.round)}
+          />
+        )}
 
-      {needsReveal && (
-        <PassGate
-          player={currentPlayer}
-          round={ctx.round}
-          era={ctx.era}
-          onReveal={() => setRevealedFor(currentPlayer.id)}
-        />
-      )}
+        {needsReveal && (
+          <PassGate
+            player={currentPlayer}
+            round={ctx.round}
+            era={ctx.era}
+            onReveal={() => setRevealedFor(currentPlayer.id)}
+          />
+        )}
 
-      <Toaster theme="dark" position="top-right" />
-    </div>
+        <Toaster theme="dark" position="top-right" />
+      </div>
+    </LocateCityProvider>
   )
 }
 

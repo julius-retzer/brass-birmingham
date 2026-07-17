@@ -1,0 +1,119 @@
+import { describe, expect, it } from 'vitest'
+import {
+  CARD_W,
+  FAN_SPACING,
+  LENS_COARSE,
+  LENS_FINE,
+  MIN_SPACING,
+  dockShift,
+  fanLayout,
+  lensReach,
+  lensShiftX,
+} from './hand-tray-layout'
+
+describe('fanLayout', () => {
+  it('keeps the classic fan when the width is unknown (SSR / first paint)', () => {
+    expect(fanLayout(8, null)).toEqual({ spacing: FAN_SPACING, marginX: -17 })
+  })
+
+  it('keeps the classic fan when there is room', () => {
+    // 768px tray (desktop max) holds 8 cards at full spacing: 108 + 7·74 = 626.
+    expect(fanLayout(8, 768).spacing).toBe(FAN_SPACING)
+  })
+
+  it('compresses the overlap so a full hand fits a phone-width tray', () => {
+    // 375px viewport at scale .72 → ~520 layout px.
+    const { spacing, marginX } = fanLayout(8, 520)
+    expect(spacing).toBeLessThan(FAN_SPACING)
+    // Total row width n·spacing must fit.
+    expect(8 * spacing).toBeLessThanOrEqual(520)
+    // marginX always reconstructs the spacing: card + 2·margin = spacing.
+    expect(CARD_W + 2 * marginX).toBeCloseTo(spacing)
+  })
+
+  it('accounts for the rotated overhang of the outermost cards', () => {
+    // 414px viewport at scale .72 → 575 layout px. The naive fit would be
+    // (575 − 108 − 12) / 7 ≈ 65px, but the edge cards rotate ±14° around a
+    // pivot below the card, swinging their top corners ~45px outward — the
+    // spacing must shrink to keep those corners on screen (regression: the
+    // fan visibly overflowed at 414×896 with 8 cards).
+    const { spacing } = fanLayout(8, 575)
+    expect(spacing).toBeGreaterThan(45)
+    expect(spacing).toBeLessThan(55)
+  })
+
+  it('never packs tighter than the minimum tappable slice', () => {
+    expect(fanLayout(30, 200).spacing).toBe(MIN_SPACING)
+  })
+
+  it('a single card needs no compression', () => {
+    expect(fanLayout(1, 100).spacing).toBe(FAN_SPACING)
+  })
+})
+
+describe('dockShift', () => {
+  it('is zero with nothing raised', () => {
+    expect(dockShift(3, null, LENS_FINE.scale)).toBe(0)
+  })
+
+  it('is zero for the raised card itself', () => {
+    expect(dockShift(3, 3, LENS_FINE.scale)).toBe(0)
+  })
+
+  it('pushes immediate neighbours apart, symmetric around the raised card', () => {
+    const left = dockShift(2, 3, LENS_FINE.scale)
+    const right = dockShift(4, 3, LENS_FINE.scale)
+    expect(left).toBeLessThan(0)
+    expect(right).toBeGreaterThan(0)
+    expect(left).toBe(-right)
+  })
+
+  it('falls off with distance and stops after two seats', () => {
+    const d1 = dockShift(4, 3, LENS_FINE.scale)
+    const d2 = dockShift(5, 3, LENS_FINE.scale)
+    expect(d2).toBeGreaterThan(0)
+    expect(d2).toBeLessThan(d1)
+    expect(dockShift(6, 3, LENS_FINE.scale)).toBe(0)
+  })
+
+  it('shifts further for the larger touch magnification', () => {
+    expect(dockShift(4, 3, LENS_COARSE.scale)).toBeGreaterThan(
+      dockShift(4, 3, LENS_FINE.scale),
+    )
+  })
+})
+
+describe('lensShiftX', () => {
+  const spacing = 60
+  const width = 520
+
+  it('leaves centre cards alone', () => {
+    expect(lensShiftX(3, 8, spacing, width, LENS_COARSE.scale)).toBe(0)
+  })
+
+  it('pulls the leftmost card right so the magnified visual stays on screen', () => {
+    const shift = lensShiftX(0, 8, spacing, width, LENS_COARSE.scale)
+    expect(shift).toBeGreaterThan(0)
+    // After shifting, the visual's left edge sits at the pad.
+    const centerX = width / 2 + (0 - 3.5) * spacing + shift
+    expect(centerX - (CARD_W * LENS_COARSE.scale) / 2).toBeCloseTo(8)
+  })
+
+  it('pulls the rightmost card left, mirroring the leftmost', () => {
+    const left = lensShiftX(0, 8, spacing, width, LENS_COARSE.scale)
+    const right = lensShiftX(7, 8, spacing, width, LENS_COARSE.scale)
+    expect(right).toBeCloseTo(-left)
+  })
+
+  it('does nothing when the width is unknown', () => {
+    expect(lensShiftX(0, 8, spacing, null, LENS_COARSE.scale)).toBe(0)
+  })
+})
+
+describe('lensReach', () => {
+  it('covers the full magnified visual above the seat', () => {
+    // rise + the extra height gained by scaling from the bottom edge.
+    expect(lensReach(LENS_FINE)).toBeCloseTo(40 + 156 * 0.6)
+    expect(lensReach(LENS_COARSE)).toBeGreaterThan(lensReach(LENS_FINE))
+  })
+})

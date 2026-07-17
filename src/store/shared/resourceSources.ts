@@ -18,6 +18,14 @@ import type { GameState, Player } from '../gameStore'
 import { calculateNetworkDistance, getCurrentPlayer } from './gameUtils'
 
 /**
+ * The two resources whose source the player gets to choose. Coal is
+ * deliberately absent: it comes from the closest connected mine by rule, so
+ * there is never a question to ask. Every selector in this module comes in a
+ * beer/iron pair keyed on this, and the machine's guards take it as a param.
+ */
+export type Resource = 'beer' | 'iron'
+
+/**
  * A brewery source names a player's brewery tiles at a location. Two tiles of
  * the same owner in the same city are interchangeable for every rule that
  * matters (both flip, both advance the same owner's income), so they share one

@@ -90,10 +90,17 @@ function developCombos(): IndustryType[][] {
 }
 
 /**
- * All events the machine will accept right now, in a deterministic order.
- * TEST/TRIGGER/lifecycle events are never candidates.
+ * Every event worth OFFERING at this decision point, payloads and all, in a
+ * deterministic order — before any legality filtering. TEST/TRIGGER/lifecycle
+ * events are never candidates.
+ *
+ * Split out from `enumerateLegalMoves` so the statechart-shape graph sweep
+ * (`gameStore.graph.test.ts`) can drive the machine with the same concretely
+ * payloaded alphabet the AI sees, rather than a hand-maintained copy of it.
+ * Legality is deliberately NOT applied here: the graph traversal filters with
+ * its own `filterEvents: (s, e) => s.can(e)` against each state it reaches.
  */
-export function enumerateLegalMoves(snapshot: GameStoreSnapshot): LegalMove[] {
+export function candidateMoves(snapshot: GameStoreSnapshot): LegalMove[] {
   const ctx = snapshot.context
   const me = ctx.players[ctx.currentPlayerIndex]
   if (!me) return []
@@ -104,22 +111,11 @@ export function enumerateLegalMoves(snapshot: GameStoreSnapshot): LegalMove[] {
 
   for (const c of TOP_LEVEL) push(c.event, c.label)
 
-  // The card-first entry (SELECT_CARD from idle → cardSelected) is a human
-  // ergonomics flow: every move it reaches is also reachable action-first,
-  // so offering it to the model would only widen the decision surface with
-  // a redundant path — and the deterministic fallback (which ranks
-  // SELECT_CARD high for the mid-flow discard steps) would loop through it
-  // instead of taking a turn-consuming action.
-  const atActionChoice = snapshot.matches({
-    playing: { action: 'selectingAction' },
-  } as never)
-  if (!atActionChoice) {
-    for (const card of me.hand) {
-      push(
-        { type: 'SELECT_CARD', cardId: card.id },
-        `Play card: ${describeCard(card)}`,
-      )
-    }
+  for (const card of me.hand) {
+    push(
+      { type: 'SELECT_CARD', cardId: card.id },
+      `Play card: ${describeCard(card)}`,
+    )
   }
 
   for (const industryType of INDUSTRY_TYPES) {
@@ -198,7 +194,6 @@ export function enumerateLegalMoves(snapshot: GameStoreSnapshot): LegalMove[] {
     { type: 'CHOOSE_DOUBLE_LINK_BUILD' },
     'Build a second rail this action (£15 total + beer)',
   )
-  push({ type: 'BUILD_SECOND_LINK' }, 'Proceed to choose the second rail')
   push(
     { type: 'EXECUTE_DOUBLE_NETWORK_ACTION' },
     'Confirm the double rail build',
@@ -206,5 +201,25 @@ export function enumerateLegalMoves(snapshot: GameStoreSnapshot): LegalMove[] {
   push({ type: 'CONFIRM' }, 'Confirm this action')
   push({ type: 'CANCEL' }, 'Cancel and choose a different action')
 
-  return candidates.filter((c) => snapshot.can(c.event as never))
+  return candidates
+}
+
+/**
+ * All events the machine will accept right now — the candidate alphabet minus
+ * the moves the AI should not be offered, filtered by the engine's own guards.
+ */
+export function enumerateLegalMoves(snapshot: GameStoreSnapshot): LegalMove[] {
+  // The card-first entry (SELECT_CARD from idle → cardSelected) is a human
+  // ergonomics flow: every move it reaches is also reachable action-first,
+  // so offering it to the model would only widen the decision surface with
+  // a redundant path — and the deterministic fallback (which ranks
+  // SELECT_CARD high for the mid-flow discard steps) would loop through it
+  // instead of taking a turn-consuming action. It stays in `candidateMoves`
+  // because it IS part of the machine's real shape — only the AI declines it.
+  const atActionChoice = snapshot.matches({
+    playing: { action: 'selectingAction' },
+  } as never)
+  return candidateMoves(snapshot)
+    .filter((c) => !(atActionChoice && c.event.type === 'SELECT_CARD'))
+    .filter((c) => snapshot.can(c.event as never))
 }

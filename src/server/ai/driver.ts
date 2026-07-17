@@ -5,7 +5,7 @@
 // the validation error appended (max 3 model calls per decision), then fall
 // back to a deterministic heuristic so the game NEVER stalls. Every step
 // reports usage so the per-game cost counter stays honest.
-import { createActor } from 'xstate'
+import { createActor, transition } from 'xstate'
 import { type CityId, cities, connections } from '../../data/board'
 import {
   type GameEvent,
@@ -67,6 +67,12 @@ export function rehydrateSnapshot(persisted: unknown): unknown {
   return clone
 }
 
+/**
+ * The one impure step: persisted JSON → a live snapshot the pure API accepts.
+ * `transition()` rejects raw persisted JSON (it has no resolved state nodes),
+ * so a restore is unavoidable — but only once per entry point, after which
+ * probe chains are pure.
+ */
 function snapshotOf(persisted: unknown): GameStoreSnapshot {
   const actor = createActor(gameStore, {
     snapshot: rehydrateSnapshot(persisted) as never,
@@ -85,34 +91,49 @@ interface ApplyResult {
   error?: string
 }
 
+interface PureResult {
+  ok: boolean
+  after?: GameStoreSnapshot
+  error?: string
+}
+
 /**
- * Execute one event on a scratch actor. "Legal" means the guard accepted it
- * AND execution did not set lastError (the engine's actions never throw —
- * a failed execution leaves an error and refuses to consume the action).
+ * Apply one event to a live snapshot with no actor and no side effects.
+ * "Legal" means the guard accepted it AND execution did not set lastError
+ * (the engine's actions never throw — a failed execution leaves an error and
+ * refuses to consume the action).
+ *
+ * `transition()` returns the unexecuted actions alongside the next snapshot;
+ * this machine is assign-only, so that list is always empty and dropping it
+ * loses nothing. It resolves `always` chains in full, exactly like send().
+ */
+function applyPure(before: GameStoreSnapshot, event: GameEvent): PureResult {
+  if (!before.can(event as never)) {
+    return { ok: false, error: 'That event is not accepted right now.' }
+  }
+  const [after] = transition(gameStore, before as never, event as never)
+  const next = after as GameStoreSnapshot
+  if (next.context.lastError !== null) {
+    return { ok: false, error: next.context.lastError }
+  }
+  return { ok: true, after: next }
+}
+
+/**
+ * Apply one event to a persisted snapshot, reporting the persisted result.
+ * Restores once, then defers to the pure path.
  */
 export function tryApplyEvent(
   persisted: unknown,
   event: GameEvent,
 ): ApplyResult {
-  const actor = createActor(gameStore, {
-    snapshot: rehydrateSnapshot(persisted) as never,
-  })
-  actor.start()
-  const before = actor.getSnapshot() as GameStoreSnapshot
-  if (!before.can(event as never)) {
-    actor.stop()
-    return { ok: false, error: 'That event is not accepted right now.' }
+  const result = applyPure(snapshotOf(persisted), event)
+  if (!result.ok || !result.after) return result
+  return {
+    ok: true,
+    after: result.after,
+    next: gameStore.getPersistedSnapshot(result.after as never),
   }
-  actor.send(event as never)
-  const after = actor.getSnapshot() as GameStoreSnapshot
-  if (after.context.lastError !== null) {
-    const error = after.context.lastError
-    actor.stop()
-    return { ok: false, error }
-  }
-  const next = actor.getPersistedSnapshot()
-  actor.stop()
-  return { ok: true, next, after }
 }
 
 /**
@@ -124,12 +145,14 @@ export function tryApplyEvent(
  * doomed pick WITH the engine's real refusal keeps the model on live
  * branches. (Captain playtest finding, 2026-07-15.)
  */
-function flowDeadEnd(applied: ApplyResult, depth = 0): string | null {
-  const after = applied.after
+function flowDeadEnd(
+  after: GameStoreSnapshot | undefined,
+  depth = 0,
+): string | null {
   if (!after || depth > 3) return null
   const m = (path: unknown) => after.matches(path as never)
   const probeConfirm = (event: GameEvent): string | null => {
-    const probe = tryApplyEvent(applied.next, event)
+    const probe = applyPure(after, event)
     return probe.ok ? null : (probe.error ?? 'The confirm would fail.')
   }
 
@@ -153,8 +176,8 @@ function flowDeadEnd(applied: ApplyResult, depth = 0): string | null {
     for (const cityId of Object.keys(cities) as CityId[]) {
       const event: GameEvent = { type: 'SELECT_LOCATION', cityId }
       if (!after.can(event as never)) continue
-      const next = tryApplyEvent(applied.next, event)
-      if (next.ok && flowDeadEnd(next, depth + 1) === null) return null
+      const next = applyPure(after, event)
+      if (next.ok && flowDeadEnd(next.after, depth + 1) === null) return null
     }
     return 'there is NO city where this build can be completed (slot, tile cost, coal reach or payment fails everywhere)'
   }
@@ -164,8 +187,8 @@ function flowDeadEnd(applied: ApplyResult, depth = 0): string | null {
     for (const industryType of INDUSTRY_TYPES) {
       const event: GameEvent = { type: 'SELECT_INDUSTRY_TYPE', industryType }
       if (!after.can(event as never)) continue
-      const next = tryApplyEvent(applied.next, event)
-      if (next.ok && flowDeadEnd(next, depth + 1) === null) return null
+      const next = applyPure(after, event)
+      if (next.ok && flowDeadEnd(next.after, depth + 1) === null) return null
     }
     return 'NO industry playable from this card leads to a completable build'
   }
@@ -186,8 +209,8 @@ function flowDeadEnd(applied: ApplyResult, depth = 0): string | null {
         ? { type: 'SELECT_SECOND_LINK', from: conn.from, to: conn.to }
         : { type: 'SELECT_LINK', from: conn.from, to: conn.to }
       if (!after.can(event as never)) continue
-      const next = tryApplyEvent(applied.next, event)
-      if (next.ok && flowDeadEnd(next, depth + 1) === null) return null
+      const next = applyPure(after, event)
+      if (next.ok && flowDeadEnd(next.after, depth + 1) === null) return null
     }
     return 'NO link in your network can actually be built right now (cost or connection fails everywhere)'
   }
@@ -239,7 +262,6 @@ const FALLBACK_PRIORITY: GameEvent['type'][] = [
   'DEVELOP',
   'SELL',
   'SCOUT',
-  'BUILD_SECOND_LINK',
   'CHOOSE_DOUBLE_LINK_BUILD',
   'CANCEL',
 ]
@@ -255,7 +277,7 @@ function fallbackApply(
   )
   for (const move of ranked) {
     const result = tryApplyEvent(persisted, move.event)
-    if (result.ok && !flowDeadEnd(result)) return { move, result }
+    if (result.ok && !flowDeadEnd(result.after)) return { move, result }
   }
   // even a dead-end confirm target is progress if nothing else applies
   for (const move of ranked) {
@@ -448,7 +470,7 @@ export async function aiDecideAndApply(
       )
       continue
     }
-    const deadEnd = flowDeadEnd(applied)
+    const deadEnd = flowDeadEnd(applied.after)
     if (deadEnd) {
       reject(
         `Move ${idx} ("${move.label}") leads to a build that cannot be completed: ${deadEnd}. Choose a different move.`,

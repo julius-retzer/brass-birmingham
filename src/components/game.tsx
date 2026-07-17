@@ -14,7 +14,7 @@
 import { useMachine } from '@xstate/react'
 import { Component, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { createActor } from 'xstate'
+import { createActor, transition } from 'xstate'
 import { Toaster } from '~/components/ui/sonner'
 import { type CityId, cities, connections } from '~/data/board'
 import { type Card, type IndustryType } from '~/data/cards'
@@ -119,15 +119,30 @@ function rehydrateSnapshot(snapshot: unknown): unknown {
   return clone
 }
 
-// Shadow actors for legality probes. getPersistedSnapshot() can share
-// nested references with the live context, and probes that EXECUTE a
-// confirm would reach engine code paths with in-place mutations — always
-// probe a deep clone (rehydrateSnapshot structured-clones and keeps the
-// markets' Infinity rows intact).
-const createProbeActor = (actorRef: { getPersistedSnapshot: () => unknown }) =>
-  createActor(gameStore, {
+// Detach a probe snapshot from the live actor. This is the only impure step:
+// `transition()` needs resolved state nodes, which raw persisted JSON has
+// none of. The deep clone still matters — getPersistedSnapshot() can share
+// nested references with the live context, so a probe that EXECUTES a confirm
+// must not reach engine code holding the real context (rehydrateSnapshot
+// structured-clones and keeps the markets' Infinity rows intact).
+const probeSnapshot = (actorRef: {
+  getPersistedSnapshot: () => unknown
+}): GameStoreSnapshot => {
+  const actor = createActor(gameStore, {
     snapshot: rehydrateSnapshot(actorRef.getPersistedSnapshot()) as never,
   })
+  actor.start()
+  const snap = actor.getSnapshot()
+  actor.stop()
+  return snap
+}
+
+// Pure probe step: no actor, no side effects, `always` chains resolved. The
+// machine is assign-only, so the unexecuted-actions half of the tuple is
+// always empty. Transitions never mutate the snapshot they start from, which
+// is what lets one restored snapshot be fanned across many candidate probes.
+const probeStep = (snap: GameStoreSnapshot, event: GameEvent) =>
+  transition(gameStore, snap as never, event as never)[0] as GameStoreSnapshot
 
 // From a snapshot sitting in building.selectingLocation, can the build be
 // COMPLETED at this city? The SELECT_LOCATION guard only checks the slot;
@@ -135,20 +150,12 @@ const createProbeActor = (actorRef: { getPersistedSnapshot: () => unknown }) =>
 // a slot-legal city can still be a dead end (audit follow-up: iron works
 // at Coventry pulsed legal, then the confirm refused without a why).
 const buildCompletesAt = (
-  source: { getPersistedSnapshot: () => unknown },
+  source: GameStoreSnapshot,
   cityId: CityId,
 ): boolean => {
-  const probe = createProbeActor(source)
-  probe.start()
-  probe.send({ type: 'SELECT_LOCATION', cityId })
-  const snap = probe.getSnapshot()
-  let ok = false
-  if (snap.can({ type: 'CONFIRM' })) {
-    probe.send({ type: 'CONFIRM' })
-    ok = probe.getSnapshot().context.lastError === null
-  }
-  probe.stop()
-  return ok
+  const snap = probeStep(source, { type: 'SELECT_LOCATION', cityId })
+  if (!snap.can({ type: 'CONFIRM' })) return false
+  return probeStep(snap, { type: 'CONFIRM' }).context.lastError === null
 }
 
 const snapshotCurrentPlayerId = (snapshot: unknown): string | null => {
@@ -518,10 +525,20 @@ function GameInner({
     if (!pickingSite) return [null, null] as const
     const legal = new Set<string>()
     const slotOnly = new Set<string>()
+    // One restore, then a pure probe per city. A restore that fails leaves
+    // `base` null and every slot-legal city falls open to the guard's answer,
+    // exactly as a per-city probe failure always has.
+    let base: GameStoreSnapshot | null = null
+    try {
+      base = probeSnapshot(actorRef)
+    } catch {
+      base = null
+    }
     for (const id of Object.keys(cities) as CityId[]) {
       if (!state.can({ type: 'SELECT_LOCATION', cityId: id })) continue
       try {
-        if (buildCompletesAt(actorRef, id)) legal.add(id)
+        if (!base) throw new Error('no probe')
+        if (buildCompletesAt(base, id)) legal.add(id)
         else slotOnly.add(id)
       } catch {
         legal.add(id) // fail open to the guard's answer
@@ -574,14 +591,12 @@ function GameInner({
     )
     if (sellable.length === 0 || currentPlayer.hand.length === 0) return false
     try {
-      const probe = createProbeActor(actorRef)
-      probe.start()
-      probe.send({ type: 'SELL' })
+      let snap = probeStep(probeSnapshot(actorRef), { type: 'SELL' })
       const firstCard = currentPlayer.hand[0]
-      if (firstCard) probe.send({ type: 'SELECT_CARD', cardId: firstCard.id })
-      const snap = probe.getSnapshot()
-      let ok = false
-      outer: for (const ind of sellable) {
+      if (firstCard) {
+        snap = probeStep(snap, { type: 'SELECT_CARD', cardId: firstCard.id })
+      }
+      for (const ind of sellable) {
         for (const m of ctx.merchants) {
           if (
             snap.can({
@@ -591,13 +606,11 @@ function GameInner({
               merchant: m.location,
             })
           ) {
-            ok = true
-            break outer
+            return true
           }
         }
       }
-      probe.stop()
-      return ok
+      return false
     } catch {
       return true // fail open — the flow itself still guards correctly
     }
@@ -615,21 +628,23 @@ function GameInner({
       return null
     try {
       const viable = new Set<IndustryType>()
+      // One restore for the whole sweep; each industry is a pure branch off it.
+      const base = probeSnapshot(actorRef)
       for (const industryType of INDUSTRY_TYPES) {
         if (!state.can({ type: 'SELECT_INDUSTRY_TYPE', industryType })) continue
-        const probe = createProbeActor(actorRef)
-        probe.start()
-        probe.send({ type: 'SELECT_INDUSTRY_TYPE', industryType })
-        const snap = probe.getSnapshot()
+        const snap = probeStep(base, {
+          type: 'SELECT_INDUSTRY_TYPE',
+          industryType,
+        })
         if (
           snap.matches({ playing: { action: { building: 'confirmingBuild' } } })
         ) {
           // Location card — the site is fixed, so dry-run the build itself.
-          if (snap.can({ type: 'CONFIRM' })) {
-            probe.send({ type: 'CONFIRM' })
-            if (probe.getSnapshot().context.lastError === null) {
-              viable.add(industryType)
-            }
+          if (
+            snap.can({ type: 'CONFIRM' }) &&
+            probeStep(snap, { type: 'CONFIRM' }).context.lastError === null
+          ) {
+            viable.add(industryType)
           }
         } else if (
           snap.matches({
@@ -640,13 +655,12 @@ function GameInner({
           // (a slot-legal city can still lack coal access or funds).
           for (const id of Object.keys(cities) as CityId[]) {
             if (!snap.can({ type: 'SELECT_LOCATION', cityId: id })) continue
-            if (buildCompletesAt(probe, id)) {
+            if (buildCompletesAt(snap, id)) {
               viable.add(industryType)
               break
             }
           }
         }
-        probe.stop()
       }
       return viable
     } catch {
@@ -673,12 +687,8 @@ function GameInner({
     if (!confirmEvent || !currentPlayer) return null
     if (!state.can(confirmEvent)) return null // machine guard already refuses
     try {
-      const probe = createProbeActor(actorRef)
-      probe.start()
       const moneyBefore = currentPlayer.money
-      probe.send(confirmEvent)
-      const after = probe.getSnapshot().context
-      probe.stop()
+      const after = probeStep(probeSnapshot(actorRef), confirmEvent).context
       if (after.lastError !== null) {
         return { ok: false, error: after.lastError }
       }

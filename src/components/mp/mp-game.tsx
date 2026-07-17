@@ -25,6 +25,7 @@ import { linkKey } from '../board/board-data'
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from '../board/board-map'
 import { HandTray } from '../hand-tray'
 import { computeHoverCities } from '../hover-highlight'
+import { LocateCityProvider, useLocateCityState } from '../locate'
 import { GameOverScreen, RoundCurtain } from '../overlays'
 import { OpenMatButton, PlayerLedger } from '../player-ledger'
 import { PlayerRail } from '../player-rail'
@@ -748,6 +749,9 @@ function MpTable({
 }) {
   const [ledgerFor, setLedgerFor] = useState<string | null>(null)
   const [hoveredCard, setHoveredCard] = useState<Card | null>(null)
+  // Hover-to-locate: which city's NAME (journal, pickers, ledger…) is under
+  // the cursor/focus right now — its plate gets the map's surveyor's mark.
+  const locateState = useLocateCityState()
 
   // Read-only actor per broadcast: gives the dock/board the snapshot shape
   // (`matches`, `can`, context) they already understand.
@@ -1102,260 +1106,270 @@ function MpTable({
   const aiIsThinking = aiTurn && view.ai?.thinkingSeatId === currentSeat?.seatId
 
   return (
-    <div className="flex min-h-screen flex-col lg:h-screen lg:overflow-hidden">
-      {/* Global in-flight cue: a slim indeterminate bar + a polite live region
+    <LocateCityProvider value={locateState}>
+      <div className="flex min-h-screen flex-col lg:h-screen lg:overflow-hidden">
+        {/* Global in-flight cue: a slim indeterminate bar + a polite live region
           announcing that the last move is syncing with the server. */}
-      {inFlight && <div className="bb2-syncbar" aria-hidden="true" />}
-      <div className="sr-only" role="status" aria-live="polite">
-        {inFlight ? 'Syncing your move with the table…' : ''}
-      </div>
-      {/* masthead */}
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-2 pt-3">
-        <div className="flex items-baseline gap-2">
-          <span
-            className="bb2-display text-[22px] font-black leading-none tracking-[0.14em]"
-            style={{ color: 'var(--bb-brass-bright)' }}
-          >
-            BRASS
-          </span>
-          <span
-            className="bb2-display text-[13px] italic"
-            style={{ color: 'rgba(231,215,177,.55)' }}
-          >
-            Birmingham · online
-          </span>
+        {inFlight && <div className="bb2-syncbar" aria-hidden="true" />}
+        <div className="sr-only" role="status" aria-live="polite">
+          {inFlight ? 'Syncing your move with the table…' : ''}
         </div>
-        <span
-          className={`bb2-era-plate ${ctx.era === 'canal' ? 'bb2-era-canal' : 'bb2-era-rail'}`}
-          data-testid="era-plate"
-        >
-          {ctx.era} era
-        </span>
-        <span className="bb2-chip" data-testid="round-chip">
-          Round {ctx.round}
-        </span>
-        <span className="bb2-chip">
-          Actions
-          <span className="flex items-center gap-1">
-            {Array.from({ length: maxActions }, (_, i) => (
-              <span
-                key={i}
-                className="bb2-pip"
-                data-spent={i >= ctx.actionsRemaining}
-              />
-            ))}
-          </span>
-        </span>
-        <span
-          className="bb2-chip"
-          data-testid="you-chip"
-          style={{ color: 'var(--bb-brass)' }}
-        >
-          You are {me.name}
-        </span>
-        <div className="ml-auto flex items-center gap-3">
-          {inFlight && (
-            <span className="bb2-sync-pill" data-testid="mp-syncing">
-              <span className="bb2-sync-dot" />
-              Syncing
-            </span>
-          )}
-          {notifyPermission === 'default' && (
-            <button
-              type="button"
-              className="bb2-ghost-btn"
-              data-testid="notify-enable"
-              title="Get a browser notification when it becomes your turn while this tab is in the background"
-              onClick={() => {
-                void Notification.requestPermission().then(setNotifyPermission)
-              }}
+        {/* masthead */}
+        <header className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-2 pt-3">
+          <div className="flex items-baseline gap-2">
+            <span
+              className="bb2-display text-[22px] font-black leading-none tracking-[0.14em]"
+              style={{ color: 'var(--bb-brass-bright)' }}
             >
-              🔔 Turn alerts
-            </button>
-          )}
-          {you === 0 && (
-            <SeatsButton token={token} creds={creds} seats={view.seats} />
-          )}
-          <ShareLink />
-        </div>
-      </header>
-
-      <PlayerRail
-        players={ctx.players}
-        currentPlayerId={currentPlayer.id}
-        turnOrder={ctx.turnOrder}
-        playerSpending={ctx.playerSpending}
-        onOpenLedger={(id) => setLedgerFor(id)}
-      />
-
-      <div className="flex min-h-0 flex-col gap-3 px-3 pb-3 lg:flex-1 lg:flex-row">
-        <div className="bb2-board-frame h-[52vh] min-h-[320px] lg:h-auto lg:min-h-0 lg:flex-1">
-          <div className="bb2-board-inner pb-9 lg:pb-[84px]">
-            <BoardMap
-              players={ctx.players}
-              era={ctx.era}
-              merchants={ctx.merchants}
-              legalCities={legalCities}
-              legalLinks={legalLinks}
-              selectedCity={ctx.selectedLocation}
-              selectedLinks={selectedLinks}
-              prompt={myTurn ? boardPrompt : null}
-              onCityClick={onCityClick}
-              onLinkClick={onLinkClick}
-              networkCities={me ? playerNetworkCities(me) : null}
-              networkColor={me ? PLAYER_FILL[me.color] : null}
-              hoverCities={hoverCities}
-            />
+              BRASS
+            </span>
+            <span
+              className="bb2-display text-[13px] italic"
+              style={{ color: 'rgba(231,215,177,.55)' }}
+            >
+              Birmingham · online
+            </span>
           </div>
-        </div>
-
-        <aside className="flex w-full flex-none flex-col gap-3 pb-44 lg:w-[380px] lg:overflow-y-auto lg:pb-0">
-          <div
-            className={`bb2-panel flex flex-col gap-3 p-4 ${myTurn && inFlight ? 'bb2-busy' : ''}`}
-            aria-busy={myTurn && inFlight}
+          <span
+            className={`bb2-era-plate ${ctx.era === 'canal' ? 'bb2-era-canal' : 'bb2-era-rail'}`}
+            data-testid="era-plate"
           >
-            {myTurn ? (
-              <ActionDock
-                snapshot={state}
-                send={send as never}
-                currentPlayer={currentPlayer}
-                canSellAnything={canSellAnything}
-                actionsLeft={{
-                  remaining: ctx.actionsRemaining,
-                  max: maxActions,
+            {ctx.era} era
+          </span>
+          <span className="bb2-chip" data-testid="round-chip">
+            Round {ctx.round}
+          </span>
+          <span className="bb2-chip">
+            Actions
+            <span className="flex items-center gap-1">
+              {Array.from({ length: maxActions }, (_, i) => (
+                <span
+                  key={i}
+                  className="bb2-pip"
+                  data-spent={i >= ctx.actionsRemaining}
+                />
+              ))}
+            </span>
+          </span>
+          <span
+            className="bb2-chip"
+            data-testid="you-chip"
+            style={{ color: 'var(--bb-brass)' }}
+          >
+            You are {me.name}
+          </span>
+          <div className="ml-auto flex items-center gap-3">
+            {inFlight && (
+              <span className="bb2-sync-pill" data-testid="mp-syncing">
+                <span className="bb2-sync-dot" />
+                Syncing
+              </span>
+            )}
+            {notifyPermission === 'default' && (
+              <button
+                type="button"
+                className="bb2-ghost-btn"
+                data-testid="notify-enable"
+                title="Get a browser notification when it becomes your turn while this tab is in the background"
+                onClick={() => {
+                  void Notification.requestPermission().then(
+                    setNotifyPermission,
+                  )
                 }}
+              >
+                🔔 Turn alerts
+              </button>
+            )}
+            {you === 0 && (
+              <SeatsButton token={token} creds={creds} seats={view.seats} />
+            )}
+            <ShareLink />
+          </div>
+        </header>
+
+        <PlayerRail
+          players={ctx.players}
+          currentPlayerId={currentPlayer.id}
+          turnOrder={ctx.turnOrder}
+          playerSpending={ctx.playerSpending}
+          onOpenLedger={(id) => setLedgerFor(id)}
+        />
+
+        <div className="flex min-h-0 flex-col gap-3 px-3 pb-3 lg:flex-1 lg:flex-row">
+          <div className="bb2-board-frame h-[52vh] min-h-[320px] lg:h-auto lg:min-h-0 lg:flex-1">
+            <div className="bb2-board-inner pb-9 lg:pb-[84px]">
+              <BoardMap
+                players={ctx.players}
+                era={ctx.era}
+                merchants={ctx.merchants}
+                legalCities={legalCities}
+                legalLinks={legalLinks}
+                selectedCity={ctx.selectedLocation}
+                selectedLinks={selectedLinks}
+                prompt={myTurn ? boardPrompt : null}
+                onCityClick={onCityClick}
+                onLinkClick={onLinkClick}
+                networkCities={me ? playerNetworkCities(me) : null}
+                networkColor={me ? PLAYER_FILL[me.color] : null}
+                hoverCities={hoverCities}
+                locatedCity={locateState.locatedCity}
               />
-            ) : aiTurn ? (
-              <div className="flex flex-col gap-2" data-testid="ai-panel">
-                <span className="bb2-panel-title">The rival&rsquo;s desk</span>
-                <p
-                  className="text-[14px]"
-                  style={{ color: 'var(--bb-parchment)' }}
-                >
-                  <b style={{ color: 'var(--bb-brass-bright)' }}>
-                    {currentPlayer.name}
-                  </b>{' '}
-                  <span
-                    className="text-[11px] uppercase tracking-[0.12em]"
+            </div>
+          </div>
+
+          <aside className="flex w-full flex-none flex-col gap-3 pb-44 lg:w-[380px] lg:overflow-y-auto lg:pb-0">
+            <div
+              className={`bb2-panel flex flex-col gap-3 p-4 ${myTurn && inFlight ? 'bb2-busy' : ''}`}
+              aria-busy={myTurn && inFlight}
+            >
+              {myTurn ? (
+                <ActionDock
+                  snapshot={state}
+                  send={send as never}
+                  currentPlayer={currentPlayer}
+                  canSellAnything={canSellAnything}
+                  actionsLeft={{
+                    remaining: ctx.actionsRemaining,
+                    max: maxActions,
+                  }}
+                />
+              ) : aiTurn ? (
+                <div className="flex flex-col gap-2" data-testid="ai-panel">
+                  <span className="bb2-panel-title">
+                    The rival&rsquo;s desk
+                  </span>
+                  <p
+                    className="text-[14px]"
+                    style={{ color: 'var(--bb-parchment)' }}
+                  >
+                    <b style={{ color: 'var(--bb-brass-bright)' }}>
+                      {currentPlayer.name}
+                    </b>{' '}
+                    <span
+                      className="text-[11px] uppercase tracking-[0.12em]"
+                      style={{ color: 'rgba(231,215,177,.5)' }}
+                    >
+                      ({currentSeat?.aiTier?.difficulty ?? 'ai'})
+                    </span>{' '}
+                    {aiIsThinking ? (
+                      <span className="animate-pulse" data-testid="ai-thinking">
+                        is thinking…
+                      </span>
+                    ) : (
+                      <span>is moving…</span>
+                    )}
+                  </p>
+                  <p
+                    className="text-[12px]"
                     style={{ color: 'rgba(231,215,177,.5)' }}
                   >
-                    ({currentSeat?.aiTier?.difficulty ?? 'ai'})
-                  </span>{' '}
-                  {aiIsThinking ? (
-                    <span className="animate-pulse" data-testid="ai-thinking">
-                      is thinking…
-                    </span>
-                  ) : (
-                    <span>is moving…</span>
-                  )}
-                </p>
-                <p
-                  className="text-[12px]"
-                  style={{ color: 'rgba(231,215,177,.5)' }}
+                    Its moves and reasoning appear in the rival&rsquo;s journal
+                    below.
+                  </p>
+                </div>
+              ) : (
+                <div
+                  className="flex flex-col gap-2"
+                  data-testid="waiting-panel"
                 >
-                  Its moves and reasoning appear in the rival&rsquo;s journal
-                  below.
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2" data-testid="waiting-panel">
-                <span className="bb2-panel-title">The table</span>
-                <p
-                  className="text-[14px]"
-                  style={{ color: 'var(--bb-parchment)' }}
-                >
-                  Waiting for{' '}
-                  <b style={{ color: 'var(--bb-brass-bright)' }}>
-                    {currentPlayer.name}
-                  </b>{' '}
-                  to act…
-                </p>
-                <p
-                  className="text-[12px]"
-                  style={{ color: 'rgba(231,215,177,.5)' }}
-                >
-                  Moves appear here live. Your hand stays private below.
-                </p>
-              </div>
-            )}
-            {/* Always yours, never the seat that happens to be acting. */}
-            {me && <OpenMatButton onClick={() => setLedgerFor(me.id)} />}
-          </div>
-          {view.ai && <AiMindPanel ai={view.ai} seats={view.seats} />}
-          <MarketsPanel
-            coalMarket={ctx.coalMarket}
-            ironMarket={ctx.ironMarket}
-          />
-          <ChatPanel
-            messages={view.messages ?? []}
-            you={you}
-            seats={view.seats}
-            onSend={(text) => {
-              void (async () => {
-                try {
-                  const res = await fetch('/api/mp/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      token,
-                      seatId: creds.seatId,
-                      seatSecret: creds.seatSecret,
-                      text,
-                    }),
-                  })
-                  const body = (await res.json()) as {
-                    ok: boolean
-                    view?: GameViewWire
+                  <span className="bb2-panel-title">The table</span>
+                  <p
+                    className="text-[14px]"
+                    style={{ color: 'var(--bb-parchment)' }}
+                  >
+                    Waiting for{' '}
+                    <b style={{ color: 'var(--bb-brass-bright)' }}>
+                      {currentPlayer.name}
+                    </b>{' '}
+                    to act…
+                  </p>
+                  <p
+                    className="text-[12px]"
+                    style={{ color: 'rgba(231,215,177,.5)' }}
+                  >
+                    Moves appear here live. Your hand stays private below.
+                  </p>
+                </div>
+              )}
+              {/* Always yours, never the seat that happens to be acting. */}
+              {me && <OpenMatButton onClick={() => setLedgerFor(me.id)} />}
+            </div>
+            {view.ai && <AiMindPanel ai={view.ai} seats={view.seats} />}
+            <MarketsPanel
+              coalMarket={ctx.coalMarket}
+              ironMarket={ctx.ironMarket}
+            />
+            <ChatPanel
+              messages={view.messages ?? []}
+              you={you}
+              seats={view.seats}
+              onSend={(text) => {
+                void (async () => {
+                  try {
+                    const res = await fetch('/api/mp/chat', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        token,
+                        seatId: creds.seatId,
+                        seatSecret: creds.seatSecret,
+                        text,
+                      }),
+                    })
+                    const body = (await res.json()) as {
+                      ok: boolean
+                      view?: GameViewWire
+                    }
+                    // Apply the sender's fresh view (with the new message) at once,
+                    // same version-guarded path as an SSE frame.
+                    if (body.ok && body.view) applyView(body.view)
+                  } catch {
+                    toast.error('Could not send the message')
                   }
-                  // Apply the sender's fresh view (with the new message) at once,
-                  // same version-guarded path as an SSE frame.
-                  if (body.ok && body.view) applyView(body.view)
-                } catch {
-                  toast.error('Could not send the message')
-                }
-              })()
-            }}
+                })()
+              }}
+            />
+            <JournalPanel logs={ctx.logs} players={ctx.players} />
+          </aside>
+        </div>
+
+        {/* my hand — always mine, never anyone else's */}
+        <HandTray
+          hand={me.hand}
+          canSelect={
+            handSel && !inFlight
+              ? (cardId) => state.can({ type: 'SELECT_CARD', cardId })
+              : null
+          }
+          onSelect={(cardId) => send({ type: 'SELECT_CARD', cardId })}
+          selectedIds={handSel?.selectedIds ?? []}
+          hint={handSel?.hint ?? null}
+          onHoverCard={setHoveredCard}
+        />
+
+        {ledgerPlayer && (
+          <PlayerLedger
+            player={ledgerPlayer}
+            era={ctx.era}
+            isCurrent={ledgerPlayer.id === currentPlayer.id}
+            onClose={() => setLedgerFor(null)}
           />
-          <JournalPanel logs={ctx.logs} players={ctx.players} />
-        </aside>
-      </div>
+        )}
 
-      {/* my hand — always mine, never anyone else's */}
-      <HandTray
-        hand={me.hand}
-        canSelect={
-          handSel && !inFlight
-            ? (cardId) => state.can({ type: 'SELECT_CARD', cardId })
-            : null
-        }
-        onSelect={(cardId) => send({ type: 'SELECT_CARD', cardId })}
-        selectedIds={handSel?.selectedIds ?? []}
-        hint={handSel?.hint ?? null}
-        onHoverCard={setHoveredCard}
-      />
-
-      {ledgerPlayer && (
-        <PlayerLedger
-          player={ledgerPlayer}
-          era={ctx.era}
-          isCurrent={ledgerPlayer.id === currentPlayer.id}
-          onClose={() => setLedgerFor(null)}
-        />
-      )}
-
-      {/* Round end: spends + the order switch. Auto-lifts so it can never
+        {/* Round end: spends + the order switch. Auto-lifts so it can never
           stall the next player's turn on a shared, live board. */}
-      {ctx.roundSummary && ctx.roundSummary.round !== seenRound && (
-        <RoundCurtain
-          summary={ctx.roundSummary}
-          players={ctx.players}
-          autoDismissMs={MP_CURTAIN_MS}
-          onDismiss={() => setCurtainSeen(ctx.roundSummary!.round)}
-        />
-      )}
+        {ctx.roundSummary && ctx.roundSummary.round !== seenRound && (
+          <RoundCurtain
+            summary={ctx.roundSummary}
+            players={ctx.players}
+            autoDismissMs={MP_CURTAIN_MS}
+            onDismiss={() => setCurtainSeen(ctx.roundSummary!.round)}
+          />
+        )}
 
-      <Toaster theme="dark" position="top-right" />
-    </div>
+        <Toaster theme="dark" position="top-right" />
+      </div>
+    </LocateCityProvider>
   )
 }
 

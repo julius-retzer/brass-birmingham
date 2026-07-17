@@ -25,6 +25,7 @@ import {
   doubleLinkDisabledReason,
   showsDoubleLinkOption,
 } from './double-link-availability'
+import { CityName, useLocateCity } from './locate'
 import {
   BuildIcon,
   CanalIcon,
@@ -49,8 +50,19 @@ export const INDUSTRY_TYPES: IndustryType[] = [
 
 export const SELLABLE: IndustryType[] = ['cotton', 'manufacturer', 'pottery']
 
-const cityName = (id: CityId | string | null | undefined) =>
-  id ? (cities[id as CityId]?.name ?? id) : '—'
+/** A route's two endpoints, each a hover-to-locate CityName. */
+function LinkLabel({
+  link,
+}: {
+  link: { from: CityId; to: CityId } | null | undefined
+}) {
+  if (!link) return <>— — —</>
+  return (
+    <>
+      <CityName cityId={link.from} /> — <CityName cityId={link.to} />
+    </>
+  )
+}
 
 /** On-board 'manufacturer' reads as "Goods" everywhere in the UI. */
 const industryLabel = (t: IndustryType | string) =>
@@ -252,12 +264,37 @@ function beerSourceCaption(option: BeerSourceOption): string {
     : `Flips ${option.ownerName}'s brewery when its last barrel goes — their income advances.`
 }
 
-function beerSourceTitle(option: BeerSourceOption): string {
+// Titles name a place, so the place is a hover-to-locate CityName. Passive:
+// the option BUTTON carries the locate handlers (whole row hovers/focuses),
+// the span only adds the dotted-underline affordance.
+function beerSourceTitle(option: BeerSourceOption): React.ReactNode {
+  const place = <CityName cityId={option.source.location} passive />
   if (option.source.kind === 'merchant') {
-    return `${cityName(option.source.location)} merchant's barrel`
+    return (
+      <>
+        {place}
+        {" merchant's barrel"}
+      </>
+    )
   }
-  const where = `brewery at ${cityName(option.source.location)}`
-  return option.own ? `Your ${where}` : `${option.ownerName}'s ${where}`
+  const where = (
+    <>
+      {'brewery at '}
+      {place}
+    </>
+  )
+  return option.own ? (
+    <>
+      {'Your '}
+      {where}
+    </>
+  ) : (
+    <>
+      {option.ownerName}
+      {"'s "}
+      {where}
+    </>
+  )
 }
 
 /**
@@ -283,6 +320,7 @@ function BeerSourcePicker({
   const takenFrom = (option: BeerSourceOption) =>
     picks.filter((p) => beerSourceKey(p) === beerSourceKey(option.source))
       .length
+  const { handlersFor } = useLocateCity()
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -304,6 +342,7 @@ function BeerSourcePicker({
             data-selected={taken > 0}
             disabled={full && picks.length < required}
             onClick={() => onPick(option.source)}
+            {...handlersFor(option.source.location)}
           >
             <IndustryGlyph type="brewery" size={16} />
             <span className="flex flex-col text-left">
@@ -327,12 +366,28 @@ function BeerSourcePicker({
 
 /* ----- iron source picker ----- */
 
-function ironSourceTitle(option: IronSourceOption): string {
+function ironSourceTitle(option: IronSourceOption): React.ReactNode {
   if (option.source.kind === 'market') {
     return option.price ? `The market — £${option.price} a cube` : 'The market'
   }
-  const where = `iron works at ${cityName(option.source.location)}`
-  return option.own ? `Your ${where}` : `${option.ownerName}'s ${where}`
+  const where = (
+    <>
+      {'iron works at '}
+      <CityName cityId={option.source.location} passive />
+    </>
+  )
+  return option.own ? (
+    <>
+      {'Your '}
+      {where}
+    </>
+  ) : (
+    <>
+      {option.ownerName}
+      {"'s "}
+      {where}
+    </>
+  )
 }
 
 function ironSourceCaption(option: IronSourceOption): string {
@@ -364,6 +419,7 @@ function IronSourcePicker({
   const takenFrom = (option: IronSourceOption) =>
     picks.filter((p) => ironSourceKey(p) === ironSourceKey(option.source))
       .length
+  const { handlersFor } = useLocateCity()
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -384,6 +440,9 @@ function IronSourcePicker({
             data-selected={taken > 0}
             disabled={full && picks.length < required}
             onClick={() => onPick(option.source)}
+            {...handlersFor(
+              option.source.kind === 'market' ? null : option.source.location,
+            )}
           >
             <IndustryGlyph type="iron" size={16} />
             <span className="flex flex-col text-left">
@@ -653,6 +712,7 @@ export function ActionDock({
 }: ActionDockProps) {
   const is = (path: string) => snapshot.matches(path as never)
   const can = (event: GameEvent) => snapshot.can(event)
+  const { locate, unlocate } = useLocateCity()
   const c = snapshot.context
 
   // The six card-consuming actions — shared by the idle chooser and the
@@ -950,7 +1010,11 @@ export function ActionDock({
               className="font-semibold"
               style={{ color: 'var(--bb-parchment-bright)' }}
             >
-              {cityName(c.selectedLocation)}
+              {c.selectedLocation ? (
+                <CityName cityId={c.selectedLocation} />
+              ) : (
+                '—'
+              )}
             </span>
           </div>
         </div>
@@ -1034,7 +1098,7 @@ export function ActionDock({
       <Flow action="Network" steps={netSteps} active={2} onCancel={cancel}>
         <Note>
           <b style={{ color: 'var(--bb-parchment-bright)' }}>
-            {cityName(link?.from)} — {cityName(link?.to)}
+            <LinkLabel link={link} />
           </b>{' '}
           ({c.era})
         </Note>
@@ -1099,12 +1163,11 @@ export function ActionDock({
       >
         <Note>
           <b style={{ color: 'var(--bb-parchment-bright)' }}>
-            {cityName(c.selectedLink?.from)} — {cityName(c.selectedLink?.to)}
+            <LinkLabel link={c.selectedLink} />
           </b>{' '}
           and{' '}
           <b style={{ color: 'var(--bb-parchment-bright)' }}>
-            {cityName(c.selectedSecondLink?.from)} —{' '}
-            {cityName(c.selectedSecondLink?.to)}
+            <LinkLabel link={c.selectedSecondLink} />
           </b>
         </Note>
         <Confirm
@@ -1192,7 +1255,7 @@ export function ActionDock({
       >
         <Note>
           Where does the beer for {industryLabel(sale?.industryType ?? 'goods')}{' '}
-          at {cityName(sale?.location)} come from?
+          at {sale ? <CityName cityId={sale.location} /> : '—'} come from?
         </Note>
         {choice && (
           <BeerSourcePicker
@@ -1267,14 +1330,18 @@ export function ActionDock({
                     merchant: s.merchant,
                   })
                 }
+                // Two places on one row, so each NAME locates its own city;
+                // keyboard focus points at the goods' own city.
+                onFocus={() => locate(s.location)}
+                onBlur={() => unlocate(s.location)}
               >
                 <IndustryGlyph type={s.type} size={16} />
                 <span>
                   <b>{s.type === 'manufacturer' ? 'goods' : s.type}</b> at{' '}
-                  {cityName(s.location)}
+                  <CityName cityId={s.location} focusable={false} />
                   <span style={{ color: 'rgba(231,215,177,.55)' }}>
                     {' '}
-                    → {cityName(s.merchant)}
+                    → <CityName cityId={s.merchant} focusable={false} />
                   </span>
                 </span>
               </button>

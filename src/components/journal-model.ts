@@ -307,11 +307,38 @@ const CITY_ID_RE = new RegExp(
   'g',
 )
 
+export interface PlaceSegment {
+  text: string
+  /** Board id when this segment is a city/merchant name; null = plain text. */
+  cityId: string | null
+}
+
+/**
+ * Split raw engine text into plain runs and recognised place names, each
+ * place carrying its board id (so the UI can wire hover-to-locate from
+ * structured data instead of re-parsing display names). Resolution is by
+ * whole-word city ID — the form the engine logs — never by display name.
+ */
+export function segmentPlaces(text: string): PlaceSegment[] {
+  const segments: PlaceSegment[] = []
+  let last = 0
+  // Fresh regex per call: matchAll seeds from the source regex's lastIndex.
+  for (const m of text.matchAll(new RegExp(CITY_ID_RE.source, 'g'))) {
+    const at = m.index ?? 0
+    if (at > last) segments.push({ text: text.slice(last, at), cityId: null })
+    const id = m[0] as keyof typeof cities
+    segments.push({ text: cities[id].name, cityId: id })
+    last = at + m[0].length
+  }
+  if (last < text.length)
+    segments.push({ text: text.slice(last), cityId: null })
+  return segments
+}
+
 export function prettifyPlaces(text: string): string {
-  return text.replace(
-    CITY_ID_RE,
-    (id) => cities[id as keyof typeof cities].name,
-  )
+  return segmentPlaces(text)
+    .map((s) => s.text)
+    .join('')
 }
 
 /* ---------------- entry parser ---------------- */

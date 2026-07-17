@@ -25,8 +25,9 @@ import {
   type PlayerRef,
   decorateMain,
   parseJournalEntry,
-  prettifyPlaces,
+  segmentPlaces,
 } from './journal-model'
+import { CityName } from './locate'
 import { CollapsiblePanel } from './side-panels'
 
 const KIND_ICONS: Partial<Record<JournalKind, React.ReactNode>> = {
@@ -63,6 +64,35 @@ function emphasizeAmounts(text: string): React.ReactNode[] {
   }
   if (last < text.length) nodes.push(text.slice(last))
   return nodes
+}
+
+/**
+ * Raw engine text with each recognised place rendered as a hover-to-locate
+ * CityName (display name + dotted underline + map spotlight). Replaces the
+ * plain prettifyPlaces() at render time — same words, now interactive.
+ */
+function Places({
+  text,
+  emphasize = false,
+}: {
+  text: string
+  emphasize?: boolean
+}) {
+  return (
+    <>
+      {segmentPlaces(text).map((seg, i) =>
+        seg.cityId ? (
+          <CityName key={i} cityId={seg.cityId}>
+            {seg.text}
+          </CityName>
+        ) : (
+          <span key={i}>
+            {emphasize ? emphasizeAmounts(seg.text) : seg.text}
+          </span>
+        ),
+      )}
+    </>
+  )
 }
 
 function JournalDivider({ item }: { item: JournalItem }) {
@@ -112,14 +142,16 @@ function JournalRow({ item }: { item: JournalItem }) {
               </b>
             ) : span.role === 'place' ? (
               <b key={i} className="bb2-jind">
-                {prettifyPlaces(span.text)}
+                <Places text={span.text} />
               </b>
             ) : span.role === 'level' ? (
               <span key={i} className="bb2-jlevel">
                 {span.text}
               </span>
             ) : (
-              <span key={i}>{emphasizeAmounts(prettifyPlaces(span.text))}</span>
+              <span key={i}>
+                <Places text={span.text} emphasize />
+              </span>
             ),
           )}
           {item.chips.map((chip, i) => (
@@ -147,7 +179,7 @@ function JournalRow({ item }: { item: JournalItem }) {
                 }
               >
                 {i > 0 && <span className="bb2-jdetail-sep"> · </span>}
-                {prettifyPlaces(detail)}
+                <Places text={detail} />
               </span>
             ))}
           </div>

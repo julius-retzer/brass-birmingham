@@ -6,6 +6,7 @@
 import { type CityId, cities } from '~/data/board'
 import { type Card as GameCard, type IndustryType } from '~/data/cards'
 import { CardsIcon, IndustryFragment, WildIcon } from './icons'
+import { CityName } from './locate'
 
 const REGION_BAND: Record<string, string> = {
   blue: '#45719d',
@@ -218,7 +219,12 @@ export function CardChip({ card }: { card: GameCard }) {
       }}
     >
       <CardsIcon size={11} />
-      {cardTitle(card)}
+      {card.type === 'location' ? (
+        // A location card names a city — hovering it finds it on the map.
+        <CityName cityId={card.location} focusable={false} />
+      ) : (
+        cardTitle(card)
+      )}
     </span>
   )
 }

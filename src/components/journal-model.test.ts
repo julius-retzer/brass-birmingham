@@ -6,6 +6,7 @@ import {
   parseJournalEntry,
   prettifyPlaces,
   romanLevel,
+  segmentPlaces,
 } from './journal-model'
 
 const players: PlayerRef[] = [
@@ -401,5 +402,55 @@ describe('place-name prettifying', () => {
     expect(
       prettifyPlaces('1 beer from merchant at warrington (money +5)'),
     ).toBe('1 beer from merchant at Warrington (money +5)')
+  })
+})
+
+describe('place segmentation (hover-to-locate)', () => {
+  test('each recognised place carries its board id, plain runs carry null', () => {
+    expect(segmentPlaces('built cotton Level 1 at stoke')).toEqual([
+      { text: 'built cotton Level 1 at ', cityId: null },
+      { text: 'Stoke-on-Trent', cityId: 'stoke' },
+    ])
+  })
+
+  test('route lists yield one segment per endpoint', () => {
+    expect(segmentPlaces('dudley-walsall, walsall-tamworth')).toEqual([
+      { text: 'Dudley', cityId: 'dudley' },
+      { text: '-', cityId: null },
+      { text: 'Walsall', cityId: 'walsall' },
+      { text: ', ', cityId: null },
+      { text: 'Walsall', cityId: 'walsall' },
+      { text: '-', cityId: null },
+      { text: 'Tamworth', cityId: 'tamworth' },
+    ])
+  })
+
+  test('merchant and farm-brewery locations resolve like any city', () => {
+    expect(segmentPlaces('to merchant at warrington')).toEqual([
+      { text: 'to merchant at ', cityId: null },
+      { text: 'Warrington', cityId: 'warrington' },
+    ])
+    expect(segmentPlaces('beer at farmBrewery1')).toEqual([
+      { text: 'beer at ', cityId: null },
+      { text: 'Farm Brewery', cityId: 'farmBrewery1' },
+    ])
+  })
+
+  test('card ids and city-free text come back as one plain segment', () => {
+    expect(segmentPlaces('using stafford_1')).toEqual([
+      { text: 'using stafford_1', cityId: null },
+    ])
+    expect(segmentPlaces('took a loan')).toEqual([
+      { text: 'took a loan', cityId: null },
+    ])
+  })
+
+  test('prettifyPlaces is exactly the joined segment text', () => {
+    const raw = 'sold cotton at leek to merchant at warrington'
+    expect(prettifyPlaces(raw)).toBe(
+      segmentPlaces(raw)
+        .map((s) => s.text)
+        .join(''),
+    )
   })
 })

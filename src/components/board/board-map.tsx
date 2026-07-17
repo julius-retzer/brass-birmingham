@@ -193,6 +193,12 @@ export interface BoardMapProps {
   /** Cities spotlit while a hand card is hovered (soft preview hint). */
   hoverCities?: ReadonlySet<string> | null
   /**
+   * Hover-to-locate: the city whose NAME is hovered/focused somewhere in the
+   * UI right now (journal, pickers, ledger) — its plate gets the teal
+   * surveyor's mark so the player can find it on the map.
+   */
+  locatedCity?: string | null
+  /**
    * Game-end scoring overlay: VP earned per city and per route by ONE player
    * (null = off). Annotated places get a brass VP roundel; everything else
    * recedes, so the score reads off the board. Links are destroyed by era
@@ -222,6 +228,7 @@ export function BoardMap({
   networkCities = null,
   networkColor = null,
   hoverCities = null,
+  locatedCity = null,
   vpAnnotations = null,
   vpColor = null,
 }: BoardMapProps) {
@@ -799,6 +806,7 @@ export function BoardMap({
               }
               inNetwork={networkCities?.has(id) ?? false}
               networkColor={networkColor}
+              located={locatedCity === id}
               vp={vpAnnotations?.cities.get(id)}
               vpColor={vpColor}
             />
@@ -824,6 +832,7 @@ export function BoardMap({
                 inNetwork={networkCities?.has(id) ?? false}
                 networkColor={networkColor}
                 hoverHint={hoverCities?.has(id) ?? false}
+                located={locatedCity === id}
                 vp={vpAnnotations?.cities.get(id)}
                 vpColor={vpColor}
                 onClick={() => {
@@ -1020,6 +1029,50 @@ function plateGrid(cityId: CityId, slotCount: number): Array<[number, number]> {
   )
 }
 
+/**
+ * Hover-to-locate spotlight: a teal double ring with an outward ping,
+ * visually distinct from the brass legal pulse (colour, motion, rhythm) so
+ * it reads as "here it is", not "this is a legal choice". The ping extends
+ * well past the plate so a plate half-off the viewport edge still flags
+ * itself. Reduced motion keeps the static rings only (theme.css).
+ */
+function LocateMark({
+  plateW,
+  plateH,
+  rx,
+}: {
+  plateW: number
+  plateH: number
+  rx: number
+}) {
+  return (
+    <g pointerEvents="none">
+      <rect
+        x="-14"
+        y="-14"
+        width={plateW + 28}
+        height={plateH + 28}
+        rx={rx + 6}
+        fill="none"
+        stroke="#8fd8cd"
+        strokeWidth="3.5"
+        className="bb2-locate-ping"
+      />
+      <rect
+        x="-7"
+        y="-7"
+        width={plateW + 14}
+        height={plateH + 14}
+        rx={rx}
+        fill="rgba(143,216,205,.14)"
+        stroke="#8fd8cd"
+        strokeOpacity="0.95"
+        strokeWidth="2.5"
+      />
+    </g>
+  )
+}
+
 function CityPlate({
   cityId,
   occupants,
@@ -1031,6 +1084,7 @@ function CityPlate({
   inNetwork = false,
   networkColor = null,
   hoverHint = false,
+  located = false,
   vp = undefined,
   vpColor = null,
 }: {
@@ -1044,6 +1098,7 @@ function CityPlate({
   inNetwork?: boolean
   networkColor?: string | null
   hoverHint?: boolean
+  located?: boolean
   /** Game-end: VP the shown player earned here (undefined = none). */
   vp?: number
   vpColor?: string | null
@@ -1063,7 +1118,8 @@ function CityPlate({
       transform={`translate(${pos.x - plateW / 2}, ${pos.y - plateH / 2})`}
       data-city={cityId}
       data-legal={isLegal || undefined}
-      opacity={dimmed ? 0.45 : 1}
+      data-located={located || undefined}
+      opacity={dimmed && !located ? 0.45 : 1}
       onClick={onClick}
       role={clickable ? 'button' : undefined}
       aria-label={
@@ -1083,6 +1139,9 @@ function CityPlate({
         transition: 'opacity .2s',
       }}
     >
+      {located && (
+        <LocateMark plateW={plateW} plateH={plateH} rx={isFarm ? 18 : 12} />
+      )}
       {/* hovered-card spotlight — a dashed parchment ring */}
       {hoverHint && (
         <rect
@@ -1422,6 +1481,7 @@ function MerchantPlate({
   dimmed,
   inNetwork = false,
   networkColor = null,
+  located = false,
   vp = undefined,
   vpColor = null,
 }: {
@@ -1430,6 +1490,7 @@ function MerchantPlate({
   dimmed: boolean
   inNetwork?: boolean
   networkColor?: string | null
+  located?: boolean
   /** Game-end: VP the shown player took from this merchant's bonus. */
   vp?: number
   vpColor?: string | null
@@ -1452,9 +1513,12 @@ function MerchantPlate({
   return (
     <g
       transform={`translate(${pos.x - plateW / 2}, ${pos.y - plateH / 2})`}
-      opacity={dimmed ? 0.45 : closed ? 0.3 : 1}
+      data-city={cityId}
+      data-located={located || undefined}
+      opacity={dimmed && !located ? 0.45 : closed && !located ? 0.3 : 1}
       style={{ transition: 'opacity .2s' }}
     >
+      {located && <LocateMark plateW={plateW} plateH={plateH} rx={12} />}
       {vp !== undefined && (
         <rect
           x="-6"

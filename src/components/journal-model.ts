@@ -6,6 +6,7 @@
 // message template appears, the fallback keeps it fully visible as an
 // 'info' item rather than dropping anything.
 import { cities } from '~/data/board'
+import { describeCardId } from '~/data/cards'
 import type { LogEntry, LogEntryType, Player } from '~/store/gameStore'
 
 export interface PlayerRef {
@@ -298,12 +299,22 @@ export function decorateMain(main: string, kind: JournalKind): MainSpan[] {
 }
 
 // Whole-word city/merchant ids → their display names ("stoke" →
-// "Stoke-on-Trent"). Longest id first so no prefix can shadow a longer one;
-// card ids like "stafford_1" stay untouched (the underscore breaks \b).
+// "Stoke-on-Trent"). Longest id first so no prefix can shadow a longer one.
 const CITY_ID_RE = new RegExp(
   `\\b(${Object.keys(cities)
     .sort((a, b) => b.length - a.length)
     .join('|')})\\b`,
+  'g',
+)
+
+// Raw card/slot id tokens like "coventry_1", "iron_4", "wild_location_2" reach
+// the journal whenever an engine log names the card used for an action. Matched
+// alongside bare city ids so "coventry_1" resolves to "Coventry" (and stays
+// locatable) rather than leaking the raw slot id.
+const CARD_ID_RE = /\b[a-z][a-z_]*_\d+\b/
+// Combined so a single left-to-right pass classifies both forms in order.
+const PLACE_OR_CARD_RE = new RegExp(
+  `${CARD_ID_RE.source}|${CITY_ID_RE.source}`,
   'g',
 )
 
@@ -314,21 +325,37 @@ export interface PlaceSegment {
 }
 
 /**
- * Split raw engine text into plain runs and recognised place names, each
+ * Split raw engine text into plain runs and recognised game-entity names, each
  * place carrying its board id (so the UI can wire hover-to-locate from
  * structured data instead of re-parsing display names). Resolution is by
- * whole-word city ID — the form the engine logs — never by display name.
+ * whole-word city ID — the form the engine logs — plus card/slot ids: a
+ * location-card id ("coventry_1") resolves to its city name AND stays
+ * locatable, while industry/wild card ids ("iron_4", "wild_location_2") resolve
+ * to their human label via the canonical `describeCardId`.
  */
 export function segmentPlaces(text: string): PlaceSegment[] {
   const segments: PlaceSegment[] = []
   let last = 0
-  // Fresh regex per call: matchAll seeds from the source regex's lastIndex.
-  for (const m of text.matchAll(new RegExp(CITY_ID_RE.source, 'g'))) {
+  for (const m of text.matchAll(new RegExp(PLACE_OR_CARD_RE.source, 'g'))) {
     const at = m.index ?? 0
     if (at > last) segments.push({ text: text.slice(last, at), cityId: null })
-    const id = m[0] as keyof typeof cities
-    segments.push({ text: cities[id].name, cityId: id })
-    last = at + m[0].length
+    const token = m[0]
+    if (token.includes('_')) {
+      // A card/slot id: keep the city link when it names a location.
+      const slug = token.replace(/_\d+$/, '')
+      if (slug in cities) {
+        segments.push({
+          text: cities[slug as keyof typeof cities].name,
+          cityId: slug,
+        })
+      } else {
+        segments.push({ text: describeCardId(token) ?? token, cityId: null })
+      }
+    } else {
+      const id = token as keyof typeof cities
+      segments.push({ text: cities[id].name, cityId: id })
+    }
+    last = at + token.length
   }
   if (last < text.length)
     segments.push({ text: text.slice(last), cityId: null })

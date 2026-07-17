@@ -845,7 +845,7 @@ export const gameStore = setup({
         logs: [
           ...context.logs,
           createLogEntry(
-            `${currentPlayer.name} took a loan (£${GAME_CONSTANTS.LOAN_AMOUNT}, -${GAME_CONSTANTS.LOAN_INCOME_PENALTY} income) using ${context.selectedCard.id}`,
+            `${currentPlayer.name} took a loan (£${GAME_CONSTANTS.LOAN_AMOUNT}, -${GAME_CONSTANTS.LOAN_INCOME_PENALTY} income) using ${getCardDescription(context.selectedCard)}`,
             'action',
           ),
         ],

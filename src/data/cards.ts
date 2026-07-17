@@ -1,4 +1,4 @@
-import { type CityId } from './board'
+import { type CityId, cities } from './board'
 
 export type IndustryType =
   | 'cotton'
@@ -268,6 +268,25 @@ const industries: Record<string, IndustryDefinition> = {
     threePlayers: 5,
     fourPlayers: 5,
   },
+}
+
+// Human label for a raw card/slot id — "coventry_1" -> "Coventry",
+// "cotton_manufacturer_6" -> "cotton/manufacturer industry",
+// "wild_location_2" -> "wild location". A presentation-only fallback so raw
+// slot ids can never leak into player-facing text; it reuses the SAME `cities`
+// and `industries` sources getCardDescription draws on, so there is one
+// canonical id->name mapping. Returns null for anything it doesn't recognise
+// (callers keep the raw token verbatim rather than guess).
+export function describeCardId(id: string): string | null {
+  const wild = /^wild_(location|industry)_\d+$/.exec(id)
+  if (wild) return `wild ${wild[1]}`
+  const m = /^(.+)_\d+$/.exec(id)
+  if (!m) return null
+  const slug = m[1]!
+  if (slug in cities) return cities[slug as keyof typeof cities].name
+  const industry = industries[slug]
+  if (industry) return `${industry.industries.join('/')} industry`
+  return null
 }
 
 // Function to create cards based on player count

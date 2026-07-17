@@ -149,14 +149,14 @@ describe('sell entries', () => {
 
 describe('other actions', () => {
   test('a loan surfaces amount and penalty as chips', () => {
-    const item = parse('Ada took a loan (£30, -3 income) using stafford_1')
+    const item = parse('Ada took a loan (£30, -3 income) using stafford (blue)')
     expect(item.kind).toBe('loan')
     expect(item.main).toBe('took a loan')
     expect(item.chips).toEqual([
       { text: '£30', tone: 'money' },
       { text: '−3 income', tone: 'penalty' },
     ])
-    expect(item.details).toEqual(['using stafford_1'])
+    expect(item.details).toEqual(['using stafford (blue)'])
   })
 
   test('develop promotes the tile count, demotes the iron', () => {
@@ -387,8 +387,16 @@ describe('place-name prettifying', () => {
     )
   })
 
-  test('card ids and partial matches stay untouched', () => {
-    expect(prettifyPlaces('using stafford_1')).toBe('using stafford_1')
+  test('raw card/slot ids resolve to human names', () => {
+    // The regression: a bare location-card slot id must never render raw.
+    expect(prettifyPlaces('using coventry_1')).toBe('using Coventry')
+    expect(prettifyPlaces('using stafford_1')).toBe('using Stafford')
+    // Same class of leak for the other card families.
+    expect(prettifyPlaces('using iron_4')).toBe('using iron industry')
+    expect(prettifyPlaces('using cotton_manufacturer_6')).toBe(
+      'using cotton/manufacturer industry',
+    )
+    expect(prettifyPlaces('using wild_location_2')).toBe('using wild location')
     expect(prettifyPlaces('coalbrookdale')).toBe('Coalbrookdale')
   })
 

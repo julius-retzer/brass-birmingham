@@ -78,3 +78,47 @@ export const chatMessages = pgTable(
     index('chat_messages_token_idx').on(t.token),
   ],
 )
+
+/**
+ * The durable per-game INTENT LOG: one row per state-mutating engine write,
+ * appended in the SAME statement that persists the accepted snapshot (see
+ * `saveGame` in `../mp/store.ts`), so log and state cannot diverge — a save
+ * that loses the optimistic version guard inserts no log row.
+ *
+ * Purpose: reliable bug reproduction. The human-readable in-game journal is a
+ * rendering; this table is the machine-replayable record. `kind='setup'` rows
+ * carry the full initial persisted snapshot (setup shuffles are random, so
+ * replay must start from the captured state); `kind='intent'` rows carry the
+ * EXACT post-whitelist event as executed (human intents from `actInGame`, AI
+ * moves from the turn runner). Refusals are deliberately NOT recorded — they
+ * never mutate state, so replay does not need them.
+ *
+ * Server-side only: never shipped to clients, never read on the stream poll
+ * (egress discipline) — only by the replay tooling (`../mp/replay.ts`) and the
+ * TTL sweep. Same normalization pattern as `chat_messages`: PK (token, seq),
+ * swept when the game is swept.
+ */
+export const gameIntents = pgTable(
+  'game_intents',
+  {
+    token: text('token').notNull(),
+    /** monotonically increasing per game; allocated inside the save statement */
+    seq: integer('seq').notNull(),
+    kind: text('kind', { enum: ['setup', 'intent'] }).notNull(),
+    /** acting seat (AI seats included); null for the 'setup' system record */
+    seatId: integer('seat_id'),
+    /** the event as executed ('intent') or the initial snapshot ('setup') */
+    payload: jsonb('payload').notNull().$type<unknown>(),
+    /** replay checkpoint: the full resulting snapshot, present only when this
+     * intent crossed a nondeterministic engine boundary (the canal→rail
+     * transition reshuffles the deck), so replay re-bases on it */
+    snapshotAfter: jsonb('snapshot_after').$type<unknown>(),
+    /** the engine `games.version` this write produced */
+    version: integer('version').notNull(),
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.token, t.seq] }),
+    index('game_intents_token_idx').on(t.token),
+  ],
+)

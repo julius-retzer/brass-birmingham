@@ -24,7 +24,7 @@ import {
 } from 'drizzle-orm'
 import { type AiLogEntry, type AiTierId, type AiUsageTotals } from '../ai/types'
 import { db } from '../db'
-import { chatMessages, games } from '../db/schema'
+import { chatMessages, gameIntents, games } from '../db/schema'
 
 export interface SeatRecord {
   seatId: number
@@ -342,7 +342,56 @@ export async function loadChatSince(
   return rows.map(rowToChat)
 }
 
-export async function saveGame(game: GameRecord): Promise<void> {
+/* ------------- the intent log (durable, append-only, per game) ------------- */
+
+/** What a state-mutating save appends to the intent log. `'setup'` payloads
+ * are the full initial persisted snapshot (setup shuffles are random, so a
+ * replay must start from the captured state); `'intent'` payloads are the
+ * exact post-whitelist event as executed. */
+export interface IntentLogEntry {
+  kind: 'setup' | 'intent'
+  /** the acting seat (AI seats included); null for the 'setup' record */
+  seatId: number | null
+  payload: unknown
+  /** replay checkpoint: the full resulting snapshot, set only when this
+   * intent crossed a nondeterministic engine boundary (the canal→rail
+   * transition reshuffles the deck) — see `eraCheckpoint` in intent.ts */
+  snapshotAfter?: unknown | null
+}
+
+/** One stored intent-log row (see `gameIntents` in the schema). */
+export interface IntentLogRow extends IntentLogEntry {
+  seq: number
+  /** the engine `games.version` this write produced */
+  version: number
+  at: string
+}
+
+/** The full intent log for a game, ascending by seq. Tooling/tests only —
+ * never called on the stream poll or any per-request path. */
+export async function loadIntentLog(token: string): Promise<IntentLogRow[]> {
+  if (!TOKEN_RE.test(token)) return []
+  const rows = await db
+    .select()
+    .from(gameIntents)
+    .where(eq(gameIntents.token, token))
+    .orderBy(asc(gameIntents.seq))
+  return rows.map((r) => ({
+    seq: r.seq,
+    kind: r.kind,
+    seatId: r.seatId,
+    payload: r.payload,
+    snapshotAfter: r.snapshotAfter ?? null,
+    version: r.version,
+    at: r.createdAt,
+  }))
+}
+
+export async function saveGame(
+  game: GameRecord,
+  /** append this to the intent log ATOMICALLY with the snapshot write */
+  intentLog?: IntentLogEntry,
+): Promise<void> {
   if (!TOKEN_RE.test(game.token)) throw new Error('Malformed game token')
   const row = recordToRow(game)
   // Single atomic upsert replaces the old tmp-file + rename dance; the caller
@@ -351,7 +400,7 @@ export async function saveGame(game: GameRecord): Promise<void> {
   // can race the same read-modify-write — the writer whose bumped version is
   // no longer ahead of the stored one loses, loudly, instead of silently
   // overwriting the row (which would also erase chat — messages live in it).
-  const written = await db
+  const upsert = db
     .insert(games)
     .values(row)
     .onConflictDoUpdate({
@@ -360,7 +409,42 @@ export async function saveGame(game: GameRecord): Promise<void> {
       setWhere: lt(games.version, row.version),
     })
     .returning({ token: games.token })
-  if (written.length === 0) {
+
+  if (!intentLog) {
+    const written = await upsert
+    if (written.length === 0) {
+      throw new Error('Concurrent write: the game changed under this save')
+    }
+    return
+  }
+
+  // Snapshot + log in ONE data-modifying-CTE statement, so they cannot
+  // diverge: the log INSERT selects FROM the upsert's RETURNING, which is
+  // empty exactly when the version guard rejected the write — a lost
+  // concurrent save inserts NO log row (no phantom), and a crash can never
+  // land between the two (they commit together). The next `seq` is computed
+  // inline; concurrent writers for the same token serialize on the `games`
+  // row lock taken by the upsert, and the loser's guard failure empties `up`,
+  // so the stale max(seq) it may have read is never used.
+  const result = await db.execute(sql`
+    with up as ${upsert}
+    insert into game_intents (token, seq, kind, seat_id, payload, snapshot_after, version, created_at)
+    select up.token,
+           (select coalesce(max(seq), 0) + 1 from game_intents where token = ${game.token}),
+           ${intentLog.kind},
+           ${intentLog.seatId}::int,
+           ${JSON.stringify(intentLog.payload)}::jsonb,
+           ${
+             intentLog.snapshotAfter != null
+               ? JSON.stringify(intentLog.snapshotAfter)
+               : null
+           }::jsonb,
+           ${game.version},
+           ${game.updatedAt}
+    from up
+    returning token
+  `)
+  if (result.rows.length === 0) {
     throw new Error('Concurrent write: the game changed under this save')
   }
 }
@@ -375,13 +459,22 @@ export async function sweepStaleGames(now = Date.now()): Promise<void> {
   // so a string `<` comparison is a correct TTL cutoff.
   const cutoff = new Date(now - GAME_TTL_MS).toISOString()
   await db.delete(games).where(lt(games.updatedAt, cutoff))
-  // Chat rows are tied to game lifetime; drop any now-orphaned by the sweep
-  // above (anti-join is cheap at this scale and keeps deletion in one place).
+  // Chat and intent-log rows are tied to game lifetime; drop any now-orphaned
+  // by the sweep above (anti-join is cheap at this scale and keeps deletion in
+  // one place).
   await db
     .delete(chatMessages)
     .where(
       notInArray(
         chatMessages.token,
+        db.select({ token: games.token }).from(games),
+      ),
+    )
+  await db
+    .delete(gameIntents)
+    .where(
+      notInArray(
+        gameIntents.token,
         db.select({ token: games.token }).from(games),
       ),
     )

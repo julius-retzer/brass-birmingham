@@ -6,11 +6,16 @@ import { expect, test } from '@playwright/test'
  * Desktop: hovering a card raises a magnified lens (data-raised on the
  * button); neighbours slide aside dock-style; clicking while raised still
  * selects (the lens is pointer-events:none, the 108×156 button hitbox
- * never grows sideways).
+ * never grows sideways). A SELECTED card keeps a smaller persistent lens
+ * (scale 1.3) until it is deselected or the action completes.
  *
  * Touch: there is no hover, so the FIRST tap peeks (raises the lens) and
- * the SECOND tap acts. Dimmed/disabled cards peek too (the seat wrapper
- * handles the tap — clicks don't fire on disabled buttons).
+ * the SECOND tap acts. A LONG-PRESS (350ms) also peeks, and keeping the
+ * finger down while sliding browses the fan Hearthstone-style — the raise
+ * follows the finger; releasing keeps the card under the finger peeked and
+ * NEVER selects (acting stays a deliberate tap on the raised card).
+ * Dimmed/disabled cards peek too (the seat wrapper handles the tap —
+ * clicks don't fire on disabled buttons).
  */
 
 /** The fan seat wrapper around a card button (carries the dock transform). */
@@ -53,9 +58,23 @@ test.describe('desktop hover magnification', () => {
     await expect(card).toHaveAttribute('data-selected', 'true')
     await expect(page.getByText('Play this card')).toBeVisible()
 
+    // The selected card STAYS enlarged after the mouse leaves — the
+    // persistent selected lens (1.3×), smaller than the hover lens.
+    await page.mouse.move(400, 200)
+    await expect(card).not.toHaveAttribute('data-raised', 'true')
+    await expect(card.locator('.bb2-card-lens')).toHaveAttribute(
+      'style',
+      /scale\(1\.3\)/,
+    )
+
     // Re-tap puts it back — nothing consumed (pinned deeper in card-first.spec).
     await card.click()
     await expect(page.getByText('Choose an action')).toBeVisible()
+    await page.mouse.move(400, 200)
+    await expect(card.locator('.bb2-card-lens')).not.toHaveAttribute(
+      'style',
+      /scale\(/,
+    )
   })
 
   test('reduced motion still raises and selects (end state, no transition)', async ({
@@ -74,9 +93,7 @@ test.describe('desktop hover magnification', () => {
 test.describe('phone: fit + tap-to-peek', () => {
   test.use({ viewport: { width: 375, height: 667 }, hasTouch: true })
 
-  test('a full 8-card opening hand fits a 375px viewport', async ({
-    page,
-  }) => {
+  test('a full 8-card opening hand fits a 375px viewport', async ({ page }) => {
     // A fresh game deals the worst case: 8 cards (the ?demo hand holds 5).
     await page.goto('/?fresh=1')
     await page.getByRole('button', { name: '2', exact: true }).tap()
@@ -119,9 +136,99 @@ test.describe('phone: fit + tap-to-peek', () => {
     await expect(card).toHaveAttribute('data-selected', 'true')
     await expect(page.getByText('Play this card')).toBeVisible()
 
+    // The selected card keeps the persistent lens (peek cleared on select).
+    await expect(card).not.toHaveAttribute('data-raised', 'true')
+    await expect(card.locator('.bb2-card-lens')).toHaveAttribute(
+      'style',
+      /scale\(1\.3\)/,
+    )
+
     // Put it back to leave the fixture untouched.
     await card.tap()
     await expect(page.getByText('Choose an action')).toBeVisible()
+  })
+
+  test('long-press browses the fan; release keeps the peek, never selects', async ({
+    page,
+  }) => {
+    await page.goto('/?demo')
+    const start = page.getByTestId('card-birmingham_1')
+    const target = page.getByTestId('card-cotton_manufacturer_4')
+    await expect(start).toBeVisible()
+    const sBox = (await start.boundingBox())!
+    const tBox = (await target.boundingBox())!
+    const sx = sBox.x + sBox.width / 2
+    const sy = sBox.y + sBox.height / 2
+    const tx = tBox.x + tBox.width / 2
+
+    // Playwright's touchscreen only taps, so drive the long-press + slide
+    // with raw CDP touch events (trusted input, real pointer events).
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x: sx, y: sy }],
+    })
+    // Holding still for the long-press delay raises the pressed card.
+    await expect(start).toHaveAttribute('data-raised', 'true')
+    await expect(start).not.toHaveAttribute('data-selected', 'true')
+
+    // Sliding along the fan moves the raise to the card under the finger.
+    const steps = 8
+    for (let i = 1; i <= steps; i++) {
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{ x: sx + ((tx - sx) * i) / steps, y: sy }],
+      })
+    }
+    await expect(target).toHaveAttribute('data-raised', 'true')
+    await expect(start).not.toHaveAttribute('data-raised', 'true')
+
+    // Release keeps the browsed card peeked — browsing can never select.
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [],
+    })
+    await expect(target).toHaveAttribute('data-raised', 'true')
+    await expect(target).not.toHaveAttribute('data-selected', 'true')
+    await expect(page.getByText('Play this card')).not.toBeVisible()
+
+    // The kept peek then acts on a normal tap (the existing second-tap rule).
+    await target.tap()
+    await expect(target).toHaveAttribute('data-selected', 'true')
+    await expect(page.getByText('Play this card')).toBeVisible()
+
+    // Put it back to leave the fixture untouched.
+    await target.tap()
+    await expect(page.getByText('Choose an action')).toBeVisible()
+  })
+
+  test('a slide that starts before the hold fires cancels the long-press', async ({
+    page,
+  }) => {
+    await page.goto('/?demo')
+    const start = page.getByTestId('card-birmingham_1')
+    await expect(start).toBeVisible()
+    const sBox = (await start.boundingBox())!
+    const sx = sBox.x + sBox.width / 2
+    const sy = sBox.y + sBox.height / 2
+
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x: sx, y: sy }],
+    })
+    // Slide immediately (beyond the 12px slop) — no browse, no peek.
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: sx + 40, y: sy }],
+    })
+    await page.waitForTimeout(500)
+    await expect(page.locator('[data-raised="true"]')).toHaveCount(0)
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [],
+    })
+    await expect(page.locator('[data-selected="true"]')).toHaveCount(0)
   })
 
   test('a display-only (disabled) card can still be peeked by tap', async ({

@@ -21,6 +21,14 @@ export interface LensPreset {
 export const LENS_FINE: LensPreset = { scale: 1.6, rise: 40 }
 export const LENS_COARSE: LensPreset = { scale: 2.1, rise: 76 }
 
+/**
+ * A selected card keeps a persistent, smaller lens until it is deselected or
+ * the action completes. Deliberately modest: it must not bury neighbours
+ * (no dock shifts in the persistent state) nor occlude the dock's controls,
+ * which sit right above the tray on phones.
+ */
+export const LENS_SELECTED: LensPreset = { scale: 1.3, rise: 18 }
+
 /** Fan rotation of card `index` in a hand of `count`, degrees. */
 export function fanAngle(index: number, count: number): number {
   return (index - (count - 1) / 2) * (count > 6 ? 4 : 5.5)
@@ -105,4 +113,23 @@ export function lensShiftX(
 /** How far above its seat the magnified visual reaches, layout px. */
 export function lensReach(lens: LensPreset): number {
   return lens.rise + CARD_H * (lens.scale - 1)
+}
+
+/**
+ * Which card of the fan sits under layout-x position `x` — the drag-to-browse
+ * mapping. Uses the resting seat centres (width/2 + (i − (n−1)/2)·spacing),
+ * NOT the live DOM boxes: dock shifts move seats while browsing, and mapping
+ * against moving targets makes the highlight jitter under a still finger.
+ * Positions beyond the outermost centres clamp to the edge cards, so a sweep
+ * past the fan's end stays on the last card instead of dropping the raise.
+ */
+export function cardIndexAtX(
+  x: number,
+  count: number,
+  spacing: number,
+  width: number,
+): number {
+  if (count <= 1) return 0
+  const i = Math.round((x - width / 2) / spacing + (count - 1) / 2)
+  return Math.max(0, Math.min(count - 1, i))
 }

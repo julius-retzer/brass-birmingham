@@ -4,7 +4,9 @@ import {
   FAN_SPACING,
   LENS_COARSE,
   LENS_FINE,
+  LENS_SELECTED,
   MIN_SPACING,
+  cardIndexAtX,
   dockShift,
   fanLayout,
   lensReach,
@@ -115,5 +117,46 @@ describe('lensReach', () => {
     // rise + the extra height gained by scaling from the bottom edge.
     expect(lensReach(LENS_FINE)).toBeCloseTo(40 + 156 * 0.6)
     expect(lensReach(LENS_COARSE)).toBeGreaterThan(lensReach(LENS_FINE))
+  })
+})
+
+describe('LENS_SELECTED (persistent selected-card lens)', () => {
+  it('is smaller than both transient lenses so it cannot occlude the dock', () => {
+    expect(LENS_SELECTED.scale).toBeLessThan(LENS_FINE.scale)
+    expect(LENS_SELECTED.scale).toBeLessThan(LENS_COARSE.scale)
+    expect(lensReach(LENS_SELECTED)).toBeLessThan(lensReach(LENS_FINE))
+  })
+
+  it('still visibly magnifies and lifts the card', () => {
+    expect(LENS_SELECTED.scale).toBeGreaterThan(1)
+    expect(LENS_SELECTED.rise).toBeGreaterThan(0)
+  })
+})
+
+describe('cardIndexAtX (drag-to-browse)', () => {
+  const width = 520
+  const spacing = 60
+
+  it('maps the fan centre to the middle card', () => {
+    // 8 cards: centres at width/2 + (i − 3.5)·spacing; x = width/2 sits
+    // between cards 3 and 4 — rounding picks one of the two, stably.
+    expect([3, 4]).toContain(cardIndexAtX(width / 2, 8, spacing, width))
+  })
+
+  it('maps each seat centre to its own card', () => {
+    for (let i = 0; i < 8; i++) {
+      const centerX = width / 2 + (i - 3.5) * spacing
+      expect(cardIndexAtX(centerX, 8, spacing, width)).toBe(i)
+    }
+  })
+
+  it('clamps sweeps past the fan ends to the edge cards', () => {
+    expect(cardIndexAtX(-100, 8, spacing, width)).toBe(0)
+    expect(cardIndexAtX(width + 100, 8, spacing, width)).toBe(7)
+  })
+
+  it('a single card owns the whole tray', () => {
+    expect(cardIndexAtX(0, 1, spacing, width)).toBe(0)
+    expect(cardIndexAtX(width, 1, spacing, width)).toBe(0)
   })
 })

@@ -3,15 +3,20 @@
 // The player's hand as a fan of real cards along the bottom of the table.
 // When an action flow needs a discard the fan itself becomes the selector.
 //
-// A hovered (mouse) or peeked (touch: first tap) card magnifies dock-style:
-// the visual lens scales up while its 108×156 button hitbox stays put, and
-// neighbours slide aside. Pure geometry lives in hand-tray-layout.ts.
+// A hovered (mouse) or peeked (touch) card magnifies dock-style: the visual
+// lens scales up while its 108×156 button hitbox stays put, and neighbours
+// slide aside. Touch reaches the peek two ways: a tap, or a long-press that
+// then browses the fan Hearthstone-style (slide left/right, release keeps
+// the card under the finger peeked). A selected card keeps a smaller
+// persistent lens. Pure geometry lives in hand-tray-layout.ts.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { type Card as GameCard } from '~/data/cards'
 import { CardFaceContent } from './cards'
 import {
   LENS_COARSE,
   LENS_FINE,
+  LENS_SELECTED,
+  cardIndexAtX,
   dockShift,
   fanAngle,
   fanLayout,
@@ -19,6 +24,20 @@ import {
   lensReach,
   lensShiftX,
 } from './hand-tray-layout'
+
+/** Hold this long (without sliding) to start browsing the fan. */
+const LONG_PRESS_MS = 350
+/** Finger drift allowed before the hold is read as a slide and cancelled. */
+const BROWSE_SLOP_PX = 12
+
+interface BrowseGesture {
+  pointerId: number
+  startX: number
+  startY: number
+  timer: number
+  /** Set when the long-press fires; from then on sliding browses the fan. */
+  active: boolean
+}
 
 export interface HandTrayProps {
   hand: GameCard[]
@@ -53,6 +72,12 @@ export function HandTray({
   // Pointer type of the press that produced the next click, consumed there —
   // per-interaction, so hybrid (touch + mouse) devices do the right thing.
   const lastPointerType = useRef<string | null>(null)
+  // In-progress long-press/browse gesture; document-level move/up handlers
+  // drive it so the finger may wander off the pressed card mid-browse.
+  const browseRef = useRef<BrowseGesture | null>(null)
+  // A browse release still synthesizes a click on the pressed card — that
+  // click must neither act nor re-toggle the peek the browse just set.
+  const suppressClickRef = useRef(false)
 
   useLayoutEffect(() => {
     const el = fanRef.current
@@ -78,11 +103,10 @@ export function HandTray({
     const onDown = (e: PointerEvent) => {
       if (rootRef.current?.contains(e.target as Node)) return
       setPeekedId(null)
-      onHoverCard?.(null)
     }
     document.addEventListener('pointerdown', onDown)
     return () => document.removeEventListener('pointerdown', onDown)
-  }, [peekedId, onHoverCard])
+  }, [peekedId])
 
   // The peeked card may leave the hand (played, era end) under the peek.
   useEffect(() => {
@@ -91,13 +115,75 @@ export function HandTray({
 
   const setPeek = (card: GameCard | null) => {
     setPeekedId(card?.id ?? null)
-    onHoverCard?.(card)
   }
 
   const raisedId = peekedId ?? hoveredId
   const raisedIndex = raisedId ? hand.findIndex((c) => c.id === raisedId) : -1
+
+  // The shell's hover preview follows whichever card is actually raised —
+  // one derived notification instead of per-handler calls, so a peek can't
+  // fight a stale mouse hover and a raised card leaving the hand clears the
+  // preview. Deduped by id: hand arrays are rebuilt per snapshot and the
+  // shell shouldn't re-render for an identity-only change.
+  const raisedCard = raisedId
+    ? (hand.find((c) => c.id === raisedId) ?? null)
+    : null
+  const notifiedHoverRef = useRef<string | null>(null)
+  useEffect(() => {
+    const id = raisedCard?.id ?? null
+    if (notifiedHoverRef.current === id) return
+    notifiedHoverRef.current = id
+    onHoverCard?.(raisedCard)
+  }, [onHoverCard, raisedCard])
   const lens = coarse ? LENS_COARSE : LENS_FINE
   const { spacing, marginX } = fanLayout(n, fanWidth)
+
+  // Long-press browse: once the hold fires, sliding moves the raised
+  // highlight to the card whose resting seat is under the finger; releasing
+  // keeps that card peeked (never selects — acting stays a deliberate tap on
+  // the already-raised card). Listeners live on the document because touch
+  // implicit-captures pointer events to the pressed element, so per-seat
+  // handlers would never see the finger crossing the fan.
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      const g = browseRef.current
+      if (!g || e.pointerId !== g.pointerId) return
+      if (!g.active) {
+        // Sliding before the hold fires is not a browse — cancel it.
+        if (
+          Math.hypot(e.clientX - g.startX, e.clientY - g.startY) >
+          BROWSE_SLOP_PX
+        ) {
+          clearTimeout(g.timer)
+          browseRef.current = null
+        }
+        return
+      }
+      const el = fanRef.current
+      if (!el || fanWidth === null || hand.length === 0) return
+      const rect = el.getBoundingClientRect()
+      if (rect.width === 0) return
+      // Client → layout px (the fan is scaled down on phones).
+      const layoutX = ((e.clientX - rect.left) / rect.width) * fanWidth
+      const under = hand[cardIndexAtX(layoutX, hand.length, spacing, fanWidth)]
+      if (under && under.id !== peekedId) setPeek(under)
+    }
+    const onEnd = (e: PointerEvent) => {
+      const g = browseRef.current
+      if (!g || e.pointerId !== g.pointerId) return
+      clearTimeout(g.timer)
+      browseRef.current = null
+      if (g.active && e.type === 'pointerup') suppressClickRef.current = true
+    }
+    document.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerup', onEnd)
+    document.addEventListener('pointercancel', onEnd)
+    return () => {
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', onEnd)
+      document.removeEventListener('pointercancel', onEnd)
+    }
+  })
 
   return (
     <div
@@ -105,16 +191,27 @@ export function HandTray({
       className="pointer-events-none fixed bottom-0 left-0 right-0 z-40 flex flex-col items-center lg:right-[392px]"
     >
       {hint && (
-        <div
-          className="bb2-rise pointer-events-auto mb-2 rounded border px-4 py-1.5 text-[12px] font-semibold uppercase tracking-[0.18em]"
-          style={{
-            background: 'rgba(20,16,11,.92)',
-            borderColor: 'var(--bb-brass)',
-            color: 'var(--bb-brass-bright)',
-            boxShadow: '0 6px 18px rgba(0,0,0,.5)',
-          }}
-        >
-          {hint}
+        // The pill stacks above the fan so the persistent selected lens can
+        // never bury the instruction — but while a card is transiently
+        // raised (hover/peek) the pill yields, fading out of the lens's way.
+        // Two nested divs because bb2-rise's fill-mode pins the outer
+        // element's opacity, so the fade must live on its own node. It is
+        // click-transparent: on phones the dock scrolls behind it, and the
+        // pill must never eat a tap aimed at an action button.
+        <div className="bb2-rise relative z-[1] mb-2">
+          <div
+            className="rounded border px-4 py-1.5 text-[12px] font-semibold uppercase tracking-[0.18em]"
+            style={{
+              background: 'rgba(20,16,11,.92)',
+              borderColor: 'var(--bb-brass)',
+              color: 'var(--bb-brass-bright)',
+              boxShadow: '0 6px 18px rgba(0,0,0,.5)',
+              opacity: raisedIndex === -1 ? 1 : 0.12,
+              transition: 'opacity 0.15s ease',
+            }}
+          >
+            {hint}
+          </div>
         </div>
       )}
       <div
@@ -136,6 +233,10 @@ export function HandTray({
             raisedIndex === -1 ? null : raisedIndex,
             lens.scale,
           )
+          // Transient hover/peek beats the persistent selected lens; the
+          // selected state deliberately shifts no neighbours (rise carries
+          // the signal without churning the fan for a whole flow).
+          const lensPreset = raised ? lens : selected ? LENS_SELECTED : null
           return (
             // The fan transform and hover events live on a wrapper: mouse
             // events don't fire on disabled buttons, but the hover preview
@@ -148,25 +249,46 @@ export function HandTray({
                 zIndex: raised ? 60 : selected ? 40 : i,
               }}
               onPointerEnter={(e) => {
-                if (e.pointerType !== 'touch') {
-                  setHoveredId(card.id)
-                  onHoverCard?.(card)
-                }
+                if (e.pointerType !== 'touch') setHoveredId(card.id)
               }}
               onPointerLeave={(e) => {
-                if (e.pointerType !== 'touch') {
+                if (e.pointerType !== 'touch')
                   setHoveredId((h) => (h === card.id ? null : h))
-                  onHoverCard?.(null)
-                }
               }}
               onPointerDown={(e) => {
                 lastPointerType.current = e.pointerType
+                suppressClickRef.current = false
+                if (e.pointerType === 'touch') {
+                  // A second finger replaces the pending gesture outright.
+                  if (browseRef.current) clearTimeout(browseRef.current.timer)
+                  const g: BrowseGesture = {
+                    pointerId: e.pointerId,
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    timer: 0,
+                    active: false,
+                  }
+                  g.timer = window.setTimeout(() => {
+                    if (browseRef.current !== g) return
+                    g.active = true
+                    setPeek(card)
+                  }, LONG_PRESS_MS)
+                  browseRef.current = g
+                }
               }}
               onPointerUp={(e) => {
+                // A browse release is handled at the document level (keeps
+                // the browsed card peeked) — not a tap.
+                if (browseRef.current?.active) return
                 // Disabled buttons swallow click, so a display-only or
                 // dimmed card's touch peek toggles here instead.
                 if (e.pointerType === 'touch' && disabled)
                   setPeek(peekedId === card.id ? null : card)
+              }}
+              onContextMenu={(e) => {
+                // Android fires contextmenu on long-press — that press is
+                // our browse gesture, never a context menu.
+                if (browseRef.current) e.preventDefault()
               }}
             >
               <button
@@ -178,6 +300,12 @@ export function HandTray({
                 data-raised={raised || undefined}
                 disabled={disabled}
                 onClick={() => {
+                  // The click synthesized after a browse release is not a
+                  // tap — swallow it so browsing can never act.
+                  if (suppressClickRef.current) {
+                    suppressClickRef.current = false
+                    return
+                  }
                   const viaTouch = lastPointerType.current === 'touch'
                   lastPointerType.current = null
                   // Touch has no hover: the first tap peeks, the second acts.
@@ -205,7 +333,7 @@ export function HandTray({
                         ? 'pointer'
                         : 'not-allowed'
                       : 'default',
-                    '--bb-lens-reach': `${lensReach(lens)}px`,
+                    '--bb-lens-reach': `${lensReach(lensPreset ?? lens)}px`,
                   } as React.CSSProperties
                 }
                 aria-label={`Card: ${card.id}`}
@@ -213,9 +341,9 @@ export function HandTray({
                 <span
                   className="bb2-card bb2-card-lens"
                   style={
-                    raised
+                    lensPreset
                       ? {
-                          transform: `translate(${lensShiftX(i, n, spacing, fanWidth, lens.scale)}px, ${-lens.rise}px) rotate(${-angle}deg) scale(${lens.scale})`,
+                          transform: `translate(${lensShiftX(i, n, spacing, fanWidth, lensPreset.scale)}px, ${-lensPreset.rise}px) rotate(${-angle}deg) scale(${lensPreset.scale})`,
                         }
                       : undefined
                   }

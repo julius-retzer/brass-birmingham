@@ -450,6 +450,13 @@ button.bb2-card {
   display: block;
   flex: none;
   transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  /* The long-press browse gesture owns touches that start on a card: no
+   * page scroll, no iOS callout/selection. Only the seats claim this —
+   * touches elsewhere scroll and pan as usual. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* The tray sizes cards by scaling the whole fan; the width compensates the
@@ -501,10 +508,12 @@ button.bb2-card {
     var(--bb-brass-bright), 0 0 24px rgba(230, 189, 99, 0.55), 0 10px 20px
     rgba(0, 0, 0, 0.6);
 }
-/* While raised, extend the hitbox straight UP over the magnified visual
- * (its vertical reach is set inline) — but never sideways, so neighbours
- * stay clickable. Tapping the enlarged card is what confirms on touch. */
-.bb2-card-hit[data-raised="true"]::after {
+/* While raised (hover/peek) or holding the persistent selected lens, extend
+ * the hitbox straight UP over the magnified visual (its vertical reach is
+ * set inline) — but never sideways, so neighbours stay clickable. Tapping
+ * the enlarged card is what confirms on touch. */
+.bb2-card-hit[data-raised="true"]::after,
+.bb2-card-hit[data-selected="true"]::after {
   content: "";
   position: absolute;
   left: 0;

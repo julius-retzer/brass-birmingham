@@ -59,7 +59,7 @@ test('Network: claim a canal route by clicking it on the map', async ({
 
   // Legal routes are marked on their fat hit-paths; illegal/ghost ones are not.
   const legalRoute = page.locator('path[data-conn][data-legal="true"]')
-  expect(await legalRoute.count()).toBeGreaterThan(0)
+  await expect(legalRoute).not.toHaveCount(0)
   const firstConn = (await legalRoute.first().getAttribute('data-conn'))!
   await clickRoute(page, firstConn)
 

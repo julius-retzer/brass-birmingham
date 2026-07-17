@@ -222,46 +222,75 @@ export function romanLevel(level: number): string {
 
 export interface MainSpan {
   text: string
-  role: 'text' | 'industry' | 'level'
+  role: 'text' | 'industry' | 'level' | 'place'
 }
 
 const capitalize = (word: string) =>
   word.charAt(0).toUpperCase() + word.slice(1)
 
 /**
- * Split a headline into styled spans: the WHAT (industry) carries the
- * emphasis, the tile level demotes to a dim roman numeral. Unmatched
+ * Split a headline into styled spans: the WHAT (industry) and WHERE
+ * (location, link endpoints, merchant) carry the emphasis, the tile level
+ * demotes to a dim roman numeral, and prices stay plain. Unmatched
  * headlines come back as one plain span.
  */
 export function decorateMain(main: string, kind: JournalKind): MainSpan[] {
   if (kind === 'build') {
-    const m = /^(built )([a-z]+) Level (\d+)( .*)$/.exec(main)
+    const m = /^(built )([a-z]+) Level (\d+)( at )(\w+)( .*)?$/.exec(main)
     if (m) {
-      return [
+      const spans: MainSpan[] = [
         { text: m[1]!, role: 'text' },
         { text: capitalize(m[2]!), role: 'industry' },
         { text: ` (${romanLevel(Number(m[3]!))})`, role: 'level' },
         { text: m[4]!, role: 'text' },
+        { text: m[5]!, role: 'place' },
+      ]
+      if (m[6]) spans.push({ text: m[6], role: 'text' })
+      return spans
+    }
+  }
+  if (kind === 'network') {
+    const single =
+      /^(built a (?:canal|rail) link between )(\w+)( and )(\w+)$/.exec(main)
+    if (single) {
+      return [
+        { text: single[1]!, role: 'text' },
+        { text: single[2]!, role: 'place' },
+        { text: single[3]!, role: 'text' },
+        { text: single[4]!, role: 'place' },
+      ]
+    }
+    const double = /^(built 2 rail links \()([^)]+)(\).*)$/.exec(main)
+    if (double) {
+      return [
+        { text: double[1]!, role: 'text' },
+        { text: double[2]!, role: 'place' },
+        { text: double[3]!, role: 'text' },
       ]
     }
   }
   if (kind === 'sell') {
-    const m = /^(sold )([a-z]+)( at .*)$/.exec(main)
+    const m = /^(sold )([a-z]+)( at )(\w+)( to merchant at )(\w+)$/.exec(main)
     if (m) {
       return [
         { text: m[1]!, role: 'text' },
         { text: capitalize(m[2]!), role: 'industry' },
         { text: m[3]!, role: 'text' },
+        { text: m[4]!, role: 'place' },
+        { text: m[5]!, role: 'text' },
+        { text: m[6]!, role: 'place' },
       ]
     }
   }
   if (kind === 'flip') {
-    const m = /^('s )([a-z]+)( at .*)$/.exec(main)
+    const m = /^('s )([a-z]+)( at )(\w+)( flipped.*)$/.exec(main)
     if (m) {
       return [
         { text: m[1]!, role: 'text' },
         { text: capitalize(m[2]!), role: 'industry' },
         { text: m[3]!, role: 'text' },
+        { text: m[4]!, role: 'place' },
+        { text: m[5]!, role: 'text' },
       ]
     }
   }

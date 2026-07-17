@@ -294,41 +294,67 @@ describe('errors and fallbacks', () => {
 })
 
 describe('headline decoration', () => {
-  test('a build bolds the industry and dims the level as a roman numeral', () => {
+  test('a build bolds the industry and site, dims the level to a roman numeral', () => {
     expect(
       decorateMain('built coal Level 2 at dudley for £5', 'build'),
     ).toEqual([
       { text: 'built ', role: 'text' },
       { text: 'Coal', role: 'industry' },
       { text: ' (II)', role: 'level' },
-      { text: ' at dudley for £5', role: 'text' },
+      { text: ' at ', role: 'text' },
+      { text: 'dudley', role: 'place' },
+      { text: ' for £5', role: 'text' },
     ])
   })
 
-  test('a sale bolds the industry sold', () => {
+  test('a sale bolds the industry, its city and the merchant', () => {
     expect(
       decorateMain('sold cotton at coventry to merchant at oxford', 'sell'),
     ).toEqual([
       { text: 'sold ', role: 'text' },
       { text: 'Cotton', role: 'industry' },
-      { text: ' at coventry to merchant at oxford', role: 'text' },
+      { text: ' at ', role: 'text' },
+      { text: 'coventry', role: 'place' },
+      { text: ' to merchant at ', role: 'text' },
+      { text: 'oxford', role: 'place' },
     ])
   })
 
-  test('a flip bolds the industry that flipped', () => {
+  test('a flip bolds the industry that flipped and where', () => {
     expect(decorateMain("'s cotton at coventry flipped", 'flip')).toEqual([
       { text: "'s ", role: 'text' },
       { text: 'Cotton', role: 'industry' },
-      { text: ' at coventry flipped', role: 'text' },
+      { text: ' at ', role: 'text' },
+      { text: 'coventry', role: 'place' },
+      { text: ' flipped', role: 'text' },
     ])
   })
 
-  test('network and unmatched headlines stay a single text span', () => {
+  test('a link bolds both endpoints', () => {
     expect(
       decorateMain('built a canal link between dudley and walsall', 'network'),
     ).toEqual([
-      { text: 'built a canal link between dudley and walsall', role: 'text' },
+      { text: 'built a canal link between ', role: 'text' },
+      { text: 'dudley', role: 'place' },
+      { text: ' and ', role: 'text' },
+      { text: 'walsall', role: 'place' },
     ])
+  })
+
+  test('a double link bolds its route list', () => {
+    expect(
+      decorateMain(
+        'built 2 rail links (dudley-walsall, walsall-tamworth) for £15 + beer + 2 coal (£4)',
+        'network',
+      ),
+    ).toEqual([
+      { text: 'built 2 rail links (', role: 'text' },
+      { text: 'dudley-walsall, walsall-tamworth', role: 'place' },
+      { text: ') for £15 + beer + 2 coal (£4)', role: 'text' },
+    ])
+  })
+
+  test('unmatched headlines stay a single text span', () => {
     expect(decorateMain('took a loan', 'loan')).toEqual([
       { text: 'took a loan', role: 'text' },
     ])

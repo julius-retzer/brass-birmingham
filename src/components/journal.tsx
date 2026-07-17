@@ -42,12 +42,11 @@ const KIND_ICONS: Partial<Record<JournalKind, React.ReactNode>> = {
   score: <LaurelIcon size={12} />,
 }
 
-// Amounts (£, income, VP, resources) get bold parchment inside the headline
-// so a scanning eye catches the numbers. Tile levels are deliberately NOT
-// here — the WHAT (industry) carries the emphasis, the level demotes to a
-// dim roman numeral via decorateMain.
+// Income and VP amounts get bold parchment inside the headline. Prices and
+// tile levels are deliberately NOT here — the WHAT (industry) and WHERE
+// (place) carry the emphasis via decorateMain; cost is secondary.
 const AMOUNT_RE =
-  /£\d+|[+-]\d+ income|\d+ (?:VP|income levels?|beers?|coal|iron|cards?|wilds?|spaces?|industries)|VPs?\b/g
+  /[+-]\d+ income|\d+ (?:VP|income levels?|beers?|coal|iron|cards?|wilds?|spaces?|industries)|VPs?\b/g
 
 function emphasizeAmounts(text: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = []
@@ -110,6 +109,10 @@ function JournalRow({ item }: { item: JournalItem }) {
             span.role === 'industry' ? (
               <b key={i} className="bb2-jind">
                 {span.text}
+              </b>
+            ) : span.role === 'place' ? (
+              <b key={i} className="bb2-jind">
+                {prettifyPlaces(span.text)}
               </b>
             ) : span.role === 'level' ? (
               <span key={i} className="bb2-jlevel">

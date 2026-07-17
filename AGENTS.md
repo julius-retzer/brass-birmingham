@@ -702,7 +702,12 @@ When updating this file, preserve this bar for all agents and keep entries conci
   the config) and only created in `e2e/global-db.ts`. (5) `configureLocalProxy`
   (`src/server/db/local-proxy.ts`) must stay a no-op for cloud urls —
   `neonConfig.fetchEndpoint` is global and the cloud default rewrites the host
-  (pinned by `local-proxy.test.ts`).
+  (pinned by `local-proxy.test.ts`). (6) if the postgres container is RECREATED
+  under a long-running proxy, the proxy keeps its dead pooled backends and every
+  query 500s ("Control plane request failed") — the detection probe then reads
+  as "no local DB" and the suites quietly fall through to the
+  `[test-db] no NEON_API_KEY` path rather than failing loudly.
+  `docker compose restart neon-proxy` fixes it.
 - LOCAL TEST DB ISOLATION (added 2026-07-16; now the FALLBACK when Docker isn't
   running — CI still uses this path): every local test run gets its
   OWN throwaway Neon branch — no more sharing `dev`, and parallel runs can't

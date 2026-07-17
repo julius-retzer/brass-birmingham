@@ -449,6 +449,15 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   decide which cards are clickable — the shell asks the machine per card
   (`state.can({SELECT_CARD, cardId})`), the single source of truth, so it
   survives the MP intent→broadcast→rebuild round-trip.
+- HELD-CARD BANNER (2026-07-17): the DOCK also names the held card — a shared
+  `HeldCard` (`Holding <CardChip>`) rendered by the `Flow` wrapper (via a
+  `held` prop on every `<Flow>` / `DevelopTilePicker`) AND the `cardSelected`
+  chooser, so both entry orders (card-first and action-first) show the
+  IDENTICAL "Holding <card>" the instant `context.selectedCard` is set, for the
+  whole flow. Keyed on state + `selectedCard` only, so it's order-independent.
+  Don't reintroduce the old per-step "Playing"/"Card" chips — they duplicated
+  it. `data-testid="held-card"`; pinned by the action-first + card-first dock
+  tests in `card-first.spec.ts`.
 - CLICK-TO-SWITCH (2026-07-17): clicking a DIFFERENT hand card switches the
   play. On a pick step that's `cardSelected`'s own SELECT_CARD; mid-action it's
   a parent-level SELECT_CARD on `playing.action` → `cardSelected` that reuses

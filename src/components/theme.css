@@ -461,24 +461,38 @@ button.bb2-card {
 
 /* The tray sizes cards by scaling the whole fan; the width compensates the
  * scale (100% / s) so the usable layout width stays the full viewport —
- * without it a phone tray would waste 28% of an already-narrow screen. */
+ * without it a phone tray would waste 28% of an already-narrow screen.
+ * The scale lives on the tray root, not the box, because the hint pill is a
+ * SIBLING of the fan and has to reserve its clearance in the same scale. */
+.bb2-handtray {
+  --bb-hand-scale: 0.72;
+}
 .bb2-handbox {
   flex: none;
   height: 150px;
   margin-bottom: -20px;
   transform-origin: bottom center;
-  transform: scale(0.72);
-  width: calc(100% / 0.72);
+  transform: scale(var(--bb-hand-scale));
+  width: calc(100% / var(--bb-hand-scale));
+}
+/* Lens reach is layout px inside the fan; the pill sits outside it, so the
+ * reserve has to be scaled by hand. The 8px is the visual gap on top. */
+.bb2-hand-hint {
+  margin-bottom: calc(8px + var(--bb-hint-clear, 71px) * var(--bb-hand-scale));
 }
 @media (min-width: 640px) {
+  .bb2-handtray {
+    --bb-hand-scale: 0.9;
+  }
   .bb2-handbox {
-    transform: scale(0.9);
     width: min(53.34rem, calc(100% / 0.9));
   }
 }
 @media (min-width: 1024px) {
+  .bb2-handtray {
+    --bb-hand-scale: 1;
+  }
   .bb2-handbox {
-    transform: scale(1);
     width: min(48rem, 100%);
   }
 }

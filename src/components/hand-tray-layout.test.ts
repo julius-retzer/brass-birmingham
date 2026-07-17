@@ -9,6 +9,7 @@ import {
   cardIndexAtX,
   dockShift,
   fanLayout,
+  hintClearance,
   lensReach,
   lensShiftX,
 } from './hand-tray-layout'
@@ -158,5 +159,25 @@ describe('cardIndexAtX (drag-to-browse)', () => {
   it('a single card owns the whole tray', () => {
     expect(cardIndexAtX(0, 1, spacing, width)).toBe(0)
     expect(cardIndexAtX(width, 1, spacing, width)).toBe(0)
+  })
+})
+
+describe('hintClearance', () => {
+  // The bug this pins: the hint pill used to sit right on top of the fan, so
+  // a selected card's persistent lens rendered straight through the
+  // instruction telling the player what to do with it.
+  it('clears the persistent selected lens on a fine pointer', () => {
+    expect(hintClearance(LENS_FINE)).toBeGreaterThan(lensReach(LENS_SELECTED))
+  })
+
+  it('clears the pointer lens on both fine and coarse', () => {
+    expect(hintClearance(LENS_FINE)).toBeGreaterThan(lensReach(LENS_FINE))
+    expect(hintClearance(LENS_COARSE)).toBeGreaterThan(lensReach(LENS_COARSE))
+  })
+
+  it('reserves for the tallest lens the device can raise, not the current one', () => {
+    // Static per device: a touch tray must hold room for its own big peek
+    // even while nothing is raised, or the pill would jump on every tap.
+    expect(hintClearance(LENS_COARSE)).toBeGreaterThan(hintClearance(LENS_FINE))
   })
 })

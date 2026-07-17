@@ -21,6 +21,7 @@ import {
   fanAngle,
   fanLayout,
   fanLift,
+  hintClearance,
   lensReach,
   lensShiftX,
 } from './hand-tray-layout'
@@ -188,17 +189,20 @@ export function HandTray({
   return (
     <div
       ref={rootRef}
-      className="pointer-events-none fixed bottom-0 left-0 right-0 z-40 flex flex-col items-center lg:right-[392px]"
+      className="bb2-handtray pointer-events-none fixed bottom-0 left-0 right-0 z-40 flex flex-col items-center lg:right-[392px]"
+      style={
+        { '--bb-hint-clear': `${hintClearance(lens)}px` } as React.CSSProperties
+      }
     >
       {hint && (
-        // The pill stacks above the fan so the persistent selected lens can
-        // never bury the instruction — but while a card is transiently
-        // raised (hover/peek) the pill yields, fading out of the lens's way.
-        // Two nested divs because bb2-rise's fill-mode pins the outer
-        // element's opacity, so the fade must live on its own node. It is
-        // click-transparent: on phones the dock scrolls behind it, and the
-        // pill must never eat a tap aimed at an action button.
-        <div className="bb2-rise relative z-[1] mb-2">
+        // The pill stacks above the fan, clearing the tallest lens this
+        // device can raise (--bb-hint-clear, scaled with the tray) so no
+        // card — resting, selected or magnified — ever reaches it. It stays
+        // fully opaque and put: the reserve is static, so hovering never
+        // moves or dims the instruction. It is click-transparent: on phones
+        // the dock scrolls behind it, and the pill must never eat a tap
+        // aimed at an action button.
+        <div className="bb2-hand-hint bb2-rise relative z-[1]">
           <div
             className="rounded border px-4 py-1.5 text-[12px] font-semibold uppercase tracking-[0.18em]"
             style={{
@@ -206,8 +210,6 @@ export function HandTray({
               borderColor: 'var(--bb-brass)',
               color: 'var(--bb-brass-bright)',
               boxShadow: '0 6px 18px rgba(0,0,0,.5)',
-              opacity: raisedIndex === -1 ? 1 : 0.12,
-              transition: 'opacity 0.15s ease',
             }}
           >
             {hint}

@@ -256,6 +256,60 @@ describe('Game Store - Sell Actions', () => {
     expect(actionsUsed).toBeLessThanOrEqual(1)
   })
 
+  test('mid-sell card switch is refused once an industry has flipped (sales are irreversible)', () => {
+    const { actor } = setupGame()
+
+    buildLinkToGloucester(actor)
+    passCurrentPlayer(actor)
+
+    let snapshot = actor.getSnapshot()
+    const sellerIndex = snapshot.context.currentPlayerIndex
+
+    actor.send({
+      type: 'TEST_SET_MERCHANTS',
+      merchants: [gloucesterMerchant()],
+    })
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: sellerIndex,
+      industries: [
+        makeIndustry('worcester', cottonTile),
+        makeIndustry('worcester', manufacturerTile),
+      ],
+      money: 20,
+      income: 10,
+    })
+
+    actor.send({ type: 'SELL' })
+    snapshot = actor.getSnapshot()
+    const discardCard = snapshot.context.players[sellerIndex]!.hand[0]!.id
+    const otherCard = snapshot.context.players[sellerIndex]!.hand[1]!.id
+    actor.send({ type: 'SELECT_CARD', cardId: discardCard })
+    // One sale flips the cotton mill — the action is now partially committed.
+    actor.send({
+      type: 'SELECT_SALE',
+      location: 'worcester',
+      industryType: 'cotton',
+      merchant: 'gloucester',
+    })
+
+    snapshot = actor.getSnapshot()
+    expect(snapshot.context.salesMadeThisAction).toBe(1)
+    expect(
+      snapshot.matches({ playing: { action: { selling: 'selectingSale' } } }),
+    ).toBe(true)
+
+    // A flipped sale cannot be abandoned by switching cards — the shortcut is
+    // refused so no half-applied sale can be walked away from.
+    expect(snapshot.can({ type: 'SELECT_CARD', cardId: otherCard })).toBe(false)
+    actor.send({ type: 'SELECT_CARD', cardId: otherCard })
+    snapshot = actor.getSnapshot()
+    expect(
+      snapshot.matches({ playing: { action: { selling: 'selectingSale' } } }),
+    ).toBe(true)
+    expect(snapshot.context.selectedCard?.id).toBe(discardCard)
+  })
+
   test('sell action - CONFIRM without a completed sale is blocked (guard)', () => {
     const { actor } = setupGame()
 

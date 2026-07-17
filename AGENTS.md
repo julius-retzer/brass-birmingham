@@ -440,18 +440,32 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   buttons (keyboard-activatable when legal); the board svg must NOT get
   `role="img"` back, that flattens them out of the a11y tree.
 - The hand tray (`hand-tray.tsx`) doubles as the card selector for every
-  discard step; which steps select cards is centralized in
-  `getHandSelection()` (`action-dock.tsx`). It returns `{hint, selectedIds,
-  selectable}` for EVERY `playing.action.*` state: on the card-picking steps
-  `selectable:true` (fan is clickable); once a card is committed a catch-all
-  keeps the held `context.selectedCard` in `selectedIds` with a
-  `Holding <name>` hint and `selectable:false` — so the fan keeps the card
-  lifted (persistent `LENS_SELECTED`, display-only) and the pill keeps naming
-  it for the WHOLE flow (put-back is CANCEL in the dock). Both surfaces gate
-  the tray's `canSelect` on `handSel?.selectable`. Derived from machine
-  context, so the indicator survives the MP intent→broadcast→rebuild
-  round-trip. Pinned by `hand-selection.test.ts` + the card-first Network
-  persistence e2e (`card-first.spec.ts`).
+  discard step. `getHandSelection()` (`action-dock.tsx`) returns
+  `{hint, selectedIds}` for EVERY `playing.action.*` state: the card-picking
+  steps name the action; once a card is committed a catch-all keeps the held
+  `context.selectedCard` in `selectedIds` with a `Holding <name>` hint — so the
+  fan keeps the card lifted (persistent `LENS_SELECTED`) and the pill keeps
+  naming it for the WHOLE flow (put-back is CANCEL in the dock). It does NOT
+  decide which cards are clickable — the shell asks the machine per card
+  (`state.can({SELECT_CARD, cardId})`), the single source of truth, so it
+  survives the MP intent→broadcast→rebuild round-trip.
+- CLICK-TO-SWITCH (2026-07-17): clicking a DIFFERENT hand card switches the
+  play. On a pick step that's `cardSelected`'s own SELECT_CARD; mid-action it's
+  a parent-level SELECT_CARD on `playing.action` → `cardSelected` that reuses
+  `clearSelections` (the top-level CANCEL cleanup) then re-holds the new card.
+  Guard `canSwitchHeldCard` gates it: different in-hand card only, and NEVER
+  once a Sell has flipped an industry (`salesMadeThisAction > 0`) — that
+  half-done sale can only be closed. Child pick steps' own SELECT_CARD takes
+  precedence over the parent. The AI never uses it (`enumerateLegalMoves`
+  suppresses SELECT_CARD once a card is held — human ergonomics only). Pinned
+  by `gameStore.cardfirst.test.ts` + `gameStore.sell.test.ts` +
+  `hand-selection.test.ts`, e2e in `card-first.spec.ts` / `hand-tray.spec.ts`.
+- The active-action panel is the turn's primary focus: `.bb2-panel-active`
+  (`theme.css`, brass border + left accent rail + elevation, applied alongside
+  `.bb2-panel` on the dock wrapper in `game.tsx`/`mp-game.tsx`) plus larger
+  dock type. The right column is `lg:w-[416px]` and the hand tray clears it
+  with `lg:right-[428px]` — keep those in sync; both are lg-gated so phone
+  (w-full / right-0) is untouched.
 - HOVER-TO-LOCATE (2026-07-17): hovering/focusing any city NAME (journal,
   source pickers, sale list, dock steps, ledger, card chips) spotlights its
   plate on the map. The name reads as interactive (`.bb2-locate-name` in

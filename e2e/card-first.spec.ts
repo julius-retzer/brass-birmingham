@@ -93,6 +93,47 @@ test('card-first: build with the held card resumes at the industry step', async 
   await expect(treasuryOf(page, 'Eliza')).toHaveText('£19')
 })
 
+test('card-first: clicking another card switches the selection on the pick step', async ({
+  page,
+}) => {
+  await page.goto('/?demo')
+  const brewery = page.getByTestId('card-brewery_2')
+  const birmingham = page.getByTestId('card-birmingham_1')
+
+  await brewery.click()
+  await expect(page.getByText('Play this card')).toBeVisible()
+  await expect(brewery).toHaveAttribute('data-selected', 'true')
+
+  // Selection follows the last click — the new card is held, the old released.
+  await birmingham.click()
+  await expect(page.getByText('Play this card')).toBeVisible()
+  await expect(birmingham).toHaveAttribute('data-selected', 'true')
+  await expect(brewery).not.toHaveAttribute('data-selected', 'true')
+})
+
+test('card-first: clicking another card mid-action cancels it and re-holds the new one', async ({
+  page,
+}) => {
+  await page.goto('/?demo')
+  const birmingham = page.getByTestId('card-birmingham_1')
+  const brewery = page.getByTestId('card-brewery_2')
+
+  // Enter a real action flow holding Birmingham.
+  await birmingham.click()
+  await page.getByTestId('action-network').click()
+  await expect(page.getByText(/^Holding /)).toBeVisible()
+  await expect(birmingham).toHaveAttribute('data-selected', 'true')
+
+  // Clicking a DIFFERENT card mid-flow is "cancel this, play that instead":
+  // the network action unwinds and we're back holding the new card.
+  await brewery.click()
+  await expect(page.getByText('Play this card')).toBeVisible()
+  await expect(brewery).toHaveAttribute('data-selected', 'true')
+  await expect(birmingham).not.toHaveAttribute('data-selected', 'true')
+  // Nothing was spent — the switch consumed no action.
+  await expect(treasuryOf(page, 'Eliza')).toHaveText('£19')
+})
+
 test('card-first: the held card can be put back (re-tap and Put back)', async ({
   page,
 }) => {

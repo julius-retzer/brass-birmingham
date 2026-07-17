@@ -219,7 +219,15 @@ export function enumerateLegalMoves(snapshot: GameStoreSnapshot): LegalMove[] {
   const atActionChoice = snapshot.matches({
     playing: { action: 'selectingAction' },
   } as never)
+  // A card already committed means any SELECT_CARD now is the human-only
+  // mid-flow switch shortcut (cancel this action, hold another card). It is
+  // redundant for the AI — every card it reaches action-first is reachable
+  // without it — and offering it would let the deterministic fallback loop
+  // cancelling and re-holding instead of taking a turn-consuming action.
+  const cardHeld = snapshot.context.selectedCard !== null
   return candidateMoves(snapshot)
-    .filter((c) => !(atActionChoice && c.event.type === 'SELECT_CARD'))
+    .filter(
+      (c) => !((atActionChoice || cardHeld) && c.event.type === 'SELECT_CARD'),
+    )
     .filter((c) => snapshot.can(c.event as never))
 }

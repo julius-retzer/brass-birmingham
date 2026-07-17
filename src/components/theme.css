@@ -114,6 +114,37 @@
   border-radius: 6px;
 }
 
+/* The active-action panel: the primary focus every turn. It carries stronger
+   brass, a left accent rail and more elevation than a plain .bb2-panel so the
+   eye lands here first and it separates from THE EXCHANGES beneath it. Applied
+   alongside .bb2-panel on the dock's wrapper. */
+.bb2-panel-active {
+  position: relative;
+  border-color: var(--bb-brass);
+  background: linear-gradient(
+    170deg,
+    #2c2417 0%,
+    var(--bb-iron-raised) 55%,
+    var(--bb-iron-panel) 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 230, 170, 0.1), 0 0 0 1px
+    var(--bb-brass-hairline), 0 14px 36px rgba(0, 0, 0, 0.62);
+}
+.bb2-panel-active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  border-radius: 6px 0 0 6px;
+  background: linear-gradient(
+    180deg,
+    var(--bb-brass-bright),
+    var(--bb-brass-dim)
+  );
+}
+
 .bb2-panel-title {
   font-family: var(--bb-body);
   font-weight: 600;
@@ -124,6 +155,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+/* Inside the active-action panel the section titles read a step larger,
+   part of making that panel feel substantial (captain feedback). */
+.bb2-panel-active .bb2-panel-title {
+  font-size: 13px;
 }
 .bb2-panel-title::after {
   content: "";

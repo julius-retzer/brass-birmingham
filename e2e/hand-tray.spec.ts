@@ -231,35 +231,31 @@ test.describe('phone: fit + tap-to-peek', () => {
     await expect(page.locator('[data-selected="true"]')).toHaveCount(0)
   })
 
-  test('a display-only (disabled) card can still be peeked by tap', async ({
+  test('mid-action, another card peeks on the first tap and switches the play on the second', async ({
     page,
   }) => {
     await page.goto('/?demo')
 
-    // Loan: discard a card (peek-tap, then select-tap) → confirm step.
-    // (Eliza can't actually confirm — income is too low for another loan —
-    // but the confirm STEP is reached either way, which is what we need.)
+    // Loan: discard a card (peek-tap, then select-tap) → confirm step, now
+    // holding brewery_2 (Eliza can't actually confirm — income too low — but
+    // the confirm STEP is reached, which is what we need).
     await page.getByTestId('action-loan').tap()
     const discard = page.getByTestId('card-brewery_2')
     await discard.tap()
     await discard.tap()
     await expect(page.getByTestId('confirm-action')).toBeVisible()
 
-    // At the confirm step the hand is display-only: every card's button is
-    // disabled, so peeking rides the seat wrapper, not the button's click.
+    // A DIFFERENT card mid-flow is a switch target: on touch the first tap
+    // peeks it (look before you leap), the second commits the switch —
+    // cancelling the loan and re-holding the new card at the card-select step.
     const other = page.getByTestId('card-birmingham_1')
-    await expect(other).toBeDisabled()
-    // tap() refuses disabled elements (actionability), which is the point:
-    // force it — the browser still dispatches real touch input at the spot.
-    await other.tap({ force: true })
+    await other.tap()
     await expect(other).toHaveAttribute('data-raised', 'true')
+    await other.tap()
+    await expect(page.getByText('Play this card')).toBeVisible()
+    await expect(other).toHaveAttribute('data-selected', 'true')
 
-    // A second tap folds it back down instead of selecting anything.
-    await other.tap({ force: true })
-    await expect(other).not.toHaveAttribute('data-raised', 'true')
-
-    // Unwind: confirm step → card step → idle.
-    await page.getByTestId('cancel-action').tap()
+    // The loan never happened — put the new card back to idle.
     await page.getByTestId('cancel-action').tap()
     await expect(page.getByText('Choose an action')).toBeVisible()
   })

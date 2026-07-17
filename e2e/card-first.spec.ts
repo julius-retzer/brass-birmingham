@@ -47,6 +47,14 @@ test('card-first: play a card, pick Network, confirm — card never re-asked', a
     page.getByText(/Choose a canal route — \d+ available/),
   ).toBeVisible()
 
+  // The card stays visibly held for the WHOLE action, not just the
+  // cardSelected screen: it keeps its lift in the fan and the "Holding …"
+  // label persists on the route step (the captain's report was that both
+  // vanished the moment an action was pressed).
+  const held = page.getByTestId('card-brewery_2')
+  await expect(held).toHaveAttribute('data-selected', 'true')
+  await expect(page.getByText(/^Holding /)).toBeVisible()
+
   const legalRoute = page.locator('path[data-conn][data-legal="true"]')
   expect(await legalRoute.count()).toBeGreaterThan(0)
   const firstConn = (await legalRoute.first().getAttribute('data-conn'))!
@@ -54,6 +62,9 @@ test('card-first: play a card, pick Network, confirm — card never re-asked', a
 
   const confirm = page.getByTestId('confirm-action')
   await expect(confirm).toBeEnabled()
+  // Still held through the confirm step, right up until it's spent.
+  await expect(held).toHaveAttribute('data-selected', 'true')
+  await expect(page.getByText(/^Holding /)).toBeVisible()
   await confirm.click()
 
   // The link was laid with the held card and consumed the action (£19 − £3;
@@ -79,6 +90,47 @@ test('card-first: build with the held card resumes at the industry step', async 
   await page.getByTestId('cancel-action').click()
   await page.getByTestId('cancel-action').click()
   await expect(page.getByText('Choose an action')).toBeVisible()
+  await expect(treasuryOf(page, 'Eliza')).toHaveText('£19')
+})
+
+test('card-first: clicking another card switches the selection on the pick step', async ({
+  page,
+}) => {
+  await page.goto('/?demo')
+  const brewery = page.getByTestId('card-brewery_2')
+  const birmingham = page.getByTestId('card-birmingham_1')
+
+  await brewery.click()
+  await expect(page.getByText('Play this card')).toBeVisible()
+  await expect(brewery).toHaveAttribute('data-selected', 'true')
+
+  // Selection follows the last click — the new card is held, the old released.
+  await birmingham.click()
+  await expect(page.getByText('Play this card')).toBeVisible()
+  await expect(birmingham).toHaveAttribute('data-selected', 'true')
+  await expect(brewery).not.toHaveAttribute('data-selected', 'true')
+})
+
+test('card-first: clicking another card mid-action cancels it and re-holds the new one', async ({
+  page,
+}) => {
+  await page.goto('/?demo')
+  const birmingham = page.getByTestId('card-birmingham_1')
+  const brewery = page.getByTestId('card-brewery_2')
+
+  // Enter a real action flow holding Birmingham.
+  await birmingham.click()
+  await page.getByTestId('action-network').click()
+  await expect(page.getByText(/^Holding /)).toBeVisible()
+  await expect(birmingham).toHaveAttribute('data-selected', 'true')
+
+  // Clicking a DIFFERENT card mid-flow is "cancel this, play that instead":
+  // the network action unwinds and we're back holding the new card.
+  await brewery.click()
+  await expect(page.getByText('Play this card')).toBeVisible()
+  await expect(brewery).toHaveAttribute('data-selected', 'true')
+  await expect(birmingham).not.toHaveAttribute('data-selected', 'true')
+  // Nothing was spent — the switch consumed no action.
   await expect(treasuryOf(page, 'Eliza')).toHaveText('£19')
 })
 

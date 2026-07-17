@@ -189,7 +189,7 @@ export function HandTray({
   return (
     <div
       ref={rootRef}
-      className="bb2-handtray pointer-events-none fixed bottom-0 left-0 right-0 z-40 flex flex-col items-center lg:right-[392px]"
+      className="bb2-handtray pointer-events-none fixed bottom-0 left-0 right-0 z-40 flex flex-col items-center lg:right-[428px]"
       style={
         { '--bb-hint-clear': `${hintClearance(lens)}px` } as React.CSSProperties
       }

@@ -395,6 +395,109 @@ describe('card-first — remaining actions continue past the card step', () => {
   })
 })
 
+describe('mid-action card switch — click another card to cancel and re-hold', () => {
+  test('clicking a different card deep in a flow unwinds the action and holds the new card', () => {
+    const { actor, playerId } = setupGame([coalCard, ironCard, locationCard])
+    actor.send({ type: 'SELECT_CARD', cardId: coalCard.id })
+    actor.send({ type: 'NETWORK' })
+    actor.send({ type: 'SELECT_LINK', from: 'coalbrookdale', to: 'shrewsbury' })
+
+    let snapshot = actor.getSnapshot()
+    expect(
+      snapshot.matches({
+        playing: { action: { networking: 'confirmingLink' } },
+      }),
+    ).toBe(true)
+    expect(snapshot.context.selectedLink).not.toBeNull()
+    const actionsBefore = snapshot.context.actionsRemaining
+
+    // The engine offers the switch for a DIFFERENT card (drives the fan's
+    // clickability), and refuses re-picking the already-held one.
+    expect(snapshot.can({ type: 'SELECT_CARD', cardId: ironCard.id })).toBe(
+      true,
+    )
+    expect(snapshot.can({ type: 'SELECT_CARD', cardId: coalCard.id })).toBe(
+      false,
+    )
+
+    actor.send({ type: 'SELECT_CARD', cardId: ironCard.id })
+
+    snapshot = actor.getSnapshot()
+    // Landed back in cardSelected holding the NEW card, action fully unwound.
+    expect(snapshot.matches({ playing: { action: 'cardSelected' } })).toBe(true)
+    expect(snapshot.context.selectedCard?.id).toBe(ironCard.id)
+    expect(snapshot.context.selectedLink).toBeNull()
+    // No action or turn was consumed, and the abandoned card stays in hand.
+    expect(snapshot.context.actionsRemaining).toBe(actionsBefore)
+    expect(snapshot.context.currentPlayerIndex).toBe(playerId)
+    expect(
+      snapshot.context.players[playerId]!.hand.some(
+        (c) => c.id === coalCard.id,
+      ),
+    ).toBe(true)
+  })
+
+  test('re-clicking the SAME held card mid-flow is a no-op (put-back is CANCEL)', () => {
+    const { actor } = setupGame([coalCard, ironCard])
+    actor.send({ type: 'SELECT_CARD', cardId: coalCard.id })
+    actor.send({ type: 'NETWORK' })
+
+    let snapshot = actor.getSnapshot()
+    expect(
+      snapshot.matches({
+        playing: { action: { networking: 'selectingLink' } },
+      }),
+    ).toBe(true)
+    expect(snapshot.can({ type: 'SELECT_CARD', cardId: coalCard.id })).toBe(
+      false,
+    )
+
+    actor.send({ type: 'SELECT_CARD', cardId: coalCard.id })
+
+    snapshot = actor.getSnapshot()
+    // Unchanged — still mid-flow holding the same card.
+    expect(
+      snapshot.matches({
+        playing: { action: { networking: 'selectingLink' } },
+      }),
+    ).toBe(true)
+    expect(snapshot.context.selectedCard?.id).toBe(coalCard.id)
+  })
+
+  test('a bogus card id mid-flow is ignored', () => {
+    const { actor } = setupGame([coalCard, ironCard])
+    actor.send({ type: 'SELECT_CARD', cardId: coalCard.id })
+    actor.send({ type: 'NETWORK' })
+    actor.send({ type: 'SELECT_CARD', cardId: 'not_in_hand' })
+
+    const snapshot = actor.getSnapshot()
+    expect(
+      snapshot.matches({
+        playing: { action: { networking: 'selectingLink' } },
+      }),
+    ).toBe(true)
+    expect(snapshot.context.selectedCard?.id).toBe(coalCard.id)
+  })
+
+  test('the switch works from the build site step too', () => {
+    const { actor } = setupGame([coalCard, ironCard])
+    actor.send({ type: 'SELECT_CARD', cardId: coalCard.id })
+    actor.send({ type: 'BUILD' })
+    expect(
+      actor
+        .getSnapshot()
+        .matches({ playing: { action: { building: 'selectingLocation' } } }),
+    ).toBe(true)
+
+    actor.send({ type: 'SELECT_CARD', cardId: ironCard.id })
+
+    const snapshot = actor.getSnapshot()
+    expect(snapshot.matches({ playing: { action: 'cardSelected' } })).toBe(true)
+    expect(snapshot.context.selectedCard?.id).toBe(ironCard.id)
+    expect(snapshot.context.selectedIndustryTile?.type).toBe('iron')
+  })
+})
+
 describe('action-first flow — unchanged by the card-first entry', () => {
   test('BUILD from idle still asks for the card first', () => {
     const { actor } = setupGame([coalCard, locationCard])

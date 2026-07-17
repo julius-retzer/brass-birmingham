@@ -20,7 +20,7 @@ import {
   pendingBeerChoice,
   pendingIronChoice,
 } from '~/store/shared/resourceSources'
-import { CardChip } from './cards'
+import { CardChip, cardTitle } from './cards'
 import {
   doubleLinkDisabledReason,
   showsDoubleLinkOption,
@@ -110,6 +110,12 @@ export function getHandSelection(
   // actions it can start (the machine's cardSelected state). Wording gotcha:
   // neither hint may contain "choose an action" (the idle dock title, pinned
   // by e2e getByText, which substring-matches case-insensitively).
+  //
+  // Which cards are actually clickable at each step is NOT decided here — the
+  // shell asks the machine (`state.can({SELECT_CARD, cardId})`) per card. That
+  // keeps one source of truth: on a pick step every hand card is selectable;
+  // once a card is committed only a DIFFERENT card is (the mid-flow switch),
+  // and a Sell that already flipped an industry offers none.
   if (is('playing.action.selectingAction'))
     return { hint: 'Pick an action — or play a card first', selectedIds: [] }
   if (is('playing.action.cardSelected')) {
@@ -135,6 +141,18 @@ export function getHandSelection(
       hint: `Scout — discard three cards (${picked.length}/3)`,
       selectedIds: picked.map((c) => c.id),
     }
+  }
+  // Any deeper step of an action flow: the card is committed but still in
+  // play. Keep it lifted in the fan and named in the pill for the WHOLE flow
+  // (until confirm / cancel / put-back) so the player never loses sight of
+  // what they're spending. Derived from machine context, so it survives the
+  // multiplayer intent → broadcast → rebuild round-trip like every other
+  // selection signal. Clicking a DIFFERENT card here switches the play (the
+  // machine cancels the action and re-holds it, see `canSwitchHeldCard`).
+  if (is('playing.action')) {
+    const held = snapshot.context.selectedCard
+    if (held)
+      return { hint: `Holding ${cardTitle(held)}`, selectedIds: [held.id] }
   }
   return null
 }
@@ -481,7 +499,7 @@ function StepRail({ steps, active }: { steps: string[]; active: number }) {
             />
           )}
           <span
-            className="text-[10px] font-bold uppercase tracking-[0.14em]"
+            className="text-[11px] font-bold uppercase tracking-[0.14em]"
             style={{
               color:
                 i === active
@@ -517,7 +535,7 @@ function Flow({
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-col gap-1.5">
           <span
-            className="bb2-display text-[19px] font-bold leading-none"
+            className="bb2-display text-[22px] font-bold leading-none"
             style={{ color: 'var(--bb-brass-bright)' }}
           >
             {action}
@@ -544,7 +562,7 @@ function Flow({
 function Note({ children }: { children: React.ReactNode }) {
   return (
     <p
-      className="text-[14px] leading-relaxed"
+      className="text-[15px] leading-relaxed"
       style={{ color: 'rgba(231,215,177,.7)' }}
     >
       {children}

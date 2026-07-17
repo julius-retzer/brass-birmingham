@@ -2623,6 +2623,21 @@ export const gameStore = setup({
         context.selectedCard.id === event.cardId
       )
     },
+    // Mid-action "change my mind": clicking a DIFFERENT hand card while an
+    // action is in progress cancels it and re-holds the new card. Only fires
+    // when a card is already committed (`selectedCard` set), the click is a
+    // different card, and nothing has irreversibly committed — a Sell that has
+    // already flipped an industry (`salesMadeThisAction > 0`) cannot be
+    // abandoned, so the switch is refused there and the player must close the
+    // sale. The card-pick steps define their own SELECT_CARD and override this.
+    canSwitchHeldCard: ({ context, event }) => {
+      if (event.type !== 'SELECT_CARD') return false
+      if (context.selectedCard === null) return false
+      if (context.selectedCard.id === event.cardId) return false
+      if (context.salesMadeThisAction > 0) return false
+      const player = getCurrentPlayer(context)
+      return findCardInHand(player, event.cardId) !== null
+    },
     // Card-first BUILD routing — the same split isLocationCard/isIndustryCard
     // make on the SELECT_CARD event, but read from the already-held card.
     isSelectedCardLocationKind: ({ context }) =>
@@ -3199,6 +3214,21 @@ export const gameStore = setup({
       states: {
         action: {
           initial: 'selectingAction',
+          on: {
+            // Clicking a DIFFERENT hand card mid-action is a shortcut for
+            // "cancel this, I want to play that instead": unwind the whole
+            // action (the same `clearSelections` cleanup the top-level CANCELs
+            // use) and land back in cardSelected holding the new card. The
+            // card-pick steps (cardSelected / *.selectingCard / scouting) each
+            // declare their own SELECT_CARD, which takes precedence, so this
+            // only fires from the deeper flow steps. `canSwitchHeldCard`
+            // refuses it once a Sell has irreversibly flipped an industry.
+            SELECT_CARD: {
+              target: '.cardSelected',
+              actions: ['clearSelections', 'selectCard'],
+              guard: 'canSwitchHeldCard',
+            },
+          },
           states: {
             selectingAction: {
               on: {

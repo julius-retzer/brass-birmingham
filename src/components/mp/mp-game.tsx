@@ -1217,9 +1217,9 @@ function MpTable({
             </div>
           </div>
 
-          <aside className="flex w-full flex-none flex-col gap-3 pb-44 lg:w-[380px] lg:overflow-y-auto lg:pb-0">
+          <aside className="flex w-full flex-none flex-col gap-3 pb-44 lg:w-[416px] lg:overflow-y-auto lg:pb-0">
             <div
-              className={`bb2-panel flex flex-col gap-3 p-4 ${myTurn && inFlight ? 'bb2-busy' : ''}`}
+              className={`bb2-panel bb2-panel-active flex flex-col gap-3 p-5 ${myTurn && inFlight ? 'bb2-busy' : ''}`}
               aria-busy={myTurn && inFlight}
             >
               {myTurn ? (

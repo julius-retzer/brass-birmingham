@@ -52,7 +52,8 @@ import { GameOverScreen, PassGate, RoundCurtain } from './overlays'
 import { OpenMatButton, PlayerLedger } from './player-ledger'
 import { PlayerRail } from './player-rail'
 import { SetupScreen } from './setup-screen'
-import { JournalPanel, MarketsPanel } from './side-panels'
+import { JournalPanel } from './journal'
+import { MarketsPanel } from './side-panels'
 
 const SAVE_KEY = 'bb2-save-v1'
 

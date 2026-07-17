@@ -1,9 +1,10 @@
 'use client'
 
-// Right-dock reference panels: the coal & iron exchanges and the journal.
+// Right-dock reference panels: the collapsible shell and the coal & iron
+// exchanges. The journal moved to journal.tsx (with its presentation model
+// in journal-model.ts).
 import { type ReactNode, useState } from 'react'
-import { type GameState, type LogEntry, type Player } from '~/store/gameStore'
-import { PLAYER_FILL } from './board/board-map'
+import { type GameState } from '~/store/gameStore'
 
 /* ---------------- collapsible shell ---------------- */
 
@@ -158,119 +159,6 @@ export function MarketsPanel({
           cubeFill="#c2632f"
           cubeStroke="#7c3d1c"
         />
-      </div>
-    </CollapsiblePanel>
-  )
-}
-
-/* ---------------- journal ---------------- */
-
-// Emphasis for scanning: player names glow in their colour, amounts
-// (£, income, VP, levels, resources) in bold parchment. Pure inline
-// wrapping — the TEXT CONTENT is unchanged, so e2e journal-text pins and
-// copy/paste behave exactly as before.
-const AMOUNT_RE =
-  /£\d+|[+-]\d+ income|\d+ (?:VP|income levels?|beers?|coal|iron|cards?|wilds?|spaces?|industries)|Level \d+|\(\d+ industries sold\)/g
-
-function emphasize(
-  message: string,
-  players: Array<{ name: string; color: Player['color'] }>,
-): React.ReactNode[] {
-  // Split on player names first (longest first so "Georgeanne" wins over
-  // "George"), then bold amounts inside the remaining text runs.
-  const names = [...players].sort((a, b) => b.name.length - a.name.length)
-  const nodes: React.ReactNode[] = []
-  let key = 0
-
-  const pushText = (text: string) => {
-    let last = 0
-    for (const m of text.matchAll(AMOUNT_RE)) {
-      if (m.index! > last) nodes.push(text.slice(last, m.index))
-      nodes.push(
-        <b key={key++} style={{ color: 'var(--bb-parchment-bright)' }}>
-          {m[0]}
-        </b>,
-      )
-      last = m.index! + m[0].length
-    }
-    if (last < text.length) nodes.push(text.slice(last))
-  }
-
-  // Only whole-word occurrences: a player called "Ada" must not light up
-  // inside "Adamant".
-  const isWordChar = (ch: string | undefined) => !!ch && /[\w]/.test(ch)
-  const findName = (text: string, name: string): number => {
-    let from = 0
-    while (true) {
-      const idx = text.indexOf(name, from)
-      if (idx === -1) return -1
-      const before = text[idx - 1]
-      const after = text[idx + name.length]
-      if (!isWordChar(before) && !isWordChar(after)) return idx
-      from = idx + 1
-    }
-  }
-
-  let rest = message
-  while (rest.length > 0) {
-    let earliest: { idx: number; name: string; color: Player['color'] } | null =
-      null
-    for (const p of names) {
-      const idx = findName(rest, p.name)
-      if (idx !== -1 && (earliest === null || idx < earliest.idx)) {
-        earliest = { idx, name: p.name, color: p.color }
-      }
-    }
-    if (!earliest) {
-      pushText(rest)
-      break
-    }
-    if (earliest.idx > 0) pushText(rest.slice(0, earliest.idx))
-    nodes.push(
-      <b key={key++} style={{ color: PLAYER_FILL[earliest.color] }}>
-        {earliest.name}
-      </b>,
-    )
-    rest = rest.slice(earliest.idx + earliest.name.length)
-  }
-  return nodes
-}
-
-export function JournalPanel({
-  logs,
-  players = [],
-}: {
-  logs: LogEntry[]
-  players?: Array<{ name: string; color: Player['color'] }>
-}) {
-  const recent = logs.slice(-40).reverse()
-  return (
-    <CollapsiblePanel
-      title="Journal"
-      testId="journal-toggle"
-      // A floor, so a tall dock can't squeeze the journal to nothing — the
-      // aside overflows and scrolls instead. Collapsed it is only its header,
-      // so it must not claim the space then.
-      openClassName="min-h-[220px] flex-1"
-    >
-      <div className="bb2-log min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1">
-        {recent.map((entry, i) => (
-          <div
-            key={i}
-            className="bb2-log-entry"
-            data-testid="journal-entry"
-            data-type={entry.type}
-          >
-            {players.length > 0
-              ? emphasize(entry.message, players)
-              : entry.message}
-          </div>
-        ))}
-        {recent.length === 0 && (
-          <p className="text-[12px]" style={{ color: 'rgba(231,215,177,.4)' }}>
-            The journal is empty.
-          </p>
-        )}
       </div>
     </CollapsiblePanel>
   )

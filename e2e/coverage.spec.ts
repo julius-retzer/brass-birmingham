@@ -115,7 +115,9 @@ test('Network: rail-era double-link build (two routes, £15 + coal + beer)', asy
   await confirm.click()
 
   await expect(
-    page.getByText(/Isambard built 2 rail links \(leek-stoke, belper-leek\)/),
+    page.getByText(
+      /Isambard built 2 rail links \(Leek-Stoke-on-Trent, Belper-Leek\)/,
+    ),
   ).toBeVisible()
   // The £15 (+ any market coal) left the treasury, and the action is spent —
   // this fixture starts the turn with two, so the dock offers the second.
@@ -171,7 +173,7 @@ test('Sell: multi-sale — flip two industries in one action', async ({
 
   await page.getByTestId('confirm-action').click()
   await expect(
-    page.getByText(/George completed Sell action \(2 industries sold\)/),
+    page.getByText(/George completed Sell action 2 industries sold/),
   ).toBeVisible()
 })
 
@@ -236,7 +238,8 @@ test('Scout: discard three cards for the two wilds', async ({ page }) => {
   await confirm.click()
 
   await expect(
-    page.getByText(/Eliza scouted \(discarded 3 cards, gained 2 wild cards\)/),
+    // Chip first ("gained 2 wild cards"), demoted detail after.
+    page.getByText(/Eliza scouted gained 2 wild cards discarded 3 cards/),
   ).toBeVisible()
   // Her turn ends but the round continues with the next player.
   await expect(page.getByTestId('round-chip')).toHaveText('Round 8')
@@ -255,7 +258,7 @@ test('Develop: scrap the lowest tile, consuming iron', async ({ page }) => {
   ).toBeVisible()
   await page.getByTestId('confirm-action').click()
 
-  await expect(page.getByText(/Eliza developed \(removed 1 tile/)).toBeVisible()
+  await expect(page.getByText(/Eliza developed removed 1 tile/)).toBeVisible()
   // Her turn ends but the round continues with the next player.
   await expect(page.getByTestId('round-chip')).toHaveText('Round 8')
 })

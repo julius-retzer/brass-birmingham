@@ -46,7 +46,7 @@ test('wild location card: pick industry, pick ANY city on the map, build', async
 
   await expect(
     page.getByText(
-      /Isambard built coal Level 2 at cannock .* using wild location/,
+      /Isambard built Coal \(II\) at Cannock .* using wild location/,
     ),
   ).toBeVisible()
 })
@@ -73,7 +73,7 @@ test('wild industry card: pick industry type, then a city, build', async ({
 
   await expect(
     page.getByText(
-      /Isambard built coal Level 2 at burton.*\(overbuilt own level 1\) using wild industry/,
+      /Isambard built Coal \(II\) at Burton upon Trent.*overbuilt own level 1.*using wild industry/,
     ),
   ).toBeVisible()
 })
@@ -95,6 +95,6 @@ test('develop removes TWO tiles in one action through the UI', async ({
   await page.getByTestId('confirm-action').click() // confirm step
 
   await expect(
-    page.getByText(/Eliza developed \(removed 2 tiles/),
+    page.getByText(/Eliza developed removed 2 tiles/),
   ).toBeVisible()
 })

@@ -518,27 +518,216 @@ button.bb2-card {
   cursor: pointer;
 }
 
-/* ---------------- log ---------------- */
+/* ---------------- journal ---------------- */
 
-.bb2-log {
-  font-size: 13.5px;
-  line-height: 1.5;
+.bb2-journal {
+  font-size: 13px;
+  line-height: 1.45;
 }
-.bb2-log-entry {
-  padding: 3px 0 3px 10px;
-  border-left: 2px solid rgba(231, 215, 177, 0.12);
-  color: rgba(231, 215, 177, 0.78);
+
+/* One log item: kind icon + body, on an actor-coloured rail. */
+.bb2-jrow {
+  --bb-jaccent: rgba(231, 215, 177, 0.28);
+  display: flex;
+  gap: 8px;
+  padding: 4px 2px 4px 8px;
+  border-left: 2px solid var(--bb-jaccent);
 }
-.bb2-log-entry[data-type="system"] {
-  border-left-color: var(--bb-brass);
+.bb2-jrow + .bb2-jrow {
+  margin-top: 2px;
+}
+.bb2-jrow[data-type="system"] {
+  --bb-jaccent: var(--bb-brass);
+}
+.bb2-jrow[data-type="system"] .bb2-jmain {
   color: var(--bb-brass-bright);
 }
-.bb2-log-entry[data-type="error"] {
-  border-left-color: var(--bb-danger);
+.bb2-jrow[data-type="error"] {
+  --bb-jaccent: var(--bb-danger);
+}
+.bb2-jrow[data-type="error"] .bb2-jmain {
   color: #e0968b;
 }
-.bb2-log-entry[data-type="action"] {
-  border-left-color: rgba(231, 215, 177, 0.35);
+
+/* The important moments get a faint brass wash so they surface when
+   scrolling: flips, era scoring, and loans (soot-red for debt). */
+.bb2-jrow[data-kind="flip"],
+.bb2-jrow[data-kind="score"] {
+  background: linear-gradient(90deg, rgba(195, 149, 56, 0.09), transparent 70%);
+}
+.bb2-jrow[data-kind="flip"] .bb2-jmain,
+.bb2-jrow[data-kind="score"] .bb2-jmain {
+  color: rgba(242, 230, 200, 0.95);
+}
+.bb2-jrow[data-kind="loan"] {
+  background: linear-gradient(90deg, rgba(193, 68, 52, 0.1), transparent 70%);
+}
+
+/* Settlement bookkeeping and passes read as quiet ledger lines. */
+.bb2-jrow[data-kind="income"],
+.bb2-jrow[data-kind="pass"] {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+.bb2-jrow[data-kind="income"] .bb2-jmain,
+.bb2-jrow[data-kind="pass"] .bb2-jmain {
+  font-size: 12px;
+  color: rgba(231, 215, 177, 0.55);
+}
+.bb2-jrow[data-kind="income"] .bb2-jmain b,
+.bb2-jrow[data-kind="pass"] .bb2-jmain b {
+  color: rgba(231, 215, 177, 0.7);
+}
+
+.bb2-jicon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 4px;
+  border: 1px solid rgba(231, 215, 177, 0.14);
+  background: rgba(231, 215, 177, 0.04);
+  color: rgba(231, 215, 177, 0.55);
+}
+.bb2-jicon[data-kind="build"] {
+  color: var(--bb-brass-bright);
+  border-color: rgba(195, 149, 56, 0.45);
+}
+.bb2-jicon[data-kind="network"] {
+  color: var(--bb-canal);
+  border-color: rgba(78, 156, 150, 0.45);
+}
+.bb2-jicon[data-kind="sell"] {
+  color: #a9bd62;
+  border-color: rgba(122, 139, 61, 0.55);
+}
+.bb2-jicon[data-kind="develop"] {
+  color: #b08cbb;
+  border-color: rgba(125, 90, 134, 0.55);
+}
+.bb2-jicon[data-kind="loan"] {
+  color: #d4685a;
+  border-color: rgba(193, 68, 52, 0.55);
+}
+.bb2-jicon[data-kind="scout"] {
+  color: #8fa8b8;
+  border-color: rgba(143, 168, 184, 0.4);
+}
+.bb2-jicon[data-kind="flip"],
+.bb2-jicon[data-kind="score"] {
+  color: var(--bb-brass-bright);
+  border-color: rgba(195, 149, 56, 0.55);
+  background: rgba(195, 149, 56, 0.1);
+}
+.bb2-jicon[data-kind="income"],
+.bb2-jicon[data-kind="pass"] {
+  color: rgba(231, 215, 177, 0.4);
+  border-color: rgba(231, 215, 177, 0.1);
+}
+.bb2-jdot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.bb2-jmain {
+  color: rgba(231, 215, 177, 0.85);
+}
+.bb2-jactor {
+  font-weight: 700;
+}
+/* The WHAT is the emphasis; the tile level is a dim roman aside. */
+.bb2-jind {
+  font-weight: 700;
+  color: var(--bb-parchment-bright);
+}
+.bb2-jlevel {
+  font-size: 11.5px;
+  color: rgba(231, 215, 177, 0.5);
+}
+
+/* Hoisted highlight chips: flips are stamped brass plates, penalties rust. */
+.bb2-jchip {
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: 3px;
+  border: 1px solid rgba(231, 215, 177, 0.22);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  vertical-align: 1.5px;
+  white-space: nowrap;
+  color: rgba(231, 215, 177, 0.65);
+}
+.bb2-jchip[data-tone="flip"] {
+  background: var(--bb-brass);
+  border-color: var(--bb-brass-bright);
+  color: var(--bb-ink);
+}
+.bb2-jchip[data-tone="income"],
+.bb2-jchip[data-tone="money"] {
+  border-color: rgba(195, 149, 56, 0.55);
+  background: rgba(195, 149, 56, 0.12);
+  color: var(--bb-brass-bright);
+}
+.bb2-jchip[data-tone="penalty"] {
+  border-color: rgba(193, 68, 52, 0.55);
+  background: rgba(193, 68, 52, 0.12);
+  color: #e0968b;
+}
+
+/* Demoted secondary line: consumption detail and the card spent. */
+.bb2-jdetail {
+  margin-top: 1px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: rgba(231, 215, 177, 0.42);
+}
+.bb2-jdetail [data-hot] {
+  color: rgba(230, 189, 99, 0.8);
+}
+.bb2-jdetail-sep {
+  color: rgba(231, 215, 177, 0.25);
+}
+
+/* Round/era boundaries are real dividers, not more prose. */
+.bb2-jdivider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bb-brass);
+}
+.bb2-jdivider::before,
+.bb2-jdivider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+}
+.bb2-jdivider::before {
+  background: linear-gradient(90deg, transparent, var(--bb-brass-hairline));
+}
+.bb2-jdivider::after {
+  background: linear-gradient(90deg, var(--bb-brass-hairline), transparent);
+}
+.bb2-jdivider[data-kind="era"] {
+  color: var(--bb-brass-bright);
+}
+.bb2-jdivider[data-kind="era"] .bb2-jdivlabel {
+  padding: 3px 10px;
+  border: 1px solid var(--bb-brass-hairline);
+  border-radius: 3px;
+  background: rgba(195, 149, 56, 0.08);
 }
 
 /* ---------------- motion ---------------- */

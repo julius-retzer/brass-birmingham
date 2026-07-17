@@ -554,7 +554,15 @@ When updating this file, preserve this bar for all agents and keep entries conci
   action, cancel-action, mat-<id>/treasury, journal-entry, pass-curtain,
   reveal-hand, card-<id>, era-plate, round-chip, sale-option; map uses
   data-city / data-conn with data-legal) — journal-text assertions
-  intentionally pin engine log strings and fixture arithmetic.
+  intentionally pin engine log strings and fixture arithmetic. GOTCHA
+  (2026-07-17): the journal RESTRUCTURES those strings for skimmability —
+  `journal-model.ts` parses each engine message into headline + chips +
+  demoted detail (all words survive, parens dropped, order can change:
+  chips before details), so a journal-text pin must match the RENDERED
+  order, not the raw `logs[].message`. `parseJournalEntry` is unit-tested
+  per template (`journal-model.test.ts`); teach it about any NEW log
+  message shape in the same commit, or the fallback shows the line
+  unstyled (never lost).
 - GOTCHA: map routes are CURVED — Playwright's default bbox-centre click
   misses the fat hit-stroke on bowed paths. Use the `clickRoute` helper in
   `e2e/coverage.spec.ts` (getPointAtLength midpoint + mouse click).

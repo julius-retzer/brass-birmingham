@@ -502,6 +502,34 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   action's built-in default `claude-sonnet-4-20250514` 404s (id no longer
   served). Bump this when the model id changes.
 
+## Analytics (added 2026-07-17)
+
+- TRAFFIC = Vercel Web Analytics: `<Analytics/>` from `@vercel/analytics/next`
+  in `src/app/layout.tsx`. Off Vercel it self-disables (logs "Debug mode …
+  no requests will be sent"), so offline dev/test/e2e are unaffected and it
+  needs no env var. The package is INERT until Web Analytics is switched on in
+  the Vercel dashboard (Project → Analytics → Enable) — code alone collects
+  nothing.
+- LIVE COUNTS = `loadActivityStats` (`src/server/mp/store.ts`, the single DB
+  owner) → `GET /api/stats` → `<ActivityLine/>` on the charter. Aggregate
+  COUNTS ONLY (no tokens/names), so it needs no auth and `filterSnapshotForSeat`
+  is not involved. Egress discipline as per `loadAiPeek`: ONE aggregate round
+  trip, seats counted server-side with `jsonb_array_elements`, `snapshot` never
+  touched — it is a public endpoint refresh-spam can hit (`s-maxage=30` in front
+  of it). Liveness = `games.updatedAt` (bumped by every `saveGame`); finished
+  games excluded.
+- The UI half is deliberately split: pure `activity.ts` (fetch-and-swallow +
+  wording, unit-tested) vs the thin `activity-line.tsx` shell — same reason as
+  `mp/refusal.ts`/`turnNotify.ts`, since vitest runs `environment: 'node'` with
+  no testing-library. `/api/stats` failing must never break the page: an
+  unreachable endpoint and zero games both render NOTHING (never "0 games").
+- TEST GOTCHA (`store.stats.test.ts`): the stats query is GLOBAL and its window
+  has only a LOWER bound, over a DB shared with the other DB suites in parallel
+  workers — so past-stamped fixtures isolate NOTHING (every real 2026 row sorts
+  above a year-2000 cutoff and gets counted; this was a red run). Fixtures are
+  stamped in the FAR FUTURE with `now` injected to match, and deleted by token
+  after each test. Never blanket-wipe `games` there.
+
 ## NEVER `git stash` here (2026-07-16)
 
 This repo is worked by CONCURRENT agent worktrees sharing ONE `.git`, and

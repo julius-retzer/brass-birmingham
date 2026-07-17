@@ -10,7 +10,18 @@
 // `chat_messages` table (see below) so a message never rewrites the game row
 // nor bumps `version`. Swapping the DB engine later is a config change in
 // `drizzle.config.ts` + `src/server/db/index.ts`, not a rewrite of this module.
-import { and, asc, desc, eq, gt, lt, notInArray, sql } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  gte,
+  lt,
+  ne,
+  notInArray,
+  sql,
+} from 'drizzle-orm'
 import { type AiLogEntry, type AiTierId, type AiUsageTotals } from '../ai/types'
 import { db } from '../db'
 import { chatMessages, games } from '../db/schema'
@@ -179,6 +190,61 @@ export async function loadAiPeek(token: string): Promise<AiPeek | null> {
     seats: row.seats,
     currentPlayerIndex:
       row.currentPlayerIndex === null ? null : Number(row.currentPlayerIndex),
+  }
+}
+
+/* ---------------- public activity stats (aggregate, no identifiers) ------- */
+
+/** How recently a game must have been touched to count as "in progress". */
+export const ACTIVE_WINDOW_MS = 5 * 60 * 1000
+
+/** Aggregate liveness counts. Deliberately COUNTS ONLY — no tokens, no seat
+ *  names — so this can be served to anyone from an unauthenticated endpoint. */
+export interface ActivityStats {
+  activeGames: number
+  activePlayers: number
+}
+
+/**
+ * Count the games touched within `windowMs` and the seated players in them.
+ *
+ * EGRESS: one aggregate round trip that pulls exactly two integers. `seats` is
+ * jsonb, so the per-row seated count is computed SERVER-side
+ * (`jsonb_array_elements` + `sum`) rather than by shipping the seat arrays here
+ * to be counted in JS — and the 28–65KB `snapshot` jsonb is never touched at
+ * all. Same discipline as `loadAiPeek`: this is a public endpoint that refresh
+ * -spam can hit, so it must stay O(bytes), not O(games).
+ *
+ * `updatedAt` bumps on every version-bumping write (`saveGame`), so it is the
+ * liveness signal; ISO-8601 text compares correctly against an ISO cutoff (same
+ * property `sweepStaleGames` relies on). Finished games are excluded — a table
+ * that ended 2 minutes ago is not "in progress". A seat counts as taken when it
+ * has a name, which covers AI seats (named at creation) as well as humans.
+ */
+export async function loadActivityStats(
+  windowMs = ACTIVE_WINDOW_MS,
+  now = Date.now(),
+): Promise<ActivityStats> {
+  const cutoff = new Date(now - windowMs).toISOString()
+  // Correlated scalar subquery per row; `sum()` then folds it across the
+  // matching games. COALESCE turns the no-active-games case (sum of an empty
+  // set is NULL) into 0 so the caller never special-cases it.
+  const seated = sql<number>`(
+    select count(*) from jsonb_array_elements(${games.seats}) as seat
+    where seat->>'name' is not null
+  )`
+  const rows = await db
+    .select({
+      activeGames: sql<number>`count(*)`,
+      activePlayers: sql<number>`coalesce(sum(${seated}), 0)`,
+    })
+    .from(games)
+    .where(and(gte(games.updatedAt, cutoff), ne(games.phase, 'over')))
+  const row = rows[0]
+  // Postgres count()/sum() are bigint — they arrive as strings over neon-http.
+  return {
+    activeGames: Number(row?.activeGames ?? 0),
+    activePlayers: Number(row?.activePlayers ?? 0),
   }
 }
 

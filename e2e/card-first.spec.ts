@@ -53,7 +53,9 @@ test('card-first: play a card, pick Network, confirm — card never re-asked', a
   // vanished the moment an action was pressed).
   const held = page.getByTestId('card-brewery_2')
   await expect(held).toHaveAttribute('data-selected', 'true')
-  await expect(page.getByText(/^Holding /)).toBeVisible()
+  await expect(
+    page.locator('.bb2-hand-hint').getByText(/^Holding /),
+  ).toBeVisible()
 
   const legalRoute = page.locator('path[data-conn][data-legal="true"]')
   expect(await legalRoute.count()).toBeGreaterThan(0)
@@ -64,7 +66,9 @@ test('card-first: play a card, pick Network, confirm — card never re-asked', a
   await expect(confirm).toBeEnabled()
   // Still held through the confirm step, right up until it's spent.
   await expect(held).toHaveAttribute('data-selected', 'true')
-  await expect(page.getByText(/^Holding /)).toBeVisible()
+  await expect(
+    page.locator('.bb2-hand-hint').getByText(/^Holding /),
+  ).toBeVisible()
   await confirm.click()
 
   // The link was laid with the held card and consumed the action (£19 − £3;
@@ -91,6 +95,46 @@ test('card-first: build with the held card resumes at the industry step', async 
   await page.getByTestId('cancel-action').click()
   await expect(page.getByText('Choose an action')).toBeVisible()
   await expect(treasuryOf(page, 'Eliza')).toHaveText('£19')
+})
+
+test('action-first: the "Holding <card>" banner appears once a card is picked and persists', async ({
+  page,
+}) => {
+  await page.goto('/?demo')
+
+  // Action first: choose Network BEFORE a card. On the discard step no card is
+  // held yet, so the dock shows no held-card banner.
+  await page.getByTestId('action-network').click()
+  await expect(page.getByTestId('held-card')).toHaveCount(0)
+
+  // Pick a card during the discard step — the dock now NAMES it, the same
+  // "Holding <card>" wording the card-first order shows.
+  await page.getByTestId('card-birmingham_1').click()
+  const held = page.getByTestId('held-card')
+  await expect(held).toBeVisible()
+  await expect(held).toContainText('Holding')
+  await expect(held).toContainText('Birmingham')
+
+  // …and it persists through the route step and into confirm.
+  const legalRoute = page.locator('path[data-conn][data-legal="true"]')
+  expect(await legalRoute.count()).toBeGreaterThan(0)
+  const firstConn = (await legalRoute.first().getAttribute('data-conn'))!
+  await clickRoute(page, firstConn)
+  await expect(page.getByTestId('confirm-action')).toBeEnabled()
+  await expect(page.getByTestId('held-card')).toContainText('Birmingham')
+})
+
+test('card-first: the same held-card banner shows in the dock and persists', async ({
+  page,
+}) => {
+  await page.goto('/?demo')
+
+  // Card first: the banner is up from the chooser onward.
+  await page.getByTestId('card-birmingham_1').click()
+  await expect(page.getByTestId('held-card')).toContainText('Birmingham')
+  await page.getByTestId('action-network').click()
+  // Same banner through the route step — identical to the action-first order.
+  await expect(page.getByTestId('held-card')).toContainText('Birmingham')
 })
 
 test('card-first: clicking another card switches the selection on the pick step', async ({
@@ -121,7 +165,9 @@ test('card-first: clicking another card mid-action cancels it and re-holds the n
   // Enter a real action flow holding Birmingham.
   await birmingham.click()
   await page.getByTestId('action-network').click()
-  await expect(page.getByText(/^Holding /)).toBeVisible()
+  await expect(
+    page.locator('.bb2-hand-hint').getByText(/^Holding /),
+  ).toBeVisible()
   await expect(birmingham).toHaveAttribute('data-selected', 'true')
 
   // Clicking a DIFFERENT card mid-flow is "cancel this, play that instead":

@@ -83,6 +83,24 @@ describe('getHandSelection — held card persists through the whole flow', () =>
     ).toEqual({ hint: 'Network — discard a card', selectedIds: [] })
   })
 
+  test('the held hint is order-independent: a deep step reached action-first reads identically', () => {
+    // getHandSelection keys off the current state + selectedCard only — never
+    // how the state was reached — so action-first and card-first converge to
+    // the same "Holding <name>" the instant a card is committed.
+    const cardFirst = getHandSelection(
+      snap('playing.action.networking.selectingLink', {
+        selectedCard: wolverhampton,
+      }),
+    )
+    const actionFirst = getHandSelection(
+      snap('playing.action.networking.confirmingLink', {
+        selectedCard: wolverhampton,
+      }),
+    )
+    expect(cardFirst?.hint).toBe('Holding Wolverhampton')
+    expect(actionFirst?.hint).toBe('Holding Wolverhampton')
+  })
+
   test('outside any action flow → null', () => {
     expect(getHandSelection(snap('playing.turnComplete'))).toBeNull()
     expect(getHandSelection(snap('setup'))).toBeNull()

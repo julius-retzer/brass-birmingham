@@ -5,7 +5,7 @@
 // Card discards are made in the HandTray fan; this dock shows the step rail.
 import { useEffect, useState } from 'react'
 import { type CityId, cities } from '~/data/board'
-import { type IndustryType } from '~/data/cards'
+import { type Card, type IndustryType } from '~/data/cards'
 import {
   type GameEvent,
   type GameStoreSnapshot,
@@ -169,11 +169,13 @@ function DevelopTilePicker({
   onCancel,
   onPick,
   onLowest,
+  held,
 }: {
   currentPlayer: Player
   onCancel: () => void
   onPick: (types: IndustryType[]) => void
   onLowest: () => void
+  held?: Card | null
 }) {
   const [counts, setCounts] = useState<Partial<Record<IndustryType, number>>>(
     {},
@@ -208,6 +210,7 @@ function DevelopTilePicker({
       steps={['Card', 'Tiles', 'Confirm']}
       active={1}
       onCancel={onCancel}
+      held={held}
     >
       <Note>
         Scrap one or <b>two</b> tiles from your mat — each consumes 1 iron. Tap
@@ -517,17 +520,39 @@ function StepRail({ steps, active }: { steps: string[]; active: number }) {
   )
 }
 
+/**
+ * The held-card banner, shown the instant a card is committed and kept for the
+ * whole action flow — the SAME "Holding <card>" wording in the card-first
+ * chooser and every action-first step, so the two entry orders look identical
+ * (captain's rule: the held card is named consistently regardless of order).
+ */
+function HeldCard({ card }: { card: Card | null | undefined }) {
+  if (!card) return null
+  return (
+    <div
+      className="flex items-center gap-2 text-[12px]"
+      style={{ color: 'rgba(231,215,177,.6)' }}
+      data-testid="held-card"
+    >
+      Holding <CardChip card={card} />
+    </div>
+  )
+}
+
 function Flow({
   action,
   steps,
   active,
   onCancel,
+  held,
   children,
 }: {
   action: string
   steps: string[]
   active: number
   onCancel?: () => void
+  /** The card carried through this action — named at the top of every step. */
+  held?: Card | null
   children: React.ReactNode
 }) {
   return (
@@ -553,6 +578,7 @@ function Flow({
           </button>
         )}
       </div>
+      <HeldCard card={held} />
       <hr className="bb2-rule" />
       {children}
     </div>
@@ -850,14 +876,7 @@ export function ActionDock({
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-col gap-1.5">
             <span className="bb2-panel-title">Play this card</span>
-            {c.selectedCard && (
-              <div
-                className="flex items-center gap-2 text-[12px]"
-                style={{ color: 'rgba(231,215,177,.6)' }}
-              >
-                Holding <CardChip card={c.selectedCard} />
-              </div>
-            )}
+            <HeldCard card={c.selectedCard} />
           </div>
           <button
             type="button"
@@ -903,7 +922,13 @@ export function ActionDock({
   const buildSteps = ['Card', 'Industry', 'Site', 'Confirm']
   if (is('playing.action.building.selectingCard')) {
     return (
-      <Flow action="Build" steps={buildSteps} active={0} onCancel={cancel}>
+      <Flow
+        action="Build"
+        steps={buildSteps}
+        active={0}
+        onCancel={cancel}
+        held={c.selectedCard}
+      >
         <Note>
           Play a card from your hand below. A <b>location card</b> opens that
           city; an <b>industry card</b> builds in your network.
@@ -917,15 +942,13 @@ export function ActionDock({
       (viableIndustries === null || viableIndustries.has(t))
     const anyBlocked = INDUSTRY_TYPES.some((t) => !isViable(t))
     return (
-      <Flow action="Build" steps={buildSteps} active={1} onCancel={cancel}>
-        {c.selectedCard && (
-          <div
-            className="flex items-center gap-2 text-[12px]"
-            style={{ color: 'rgba(231,215,177,.6)' }}
-          >
-            Playing <CardChip card={c.selectedCard} />
-          </div>
-        )}
+      <Flow
+        action="Build"
+        steps={buildSteps}
+        active={1}
+        onCancel={cancel}
+        held={c.selectedCard}
+      >
         <div className="grid grid-cols-3 gap-2">
           {INDUSTRY_TYPES.map((t) => (
             <button
@@ -971,7 +994,13 @@ export function ActionDock({
         can({ type: 'SELECT_LOCATION', cityId: id }),
       ).length
     return (
-      <Flow action="Build" steps={buildSteps} active={2} onCancel={cancel}>
+      <Flow
+        action="Build"
+        steps={buildSteps}
+        active={2}
+        onCancel={cancel}
+        held={c.selectedCard}
+      >
         {legalCount === 0 ? (
           <Note>
             <b style={{ color: '#d68d80' }}>No city can take this build</b> —
@@ -992,14 +1021,14 @@ export function ActionDock({
   if (is('playing.action.building.confirmingBuild')) {
     const tile = c.selectedIndustryTile
     return (
-      <Flow action="Build" steps={buildSteps} active={3} onCancel={cancel}>
+      <Flow
+        action="Build"
+        steps={buildSteps}
+        active={3}
+        onCancel={cancel}
+        held={c.selectedCard}
+      >
         <div className="flex flex-col gap-2 text-[13px]">
-          {c.selectedCard && (
-            <div className="flex items-center gap-2">
-              <span style={{ color: 'rgba(231,215,177,.55)' }}>Card</span>
-              <CardChip card={c.selectedCard} />
-            </div>
-          )}
           {tile && (
             <div className="flex items-center gap-2">
               <span style={{ color: 'rgba(231,215,177,.55)' }}>Tile</span>
@@ -1070,6 +1099,7 @@ export function ActionDock({
         }
         active={building ? 3 : 2}
         onCancel={cancel}
+        held={c.selectedCard}
       >
         {choice && (
           <IronSourcePicker
@@ -1087,14 +1117,26 @@ export function ActionDock({
   const netSteps = ['Card', 'Route', 'Confirm']
   if (is('playing.action.networking.selectingCard')) {
     return (
-      <Flow action="Network" steps={netSteps} active={0} onCancel={cancel}>
+      <Flow
+        action="Network"
+        steps={netSteps}
+        active={0}
+        onCancel={cancel}
+        held={c.selectedCard}
+      >
         <Note>Discard any card from your hand below to open a route.</Note>
       </Flow>
     )
   }
   if (is('playing.action.networking.selectingLink')) {
     return (
-      <Flow action="Network" steps={netSteps} active={1} onCancel={cancel}>
+      <Flow
+        action="Network"
+        steps={netSteps}
+        active={1}
+        onCancel={cancel}
+        held={c.selectedCard}
+      >
         <Note>
           Choose a {c.era} route on the map.{' '}
           {c.era === 'canal' ? (
@@ -1113,7 +1155,13 @@ export function ActionDock({
   if (is('playing.action.networking.confirmingLink')) {
     const link = c.selectedLink
     return (
-      <Flow action="Network" steps={netSteps} active={2} onCancel={cancel}>
+      <Flow
+        action="Network"
+        steps={netSteps}
+        active={2}
+        onCancel={cancel}
+        held={c.selectedCard}
+      >
         <Note>
           <b style={{ color: 'var(--bb-parchment-bright)' }}>
             <LinkLabel link={link} />
@@ -1145,6 +1193,7 @@ export function ActionDock({
         steps={['Card', 'Route', 'Route II', 'Confirm']}
         active={2}
         onCancel={cancel}
+        held={c.selectedCard}
       >
         <Note>Choose the second rail route on the map.</Note>
       </Flow>
@@ -1158,6 +1207,7 @@ export function ActionDock({
         steps={['Card', 'Route', 'Route II', 'Beer', 'Confirm']}
         active={3}
         onCancel={cancel}
+        held={c.selectedCard}
       >
         <Note>Which brewery supplies the beer for the second rail?</Note>
         {choice && (
@@ -1178,6 +1228,7 @@ export function ActionDock({
         steps={['Card', 'Route', 'Route II', 'Confirm']}
         active={3}
         onCancel={cancel}
+        held={c.selectedCard}
       >
         <Note>
           <b style={{ color: 'var(--bb-parchment-bright)' }}>
@@ -1204,7 +1255,13 @@ export function ActionDock({
   const devSteps = ['Card', 'Tiles', 'Confirm']
   if (is('playing.action.developing.selectingCard')) {
     return (
-      <Flow action="Develop" steps={devSteps} active={0} onCancel={cancel}>
+      <Flow
+        action="Develop"
+        steps={devSteps}
+        active={0}
+        onCancel={cancel}
+        held={c.selectedCard}
+      >
         <Note>Discard any card from your hand below.</Note>
       </Flow>
     )
@@ -1218,12 +1275,19 @@ export function ActionDock({
           send({ type: 'SELECT_TILES_FOR_DEVELOP', industryTypes: types })
         }
         onLowest={() => send({ type: 'CONFIRM' })}
+        held={c.selectedCard}
       />
     )
   }
   if (is('playing.action.developing.confirmingDevelop')) {
     return (
-      <Flow action="Develop" steps={devSteps} active={2} onCancel={cancel}>
+      <Flow
+        action="Develop"
+        steps={devSteps}
+        active={2}
+        onCancel={cancel}
+        held={c.selectedCard}
+      >
         <Note>
           Scrapping:{' '}
           <b style={{ color: 'var(--bb-parchment-bright)' }}>
@@ -1251,6 +1315,7 @@ export function ActionDock({
         steps={['Card', 'Goods']}
         active={0}
         onCancel={cancel}
+        held={c.selectedCard}
       >
         <Note>Discard any card from your hand below.</Note>
       </Flow>
@@ -1270,6 +1335,7 @@ export function ActionDock({
         steps={['Card', 'Goods', 'Beer']}
         active={2}
         onCancel={cancel}
+        held={c.selectedCard}
       >
         <Note>
           Where does the beer for {industryLabel(sale?.industryType ?? 'goods')}{' '}
@@ -1326,6 +1392,7 @@ export function ActionDock({
         steps={['Card', 'Goods']}
         active={1}
         onCancel={sold === 0 ? cancel : undefined}
+        held={c.selectedCard}
       >
         {sales.length === 0 ? (
           <Note>
@@ -1392,6 +1459,7 @@ export function ActionDock({
         steps={['Three cards', 'Confirm']}
         active={picked.length < 3 ? 0 : 1}
         onCancel={cancel}
+        held={c.selectedCard}
       >
         <Note>
           Discard three cards from your hand below to take a wild location and a
@@ -1418,6 +1486,7 @@ export function ActionDock({
         steps={['Card', 'Confirm']}
         active={0}
         onCancel={cancel}
+        held={c.selectedCard}
       >
         <Note>Discard any card from your hand below.</Note>
       </Flow>
@@ -1430,6 +1499,7 @@ export function ActionDock({
         steps={['Card', 'Confirm']}
         active={1}
         onCancel={cancel}
+        held={c.selectedCard}
       >
         <Note>
           Draw <b style={{ color: 'var(--bb-brass-bright)' }}>£30</b> against

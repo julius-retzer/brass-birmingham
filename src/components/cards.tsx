@@ -3,10 +3,122 @@
 // Real card faces for the hand — parchment stock, region-coloured bands for
 // location cards, engraved industry glyphs for industry cards, and a dark
 // compass-star face for wilds. Replaces v1's text-button hand.
+import { useLayoutEffect, useRef, useState } from 'react'
 import { type CityId, cities } from '~/data/board'
 import { type Card as GameCard, type IndustryType } from '~/data/cards'
 import { CardsIcon, IndustryFragment, WildIcon } from './icons'
 import { CityName } from './locate'
+
+/**
+ * A card name that shrinks to fit the card's fixed width. Long single-word
+ * names (Wolverhampton, Kidderminster) can't wrap and would otherwise spill
+ * past the 108px card edge; this steps the font down until the widest line
+ * fits. Multi-word names still wrap naturally at their spaces, so they keep
+ * the full size — the shrink only kicks in when a word is itself too wide.
+ * Measured in layout px (transform-independent), so the magnified lens copy
+ * fits identically then scales up with the card.
+ */
+function FitText({
+  text,
+  max,
+  min = 9,
+  className,
+}: {
+  text: string
+  max: number
+  min?: number
+  className?: string
+}) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const [size, setSize] = useState(max)
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let s = max
+    el.style.fontSize = `${s}px`
+    // scrollWidth > clientWidth only when an unbreakable word overflows the
+    // box — wrapping lines never do, so multi-word names are left untouched.
+    while (s > min && el.scrollWidth > el.clientWidth) {
+      s -= 0.5
+      el.style.fontSize = `${s}px`
+    }
+    setSize(s)
+  }, [text, max, min])
+
+  return (
+    <span
+      ref={ref}
+      className={className}
+      style={{ fontSize: `${size}px`, display: 'block', width: '100%' }}
+    >
+      {text}
+    </span>
+  )
+}
+
+/**
+ * A location's engraved emblem: a gabled Midlands mill house — arched door,
+ * lit windows — beside a tall works chimney trailing smoke. Reads as a place
+ * AND keeps the industrial theme, in the same single-ink engraving style as
+ * the rest of the card art.
+ */
+function LocationEmblem() {
+  const ink = 'rgba(74,61,41,.82)'
+  const faint = 'rgba(74,61,41,.5)'
+  return (
+    <svg width="50" height="32" viewBox="0 0 50 32" fill="none" aria-hidden>
+      {/* smoke from the chimney */}
+      <path
+        d="M39 10.5c-1.5-1.6 1.2-2.6-.3-4.3M41.4 10.2c-1.3-1.5 1-2.5-.3-4"
+        stroke={faint}
+        strokeWidth="1.1"
+        strokeLinecap="round"
+      />
+      {/* mill house body + gable roof */}
+      <path
+        d="M9 30V16l11-8 11 8v14"
+        fill="rgba(74,61,41,.05)"
+        stroke={ink}
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      {/* eaves line */}
+      <path
+        d="M7.5 16.5h25"
+        stroke={ink}
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+      {/* arched door */}
+      <path
+        d="M17 30v-4.2a3 3 0 0 1 6 0V30"
+        stroke={ink}
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+      {/* windows */}
+      <path
+        d="M11.8 19.5h3.4v3.2h-3.4zM24.8 19.5h3.4v3.2h-3.4z"
+        fill="rgba(74,61,41,.12)"
+        stroke={faint}
+        strokeWidth="1"
+        strokeLinejoin="round"
+      />
+      {/* works chimney + cap */}
+      <path
+        d="M37 30V13.5h4V30M35.8 13.5h6.4"
+        stroke={ink}
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* ground */}
+      <path d="M4 30h43" stroke={ink} strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  )
+}
 
 const REGION_BAND: Record<string, string> = {
   blue: '#45719d',
@@ -115,25 +227,12 @@ export function CardFaceContent({ card }: { card: GameCard }) {
           </span>
         </div>
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-2 text-center">
-          {/* rooftop engraving */}
-          <svg
-            width="44"
-            height="26"
-            viewBox="0 0 44 26"
-            fill="none"
-            aria-hidden
-          >
-            <path
-              d="M4 24V14l6-5v5M10 24V14m0-5 8-6 8 6M18 24V11m8 13V11m6 13V12l6-4v16M2 24h40"
-              stroke="rgba(74,61,41,.75)"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span className="bb2-display text-[15px] font-bold leading-[1.05] text-[color:var(--bb-ink)]">
-            {name}
-          </span>
+          <LocationEmblem />
+          <FitText
+            text={name}
+            max={15}
+            className="bb2-display font-bold leading-[1.05] text-[color:var(--bb-ink)]"
+          />
           <Flourish />
         </div>
       </div>
@@ -179,9 +278,11 @@ export function CardFaceContent({ card }: { card: GameCard }) {
             </svg>
           ))}
         </div>
-        <span className="bb2-display text-[13px] font-bold leading-[1.1] text-[color:var(--bb-ink)]">
-          {types.map((t) => INDUSTRY_LABEL[t]).join(' or ')}
-        </span>
+        <FitText
+          text={types.map((t) => INDUSTRY_LABEL[t]).join(' or ')}
+          max={13}
+          className="bb2-display font-bold leading-[1.1] text-[color:var(--bb-ink)]"
+        />
         <Flourish />
       </div>
     </div>

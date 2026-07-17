@@ -441,10 +441,22 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   `role="img"` back, that flattens them out of the a11y tree.
 - The hand tray (`hand-tray.tsx`) doubles as the card selector for every
   discard step; which steps select cards is centralized in
-  `getHandSelection()` (`action-dock.tsx`).
+  `getHandSelection()` (`action-dock.tsx`). It returns `{hint, selectedIds,
+  selectable}` for EVERY `playing.action.*` state: on the card-picking steps
+  `selectable:true` (fan is clickable); once a card is committed a catch-all
+  keeps the held `context.selectedCard` in `selectedIds` with a
+  `Holding <name>` hint and `selectable:false` — so the fan keeps the card
+  lifted (persistent `LENS_SELECTED`, display-only) and the pill keeps naming
+  it for the WHOLE flow (put-back is CANCEL in the dock). Both surfaces gate
+  the tray's `canSelect` on `handSel?.selectable`. Derived from machine
+  context, so the indicator survives the MP intent→broadcast→rebuild
+  round-trip. Pinned by `hand-selection.test.ts` + the card-first Network
+  persistence e2e (`card-first.spec.ts`).
 - HOVER-TO-LOCATE (2026-07-17): hovering/focusing any city NAME (journal,
   source pickers, sale list, dock steps, ledger, card chips) spotlights its
-  plate on the map. Shared plumbing is `src/components/locate.tsx` (context +
+  plate on the map. The name reads as interactive (`.bb2-locate-name` in
+  `theme.css`: dotted underline + `cursor:pointer`). Shared plumbing is
+  `src/components/locate.tsx` (context +
   `CityName` + `useLocateCity`); each surface owns the state and feeds
   BoardMap's `locatedCity` prop (`data-located` on the `g[data-city]`, teal
   `LocateMark`, deliberately distinct from the brass legal pulse;

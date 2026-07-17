@@ -1337,7 +1337,7 @@ function MpTable({
         <HandTray
           hand={me.hand}
           canSelect={
-            handSel && !inFlight
+            handSel?.selectable && !inFlight
               ? (cardId) => state.can({ type: 'SELECT_CARD', cardId })
               : null
           }

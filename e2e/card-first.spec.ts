@@ -47,6 +47,14 @@ test('card-first: play a card, pick Network, confirm — card never re-asked', a
     page.getByText(/Choose a canal route — \d+ available/),
   ).toBeVisible()
 
+  // The card stays visibly held for the WHOLE action, not just the
+  // cardSelected screen: it keeps its lift in the fan and the "Holding …"
+  // label persists on the route step (the captain's report was that both
+  // vanished the moment an action was pressed).
+  const held = page.getByTestId('card-brewery_2')
+  await expect(held).toHaveAttribute('data-selected', 'true')
+  await expect(page.getByText(/^Holding /)).toBeVisible()
+
   const legalRoute = page.locator('path[data-conn][data-legal="true"]')
   expect(await legalRoute.count()).toBeGreaterThan(0)
   const firstConn = (await legalRoute.first().getAttribute('data-conn'))!
@@ -54,6 +62,9 @@ test('card-first: play a card, pick Network, confirm — card never re-asked', a
 
   const confirm = page.getByTestId('confirm-action')
   await expect(confirm).toBeEnabled()
+  // Still held through the confirm step, right up until it's spent.
+  await expect(held).toHaveAttribute('data-selected', 'true')
+  await expect(page.getByText(/^Holding /)).toBeVisible()
   await confirm.click()
 
   // The link was laid with the held card and consumed the action (£19 − £3;

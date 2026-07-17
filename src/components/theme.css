@@ -630,6 +630,8 @@ button.bb2-card {
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
   border-radius: 2px;
+  /* reads as interactive — hovering it spotlights the city on the map */
+  cursor: pointer;
 }
 .bb2-locate-name:hover,
 .bb2-locate-name:focus-visible,

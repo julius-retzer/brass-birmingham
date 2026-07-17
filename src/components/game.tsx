@@ -1004,7 +1004,7 @@ function GameInner({
           <HandTray
             hand={currentPlayer.hand}
             canSelect={
-              handSel
+              handSel?.selectable
                 ? (cardId) => state.can({ type: 'SELECT_CARD', cardId })
                 : null
             }

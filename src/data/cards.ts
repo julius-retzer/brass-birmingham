@@ -270,6 +270,23 @@ const industries: Record<string, IndustryDefinition> = {
   },
 }
 
+// The canonical set of industry/card-type names and their proper display case.
+// One source of truth so player-facing surfaces (the journal bolds + capitalizes
+// these the same way it does city names) never hand-roll `.toUpperCase()`.
+export const INDUSTRY_DISPLAY_NAMES: Record<IndustryType, string> = {
+  cotton: 'Cotton',
+  coal: 'Coal',
+  iron: 'Iron',
+  manufacturer: 'Manufacturer',
+  pottery: 'Pottery',
+  brewery: 'Brewery',
+}
+
+/** Proper display name for an industry type ("cotton" -> "Cotton"). */
+export function industryDisplayName(type: IndustryType): string {
+  return INDUSTRY_DISPLAY_NAMES[type]
+}
+
 // Human label for a raw card/slot id — "coventry_1" -> "Coventry",
 // "cotton_manufacturer_6" -> "cotton/manufacturer industry",
 // "wild_location_2" -> "wild location". A presentation-only fallback so raw

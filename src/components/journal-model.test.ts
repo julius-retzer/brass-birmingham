@@ -391,10 +391,11 @@ describe('place-name prettifying', () => {
     // The regression: a bare location-card slot id must never render raw.
     expect(prettifyPlaces('using coventry_1')).toBe('using Coventry')
     expect(prettifyPlaces('using stafford_1')).toBe('using Stafford')
-    // Same class of leak for the other card families.
-    expect(prettifyPlaces('using iron_4')).toBe('using iron industry')
+    // Same class of leak for the other card families — industry words also
+    // pick up proper display case (the round-2 capitalization requirement).
+    expect(prettifyPlaces('using iron_4')).toBe('using Iron industry')
     expect(prettifyPlaces('using cotton_manufacturer_6')).toBe(
-      'using cotton/manufacturer industry',
+      'using Cotton/Manufacturer industry',
     )
     expect(prettifyPlaces('using wild_location_2')).toBe('using wild location')
     expect(prettifyPlaces('coalbrookdale')).toBe('Coalbrookdale')
@@ -411,12 +412,30 @@ describe('place-name prettifying', () => {
       prettifyPlaces('1 beer from merchant at warrington (money +5)'),
     ).toBe('1 beer from merchant at Warrington (money +5)')
   })
+
+  test('industry/card-type names are capitalized like city names', () => {
+    // Round-2 regression: these used to render lowercase in discard/sell lines.
+    expect(prettifyPlaces('discarded cotton/manufacturer industry')).toBe(
+      'discarded Cotton/Manufacturer industry',
+    )
+    expect(prettifyPlaces('sold cotton industry for £6')).toBe(
+      'sold Cotton industry for £6',
+    )
+    expect(prettifyPlaces('discarded pottery industry')).toBe(
+      'discarded Pottery industry',
+    )
+    expect(prettifyPlaces('2 iron from iron works (free)')).toBe(
+      '2 Iron from Iron works (free)',
+    )
+  })
 })
 
 describe('place segmentation (hover-to-locate)', () => {
   test('each recognised place carries its board id, plain runs carry null', () => {
     expect(segmentPlaces('built cotton Level 1 at stoke')).toEqual([
-      { text: 'built cotton Level 1 at ', cityId: null },
+      { text: 'built ', cityId: null },
+      { text: 'Cotton', cityId: null, industry: true },
+      { text: ' Level 1 at ', cityId: null },
       { text: 'Stoke-on-Trent', cityId: 'stoke' },
     ])
   })
@@ -444,10 +463,22 @@ describe('place segmentation (hover-to-locate)', () => {
     ])
   })
 
-  test('card ids and city-free text come back as one plain segment', () => {
+  test('a location-card id resolves to its city and stays locatable', () => {
     expect(segmentPlaces('using stafford_1')).toEqual([
-      { text: 'using stafford_1', cityId: null },
+      { text: 'using ', cityId: null },
+      { text: 'Stafford', cityId: 'stafford' },
     ])
+  })
+
+  test('an industry-card id resolves to a bold, capitalized industry name', () => {
+    expect(segmentPlaces('using iron_4')).toEqual([
+      { text: 'using ', cityId: null },
+      { text: 'Iron', cityId: null, industry: true },
+      { text: ' industry', cityId: null },
+    ])
+  })
+
+  test('city-free, entity-free text comes back as one plain segment', () => {
     expect(segmentPlaces('took a loan')).toEqual([
       { text: 'took a loan', cityId: null },
     ])

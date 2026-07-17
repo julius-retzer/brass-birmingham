@@ -67,9 +67,10 @@ function emphasizeAmounts(text: string): React.ReactNode[] {
 }
 
 /**
- * Raw engine text with each recognised place rendered as a hover-to-locate
- * CityName (display name + dotted underline + map spotlight). Replaces the
- * plain prettifyPlaces() at render time — same words, now interactive.
+ * Raw engine text with each recognised game entity styled: city/merchant names
+ * as hover-to-locate CityName (display name + dotted underline + map spotlight),
+ * and industry/card-type names as the same bold parchment highlight cities get.
+ * Replaces the plain prettifyPlaces() at render time — same words, now styled.
  */
 function Places({
   text,
@@ -85,6 +86,10 @@ function Places({
           <CityName key={i} cityId={seg.cityId}>
             {seg.text}
           </CityName>
+        ) : seg.industry ? (
+          <b key={i} className="bb2-jind">
+            {seg.text}
+          </b>
         ) : (
           <span key={i}>
             {emphasize ? emphasizeAmounts(seg.text) : seg.text}

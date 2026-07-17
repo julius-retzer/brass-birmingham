@@ -1,5 +1,30 @@
 import { describe, expect, test } from 'vitest'
-import { describeCardId } from './cards'
+import {
+  INDUSTRY_DISPLAY_NAMES,
+  describeCardId,
+  industryDisplayName,
+} from './cards'
+
+describe('industryDisplayName', () => {
+  test('every industry type has a proper-case display name', () => {
+    expect(industryDisplayName('cotton')).toBe('Cotton')
+    expect(industryDisplayName('manufacturer')).toBe('Manufacturer')
+    expect(industryDisplayName('iron')).toBe('Iron')
+    // The canonical set is exactly the six game industries.
+    expect(Object.keys(INDUSTRY_DISPLAY_NAMES).sort()).toEqual([
+      'brewery',
+      'coal',
+      'cotton',
+      'iron',
+      'manufacturer',
+      'pottery',
+    ])
+    // Proper display case, not a raw uppercase.
+    for (const name of Object.values(INDUSTRY_DISPLAY_NAMES)) {
+      expect(name).toMatch(/^[A-Z][a-z]+$/)
+    }
+  })
+})
 
 describe('describeCardId', () => {
   test('location-card slot ids resolve to the city display name', () => {

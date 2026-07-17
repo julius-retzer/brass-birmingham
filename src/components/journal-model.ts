@@ -6,7 +6,12 @@
 // message template appears, the fallback keeps it fully visible as an
 // 'info' item rather than dropping anything.
 import { cities } from '~/data/board'
-import { describeCardId } from '~/data/cards'
+import {
+  INDUSTRY_DISPLAY_NAMES,
+  describeCardId,
+  industryDisplayName,
+} from '~/data/cards'
+import type { IndustryType } from '~/data/cards'
 import type { LogEntry, LogEntryType, Player } from '~/store/gameStore'
 
 export interface PlayerRef {
@@ -229,6 +234,12 @@ export interface MainSpan {
 const capitalize = (word: string) =>
   word.charAt(0).toUpperCase() + word.slice(1)
 
+// Proper display case for a headline industry token, via the canonical source.
+const properIndustry = (word: string) =>
+  word in INDUSTRY_DISPLAY_NAMES
+    ? industryDisplayName(word as IndustryType)
+    : capitalize(word)
+
 /**
  * Split a headline into styled spans: the WHAT (industry) and WHERE
  * (location, link endpoints, merchant) carry the emphasis, the tile level
@@ -241,7 +252,7 @@ export function decorateMain(main: string, kind: JournalKind): MainSpan[] {
     if (m) {
       const spans: MainSpan[] = [
         { text: m[1]!, role: 'text' },
-        { text: capitalize(m[2]!), role: 'industry' },
+        { text: properIndustry(m[2]!), role: 'industry' },
         { text: ` (${romanLevel(Number(m[3]!))})`, role: 'level' },
         { text: m[4]!, role: 'text' },
         { text: m[5]!, role: 'place' },
@@ -275,7 +286,7 @@ export function decorateMain(main: string, kind: JournalKind): MainSpan[] {
     if (m) {
       return [
         { text: m[1]!, role: 'text' },
-        { text: capitalize(m[2]!), role: 'industry' },
+        { text: properIndustry(m[2]!), role: 'industry' },
         { text: m[3]!, role: 'text' },
         { text: m[4]!, role: 'place' },
         { text: m[5]!, role: 'text' },
@@ -288,7 +299,7 @@ export function decorateMain(main: string, kind: JournalKind): MainSpan[] {
     if (m) {
       return [
         { text: m[1]!, role: 'text' },
-        { text: capitalize(m[2]!), role: 'industry' },
+        { text: properIndustry(m[2]!), role: 'industry' },
         { text: m[3]!, role: 'text' },
         { text: m[4]!, role: 'place' },
         { text: m[5]!, role: 'text' },
@@ -312,9 +323,15 @@ const CITY_ID_RE = new RegExp(
 // alongside bare city ids so "coventry_1" resolves to "Coventry" (and stays
 // locatable) rather than leaking the raw slot id.
 const CARD_ID_RE = /\b[a-z][a-z_]*_\d+\b/
-// Combined so a single left-to-right pass classifies both forms in order.
+// Bare industry/card-type words ("cotton", "iron", …) so they get the same
+// bold + proper-case highlight as city names, everywhere they appear.
+const INDUSTRY_RE = new RegExp(
+  `\\b(${Object.keys(INDUSTRY_DISPLAY_NAMES).join('|')})\\b`,
+)
+// Combined so a single left-to-right pass classifies every form in order. Card
+// ids first: "iron_4" must not split into the industry word "iron" + "_4".
 const PLACE_OR_CARD_RE = new RegExp(
-  `${CARD_ID_RE.source}|${CITY_ID_RE.source}`,
+  `${CARD_ID_RE.source}|${CITY_ID_RE.source}|${INDUSTRY_RE.source}`,
   'g',
 )
 
@@ -322,16 +339,20 @@ export interface PlaceSegment {
   text: string
   /** Board id when this segment is a city/merchant name; null = plain text. */
   cityId: string | null
+  /** True when this segment is an industry/card-type name (bold, capitalized). */
+  industry?: boolean
 }
 
 /**
  * Split raw engine text into plain runs and recognised game-entity names, each
- * place carrying its board id (so the UI can wire hover-to-locate from
- * structured data instead of re-parsing display names). Resolution is by
- * whole-word city ID — the form the engine logs — plus card/slot ids: a
- * location-card id ("coventry_1") resolves to its city name AND stays
- * locatable, while industry/wild card ids ("iron_4", "wild_location_2") resolve
- * to their human label via the canonical `describeCardId`.
+ * carrying enough to style it: city/merchant names keep their board id (so the
+ * UI can wire hover-to-locate from structured data), and industry/card-type
+ * names are flagged so the UI can bold + proper-case them the same way. All
+ * resolution is by the form the engine logs — whole-word city id, whole-word
+ * industry type, or card/slot id: a location-card id ("coventry_1") resolves to
+ * its city name AND stays locatable, while industry/wild card ids ("iron_4",
+ * "wild_location_2") resolve to their human label via `describeCardId` (then
+ * re-segmented so the industry word inside gets the same treatment).
  */
 export function segmentPlaces(text: string): PlaceSegment[] {
   const segments: PlaceSegment[] = []
@@ -349,8 +370,16 @@ export function segmentPlaces(text: string): PlaceSegment[] {
           cityId: slug,
         })
       } else {
-        segments.push({ text: describeCardId(token) ?? token, cityId: null })
+        // Industry/wild card id → resolve to its label, then re-segment so any
+        // industry word inside ("iron industry") gets the same highlight.
+        segments.push(...segmentPlaces(describeCardId(token) ?? token))
       }
+    } else if (token in INDUSTRY_DISPLAY_NAMES) {
+      segments.push({
+        text: industryDisplayName(token as IndustryType),
+        cityId: null,
+        industry: true,
+      })
     } else {
       const id = token as keyof typeof cities
       segments.push({ text: cities[id].name, cityId: id })

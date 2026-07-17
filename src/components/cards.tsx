@@ -3,31 +3,37 @@
 // Real card faces for the hand — parchment stock, region-coloured bands for
 // location cards, engraved industry glyphs for industry cards, and a dark
 // compass-star face for wilds. Replaces v1's text-button hand.
-import { useLayoutEffect, useRef, useState } from 'react'
+import { type CSSProperties, useLayoutEffect, useRef, useState } from 'react'
 import { type CityId, cities } from '~/data/board'
 import { type Card as GameCard, type IndustryType } from '~/data/cards'
 import { CardsIcon, IndustryFragment, WildIcon } from './icons'
 import { CityName } from './locate'
 
 /**
- * A card name that shrinks to fit the card's fixed width. Long single-word
- * names (Wolverhampton, Kidderminster) can't wrap and would otherwise spill
- * past the 108px card edge; this steps the font down until the widest line
- * fits. Multi-word names still wrap naturally at their spaces, so they keep
- * the full size — the shrink only kicks in when a word is itself too wide.
- * Measured in layout px (transform-independent), so the magnified lens copy
- * fits identically then scales up with the card.
+ * Auto-shrinks a card name until it sits comfortably inside the fixed 108px
+ * card face. The name span is bound to the full width of its content box
+ * (`width:100%`) — without that bound an `items-center` flex column lets the
+ * span shrink to its own content, so `scrollWidth` never exceeds `clientWidth`
+ * and the overflow goes undetected while the text spills past both card edges
+ * (the exact bug: Coalbrookdale / Wolverhampton / Kidderminster). Multi-word
+ * names wrap naturally and keep their size; only an unbreakable single word too
+ * wide for the box triggers the shrink. `scrollWidth`/`clientWidth` are layout
+ * pixels, unaffected by the hover magnify transform, so a fit at rest holds
+ * under the lens too. A small inner inset guarantees visible padding on both
+ * sides rather than letting the glyphs graze the box edge.
  */
 function FitText({
-  text,
+  children,
   max,
-  min = 9,
+  min = 8,
   className,
+  style,
 }: {
-  text: string
+  children: string
   max: number
   min?: number
   className?: string
+  style?: CSSProperties
 }) {
   const ref = useRef<HTMLSpanElement>(null)
   const [size, setSize] = useState(max)
@@ -35,24 +41,56 @@ function FitText({
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
-    let s = max
-    el.style.fontSize = `${s}px`
-    // scrollWidth > clientWidth only when an unbreakable word overflows the
-    // box — wrapping lines never do, so multi-word names are left untouched.
-    while (s > min && el.scrollWidth > el.clientWidth) {
-      s -= 0.5
+    let cancelled = false
+
+    const fit = () => {
+      if (cancelled || !el) return
+      let s = max
       el.style.fontSize = `${s}px`
+      // Shrink while the (single-word) text overflows its content box. The
+      // inner padding on the span keeps a couple of px of breathing room, so a
+      // fit here means the glyphs don't touch the edge.
+      while (s > min && el.scrollWidth > el.clientWidth) {
+        s -= 0.5
+        el.style.fontSize = `${s}px`
+      }
+      setSize(s)
     }
-    setSize(s)
-  }, [text, max, min])
+
+    fit()
+    // Fraunces arrives async via next/font; its real metrics differ from the
+    // fallback, so re-fit once the web font is ready.
+    if (typeof document !== 'undefined' && document.fonts?.ready) {
+      document.fonts.ready.then(fit).catch(() => {
+        // fonts.ready never rejects in practice; ignore just in case.
+      })
+    }
+    const ro = new ResizeObserver(fit)
+    ro.observe(el)
+    return () => {
+      cancelled = true
+      ro.disconnect()
+    }
+  }, [children, max, min])
 
   return (
     <span
       ref={ref}
       className={className}
-      style={{ fontSize: `${size}px`, display: 'block', width: '100%' }}
+      style={{
+        display: 'block',
+        width: '100%',
+        boxSizing: 'border-box',
+        paddingInline: 2,
+        whiteSpace: 'normal',
+        overflowWrap: 'normal',
+        wordBreak: 'keep-all',
+        hyphens: 'none',
+        fontSize: size,
+        ...style,
+      }}
     >
-      {text}
+      {children}
     </span>
   )
 }
@@ -226,13 +264,14 @@ export function CardFaceContent({ card }: { card: GameCard }) {
             Location
           </span>
         </div>
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-2 text-center">
+        <div className="flex w-full flex-1 flex-col items-center justify-center gap-2 px-2 text-center">
           <LocationEmblem />
           <FitText
-            text={name}
             max={15}
             className="bb2-display font-bold leading-[1.05] text-[color:var(--bb-ink)]"
-          />
+          >
+            {name}
+          </FitText>
           <Flourish />
         </div>
       </div>
@@ -258,7 +297,7 @@ export function CardFaceContent({ card }: { card: GameCard }) {
           Industry
         </span>
       </div>
-      <div className="flex flex-1 flex-col items-center justify-center gap-1.5 px-2 text-center">
+      <div className="flex w-full flex-1 flex-col items-center justify-center gap-1.5 px-2 text-center">
         <div className="flex items-center justify-center gap-1">
           {types.slice(0, 2).map((t) => (
             <svg
@@ -279,10 +318,11 @@ export function CardFaceContent({ card }: { card: GameCard }) {
           ))}
         </div>
         <FitText
-          text={types.map((t) => INDUSTRY_LABEL[t]).join(' or ')}
           max={13}
           className="bb2-display font-bold leading-[1.1] text-[color:var(--bb-ink)]"
-        />
+        >
+          {types.map((t) => INDUSTRY_LABEL[t]).join(' or ')}
+        </FitText>
         <Flourish />
       </div>
     </div>

@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { aiOpponentsEnabled } from '~/lib/features'
 import { AI_TIERS, type AiTierId } from '~/server/ai/types'
 import { type Player } from '~/store/gameStore'
+import { ActivityLine } from './activity-line'
 import { PLAYER_FILL } from './board/board-map'
 
 const AI_ENABLED = aiOpponentsEnabled(process.env.NEXT_PUBLIC_VERCEL_ENV)
@@ -300,6 +301,8 @@ export function SetupScreen({
           </button>
         )}
       </div>
+
+      <ActivityLine />
 
       {/* CC BY 3.0 attribution for the game-icons.net glyphs */}
       <p

@@ -5,6 +5,7 @@
 // re-weighted. The engine's log strings are the contract here; if a new
 // message template appears, the fallback keeps it fully visible as an
 // 'info' item rather than dropping anything.
+import { cities } from '~/data/board'
 import type { LogEntry, LogEntryType, Player } from '~/store/gameStore'
 
 export interface PlayerRef {
@@ -208,6 +209,80 @@ function extractActor(
     return { actor: p, rest: message.slice(p.name.length).replace(/^ /, '') }
   }
   return { actor: null, rest: message }
+}
+
+/* ---------------- display decoration ---------------- */
+
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
+
+/** Tile level as the roman numeral the board tiles themselves show. */
+export function romanLevel(level: number): string {
+  return ROMAN[level - 1] ?? String(level)
+}
+
+export interface MainSpan {
+  text: string
+  role: 'text' | 'industry' | 'level'
+}
+
+const capitalize = (word: string) =>
+  word.charAt(0).toUpperCase() + word.slice(1)
+
+/**
+ * Split a headline into styled spans: the WHAT (industry) carries the
+ * emphasis, the tile level demotes to a dim roman numeral. Unmatched
+ * headlines come back as one plain span.
+ */
+export function decorateMain(main: string, kind: JournalKind): MainSpan[] {
+  if (kind === 'build') {
+    const m = /^(built )([a-z]+) Level (\d+)( .*)$/.exec(main)
+    if (m) {
+      return [
+        { text: m[1]!, role: 'text' },
+        { text: capitalize(m[2]!), role: 'industry' },
+        { text: ` (${romanLevel(Number(m[3]!))})`, role: 'level' },
+        { text: m[4]!, role: 'text' },
+      ]
+    }
+  }
+  if (kind === 'sell') {
+    const m = /^(sold )([a-z]+)( at .*)$/.exec(main)
+    if (m) {
+      return [
+        { text: m[1]!, role: 'text' },
+        { text: capitalize(m[2]!), role: 'industry' },
+        { text: m[3]!, role: 'text' },
+      ]
+    }
+  }
+  if (kind === 'flip') {
+    const m = /^('s )([a-z]+)( at .*)$/.exec(main)
+    if (m) {
+      return [
+        { text: m[1]!, role: 'text' },
+        { text: capitalize(m[2]!), role: 'industry' },
+        { text: m[3]!, role: 'text' },
+      ]
+    }
+  }
+  return [{ text: main, role: 'text' }]
+}
+
+// Whole-word city/merchant ids → their display names ("stoke" →
+// "Stoke-on-Trent"). Longest id first so no prefix can shadow a longer one;
+// card ids like "stafford_1" stay untouched (the underscore breaks \b).
+const CITY_ID_RE = new RegExp(
+  `\\b(${Object.keys(cities)
+    .sort((a, b) => b.length - a.length)
+    .join('|')})\\b`,
+  'g',
+)
+
+export function prettifyPlaces(text: string): string {
+  return text.replace(
+    CITY_ID_RE,
+    (id) => cities[id as keyof typeof cities].name,
+  )
 }
 
 /* ---------------- entry parser ---------------- */

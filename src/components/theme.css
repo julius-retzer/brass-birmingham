@@ -640,6 +640,15 @@ button.bb2-card {
 .bb2-jactor {
   font-weight: 700;
 }
+/* The WHAT is the emphasis; the tile level is a dim roman aside. */
+.bb2-jind {
+  font-weight: 700;
+  color: var(--bb-parchment-bright);
+}
+.bb2-jlevel {
+  font-size: 11.5px;
+  color: rgba(231, 215, 177, 0.5);
+}
 
 /* Hoisted highlight chips: flips are stamped brass plates, penalties rust. */
 .bb2-jchip {

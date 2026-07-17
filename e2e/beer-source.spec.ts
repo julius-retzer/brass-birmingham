@@ -50,7 +50,7 @@ test('the beer picker offers every legal source, and the merchant barrel pays it
   // The merchant's barrel went, and its £5 came back — unreachable before
   await expect(treasuryOf(page, 'George')).toHaveText('£13')
   await expect(page.getByTestId('journal-entry').first()).toContainText(
-    '1 beer from merchant at warrington (money +5)',
+    '1 beer from merchant at Warrington (money +5)',
   )
 })
 

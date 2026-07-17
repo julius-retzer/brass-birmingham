@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'vitest'
 import type { LogEntry, LogEntryType } from '~/store/gameStore'
-import { type PlayerRef, parseJournalEntry } from './journal-model'
+import {
+  type PlayerRef,
+  decorateMain,
+  parseJournalEntry,
+  prettifyPlaces,
+  romanLevel,
+} from './journal-model'
 
 const players: PlayerRef[] = [
   { name: 'George', color: 'red' },
@@ -284,5 +290,90 @@ describe('errors and fallbacks', () => {
     const item = parseJournalEntry(entry('George passed'), [])
     expect(item.actor).toBeNull()
     expect(item.main).toBe('George passed')
+  })
+})
+
+describe('headline decoration', () => {
+  test('a build bolds the industry and dims the level as a roman numeral', () => {
+    expect(
+      decorateMain('built coal Level 2 at dudley for £5', 'build'),
+    ).toEqual([
+      { text: 'built ', role: 'text' },
+      { text: 'Coal', role: 'industry' },
+      { text: ' (II)', role: 'level' },
+      { text: ' at dudley for £5', role: 'text' },
+    ])
+  })
+
+  test('a sale bolds the industry sold', () => {
+    expect(
+      decorateMain('sold cotton at coventry to merchant at oxford', 'sell'),
+    ).toEqual([
+      { text: 'sold ', role: 'text' },
+      { text: 'Cotton', role: 'industry' },
+      { text: ' at coventry to merchant at oxford', role: 'text' },
+    ])
+  })
+
+  test('a flip bolds the industry that flipped', () => {
+    expect(decorateMain("'s cotton at coventry flipped", 'flip')).toEqual([
+      { text: "'s ", role: 'text' },
+      { text: 'Cotton', role: 'industry' },
+      { text: ' at coventry flipped', role: 'text' },
+    ])
+  })
+
+  test('network and unmatched headlines stay a single text span', () => {
+    expect(
+      decorateMain('built a canal link between dudley and walsall', 'network'),
+    ).toEqual([
+      { text: 'built a canal link between dudley and walsall', role: 'text' },
+    ])
+    expect(decorateMain('took a loan', 'loan')).toEqual([
+      { text: 'took a loan', role: 'text' },
+    ])
+  })
+
+  test('roman numerals cover every tile level', () => {
+    expect([1, 2, 3, 4, 5, 6, 7, 8].map(romanLevel)).toEqual([
+      'I',
+      'II',
+      'III',
+      'IV',
+      'V',
+      'VI',
+      'VII',
+      'VIII',
+    ])
+    expect(romanLevel(99)).toBe('99') // out of range falls back to digits
+  })
+})
+
+describe('place-name prettifying', () => {
+  test('whole-word city ids become their display names', () => {
+    expect(
+      prettifyPlaces('built a canal link between dudley and walsall'),
+    ).toBe('built a canal link between Dudley and Walsall')
+    expect(prettifyPlaces('at stoke for £5')).toBe('at Stoke-on-Trent for £5')
+    expect(prettifyPlaces('at burton for £6')).toBe(
+      'at Burton upon Trent for £6',
+    )
+  })
+
+  test('card ids and partial matches stay untouched', () => {
+    expect(prettifyPlaces('using stafford_1')).toBe('using stafford_1')
+    expect(prettifyPlaces('coalbrookdale')).toBe('Coalbrookdale')
+  })
+
+  test('route lists prettify each end', () => {
+    expect(prettifyPlaces('(dudley-walsall, walsall-tamworth)')).toBe(
+      '(Dudley-Walsall, Walsall-Tamworth)',
+    )
+  })
+
+  test('merchant mentions in demoted details prettify too', () => {
+    expect(
+      prettifyPlaces('1 beer from merchant at warrington (money +5)'),
+    ).toBe('1 beer from merchant at Warrington (money +5)')
   })
 })

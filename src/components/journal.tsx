@@ -23,7 +23,9 @@ import {
   type JournalItem,
   type JournalKind,
   type PlayerRef,
+  decorateMain,
   parseJournalEntry,
+  prettifyPlaces,
 } from './journal-model'
 import { CollapsiblePanel } from './side-panels'
 
@@ -40,10 +42,12 @@ const KIND_ICONS: Partial<Record<JournalKind, React.ReactNode>> = {
   score: <LaurelIcon size={12} />,
 }
 
-// Amounts (£, income, VP, levels, resources) get bold parchment inside the
-// headline so a scanning eye catches the numbers.
+// Amounts (£, income, VP, resources) get bold parchment inside the headline
+// so a scanning eye catches the numbers. Tile levels are deliberately NOT
+// here — the WHAT (industry) carries the emphasis, the level demotes to a
+// dim roman numeral via decorateMain.
 const AMOUNT_RE =
-  /£\d+|[+-]\d+ income|\d+ (?:VP|income levels?|beers?|coal|iron|cards?|wilds?|spaces?|industries)|Level \d+|VPs?\b/g
+  /£\d+|[+-]\d+ income|\d+ (?:VP|income levels?|beers?|coal|iron|cards?|wilds?|spaces?|industries)|VPs?\b/g
 
 function emphasizeAmounts(text: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = []
@@ -102,7 +106,19 @@ function JournalRow({ item }: { item: JournalItem }) {
           )}
           {/* No space before a possessive ("George's cotton…") */}
           {item.actor && !item.main.startsWith("'") && ' '}
-          {emphasizeAmounts(item.main)}
+          {decorateMain(item.main, item.kind).map((span, i) =>
+            span.role === 'industry' ? (
+              <b key={i} className="bb2-jind">
+                {span.text}
+              </b>
+            ) : span.role === 'level' ? (
+              <span key={i} className="bb2-jlevel">
+                {span.text}
+              </span>
+            ) : (
+              <span key={i}>{emphasizeAmounts(prettifyPlaces(span.text))}</span>
+            ),
+          )}
           {item.chips.map((chip, i) => (
             <span key={i}>
               {' '}
@@ -115,8 +131,7 @@ function JournalRow({ item }: { item: JournalItem }) {
         {item.details.length > 0 && (
           <div className="bb2-jdetail">
             {/* Leading space keeps the row's textContent word-separated
-                across the line break (copy/paste, text-matching tests). */}
-            {' '}
+                across the line break (copy/paste, text-matching tests). */}{' '}
             {/* Merchant bonuses and mid-action tile flips stay demoted but
                 glow warmer so they still catch a scanning eye. */}
             {item.details.map((detail, i) => (
@@ -129,7 +144,7 @@ function JournalRow({ item }: { item: JournalItem }) {
                 }
               >
                 {i > 0 && <span className="bb2-jdetail-sep"> · </span>}
-                {detail}
+                {prettifyPlaces(detail)}
               </span>
             ))}
           </div>

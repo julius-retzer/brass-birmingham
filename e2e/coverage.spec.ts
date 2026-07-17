@@ -116,7 +116,9 @@ test('Network: rail-era double-link build (two routes, £15 + coal + beer)', asy
   await confirm.click()
 
   await expect(
-    page.getByText(/Isambard built 2 rail links \(leek-stoke, belper-leek\)/),
+    page.getByText(
+      /Isambard built 2 rail links \(Leek-Stoke-on-Trent, Belper-Leek\)/,
+    ),
   ).toBeVisible()
   // The £15 (+ any market coal) left the treasury, and the action is spent —
   // this fixture starts the turn with two, so the dock offers the second.

@@ -69,7 +69,7 @@ test('the double rail stops at the beer picker and completes after the choice', 
 
   await expect(
     page.getByText(
-      /built 2 rail links \(redditch-gloucester, birmingham-redditch\)/,
+      /built 2 rail links \(Redditch-Gloucester, Birmingham-Redditch\)/,
     ),
   ).toBeVisible()
 })

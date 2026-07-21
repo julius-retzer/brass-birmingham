@@ -43,6 +43,7 @@ import {
   ironSourceKey,
   pendingBeerChoice,
   pendingIronChoice,
+  withProvisionalLink,
 } from './shared/resourceSources'
 
 const money = (amount: number) => `£${amount}`
@@ -125,10 +126,15 @@ const explainSelectedLink = (context: GameState): string | null => {
   const cost = linkCostFor(context)
 
   if (context.era === 'rail') {
-    // Probe coal exactly as hasSelectedLink does — a rail link burns 1 coal.
-    const coal = consumeCoalFromSources(context, link.from as CityId, 1)
+    // Probe coal exactly as hasSelectedLink does — a rail link burns 1 coal,
+    // sourced against the placed link (both endpoints).
+    const coal = consumeCoalFromSources(
+      withProvisionalLink(context),
+      [link.from as CityId, link.to as CityId],
+      1,
+    )
     if (!coal.success) {
-      return `No coal reachable from ${link.from} — a rail link needs 1 coal.`
+      return `No coal reachable from ${link.from}/${link.to} — a rail link needs 1 coal.`
     }
     const total = cost + coal.coalCost
     if (player.money < total) {
@@ -203,9 +209,14 @@ const explainDoubleLink = (context: GameState): string | null => {
       'Two rails needs 1 beer — none is reachable from your network.'
     )
   }
-  const coal = consumeCoalFromSources(context, first.from as CityId, 1)
+  // Mirror the guard: the first link is on the board, coal over both endpoints.
+  const coal = consumeCoalFromSources(
+    withProvisionalLink(context),
+    [first.from as CityId, first.to as CityId],
+    1,
+  )
   if (!coal.success) {
-    return `No coal reachable from ${first.from} — each rail link needs 1 coal.`
+    return `No coal reachable from ${first.from}/${first.to} — each rail link needs 1 coal.`
   }
   const player = getCurrentPlayer(context)
   const cost = GAME_CONSTANTS.RAIL_DOUBLE_LINK_COST

@@ -85,6 +85,7 @@ import {
   pendingBeerChoice,
   pendingIronChoice,
   withProvisionalDoubleLink,
+  withProvisionalLink,
 } from './shared/resourceSources'
 
 export type LogEntryType = 'system' | 'action' | 'info' | 'error'
@@ -393,6 +394,7 @@ type GameEvent =
       money?: number
       income?: number
       industries?: Player['industries']
+      links?: Player['links']
     }
   | {
       type: 'TEST_SET_FINAL_ROUND'
@@ -1042,6 +1044,16 @@ export const gameStore = setup({
         type: context.era,
       }
 
+      // Place the link BEFORE sourcing coal — a rail link's coal must come from
+      // a mine connected "after it is placed" (rules p.7, L116/L308). Anchoring
+      // at both endpoints also makes the mine pick independent of from/to.
+      const playersWithLink = updatePlayerInList(
+        context.players,
+        context.currentPlayerIndex,
+        { ...currentPlayer, links: [...currentPlayer.links, newLink] },
+      )
+      const contextWithLink = { ...context, players: playersWithLink }
+
       let coalCost = 0
       let coalResult: ReturnType<typeof consumeCoalFromSources> | null = null
       const updatedCoalMarket = context.coalMarket.map((level) => ({
@@ -1052,8 +1064,8 @@ export const gameStore = setup({
       // Consume coal if rail era
       if (context.era === 'rail') {
         coalResult = consumeCoalFromSources(
-          context,
-          context.selectedLink.from, // Use the source of the link
+          contextWithLink,
+          [context.selectedLink.from, context.selectedLink.to],
           1,
         )
 
@@ -1084,17 +1096,17 @@ export const gameStore = setup({
         }
       }
 
-      // Get player state after coal consumption, if any
-      const playerAfterCoal =
-        context.era === 'rail' && coalResult
-          ? coalResult.updatedPlayers[context.currentPlayerIndex]!
-          : currentPlayer
+      // Coal consumption already drained mines against the placed link, so the
+      // returned players carry both the new link and the spent cubes.
+      const playersAfterCoal = coalResult
+        ? coalResult.updatedPlayers
+        : playersWithLink
+      const playerAfterCoal = playersAfterCoal[context.currentPlayerIndex]!
 
       const updatedPlayer = {
         ...playerAfterCoal,
         hand: updatedHand,
         money: playerAfterCoal.money - totalCost,
-        links: [...playerAfterCoal.links, newLink],
       }
 
       // Track money spent
@@ -1103,7 +1115,7 @@ export const gameStore = setup({
       debugLog('executeNetworkAction', context)
       return {
         players: updatePlayerInList(
-          coalResult ? coalResult.updatedPlayers : context.players,
+          playersAfterCoal,
           context.currentPlayerIndex,
           updatedPlayer,
         ),
@@ -1209,14 +1221,14 @@ export const gameStore = setup({
         playerWithFirstLink,
       )
 
-      // Consume first coal (closest to first link)
+      // Consume first coal (closest to first link, over both its endpoints)
       const firstCoalResult = consumeCoalFromSources(
         {
           ...context,
           players: updatedPlayersAfterCoal,
           coalMarket: updatedCoalMarket,
         },
-        context.selectedLink.from,
+        [context.selectedLink.from, context.selectedLink.to],
         1,
       )
 
@@ -1254,14 +1266,15 @@ export const gameStore = setup({
         playerWithBothLinks,
       )
 
-      // Consume second coal (closest to second link, considering new network state)
+      // Consume second coal (closest to second link's endpoints, with both
+      // links now on the board)
       const secondCoalResult = consumeCoalFromSources(
         {
           ...context,
           players: updatedPlayersAfterCoal,
           coalMarket: updatedCoalMarket,
         },
-        context.selectedSecondLink.from,
+        [context.selectedSecondLink.from, context.selectedSecondLink.to],
         1,
       )
 
@@ -2346,6 +2359,7 @@ export const gameStore = setup({
           incomeSpace: highestSpaceForLevel(event.income),
         }),
         ...(event.industries !== undefined && { industries: event.industries }),
+        ...(event.links !== undefined && { links: event.links }),
       }
 
       return {
@@ -2740,11 +2754,13 @@ export const gameStore = setup({
           : GAME_CONSTANTS.RAIL_LINK_COST
       let coalCost = 0
 
-      // Check coal availability for rail era links
+      // Check coal availability for rail era links. Judge against the
+      // post-placement network (both endpoints), matching execution — a mine
+      // reachable only through the new link must be seen here too.
       if (context.era === 'rail') {
         const coalResult = consumeCoalFromSources(
-          context,
-          context.selectedLink.from,
+          withProvisionalLink(context),
+          [context.selectedLink.from, context.selectedLink.to],
           1,
         )
         if (!coalResult.success) {
@@ -3064,17 +3080,18 @@ export const gameStore = setup({
         return false
       }
 
-      // Brass has no debt: £15 plus the coal for both links must be payable
+      // Brass has no debt: £15 plus the coal for both links must be payable.
+      // Mirror execution: the FIRST link is on the board before its coal is
+      // sourced, anchored over both its endpoints.
       const firstCoal = consumeCoalFromSources(
-        context,
-        context.selectedLink.from,
+        withProvisionalLink(context),
+        [context.selectedLink.from, context.selectedLink.to],
         1,
       )
       if (!firstCoal.success) {
         return false
       }
-      // Mirror execution: the second link is on the board (and so part of the
-      // player's network) before its coal is sourced
+      // ...and both links are on the board before the second link's coal.
       const playerWithLinks =
         firstCoal.updatedPlayers[context.currentPlayerIndex]!
       const secondCoal = consumeCoalFromSources(
@@ -3087,14 +3104,13 @@ export const gameStore = setup({
               ...playerWithLinks,
               links: [
                 ...playerWithLinks.links,
-                { ...context.selectedLink, type: 'rail' as const },
                 { ...context.selectedSecondLink, type: 'rail' as const },
               ],
             },
           ),
           coalMarket: firstCoal.updatedCoalMarket,
         },
-        context.selectedSecondLink.from,
+        [context.selectedSecondLink.from, context.selectedSecondLink.to],
         1,
       )
       if (!secondCoal.success) {

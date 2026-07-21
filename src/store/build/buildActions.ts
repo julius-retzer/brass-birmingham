@@ -240,10 +240,25 @@ export function buildIndustryTile(
    * from; omit to let the engine pick. */
   ironSources?: IronSource[],
 ): IndustryBuildResult {
+  const location = context.selectedLocation!
+
+  // EXECUTION BACKSTOP: the placement primitive must never drop a tile onto a
+  // city that has no compatible slot (and is not a legal overbuild). The
+  // machine guards + executeBuildAction already reject this, but this is the
+  // last line of defence — without it any unguarded caller (or a future guard
+  // regression) could place e.g. a Brewery at Birmingham, which has no brewery
+  // slot. canPlaceOrOverbuildIndustry covers free-slot, overbuild and the
+  // canal one-tile rule uniformly, so a currently-legal build always passes it.
+  if (!canPlaceOrOverbuildIndustry(context, location, tile.type, tile.level)) {
+    throw new Error(
+      `Cannot build ${tile.type} at ${location}: no compatible slot and not a legal overbuild.`,
+    )
+  }
+
   let updatedPlayersFromResources = context.players
   let updatedCoalMarket = [...context.coalMarket]
   let updatedIronMarket = [...context.ironMarket]
-  
+
   const cost = tile.cost
   let coalCost = 0
   let ironCost = 0

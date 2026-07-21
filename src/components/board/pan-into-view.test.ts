@@ -46,6 +46,27 @@ describe('planPanToCity', () => {
     expect(planPanToCity(FULL, { x: 1450, y: 1000 }, BOUNDS)).toBeNull()
   })
 
+  it('a board-EDGE city at the full-board view is a no-move, not an overshoot', () => {
+    // Warrington-like: inside the board but within the trigger margin. The
+    // bounds clamp collapses the plan back to the current view → null,
+    // instead of panning past the board edge into void.
+    expect(planPanToCity(FULL, { x: 545, y: 78 }, BOUNDS)).toBeNull()
+    expect(planPanToCity(FULL, { x: 40, y: 1120 }, BOUNDS)).toBeNull()
+  })
+
+  it('never pans past the board edge when reaching an edge city zoomed in', () => {
+    // Coalbrookdale-like far-west city from a zoomed east view: the settle
+    // margin would put x at ~-70; the clamp pins it at the board edge.
+    const east: ViewBox = { x: 614, y: 193, w: 830, h: 597 }
+    const target = planPanToCity(east, { x: 158, y: 615 }, BOUNDS)
+    expect(target).not.toBeNull()
+    expect(target!.x).toBeGreaterThanOrEqual(0)
+    expect(target!.y).toBeGreaterThanOrEqual(0)
+    expect(target!.x + target!.w).toBeLessThanOrEqual(BOUNDS.w + 0.001)
+    expect(target!.y + target!.h).toBeLessThanOrEqual(BOUNDS.h + 0.001)
+    assertComfortable(target!, { x: 158, y: 615 })
+  })
+
   it('pans and slightly zooms out to reach an off-view city', () => {
     const target = planPanToCity(ZOOMED, { x: 1200, y: 900 }, BOUNDS)
     expect(target).not.toBeNull()
@@ -82,8 +103,8 @@ describe('planPanToCity', () => {
 
   it('pans the minimum distance: only the offending axis moves', () => {
     // city is off to the right but vertically centred — y should barely move
-    const vb: ViewBox = { x: 0, y: 0, w: 800, h: 575 }
-    const pt = { x: 1100, y: 287 }
+    const vb: ViewBox = { x: 100, y: 200, w: 800, h: 575 }
+    const pt = { x: 1200, y: 487 }
     const target = planPanToCity(vb, pt, BOUNDS)
     expect(target).not.toBeNull()
     // the zoom-out recentre shifts y by (h' - h)/2 at most; no pan beyond that

@@ -82,5 +82,29 @@ export function planPanToCity(
   if (pt.y < y + my) y = pt.y - my
   else if (pt.y > y + h - my) y = pt.y - h + my
 
+  // Never pan past the board edge into void: a city that LIVES inside the
+  // settle margin (board-edge cities) is served by the nearest in-bounds
+  // view, not by overshooting. When the view is wider than the board the
+  // valid range inverts — the board then floats with void on both sides.
+  x = clampAxis(x, w, bounds.w)
+  y = clampAxis(y, h, bounds.h)
+
+  // Clamping can collapse the plan to where we already are (an edge city
+  // hovered at the full-board view) — that is "no move", not a pan.
+  if (
+    Math.abs(x - vb.x) < 0.5 &&
+    Math.abs(y - vb.y) < 0.5 &&
+    Math.abs(w - vb.w) < 0.5
+  ) {
+    return null
+  }
+
   return { x, y, w, h }
+}
+
+/** Clamp a viewBox origin so the view stays over the board. */
+function clampAxis(v: number, size: number, boundSize: number): number {
+  const lo = Math.min(0, boundSize - size)
+  const hi = Math.max(0, boundSize - size)
+  return Math.min(Math.max(v, lo), hi)
 }

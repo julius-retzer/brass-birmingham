@@ -439,9 +439,14 @@ export function BoardMap({
   const pickingLink = legalLinks !== null
 
   useEffect(() => {
+    // Never yank the map while the player is aiming a board pick — and kill
+    // an animation already in flight when the picker opens under it (checked
+    // before focusCity: the hover may already have ended by then).
+    if (pickingCity || pickingLink) {
+      stopAutoPan()
+      return
+    }
     if (!focusCity) return
-    // Never yank the map while the player is aiming a board pick.
-    if (pickingCity || pickingLink) return
     const pos = cityPos[focusCity as CityId]
     if (!pos) return
     const timer = setTimeout(() => {

@@ -6,15 +6,17 @@
 // each branch only by a manual `pnpm db:migrate`, so a new branch or a new
 // migration silently left the deployed app broken.
 //
-// SCOPE — production is DELIBERATELY excluded. The prod (`main`) branch is
-// still migrated by hand; auto-migrating it on every deploy is a separate
-// infra decision (concurrency, rollback, review of destructive DDL) that the
-// repo has not opted into. This script runs migrate ONLY for the `preview`
-// and `development` Vercel environments, and is a no-op locally (no VERCEL_ENV)
-// so `pnpm build` is unchanged.
+// SCOPE — runs migrate for EVERY Vercel environment: `production`, `preview`
+// and `development`. Production auto-migrate on deploy was captain-approved
+// (2026-07-21): the prod (`main`) branch used to be migrated by hand, which
+// left the deployed app broken whenever a new migration landed before someone
+// remembered to run it. This is a no-op locally (no VERCEL_ENV) so `pnpm build`
+// is unchanged.
 //
+// This only ever APPLIES pending migrations (drizzle-orm's `migrate()`), never
+// pushes/resets the schema and never drops data — pending-only, forward-only.
 // Idempotent: Drizzle records applied migrations in `drizzle.__drizzle_migrations`
-// and skips them, so re-runs (and racing concurrent preview builds) are safe.
+// and skips them, so re-runs (and racing concurrent builds) are safe.
 
 /**
  * Pure decision: given the deploy environment, should this build auto-migrate?
@@ -26,10 +28,14 @@
  * @returns {{ action: 'run' | 'skip', reason: string }}
  */
 export function decideMigration({ vercelEnv, databaseUrl }) {
-  if (vercelEnv !== 'preview' && vercelEnv !== 'development') {
+  if (
+    vercelEnv !== 'production' &&
+    vercelEnv !== 'preview' &&
+    vercelEnv !== 'development'
+  ) {
     return {
       action: 'skip',
-      reason: `VERCEL_ENV=${vercelEnv ?? '(unset)'} — skipping auto-migrate (production/local migrate manually).`,
+      reason: `VERCEL_ENV=${vercelEnv ?? '(unset)'} — skipping auto-migrate (local build; migrate manually).`,
     }
   }
   if (!databaseUrl) {

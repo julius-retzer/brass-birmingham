@@ -4,15 +4,12 @@
 // founding a company against server-driven AI opponents.
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { aiOpponentsEnabled } from '~/lib/features'
 import { AI_TIERS, type AiTierId } from '~/server/ai/types'
 import { type Player } from '~/store/gameStore'
 import { ActivityLine } from './activity-line'
 import { PLAYER_FILL } from './board/board-map'
-
-const AI_ENABLED = aiOpponentsEnabled(process.env.NEXT_PUBLIC_VERCEL_ENV)
 
 const COLORS: Player['color'][] = ['red', 'blue', 'green', 'yellow']
 const CHARACTERS: Player['character'][] = [
@@ -53,6 +50,25 @@ export function SetupScreen({
     'apprentice',
   ])
   const [creating, setCreating] = useState(false)
+  // Whether the server can actually seat AI rivals (needs an LLM key, or the
+  // offline mock, and not production). Default hidden until the server confirms
+  // — the key value never crosses to the client, only this boolean does.
+  const [aiEnabled, setAiEnabled] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    fetch('/api/mp/ai-available')
+      .then((res) => (res.ok ? res.json() : { available: false }))
+      .then((body: { available?: boolean }) => {
+        if (alive) setAiEnabled(!!body.available)
+      })
+      .catch(() => {
+        // Network hiccup fetching the flag → leave AI hidden (safe default).
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   const createOnline = async () => {
     setCreating(true)
@@ -130,7 +146,7 @@ export function SetupScreen({
 
         <div
           className={
-            AI_ENABLED ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-2 gap-2'
+            aiEnabled ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-2 gap-2'
           }
         >
           <button
@@ -155,7 +171,7 @@ export function SetupScreen({
               Play online
             </span>
           </button>
-          {AI_ENABLED && (
+          {aiEnabled && (
             <button
               type="button"
               className="bb2-option justify-center py-2"

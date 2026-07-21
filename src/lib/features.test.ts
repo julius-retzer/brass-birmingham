@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { aiOpponentsEnabled } from './features'
+import { aiOpponentsAvailable, aiOpponentsEnabled } from './features'
 
 describe('aiOpponentsEnabled', () => {
   it('is disabled in production', () => {
@@ -16,5 +16,39 @@ describe('aiOpponentsEnabled', () => {
 
   it('is enabled when unset (local dev, CI)', () => {
     expect(aiOpponentsEnabled(undefined)).toBe(true)
+  })
+})
+
+describe('aiOpponentsAvailable', () => {
+  it('is available when the feature is enabled and a key is present', () => {
+    expect(
+      aiOpponentsAvailable({ vercelEnv: undefined, hasKey: true, mock: false }),
+    ).toBe(true)
+  })
+
+  it('is available in mock mode without a key', () => {
+    expect(
+      aiOpponentsAvailable({ vercelEnv: undefined, hasKey: false, mock: true }),
+    ).toBe(true)
+  })
+
+  it('is unavailable when neither a key nor mock mode is present', () => {
+    expect(
+      aiOpponentsAvailable({
+        vercelEnv: undefined,
+        hasKey: false,
+        mock: false,
+      }),
+    ).toBe(false)
+  })
+
+  it('is unavailable in production even with a key', () => {
+    expect(
+      aiOpponentsAvailable({
+        vercelEnv: 'production',
+        hasKey: true,
+        mock: true,
+      }),
+    ).toBe(false)
   })
 })

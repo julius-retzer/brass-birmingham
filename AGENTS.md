@@ -842,15 +842,27 @@ When updating this file, preserve this bar for all agents and keep entries conci
   — the secret is in Vercel project → Deployment Protection → Protection
   Bypass for Automation).
 - DEPLOY MIGRATIONS (2026-07-21): the Vercel `build` script is
-  `node scripts/vercel-migrate.mjs && next build` — it runs `drizzle-kit`'s
-  migrator ONLY for the `preview`/`development` Vercel envs (gated on
-  `VERCEL_ENV`; no-op locally and for `production`). This was added because
-  there was NO auto-migration on deploy — the long-lived `preview` branch had
-  been stuck at migration 0000, so every create-game 500'd on the missing
-  `chat_messages`/`game_intents` tables. PRODUCTION (`main`) is DELIBERATELY
-  still migrated by hand (`pnpm db:migrate`): auto-migrating prod on every
-  deploy is an unmade infra decision (destructive-DDL review, concurrency,
-  rollback). Gate is pure + pinned by `scripts/vercel-migrate.test.ts`.
+  `node scripts/vercel-migrate.mjs && next build` — it runs drizzle-orm's
+  `migrate()` (pending-only, forward-only, idempotent) for ALL Vercel envs
+  (`production`/`preview`/`development`, gated on `VERCEL_ENV`; no-op locally).
+  Prod auto-migrate was captain-approved 2026-07-21 (it used to be hand-run and
+  broke deploys when a migration lagged). MIGRATION HARDENING (2026-07-21,
+  follow-up to the prod journal-drift incident a `drizzle-kit push` caused):
+  (1) migrations run on the DIRECT/UNPOOLED Neon connection — DDL + session
+  advisory locks are unreliable through the `-pooler` endpoint;
+  `pickMigrationDatabaseUrl`/`toDirectConnectionUrl` (`vercel-migrate.mjs`)
+  prefer `DATABASE_URL_UNPOOLED` (Neon-Vercel injects it) else derive it from
+  `DATABASE_URL` by stripping `-pooler`. `drizzle.config.ts` (what `pnpm
+  db:migrate` reads) does the same and pins `migrations:{table,schema}`. Runtime
+  app keeps the pooled URL. (2) CI `migrations` job (no DB, SKIP_ENV_VALIDATION)
+  runs `drizzle-kit check` + a generate-produces-no-file gate — a schema.ts
+  change without a committed migration fails the PR. (3) `db:push` is now
+  `node scripts/guarded-push.mjs` (`decidePush`): allowed only against
+  localhost, or a remote host with explicit `BB_ALLOW_REMOTE_PUSH=1` — NEVER
+  long-lived DBs; roll them forward with generate+migrate. `.env.example` holds
+  only a placeholder URL (no prod creds); prod unpooled URL lives only in
+  Vercel/CI. All gates pure + pinned by `scripts/vercel-migrate.test.ts` +
+  `scripts/guarded-push.test.ts` (now in the `pnpm test` glob).
 - INTENT LOG (2026-07-17): every ACCEPTED state-mutating engine write appends
   one row to the append-only `game_intents` table (PK token+seq, chat pattern;
   swept with the game) — the machine-replayable record for bug reproduction,

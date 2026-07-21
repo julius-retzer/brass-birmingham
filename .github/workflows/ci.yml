@@ -7,6 +7,43 @@ on:
     branches: [ main ]
 
 jobs:
+  # Migration hygiene — cheap, no database needed. drizzle-kit check/generate
+  # operate on the migration files + schema.ts only, so SKIP_ENV_VALIDATION=1
+  # lets the config load without a DATABASE_URL. Guards against the prod journal
+  # drift incident (2026-07-21): a schema.ts change without a committed
+  # migration, or a hand-broken migration history, fails the PR.
+  migrations:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.4.1'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Validate migration history (drizzle-kit check)
+        env:
+          SKIP_ENV_VALIDATION: '1'
+        run: pnpm exec drizzle-kit check
+
+      - name: Ensure every schema.ts change has a committed migration
+        env:
+          SKIP_ENV_VALIDATION: '1'
+        run: |
+          pnpm exec drizzle-kit generate
+          git diff --exit-code -- drizzle/ && test -z "$(git status --porcelain drizzle/)" || (echo "schema.ts changed without a committed migration — run 'pnpm db:generate' and commit the result under drizzle/" && exit 1)
+
   test:
     runs-on: ubuntu-latest
 

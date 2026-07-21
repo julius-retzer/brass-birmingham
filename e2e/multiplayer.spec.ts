@@ -11,7 +11,7 @@ const expect = baseExpect.configure({ timeout: 15_000 })
  *
  * Covers, in one deterministic flow:
  *  - host creates an online table from the charter and gets a /g/<token> URL
- *  - guest joins via the URL, the game auto-starts when seats fill
+ *  - guest joins via the URL, both ready up, the host starts the game
  *  - actions round-trip live in both directions (loan → pass → round 2)
  *  - a mid-game refresh reclaims the seat from the localStorage secret
  *  - WIRE-LEVEL hidden-information check: the guest's own SSE stream bytes
@@ -44,7 +44,7 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
   await host.waitForURL(/\/g\/[A-Za-z0-9_-]{20,}/)
   const gameUrl = host.url()
   const token = gameUrl.split('/g/')[1]!
-  await expect(host.getByText('Waiting for players')).toBeVisible()
+  await expect(host.getByText('Waiting to begin')).toBeVisible()
 
   /* ---- guest joins via the shared URL (separate context) ---- */
   const guestCtx = await browser.newContext()
@@ -53,7 +53,13 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
   await guest.getByTestId('join-name').fill('Brunel')
   await guest.getByTestId('join-seat').click()
 
-  // seats full → the game starts for BOTH, live
+  /* ---- both ready up, the host starts the game ---- */
+  await host.getByTestId('lobby-ready-toggle').click()
+  await guest.getByTestId('lobby-ready-toggle').click()
+  await expect(host.getByTestId('lobby-start')).toBeEnabled()
+  await host.getByTestId('lobby-start').click()
+
+  // the game starts for BOTH, live
   await expect(host.getByTestId('era-plate')).toHaveText('canal era')
   await expect(guest.getByTestId('era-plate')).toHaveText('canal era')
   await expect(guest.getByTestId('you-chip')).toHaveText('You are Brunel')

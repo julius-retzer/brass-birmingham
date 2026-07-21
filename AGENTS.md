@@ -875,6 +875,20 @@ When updating this file, preserve this bar for all agents and keep entries conci
   chat in `viewFor`. Turn notifications derive from SSE frames via
   `mp/turnNotify.ts` (`didBecomeMyTurn` — never fires on the first frame);
   permission is asked only from the header bell.
+- LOBBY (ready-up, added 2026-07-21): a filled table NO LONGER auto-starts.
+  The lobby waits for every human seat to ready up (`SeatRecord.ready`, a jsonb
+  field — no migration; AI seats are implicitly ready via `seatIsReady`) and
+  the HOST to press start. `setSeatReady`/`startGame` (`mp/game.ts`, routes
+  `/api/mp/ready` + `/api/mp/start`) — start is host-only and gated on ALL
+  seats claimed + ALL ready (Brass 2–4 enforced at create). `joinGame` guards
+  on SEAT AVAILABILITY, not phase, so host-release + reclaim mid-game still
+  works; a started game is unjoinable only because it is full ('No open
+  seats'). All-AI-opponent games still auto-start in `createGame` (nothing to
+  wait for). Public DISCOVERY: `/lobbies` (`mp/lobby-browser.tsx`) polls
+  `/api/mp/lobbies` (`loadOpenLobbies` — token + counts only, no snapshot/
+  secrets, full lobbies excluded). Pinned: lobby lifecycle + race/capacity
+  guards in `gameStore.multiplayer.test.ts`; e2e `lobby-browser.spec.ts` +
+  the ready/start steps in `multiplayer.spec.ts`/`mp-playthrough.spec.ts`.
 - Seat reclaim: refresh re-authenticates from localStorage; a LOST secret
   is recovered via the host-only "Seats" → Release, then re-claim from the
   invite link. GOTCHA: only the credentialed SSE stream may clear creds on

@@ -29,11 +29,13 @@ import {
   type AiPeek,
   type ChatMessage,
   type GameRecord,
+  type LobbySummary,
   type SeatRecord,
   appendChatMessage,
   loadAiPeek,
   loadChatSince,
   loadGame,
+  loadOpenLobbies,
   loadRecentChat,
   saveGame,
   sweepStaleGames,
@@ -132,6 +134,8 @@ export interface SeatView {
   color: string
   claimed: boolean
   kind: 'human' | 'ai'
+  /** lobby ready state — public (readiness at a table is not hidden info) */
+  ready: boolean
   /** tier id + display label for AI seats */
   aiTier?: { id: AiTierId; label: string; difficulty: string; model: string }
 }
@@ -218,6 +222,7 @@ function seatViews(game: GameRecord): SeatView[] {
       color: s.color,
       claimed: s.claimed,
       kind: s.kind === 'ai' ? ('ai' as const) : ('human' as const),
+      ready: seatIsReady(s),
       ...(tier
         ? {
             aiTier: {
@@ -351,6 +356,13 @@ export async function createGame(
   return { token, seatId: 0, seatSecret: secret }
 }
 
+/** The public list of joinable lobbies, newest first. Sweeps stale games
+ *  first (cheap, throttled) so the browser never advertises a dead table. */
+export async function listLobbies(): Promise<LobbySummary[]> {
+  await sweepStaleGames()
+  return loadOpenLobbies()
+}
+
 function startEngine(game: GameRecord): void {
   const actor = createActor(gameStore)
   actor.start()
@@ -379,30 +391,119 @@ export async function joinGame(
   return withGameLock(token, async () => {
     const game = await loadGame(token)
     if (!game) throw new Error('Game not found')
-    const seat = game.seats.find((s) => !s.claimed)
+    // Join takes the first OPEN human seat. This is what makes both races safe
+    // under the per-game lock: a started game has every seat claimed (startGame
+    // requires it), and two players racing the last open seat serialize here —
+    // the loser finds nothing open. A seat freed by the host mid-game (reclaim)
+    // is intentionally still joinable, which is why this gates on seat
+    // availability, not on `phase`.
+    const seat = game.seats.find((s) => s.kind !== 'ai' && !s.claimed)
     if (!seat) throw new Error('No open seats')
     const secret = newSecret()
     seat.claimed = true
+    seat.ready = false
     seat.name = name.slice(0, 24) || `Player ${seat.seatId + 1}`
     seat.secretHash = hash(secret)
-    const startedNow =
-      game.phase === 'lobby' && game.seats.every((s) => s.claimed)
-    if (startedNow) {
-      startEngine(game)
-    }
+    // NB: joining no longer auto-starts the engine — the lobby now waits for
+    // every seat to ready up and the host to press start (see `startGame`).
     game.version++
     game.updatedAt = new Date().toISOString()
-    // When THIS join started the engine, capture the initial snapshot as the
-    // intent log's 'setup' record (see createGame).
-    await saveGame(
-      game,
-      startedNow
-        ? { kind: 'setup', seatId: null, payload: game.snapshot }
-        : undefined,
-    )
+    await saveGame(game)
+    broadcast(token)
+    return { seatId: seat.seatId, seatSecret: secret }
+  })
+}
+
+/** A seat is "ready" for the start when it is claimed and either an AI (always
+ *  ready) or a human that has toggled ready. Unclaimed seats are never ready. */
+function seatIsReady(seat: SeatRecord): boolean {
+  if (!seat.claimed) return false
+  return seat.kind === 'ai' ? true : !!seat.ready
+}
+
+/**
+ * Toggle a human seat's lobby ready flag. Authenticated by the seat secret,
+ * only meaningful while the game is still a lobby. Returns the fresh per-seat
+ * view so the caller applies its authoritative result immediately (the ~1.2s
+ * poll converges everyone else).
+ */
+export async function setSeatReady(
+  token: string,
+  seatId: number,
+  seatSecret: string,
+  ready: boolean,
+): Promise<
+  { ok: true; view: GameView; version: number } | { ok: false; error: string }
+> {
+  return withGameLock(token, async () => {
+    const game = await loadGame(token)
+    if (!game) return { ok: false, error: 'Game not found' }
+    const seat = game.seats[seatId]
+    if (!seat || !secretMatches(seatSecret, seat.secretHash)) {
+      return { ok: false, error: 'Not your seat' }
+    }
+    if (game.phase !== 'lobby') {
+      return { ok: false, error: 'The game has already started' }
+    }
+    seat.ready = ready
+    game.version++
+    game.updatedAt = new Date().toISOString()
+    await saveGame(game)
+    broadcast(token)
+    return {
+      ok: true,
+      view: viewFor(game, seatId, seatSecret),
+      version: game.version,
+    }
+  })
+}
+
+/**
+ * Host-only explicit start. Replaces the old auto-start-on-full behaviour: the
+ * lobby now hands off into the game only when the host presses start AND the
+ * start conditions hold — every seat claimed (Brass is played by the exact
+ * count chosen at creation, 2–4) and every player ready. Reuses the SAME
+ * `startEngine` path as before, so nothing about game initialization forks.
+ */
+export async function startGame(
+  token: string,
+  hostSecret: string,
+): Promise<
+  { ok: true; view: GameView; version: number } | { ok: false; error: string }
+> {
+  return withGameLock(token, async () => {
+    const game = await loadGame(token)
+    if (!game) return { ok: false, error: 'Game not found' }
+    const host = game.seats[0]
+    if (!host || !secretMatches(hostSecret, host.secretHash)) {
+      return { ok: false, error: 'Only the host can start the game' }
+    }
+    if (game.phase !== 'lobby') {
+      return { ok: false, error: 'The game has already started' }
+    }
+    if (!game.seats.every((s) => s.claimed)) {
+      return { ok: false, error: 'Every seat must be filled to start' }
+    }
+    if (!game.seats.every(seatIsReady)) {
+      return { ok: false, error: 'Every player must be ready to start' }
+    }
+    startEngine(game)
+    game.version++
+    game.updatedAt = new Date().toISOString()
+    // Capture the initial snapshot as the intent log's 'setup' record — setup
+    // shuffles are random, so replay must start from this exact snapshot.
+    await saveGame(game, {
+      kind: 'setup',
+      seatId: null,
+      payload: game.snapshot,
+    })
     broadcast(token)
     void kickAiTurns(token)
-    return { seatId: seat.seatId, seatSecret: secret }
+    return {
+      ok: true,
+      view: viewFor(game, 0, hostSecret),
+      version: game.version,
+    }
   })
 }
 

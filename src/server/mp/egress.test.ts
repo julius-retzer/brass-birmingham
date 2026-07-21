@@ -125,7 +125,8 @@ describe('poll-tick egress', () => {
   test('kicking a no-AI game never reads the full game row', async () => {
     const store = await import('./store')
     const { createGame, joinGame } = await import('./game')
-    // A 2-human game with both seats claimed → actively playing, human's turn.
+    // A 2-human game, both seats claimed but still a lobby (no auto-start).
+    // Either way it has no AI seat, so the cheap peek short-circuits the kick.
     const host = await createGame('Ada', 2, [])
     await joinGame(host.token, 'Bea')
     // Let the creation/join kicks settle so the aiRunning dedup is clear.

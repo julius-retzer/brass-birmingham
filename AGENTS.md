@@ -837,7 +837,20 @@ When updating this file, preserve this bar for all agents and keep entries conci
   click, not in neonctl): project brass → Integrations → Vercel → enable
   "create a branch per preview deployment". Previews sit behind Vercel
   Deployment Protection (SSO) — viewable only when logged into the Vercel
-  account.
+  account (for automated repro, append
+  `?x-vercel-protection-bypass=<automation-secret>&x-vercel-set-bypass-cookie=true`
+  — the secret is in Vercel project → Deployment Protection → Protection
+  Bypass for Automation).
+- DEPLOY MIGRATIONS (2026-07-21): the Vercel `build` script is
+  `node scripts/vercel-migrate.mjs && next build` — it runs `drizzle-kit`'s
+  migrator ONLY for the `preview`/`development` Vercel envs (gated on
+  `VERCEL_ENV`; no-op locally and for `production`). This was added because
+  there was NO auto-migration on deploy — the long-lived `preview` branch had
+  been stuck at migration 0000, so every create-game 500'd on the missing
+  `chat_messages`/`game_intents` tables. PRODUCTION (`main`) is DELIBERATELY
+  still migrated by hand (`pnpm db:migrate`): auto-migrating prod on every
+  deploy is an unmade infra decision (destructive-DDL review, concurrency,
+  rollback). Gate is pure + pinned by `scripts/vercel-migrate.test.ts`.
 - INTENT LOG (2026-07-17): every ACCEPTED state-mutating engine write appends
   one row to the append-only `game_intents` table (PK token+seq, chat pattern;
   swept with the game) — the machine-replayable record for bug reproduction,

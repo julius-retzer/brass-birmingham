@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { decideMigration } from './vercel-migrate.mjs'
+import {
+  decideMigration,
+  pickMigrationDatabaseUrl,
+  toDirectConnectionUrl,
+} from './vercel-migrate.mjs'
 
 // Regression for the PR #45 preview bug: the preview Neon branch was stuck at
 // migration 0000, so create-game 500'd on the missing `chat_messages` /
@@ -47,5 +51,59 @@ describe('decideMigration (Vercel build auto-migrate gate)', () => {
     const d = decideMigration({ vercelEnv: 'preview' })
     expect(d.action).toBe('skip')
     expect(d.reason).toContain('DATABASE_URL')
+  })
+})
+
+// Migrations must run on the DIRECT (unpooled) Neon connection — DDL / session
+// advisory locks don't work through the `-pooler` transaction-mode endpoint.
+describe('toDirectConnectionUrl (strip Neon -pooler suffix)', () => {
+  it('strips -pooler from a pooled Neon host', () => {
+    expect(
+      toDirectConnectionUrl(
+        'postgresql://u:p@ep-red-cloud-adll4y8k-pooler.c-2.us-east-1.aws.neon.tech/db?sslmode=require',
+      ),
+    ).toBe(
+      'postgresql://u:p@ep-red-cloud-adll4y8k.c-2.us-east-1.aws.neon.tech/db?sslmode=require',
+    )
+  })
+
+  it('leaves an already-direct host unchanged', () => {
+    const direct =
+      'postgresql://u:p@ep-red-cloud-adll4y8k.c-2.us-east-1.aws.neon.tech/db?sslmode=require'
+    expect(toDirectConnectionUrl(direct)).toBe(direct)
+  })
+
+  it('passes through an unparseable value rather than throwing', () => {
+    expect(toDirectConnectionUrl('not a url')).toBe('not a url')
+  })
+})
+
+describe('pickMigrationDatabaseUrl (prefer unpooled, else derive direct)', () => {
+  it('prefers DATABASE_URL_UNPOOLED when present', () => {
+    const r = pickMigrationDatabaseUrl({
+      DATABASE_URL: 'postgresql://u:p@ep-x-pooler.region.neon.tech/db',
+      DATABASE_URL_UNPOOLED: 'postgresql://u:p@ep-x.region.neon.tech/db',
+    })
+    expect(r).toEqual({
+      url: 'postgresql://u:p@ep-x.region.neon.tech/db',
+      source: 'unpooled-env',
+    })
+  })
+
+  it('derives the direct URL from a pooled DATABASE_URL when no unpooled var', () => {
+    const r = pickMigrationDatabaseUrl({
+      DATABASE_URL: 'postgresql://u:p@ep-x-pooler.region.neon.tech/db',
+    })
+    expect(r).toEqual({
+      url: 'postgresql://u:p@ep-x.region.neon.tech/db',
+      source: 'derived-direct',
+    })
+  })
+
+  it('reports none when no connection string is set', () => {
+    expect(pickMigrationDatabaseUrl({})).toEqual({
+      url: undefined,
+      source: 'none',
+    })
   })
 })

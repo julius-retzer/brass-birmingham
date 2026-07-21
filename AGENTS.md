@@ -309,6 +309,15 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   overbuild) even when another slot is free; enforced in
   `canPlaceOrOverbuildIndustry` + `buildIndustryTile`, pinned by
   `gameStore.canalrule.test.ts`.
+  EXECUTION BACKSTOP (slot-type, fixed 2026-07-21): the placement primitive
+  `buildIndustryTile` now gates on `canPlaceOrOverbuildIndustry` before
+  placing — it previously validated era/overbuild/resources/funds but NOT
+  slot-type compatibility, so a caller reaching it could drop e.g. a Brewery
+  at Birmingham (no brewery slot). The machine guards already reject this; the
+  primitive check is defense-in-depth (a strict no-op for legal builds, which
+  `executeBuildAction` pre-validates identically). The "backstop" that
+  `gameStore.slotguard.test.ts` documented did not actually exist until this;
+  it is now pinned there.
   ONLY THE MAT'S LOWEST TILE IS EVER BUILDABLE (era rule, fixed 2026-07-16):
   rules p.4 step 2 takes the lowest tile, p.7 bars tiles showing the era's
   half-circle — so a barred tile BLOCKS its industry until Develop removes

@@ -1,11 +1,13 @@
 import type { Config } from 'drizzle-kit'
 import { env } from '~/env'
 
-// Migrations must run on the DIRECT (unpooled) Neon connection — DDL and
-// session advisory locks don't work reliably through the `-pooler` endpoint
-// (Neon connection-pooling docs). Prefer the injected `DATABASE_URL_UNPOOLED`;
-// fall back to deriving the direct host from the pooled `DATABASE_URL`. The
-// runtime app never reads this file — it keeps using the pooled URL.
+/**
+ * Migrations must run on the DIRECT (unpooled) Neon connection — DDL and
+ * session advisory locks don't work reliably through the `-pooler` endpoint
+ * (Neon connection-pooling docs). Prefer the injected `DATABASE_URL_UNPOOLED`;
+ * fall back to deriving the direct host from the pooled `DATABASE_URL`. The
+ * runtime app never reads this file — it keeps using the pooled URL.
+ */
 function directConnectionUrl(): string | undefined {
   if (env.DATABASE_URL_UNPOOLED) return env.DATABASE_URL_UNPOOLED
   if (!env.DATABASE_URL) return undefined

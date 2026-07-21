@@ -101,6 +101,12 @@ export function decideMigration({ vercelEnv, databaseUrl }) {
   }
 }
 
+/**
+ * Entrypoint: pick the direct connection, decide whether this deploy should
+ * auto-migrate, and (when applicable) apply pending migrations via Drizzle.
+ *
+ * @returns {Promise<void>}
+ */
 async function main() {
   const { url: databaseUrl, source } = pickMigrationDatabaseUrl(process.env)
   const decision = decideMigration({

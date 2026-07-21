@@ -13,11 +13,18 @@ jobs:
   # drift incident (2026-07-21): a schema.ts change without a committed
   # migration, or a hand-broken migration history, fails the PR.
   migrations:
+    # Least privilege: this job only reads the repo. No write scope, and don't
+    # persist the checkout token into .git/config (pnpm install lifecycle
+    # scripts could otherwise read it). — CodeRabbit/zizmor artipacked.
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

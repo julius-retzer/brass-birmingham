@@ -53,7 +53,9 @@ export function decidePush(env) {
   } catch {
     return {
       action: 'refuse',
-      reason: `DATABASE_URL is not a parseable URL (${url}); refusing to push.`,
+      reason:
+        'DATABASE_URL is not a parseable URL; refusing to push. (raw value ' +
+        'omitted — it can contain credentials.)',
     }
   }
   if (isLocalHost(host)) {
@@ -78,6 +80,12 @@ export function decidePush(env) {
   }
 }
 
+/**
+ * Entrypoint: evaluate `decidePush` against the live env and either refuse
+ * (exit 1) or run `drizzle-kit push`, propagating its exit code.
+ *
+ * @returns {void}
+ */
 function main() {
   const decision = decidePush(process.env)
   if (decision.action === 'refuse') {

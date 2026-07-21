@@ -7,9 +7,10 @@
 // owns the `locatedCity` state (so it can feed the map directly) and provides
 // it through this context; name-bearing UI reads only the setter.
 //
-// The state is deliberately a plain "one city id or null" value so the
-// queued brass-card-map-sync task (pan-into-view for hovered cards) can
-// reuse it unchanged.
+// The state is deliberately a plain "one city id or null" value. Note:
+// card-map-sync (auto-pan to a hovered card's city) landed as a SEPARATE
+// BoardMap prop (`focusCity`, fed from the hovered card) on purpose —
+// name-hover highlights must never move the map, card hover may.
 import {
   type Dispatch,
   type ReactNode,

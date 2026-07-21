@@ -24,7 +24,7 @@ import { ActionDock, SELLABLE, getHandSelection } from '../action-dock'
 import { linkKey } from '../board/board-data'
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from '../board/board-map'
 import { HandTray } from '../hand-tray'
-import { computeHoverCities } from '../hover-highlight'
+import { computeHoverCities, focusCityFor } from '../hover-highlight'
 import { LocateCityProvider, useLocateCityState } from '../locate'
 import { GameOverScreen, RoundCurtain } from '../overlays'
 import { OpenMatButton, PlayerLedger } from '../player-ledger'
@@ -1363,6 +1363,7 @@ function MpTable({
                 networkColor={me ? PLAYER_FILL[me.color] : null}
                 hoverCities={hoverCities}
                 locatedCity={locateState.locatedCity}
+                focusCity={focusCityFor(hoveredCard)}
               />
             </div>
           </div>

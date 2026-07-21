@@ -46,7 +46,7 @@ import { demoSnapshotIronChoice } from './demo/demo-snapshot-iron-choice'
 import { demoSnapshotSell } from './demo/demo-snapshot-sell'
 import { demoSnapshotWilds } from './demo/demo-snapshot-wilds'
 import { HandTray } from './hand-tray'
-import { computeHoverCities } from './hover-highlight'
+import { computeHoverCities, focusCityFor } from './hover-highlight'
 import { LocateCityProvider, useLocateCityState } from './locate'
 import { pendingBeerChoice } from '~/store/shared/resourceSources'
 import { GameOverScreen, PassGate, RoundCurtain } from './overlays'
@@ -965,6 +965,7 @@ function GameInner({
                   needsReveal ? null : (beerCandidateCities ?? hoverCities)
                 }
                 locatedCity={locateState.locatedCity}
+                focusCity={needsReveal ? null : focusCityFor(hoveredCard)}
               />
             </div>
           </div>

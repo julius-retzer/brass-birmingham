@@ -2370,12 +2370,12 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.694Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at nuneaton for £7 (consumed consumed 1 iron from market for £2) using nuneaton (other)",
+        "message": "Isambard built brewery Level 1 at nuneaton for £7 (consumed 1 iron from market for £2) using nuneaton (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.694Z"
       },
       {
-        "message": "George built brewery Level 1 at coalbrookdale for £7 (consumed consumed 1 iron from market for £2) using coalbrookdale (other)",
+        "message": "George built brewery Level 1 at coalbrookdale for £7 (consumed 1 iron from market for £2) using coalbrookdale (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.694Z"
       },
@@ -2450,7 +2450,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.695Z"
       },
       {
-        "message": "Isambard built pottery Level 1 at coventry for £20 (consumed consumed 1 iron from market for £3) using coventry (other)",
+        "message": "Isambard built pottery Level 1 at coventry for £20 (consumed 1 iron from market for £3) using coventry (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.696Z"
       },
@@ -2520,7 +2520,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.698Z"
       },
       {
-        "message": "Eliza built pottery Level 1 at coventry for £18 (consumed consumed 1 iron from market for £1) using coventry (other)",
+        "message": "Eliza built pottery Level 1 at coventry for £18 (consumed 1 iron from market for £1) using coventry (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.698Z"
       },
@@ -2530,7 +2530,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.699Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at nuneaton for £7 (consumed consumed 1 iron from market for £2) using brewery industry",
+        "message": "Isambard built brewery Level 1 at nuneaton for £7 (consumed 1 iron from market for £2) using brewery industry",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.699Z"
       },
@@ -2555,12 +2555,12 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.699Z"
       },
       {
-        "message": "Isambard built brewery Level 2 at nuneaton for £9 (consumed consumed 1 iron from market for £2) (overbuilt own level 1) using brewery industry",
+        "message": "Isambard built brewery Level 2 at nuneaton for £9 (consumed 1 iron from market for £2) (overbuilt own level 1) using brewery industry",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.699Z"
       },
       {
-        "message": "Isambard built brewery Level 2 at burton for £10 (consumed consumed 1 iron from market for £3) using burton (other)",
+        "message": "Isambard built brewery Level 2 at burton for £10 (consumed 1 iron from market for £3) using burton (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.700Z"
       },
@@ -2610,7 +2610,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.701Z"
       },
       {
-        "message": "Eliza built brewery Level 1 at walsall for £8 (consumed consumed 1 iron from market for £3) using walsall (other)",
+        "message": "Eliza built brewery Level 1 at walsall for £8 (consumed 1 iron from market for £3) using walsall (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.701Z"
       },
@@ -2625,7 +2625,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.702Z"
       },
       {
-        "message": "George built coal Level 3 at coventry for £12 (consumed consumed 1 iron from market for £4) using coventry (other)",
+        "message": "George built coal Level 3 at coventry for £12 (consumed 1 iron from market for £4) using coventry (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.702Z"
       },
@@ -2635,7 +2635,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.703Z"
       },
       {
-        "message": "Isambard built brewery Level 3 at burton for £13 (consumed consumed 1 iron from market for £4) (overbuilt own level 2) using brewery industry",
+        "message": "Isambard built brewery Level 3 at burton for £13 (consumed 1 iron from market for £4) (overbuilt own level 2) using brewery industry",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.703Z"
       },
@@ -2695,7 +2695,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.704Z"
       },
       {
-        "message": "George built brewery Level 1 at stafford for £10 (consumed consumed 1 iron from market for £5) using stafford (other)",
+        "message": "George built brewery Level 1 at stafford for £10 (consumed 1 iron from market for £5) using stafford (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.705Z"
       },
@@ -2760,7 +2760,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.705Z"
       },
       {
-        "message": "George built coal Level 3 at wolverhampton for £13 (consumed consumed 1 iron from market for £5) using wolverhampton (other)",
+        "message": "George built coal Level 3 at wolverhampton for £13 (consumed 1 iron from market for £5) using wolverhampton (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.706Z"
       },
@@ -2820,7 +2820,7 @@ export const demoSnapshotEraEnd: unknown = {
         "timestamp": "2026-07-15T00:08:26.707Z"
       },
       {
-        "message": "George built coal Level 4 at cannock for £16 (consumed consumed 1 iron from general supply for £6) using cannock (other)",
+        "message": "George built coal Level 4 at cannock for £16 (consumed 1 iron from general supply for £6) using cannock (other)",
         "type": "action",
         "timestamp": "2026-07-15T00:08:26.707Z"
       },

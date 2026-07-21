@@ -1072,7 +1072,7 @@ export const gameStore = setup({
           updatedCoalMarket[i] = coalResult.updatedCoalMarket[i]!
         }
 
-        logMessage += ` (${coalResult.logDetails.join(', ')})`
+        logMessage += ` (consumed ${coalResult.logDetails.join(', ')})`
       }
 
       const totalCost = linkCost + coalCost
@@ -1320,7 +1320,11 @@ export const gameStore = setup({
       // Track money spent
       const currentSpending = context.playerSpending[currentPlayer.id] || 0
 
-      const logMessage = `${currentPlayer.name} built 2 rail links (${context.selectedLink.from}-${context.selectedLink.to}, ${context.selectedSecondLink.from}-${context.selectedSecondLink.to}) for £${linkCost} + beer + 2 coal (£${coalCost}) (${coalLogDetails.join(', ')})`
+      // Journal what was ACTUALLY consumed: the two coal sources (incl. any
+      // mine that flipped) AND the beer source + any brewery that flipped
+      // draining its last barrel — beerResult.logDetails carries both.
+      const consumedDetails = [...coalLogDetails, ...beerResult.logDetails]
+      const logMessage = `${currentPlayer.name} built 2 rail links (${context.selectedLink.from}-${context.selectedLink.to}, ${context.selectedSecondLink.from}-${context.selectedSecondLink.to}) for £${linkCost} + 1 beer + 2 coal (£${coalCost}) (consumed ${consumedDetails.join(', ')})`
 
       debugLog('executeDoubleNetworkAction', context)
       return {

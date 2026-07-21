@@ -2563,7 +2563,7 @@ export const demoSnapshotDoubleBeer: unknown = {
         "timestamp": "2026-07-16T21:36:28.224Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at nuneaton for £7 (consumed consumed 1 iron from market for £2) using nuneaton (other)",
+        "message": "Isambard built brewery Level 1 at nuneaton for £7 (consumed 1 iron from market for £2) using nuneaton (other)",
         "type": "action",
         "timestamp": "2026-07-16T21:36:28.224Z"
       },
@@ -2658,7 +2658,7 @@ export const demoSnapshotDoubleBeer: unknown = {
         "timestamp": "2026-07-16T21:36:28.225Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at stafford for £6 (consumed consumed 1 iron from market for £1) using stafford (other)",
+        "message": "Isambard built brewery Level 1 at stafford for £6 (consumed 1 iron from market for £1) using stafford (other)",
         "type": "action",
         "timestamp": "2026-07-16T21:36:28.225Z"
       },
@@ -2678,7 +2678,7 @@ export const demoSnapshotDoubleBeer: unknown = {
         "timestamp": "2026-07-16T21:36:28.225Z"
       },
       {
-        "message": "George built brewery Level 1 at coalbrookdale for £6 (consumed consumed 1 iron from market for £1) using coalbrookdale (other)",
+        "message": "George built brewery Level 1 at coalbrookdale for £6 (consumed 1 iron from market for £1) using coalbrookdale (other)",
         "type": "action",
         "timestamp": "2026-07-16T21:36:28.226Z"
       },
@@ -2703,22 +2703,22 @@ export const demoSnapshotDoubleBeer: unknown = {
         "timestamp": "2026-07-16T21:36:28.226Z"
       },
       {
-        "message": "George built coal Level 3 at wolverhampton for £10 (consumed consumed 1 iron from market for £2) (overbuilt own level 2) using wolverhampton (other)",
+        "message": "George built coal Level 3 at wolverhampton for £10 (consumed 1 iron from market for £2) (overbuilt own level 2) using wolverhampton (other)",
         "type": "action",
         "timestamp": "2026-07-16T21:36:28.226Z"
       },
       {
-        "message": "George built coal Level 3 at cannock for £10 (consumed consumed 1 iron from market for £2) using cannock (other)",
+        "message": "George built coal Level 3 at cannock for £10 (consumed 1 iron from market for £2) using cannock (other)",
         "type": "action",
         "timestamp": "2026-07-16T21:36:28.226Z"
       },
       {
-        "message": "Eliza built brewery Level 1 at uttoxeter for £8 (consumed consumed 1 iron from market for £3) using uttoxeter (other)",
+        "message": "Eliza built brewery Level 1 at uttoxeter for £8 (consumed 1 iron from market for £3) using uttoxeter (other)",
         "type": "action",
         "timestamp": "2026-07-16T21:36:28.226Z"
       },
       {
-        "message": "Eliza built brewery Level 1 at walsall for £8 (consumed consumed 1 iron from market for £3) using walsall (other)",
+        "message": "Eliza built brewery Level 1 at walsall for £8 (consumed 1 iron from market for £3) using walsall (other)",
         "type": "action",
         "timestamp": "2026-07-16T21:36:28.227Z"
       },
@@ -2773,7 +2773,7 @@ export const demoSnapshotDoubleBeer: unknown = {
         "timestamp": "2026-07-16T21:36:28.227Z"
       },
       {
-        "message": "Isambard built brewery Level 2 at nuneaton for £9 (consumed consumed 1 iron from market for £2) (overbuilt own level 1) using brewery industry",
+        "message": "Isambard built brewery Level 2 at nuneaton for £9 (consumed 1 iron from market for £2) (overbuilt own level 1) using brewery industry",
         "type": "action",
         "timestamp": "2026-07-16T21:36:28.227Z"
       },
@@ -2788,7 +2788,7 @@ export const demoSnapshotDoubleBeer: unknown = {
         "timestamp": "2026-07-16T21:36:28.227Z"
       },
       {
-        "message": "Eliza built brewery Level 2 at walsall for £9 (consumed consumed 1 iron from market for £2) (overbuilt own level 1) using brewery industry",
+        "message": "Eliza built brewery Level 2 at walsall for £9 (consumed 1 iron from market for £2) (overbuilt own level 1) using brewery industry",
         "type": "action",
         "timestamp": "2026-07-16T21:36:28.227Z"
       },
@@ -2798,7 +2798,7 @@ export const demoSnapshotDoubleBeer: unknown = {
         "timestamp": "2026-07-16T21:36:28.227Z"
       },
       {
-        "message": "George built brewery Level 1 at burton for £8 (consumed consumed 1 iron from market for £3) using burton (other)",
+        "message": "George built brewery Level 1 at burton for £8 (consumed 1 iron from market for £3) using burton (other)",
         "type": "action",
         "timestamp": "2026-07-16T21:36:28.228Z"
       },
@@ -2823,7 +2823,7 @@ export const demoSnapshotDoubleBeer: unknown = {
         "timestamp": "2026-07-16T21:36:28.228Z"
       },
       {
-        "message": "George built brewery Level 2 at coalbrookdale for £10 (consumed consumed 1 iron from market for £3) (overbuilt own level 1) using brewery industry",
+        "message": "George built brewery Level 2 at coalbrookdale for £10 (consumed 1 iron from market for £3) (overbuilt own level 1) using brewery industry",
         "type": "action",
         "timestamp": "2026-07-16T21:36:28.228Z"
       },
@@ -2843,7 +2843,7 @@ export const demoSnapshotDoubleBeer: unknown = {
         "timestamp": "2026-07-16T21:36:28.230Z"
       },
       {
-        "message": "Isambard built brewery Level 2 at stafford for £11 (consumed consumed 1 iron from market for £4) (overbuilt own level 1) using stafford (other)",
+        "message": "Isambard built brewery Level 2 at stafford for £11 (consumed 1 iron from market for £4) (overbuilt own level 1) using stafford (other)",
         "type": "action",
         "timestamp": "2026-07-16T21:36:28.230Z"
       },
@@ -3143,7 +3143,7 @@ export const demoSnapshotDoubleBeer: unknown = {
         "timestamp": "2026-07-16T21:36:28.233Z"
       },
       {
-        "message": "Isambard built brewery Level 3 at nuneaton for £13 (consumed consumed 1 iron from market for £4) (overbuilt own level 2) using brewery industry",
+        "message": "Isambard built brewery Level 3 at nuneaton for £13 (consumed 1 iron from market for £4) (overbuilt own level 2) using brewery industry",
         "type": "action",
         "timestamp": "2026-07-16T21:36:28.537Z"
       },

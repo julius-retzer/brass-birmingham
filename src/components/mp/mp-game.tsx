@@ -742,12 +742,12 @@ function SeatsButton({
   )
 }
 
-function ShareLink() {
+function ShareLink({ className }: { className?: string }) {
   const [copied, setCopied] = useState(false)
   return (
     <button
       type="button"
-      className="bb2-chip"
+      className={`bb2-chip ${className ?? ''}`}
       data-testid="share-link"
       style={{ cursor: 'pointer', textTransform: 'none', letterSpacing: 0 }}
       onClick={() => {
@@ -757,7 +757,13 @@ function ShareLink() {
       }}
       title="Copy the invite link"
     >
-      {copied ? 'Link copied!' : window.location.href}
+      {/* The invite URL can be long (token + a deploy-preview host). Let it
+          ellipsis-truncate on phones so it can never force the masthead wider
+          than the viewport; the full URL still shows from lg up (unchanged)
+          and is always copied in full. */}
+      <span className="min-w-0 truncate">
+        {copied ? 'Link copied!' : window.location.href}
+      </span>
     </button>
   )
 }
@@ -1308,7 +1314,7 @@ function MpTable({
           >
             You are {me.name}
           </span>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 lg:flex-nowrap lg:gap-3">
             {inFlight && (
               <span className="bb2-sync-pill" data-testid="mp-syncing">
                 <span className="bb2-sync-dot" />
@@ -1333,7 +1339,7 @@ function MpTable({
             {you === 0 && (
               <SeatsButton token={token} creds={creds} seats={view.seats} />
             )}
-            <ShareLink />
+            <ShareLink className="max-w-[52vw] sm:max-w-[240px] lg:max-w-none" />
           </div>
         </header>
 

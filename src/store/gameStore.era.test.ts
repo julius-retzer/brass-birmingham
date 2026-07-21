@@ -236,34 +236,30 @@ describe('Game Store - Era and Scoring', () => {
     // NOTE: This would require checking industryTilesOnMat if implemented
   })
 
-  test('canal to rail era transition resets merchant beer', () => {
+  test('canal to rail era transition resets merchant beer only beside non-blank tiles', () => {
     const { actor } = setup()
 
-    // Set up merchants with consumed beer (hasBeer: false)
     let s = actor.getSnapshot()
     const initialMerchants = s.context.merchants || []
 
-    // Simulate merchant beer consumption during Canal era
-    if (initialMerchants.length > 0) {
-      // Modify merchant beer status to simulate consumption
-      const modifiedMerchants = initialMerchants.map((merchant) => ({
-        ...merchant,
-        hasBeer: false, // Simulate consumed beer
-      }))
+    // The 2p setup deals two BLANK merchant tiles (industryIcons: []) —
+    // those spaces have no beer barrel space, so they must NEVER hold beer.
+    const blankCount = initialMerchants.filter(
+      (m) => m.industryIcons.length === 0,
+    ).length
+    expect(blankCount).toBeGreaterThan(0)
 
-      // NOTE: This would require a test helper to modify merchant state
-      // For now, we'll test the transition logic
-    }
-
-    // Trigger canal era end
+    // Trigger canal era end (canal -> rail transition runs the beer reset)
     actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
     s = actor.getSnapshot()
 
     const finalMerchants = s.context.merchants || []
 
-    // After era transition, all merchants should have beer restored
+    // Rulebook (p.9 setup / era reset): "Place 1 beer barrel on each empty
+    // beer barrel space beside a (non-blank) Merchant tile." Blank tiles get
+    // NO beer; non-blank tiles get exactly one.
     finalMerchants.forEach((merchant) => {
-      expect(merchant.hasBeer).toBe(true)
+      expect(merchant.hasBeer).toBe(merchant.industryIcons.length > 0)
     })
 
     // Verify log message about merchant beer reset

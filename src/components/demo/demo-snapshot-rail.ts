@@ -2566,7 +2566,7 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-16T12:33:45.567Z"
       },
       {
-        "message": "Eliza built brewery Level 1 at uttoxeter for £7 (consumed consumed 1 iron from market for £2) using uttoxeter (other)",
+        "message": "Eliza built brewery Level 1 at uttoxeter for £7 (consumed 1 iron from market for £2) using uttoxeter (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:33:45.567Z"
       },
@@ -2651,7 +2651,7 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-16T12:33:45.569Z"
       },
       {
-        "message": "Eliza built brewery Level 1 at coalbrookdale for £7 (consumed consumed 1 iron from market for £2) using coalbrookdale (other)",
+        "message": "Eliza built brewery Level 1 at coalbrookdale for £7 (consumed 1 iron from market for £2) using coalbrookdale (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:33:45.569Z"
       },
@@ -2676,7 +2676,7 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-16T12:33:45.570Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at walsall for £8 (consumed consumed 1 iron from market for £3) using walsall (other)",
+        "message": "Isambard built brewery Level 1 at walsall for £8 (consumed 1 iron from market for £3) using walsall (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:33:45.570Z"
       },
@@ -2756,7 +2756,7 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-16T12:33:45.572Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at stafford for £8 (consumed consumed 1 iron from market for £3) using stafford (other)",
+        "message": "Isambard built brewery Level 1 at stafford for £8 (consumed 1 iron from market for £3) using stafford (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:33:45.572Z"
       },
@@ -2766,12 +2766,12 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-16T12:33:45.572Z"
       },
       {
-        "message": "Eliza built coal Level 3 at redditch for £12 (consumed consumed 1 iron from market for £4) using redditch (other)",
+        "message": "Eliza built coal Level 3 at redditch for £12 (consumed 1 iron from market for £4) using redditch (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:33:45.573Z"
       },
       {
-        "message": "Eliza built coal Level 3 at stone for £12 (consumed consumed 1 iron from market for £4) using stone (other)",
+        "message": "Eliza built coal Level 3 at stone for £12 (consumed 1 iron from market for £4) using stone (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:33:45.573Z"
       },
@@ -2806,7 +2806,7 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-16T12:33:45.574Z"
       },
       {
-        "message": "George built pottery Level 1 at stafford for £22 (consumed consumed 1 iron from market for £5) using stafford (other)",
+        "message": "George built pottery Level 1 at stafford for £22 (consumed 1 iron from market for £5) using stafford (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:33:45.574Z"
       },
@@ -2831,7 +2831,7 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-16T12:33:45.576Z"
       },
       {
-        "message": "Eliza built pottery Level 1 at stoke for £22 (consumed consumed 1 iron from market for £5) using stoke (other)",
+        "message": "Eliza built pottery Level 1 at stoke for £22 (consumed 1 iron from market for £5) using stoke (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:33:45.576Z"
       },
@@ -2961,12 +2961,12 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-16T12:33:45.577Z"
       },
       {
-        "message": "Isambard built coal Level 3 at burton for £10 (consumed consumed 1 iron from market for £2) using burton (other)",
+        "message": "Isambard built coal Level 3 at burton for £10 (consumed 1 iron from market for £2) using burton (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:33:45.577Z"
       },
       {
-        "message": "Isambard built coal Level 3 at coalbrookdale for £10 (consumed consumed 1 iron from market for £2) (overbuilt own level 1) using coalbrookdale (other)",
+        "message": "Isambard built coal Level 3 at coalbrookdale for £10 (consumed 1 iron from market for £2) (overbuilt own level 1) using coalbrookdale (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:33:45.577Z"
       },
@@ -3036,7 +3036,7 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-16T12:33:45.578Z"
       },
       {
-        "message": "Isambard built brewery Level 2 at nuneaton for £10 (consumed consumed 1 iron from market for £3) using nuneaton (other)",
+        "message": "Isambard built brewery Level 2 at nuneaton for £10 (consumed 1 iron from market for £3) using nuneaton (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:33:45.578Z"
       },
@@ -3191,7 +3191,7 @@ export const demoSnapshotRail: unknown = {
         "timestamp": "2026-07-16T12:33:45.578Z"
       },
       {
-        "message": "Isambard built brewery Level 2 at stafford for £10 (consumed consumed 1 iron from market for £3) using stafford (other)",
+        "message": "Isambard built brewery Level 2 at stafford for £10 (consumed 1 iron from market for £3) using stafford (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:33:45.579Z"
       },

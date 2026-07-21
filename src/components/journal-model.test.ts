@@ -62,7 +62,7 @@ describe('actor extraction', () => {
 describe('build entries', () => {
   test('a fully-loaded build keeps the headline and demotes consumption', () => {
     const item = parse(
-      'George built iron Level 1 at dudley for £5 (consumed 1 coal from connected coal mine (free)) (sold 2 iron to market for £6, sold 2 iron to market for £4) (tile flipped, +3 income) (overbuilt own level 1) using coventry (other)',
+      "George built iron Level 1 at dudley for £5 (consumed 1 coal from George's coal mine at dudley (free)) (sold 2 iron to market for £6, sold 2 iron to market for £4) (tile flipped, +3 income) (overbuilt own level 1) using coventry (other)",
     )
     expect(item.kind).toBe('build')
     expect(item.main).toBe('built iron Level 1 at dudley for £5')
@@ -72,7 +72,7 @@ describe('build entries', () => {
       { text: 'overbuilt own level 1', tone: 'neutral' },
     ])
     expect(item.details).toEqual([
-      'consumed 1 coal from connected coal mine (free)',
+      "consumed 1 coal from George's coal mine at dudley (free)",
       'sold 2 iron to market for £6, sold 2 iron to market for £4',
       'using coventry (other)',
     ])
@@ -99,23 +99,25 @@ describe('network entries', () => {
 
   test('a rail link demotes its coal consumption', () => {
     const item = parse(
-      'George built a rail link between dudley and walsall (consumed 1 coal from market for £3)',
+      'George built a rail link between dudley and walsall (consumed 1 coal from connected market for £3)',
     )
     expect(item.kind).toBe('network')
     expect(item.main).toBe('built a rail link between dudley and walsall')
-    expect(item.details).toEqual(['consumed 1 coal from market for £3'])
+    expect(item.details).toEqual([
+      'consumed 1 coal from connected market for £3',
+    ])
   })
 
   test('a double rail keeps the route list and prices inline', () => {
     const item = parse(
-      'George built 2 rail links (dudley-walsall, walsall-tamworth) for £15 + beer + 2 coal (£4) (1 coal from connected coal mine (free), consumed 1 coal from market for £4)',
+      "George built 2 rail links (dudley-walsall, walsall-tamworth) for £15 + 1 beer + 2 coal (£4) (consumed 1 coal from George's coal mine at dudley (free), 1 coal from connected market for £4, 1 beer from own brewery at walsall (free))",
     )
     expect(item.kind).toBe('network')
     expect(item.main).toBe(
-      'built 2 rail links (dudley-walsall, walsall-tamworth) for £15 + beer + 2 coal (£4)',
+      'built 2 rail links (dudley-walsall, walsall-tamworth) for £15 + 1 beer + 2 coal (£4)',
     )
     expect(item.details).toEqual([
-      '1 coal from connected coal mine (free), consumed 1 coal from market for £4',
+      "consumed 1 coal from George's coal mine at dudley (free), 1 coal from connected market for £4, 1 beer from own brewery at walsall (free)",
     ])
   })
 })

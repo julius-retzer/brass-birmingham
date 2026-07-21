@@ -2709,7 +2709,7 @@ export const demoSnapshotGameEnd: unknown = {
         "timestamp": "2026-07-16T12:29:24.072Z"
       },
       {
-        "message": "Eliza built brewery Level 1 at walsall for £7 (consumed consumed 1 iron from market for £2) using walsall (other)",
+        "message": "Eliza built brewery Level 1 at walsall for £7 (consumed 1 iron from market for £2) using walsall (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:29:24.072Z"
       },
@@ -2759,7 +2759,7 @@ export const demoSnapshotGameEnd: unknown = {
         "timestamp": "2026-07-16T12:29:24.072Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at stafford for £7 (consumed consumed 1 iron from market for £2) using stafford (other)",
+        "message": "Isambard built brewery Level 1 at stafford for £7 (consumed 1 iron from market for £2) using stafford (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:29:24.072Z"
       },
@@ -2799,7 +2799,7 @@ export const demoSnapshotGameEnd: unknown = {
         "timestamp": "2026-07-16T12:29:24.072Z"
       },
       {
-        "message": "Eliza built brewery Level 1 at coalbrookdale for £8 (consumed consumed 1 iron from market for £3) using coalbrookdale (other)",
+        "message": "Eliza built brewery Level 1 at coalbrookdale for £8 (consumed 1 iron from market for £3) using coalbrookdale (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:29:24.073Z"
       },
@@ -2814,7 +2814,7 @@ export const demoSnapshotGameEnd: unknown = {
         "timestamp": "2026-07-16T12:29:24.073Z"
       },
       {
-        "message": "George built pottery Level 1 at coventry for £20 (consumed consumed 1 iron from market for £3) using coventry (other)",
+        "message": "George built pottery Level 1 at coventry for £20 (consumed 1 iron from market for £3) using coventry (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:29:24.073Z"
       },
@@ -2909,7 +2909,7 @@ export const demoSnapshotGameEnd: unknown = {
         "timestamp": "2026-07-16T12:29:24.075Z"
       },
       {
-        "message": "Eliza built brewery Level 2 at coalbrookdale for £8 (consumed consumed 1 iron from market for £1) (overbuilt own level 1) using coalbrookdale (other)",
+        "message": "Eliza built brewery Level 2 at coalbrookdale for £8 (consumed 1 iron from market for £1) (overbuilt own level 1) using coalbrookdale (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:29:24.075Z"
       },
@@ -3064,7 +3064,7 @@ export const demoSnapshotGameEnd: unknown = {
         "timestamp": "2026-07-16T12:29:24.079Z"
       },
       {
-        "message": "George built cotton Level 2 at stoke for £15 (consumed consumed 1 coal from connected market for £1) (overbuilt own level 1) using cotton/manufacturer industry",
+        "message": "George built cotton Level 2 at stoke for £15 (consumed 1 coal from connected market for £1) (overbuilt own level 1) using cotton/manufacturer industry",
         "type": "action",
         "timestamp": "2026-07-16T12:29:24.079Z"
       },
@@ -3074,7 +3074,7 @@ export const demoSnapshotGameEnd: unknown = {
         "timestamp": "2026-07-16T12:29:24.080Z"
       },
       {
-        "message": "Isambard built cotton Level 2 at stone for £16 (consumed consumed 1 coal from connected market for £2) (overbuilt own level 1) using stone (other)",
+        "message": "Isambard built cotton Level 2 at stone for £16 (consumed 1 coal from connected market for £2) (overbuilt own level 1) using stone (other)",
         "type": "action",
         "timestamp": "2026-07-16T12:29:24.080Z"
       },

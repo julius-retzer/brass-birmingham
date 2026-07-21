@@ -70,13 +70,16 @@ export function consumeCoalFromSources(
       }))
 
       coalConsumed += cubesToConsume
-      if (cubesToConsume === 1) {
-        logDetails.push(`1 coal from connected coal mine (free)`)
-      } else {
-        logDetails.push(
-          `${cubesToConsume} coal from connected coal mine (free)`,
-        )
-      }
+      // Name the actual mine the coal came from (owner + city), matching how
+      // beer/iron entries name their source — the coal audit trail needs to
+      // show WHICH mine was drained, not just "a connected mine".
+      const owner = context.players.find((player) =>
+        player.industries.includes(coalMine),
+      )
+      const ownerLabel = owner ? `${owner.name}'s` : 'a'
+      logDetails.push(
+        `${cubesToConsume} coal from ${ownerLabel} coal mine at ${coalMine.location} (free)`,
+      )
     }
   }
 
@@ -97,9 +100,7 @@ export function consumeCoalFromSources(
           level.cubes--
           coalCost += level.price
           coalConsumed++
-          logDetails.push(
-            `consumed 1 coal from connected market for £${level.price}`,
-          )
+          logDetails.push(`1 coal from connected market for £${level.price}`)
           foundCoal = true
           break
         }
@@ -115,7 +116,7 @@ export function consumeCoalFromSources(
           coalCost += GAME_CONSTANTS.COAL_FALLBACK_PRICE
           coalConsumed++
           logDetails.push(
-            `consumed 1 coal from connected market for £${GAME_CONSTANTS.COAL_FALLBACK_PRICE}`,
+            `1 coal from connected market for £${GAME_CONSTANTS.COAL_FALLBACK_PRICE}`,
           )
           foundCoal = true
         }
@@ -240,13 +241,13 @@ export function consumeIronFromSources(
         if (level) {
           level.cubes--
           ironCost += level.price
-          logDetails.push(`consumed 1 iron from market for £${level.price}`)
+          logDetails.push(`1 iron from market for £${level.price}`)
           continue
         }
         // An empty market still sells, at the fallback price, forever
         ironCost += GAME_CONSTANTS.IRON_FALLBACK_PRICE
         logDetails.push(
-          `consumed 1 iron from general supply for £${GAME_CONSTANTS.IRON_FALLBACK_PRICE}`,
+          `1 iron from general supply for £${GAME_CONSTANTS.IRON_FALLBACK_PRICE}`,
         )
       }
       continue

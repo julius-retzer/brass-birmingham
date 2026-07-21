@@ -2775,7 +2775,7 @@ export const demoSnapshotIronChoice: unknown = {
         "timestamp": "2026-07-16T21:36:20.418Z"
       },
       {
-        "message": "Eliza built brewery Level 1 at coalbrookdale for £7 (consumed consumed 1 iron from market for £2) using coalbrookdale (other)",
+        "message": "Eliza built brewery Level 1 at coalbrookdale for £7 (consumed 1 iron from market for £2) using coalbrookdale (other)",
         "type": "action",
         "timestamp": "2026-07-16T21:36:20.419Z"
       },
@@ -2860,7 +2860,7 @@ export const demoSnapshotIronChoice: unknown = {
         "timestamp": "2026-07-16T21:36:20.422Z"
       },
       {
-        "message": "Eliza built pottery Level 1 at stoke for £19 (consumed consumed 1 iron from market for £2) using stoke (other)",
+        "message": "Eliza built pottery Level 1 at stoke for £19 (consumed 1 iron from market for £2) using stoke (other)",
         "type": "action",
         "timestamp": "2026-07-16T21:36:20.423Z"
       },
@@ -2870,12 +2870,12 @@ export const demoSnapshotIronChoice: unknown = {
         "timestamp": "2026-07-16T21:36:20.423Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at nuneaton for £8 (consumed consumed 1 iron from market for £3) using nuneaton (other)",
+        "message": "Isambard built brewery Level 1 at nuneaton for £8 (consumed 1 iron from market for £3) using nuneaton (other)",
         "type": "action",
         "timestamp": "2026-07-16T21:36:20.423Z"
       },
       {
-        "message": "Isambard built brewery Level 1 at burton for £8 (consumed consumed 1 iron from market for £3) using burton (other)",
+        "message": "Isambard built brewery Level 1 at burton for £8 (consumed 1 iron from market for £3) using burton (other)",
         "type": "action",
         "timestamp": "2026-07-16T21:36:20.424Z"
       },

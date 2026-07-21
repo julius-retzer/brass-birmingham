@@ -42,6 +42,7 @@ interface SeatView {
   name: string | null
   color: string
   claimed: boolean
+  ready?: boolean
   kind?: 'human' | 'ai'
   aiTier?: { id: string; label: string; difficulty: string; model: string }
 }
@@ -337,7 +338,7 @@ export function MpGame({ token }: { token: string }) {
   }
 
   if (view.phase === 'lobby') {
-    return <LobbyScreen view={view} />
+    return <LobbyScreen token={token} view={view} creds={creds} />
   }
 
   return (
@@ -460,7 +461,80 @@ function JoinScreen({
   )
 }
 
-function LobbyScreen({ view }: { view: GameViewWire }) {
+function LobbyScreen({
+  token,
+  view,
+  creds,
+}: {
+  token: string
+  view: GameViewWire
+  creds: Creds | null
+}) {
+  const [busy, setBusy] = useState(false)
+  const isHost = view.you === 0
+  const mySeat =
+    view.you !== null
+      ? view.seats.find((s) => s.seatId === view.you)
+      : undefined
+  const allClaimed = view.seats.every((s) => s.claimed)
+  const allReady = view.seats.every((s) => s.ready)
+  const canStart = allClaimed && allReady
+  const readyCount = view.seats.filter((s) => s.ready).length
+
+  const toggleReady = async () => {
+    if (!creds || !mySeat) return
+    setBusy(true)
+    try {
+      const res = await fetch('/api/mp/ready', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          seatId: creds.seatId,
+          seatSecret: creds.seatSecret,
+          ready: !mySeat.ready,
+        }),
+      })
+      if (!res.ok) {
+        const body = (await res.json()) as { error?: string }
+        throw new Error(body.error ?? 'Could not update ready state')
+      }
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'Could not update ready state',
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const start = async () => {
+    if (!creds) return
+    setBusy(true)
+    try {
+      const res = await fetch('/api/mp/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, seatSecret: creds.seatSecret }),
+      })
+      if (!res.ok) {
+        const body = (await res.json()) as { error?: string }
+        throw new Error(body.error ?? 'Could not start the game')
+      }
+      // the SSE poll delivers the 'playing' view; no local navigation needed
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not start the game')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const startHint = !allClaimed
+    ? 'Waiting for every seat to be claimed…'
+    : !allReady
+      ? 'Waiting for every player to ready up…'
+      : 'Everyone is ready — start the game!'
+
   return (
     <Centered>
       <span
@@ -473,9 +547,16 @@ function LobbyScreen({ view }: { view: GameViewWire }) {
         className="bb2-display text-5xl font-black"
         style={{ color: 'var(--bb-parchment-bright)' }}
       >
-        Waiting for players
+        Waiting to begin
       </h1>
       <ShareLink />
+      <div
+        className="text-[12px]"
+        style={{ color: 'rgba(231,215,177,.55)' }}
+        data-testid="lobby-ready-count"
+      >
+        {readyCount} of {view.seats.length} ready
+      </div>
       <div className="bb2-panel mt-2 flex w-full max-w-sm flex-col gap-2 p-5">
         {view.seats.map((s) => (
           <div
@@ -483,9 +564,10 @@ function LobbyScreen({ view }: { view: GameViewWire }) {
             className="flex items-center gap-3 text-[14px]"
             style={{ color: 'var(--bb-parchment)' }}
             data-testid={`lobby-seat-${s.seatId}`}
+            data-ready={s.ready ? 'true' : 'false'}
           >
             <span
-              className="h-3 w-3 rounded-full"
+              className="h-3 w-3 flex-none rounded-full"
               style={{ background: `var(--bb-player-${s.color})` }}
             />
             {s.claimed ? (
@@ -495,20 +577,88 @@ function LobbyScreen({ view }: { view: GameViewWire }) {
                 waiting for a player…
               </span>
             )}
-            {s.seatId === view.you && (
+            {s.seatId === 0 && (
               <span
-                className="ml-auto text-[10px] font-bold uppercase tracking-[0.2em]"
-                style={{ color: 'var(--bb-brass-bright)' }}
+                className="text-[9px] font-bold uppercase tracking-[0.16em]"
+                style={{ color: 'rgba(231,215,177,.5)' }}
               >
-                you
+                host
               </span>
             )}
+            <span className="ml-auto flex items-center gap-2">
+              {s.seatId === view.you && (
+                <span
+                  className="text-[10px] font-bold uppercase tracking-[0.2em]"
+                  style={{ color: 'var(--bb-brass-bright)' }}
+                >
+                  you
+                </span>
+              )}
+              {s.claimed && (
+                <span
+                  className="text-[10px] font-bold uppercase tracking-[0.14em]"
+                  style={{
+                    color: s.ready
+                      ? 'var(--bb-brass-bright)'
+                      : 'rgba(231,215,177,.4)',
+                  }}
+                  data-testid={`lobby-ready-badge-${s.seatId}`}
+                >
+                  {s.ready ? '✓ ready' : 'not ready'}
+                </span>
+              )}
+            </span>
           </div>
         ))}
       </div>
-      <p className="text-[12px]" style={{ color: 'rgba(231,215,177,.45)' }}>
-        The game starts the moment every seat is claimed.
-      </p>
+
+      {mySeat && mySeat.kind !== 'ai' && (
+        <button
+          type="button"
+          className="bb2-confirm w-full max-w-sm"
+          data-testid="lobby-ready-toggle"
+          disabled={busy}
+          onClick={() => void toggleReady()}
+          style={
+            mySeat.ready
+              ? { opacity: 0.7, filter: 'grayscale(0.3)' }
+              : undefined
+          }
+        >
+          {mySeat.ready ? 'Not ready' : "I'm ready"}
+        </button>
+      )}
+
+      {isHost && (
+        <div className="flex w-full max-w-sm flex-col gap-2">
+          <button
+            type="button"
+            className="bb2-confirm w-full"
+            data-testid="lobby-start"
+            disabled={busy || !canStart}
+            onClick={() => void start()}
+          >
+            Start the game
+          </button>
+          <p
+            className="text-center text-[12px]"
+            style={{ color: 'rgba(231,215,177,.5)' }}
+          >
+            {startHint}
+          </p>
+        </div>
+      )}
+
+      {isHost && creds && (
+        <SeatsButton token={token} creds={creds} seats={view.seats} />
+      )}
+
+      {!isHost && (
+        <p className="text-[12px]" style={{ color: 'rgba(231,215,177,.45)' }}>
+          The host starts the game once everyone is ready.
+        </p>
+      )}
+      <Toaster theme="dark" position="top-right" />
     </Centered>
   )
 }

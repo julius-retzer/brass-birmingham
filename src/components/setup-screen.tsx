@@ -2,6 +2,7 @@
 
 // The company charter — local hotseat setup, opening an online table, or
 // founding a company against server-driven AI opponents.
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -301,6 +302,15 @@ export function SetupScreen({
           </button>
         )}
       </div>
+
+      <Link
+        href="/lobbies"
+        className="bb2-chip"
+        data-testid="browse-lobbies"
+        style={{ cursor: 'pointer', textTransform: 'none', letterSpacing: 0 }}
+      >
+        Browse open tables →
+      </Link>
 
       <ActivityLine />
 

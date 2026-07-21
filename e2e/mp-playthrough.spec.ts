@@ -196,6 +196,14 @@ test('two browsers play a realistic opening: every action, both source pickers, 
   await guest.goto(gameUrl)
   await guest.getByTestId('join-name').fill('Brunel')
   await guest.getByTestId('join-seat').click()
+
+  /* ---- ready up, then the host starts (no more auto-start on full) ---- */
+  await host.getByTestId('lobby-ready-toggle').click()
+  await guest.getByTestId('lobby-ready-toggle').click()
+  const startBtn = host.getByTestId('lobby-start')
+  await expect(startBtn).toBeEnabled()
+  await startBtn.click()
+
   await expect(host.getByTestId('era-plate')).toHaveText('canal era')
   await expect(guest.getByTestId('era-plate')).toHaveText('canal era')
 

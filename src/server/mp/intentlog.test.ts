@@ -12,7 +12,14 @@
 // and feed them to `replayIntentLog` (replay.ts) offline.
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
 import { ensureTestSchema } from '../../test/db-schema'
-import { actInGame, createGame, getGameView, joinGame } from './game'
+import {
+  actInGame,
+  createGame,
+  getGameView,
+  joinGame,
+  setSeatReady,
+  startGame,
+} from './game'
 import { normalizeSnapshotForComparison, replayIntentLog } from './replay'
 import {
   type GameRecord,
@@ -44,6 +51,9 @@ const ctxOf = (snapshot: unknown) => (snapshot as { context: Ctx }).context
 async function freshGame() {
   const host = await createGame('Ada', 2)
   const guest = await joinGame(host.token, 'Brunel')
+  await setSeatReady(host.token, 0, host.seatSecret, true)
+  await setSeatReady(host.token, guest.seatId, guest.seatSecret, true)
+  await startGame(host.token, host.seatSecret)
   return { host, guest }
 }
 
@@ -74,7 +84,7 @@ describe('intent log: append-on-accept', () => {
     const { host, guest } = await freshGame()
     const creds = { 0: host.seatSecret, 1: guest.seatSecret }
 
-    // The join that started the engine captured the initial snapshot.
+    // The host start captured the initial snapshot as the setup record.
     let rows = await loadIntentLog(host.token)
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({ seq: 1, kind: 'setup', seatId: null })
@@ -96,10 +106,16 @@ describe('intent log: append-on-accept', () => {
       expect(row.payload).toEqual(events[i])
       expect(row.snapshotAfter).toBeNull()
     })
-    // each row records the version its write produced — strictly ascending,
-    // ending at the game's current version
+    // each row records the version its write produced — strictly ascending
+    // by one from the setup record, ending at the game's current version
     const game = await loadGame(host.token)
-    expect(rows.map((r) => r.version)).toEqual([2, 3, 4, 5])
+    const base = rows[0]!.version
+    expect(rows.map((r) => r.version)).toEqual([
+      base,
+      base + 1,
+      base + 2,
+      base + 3,
+    ])
     expect(rows[rows.length - 1]!.version).toBe(game!.version)
   })
 

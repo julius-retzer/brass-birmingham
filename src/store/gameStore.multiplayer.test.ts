@@ -11,11 +11,14 @@ import {
   joinGame,
   releaseSeat,
   sendChat,
+  setSeatReady,
+  startGame,
 } from '../server/mp/game'
 import {
   appendChatMessage,
   loadChatSince,
   loadGame,
+  loadOpenLobbies,
   loadRecentChat,
   loadVersionAndSeq,
   saveGame,
@@ -35,9 +38,16 @@ beforeAll(async () => {
   await ensureTestSchema()
 })
 
+// A ready-to-play game: create, join every open seat, ready everyone up, and
+// let the host start it. The lobby no longer auto-starts on a full table, so
+// the whole suite drives the real start handoff through this helper.
 async function freshGame() {
   const host = await createGame('Ada', 2)
   const guest = await joinGame(host.token, 'Brunel')
+  await setSeatReady(host.token, 0, host.seatSecret, true)
+  await setSeatReady(host.token, guest.seatId, guest.seatSecret, true)
+  const started = await startGame(host.token, host.seatSecret)
+  expect(started.ok).toBe(true)
   return { host, guest }
 }
 
@@ -61,6 +71,81 @@ describe('multiplayer: lifecycle and authority', () => {
     const record = await loadGame(host.token)
     expect(record?.phase).toBe('playing')
     expect(record?.snapshot).toBeTruthy()
+  })
+
+  test('the lobby waits for ready-up + an explicit host start', async () => {
+    const host = await createGame('Ada', 2)
+    // a filled table is NOT auto-started anymore
+    const guest = await joinGame(host.token, 'Brunel')
+    let view = await getGameView(host.token, 0, host.seatSecret)
+    expect(view?.phase).toBe('lobby')
+    expect(view?.seats.every((s) => s.claimed)).toBe(true)
+    expect(view?.seats.every((s) => s.ready)).toBe(false)
+
+    // host cannot start until everyone is ready
+    const early = await startGame(host.token, host.seatSecret)
+    expect(early).toMatchObject({ ok: false })
+    expect((await getGameView(host.token, 0, host.seatSecret))?.phase).toBe(
+      'lobby',
+    )
+
+    // ready-up flips the public flag and is toggleable
+    await setSeatReady(host.token, 0, host.seatSecret, true)
+    await setSeatReady(host.token, guest.seatId, guest.seatSecret, true)
+    view = await getGameView(host.token, 0, host.seatSecret)
+    expect(view?.seats.map((s) => s.ready)).toEqual([true, true])
+    await setSeatReady(host.token, guest.seatId, guest.seatSecret, false)
+    expect(
+      (await getGameView(host.token, 0, host.seatSecret))?.seats[1]?.ready,
+    ).toBe(false)
+    await setSeatReady(host.token, guest.seatId, guest.seatSecret, true)
+
+    // only the host may start
+    const notHost = await startGame(host.token, guest.seatSecret)
+    expect(notHost).toMatchObject({ ok: false })
+
+    // host start hands off into the existing play path
+    const started = await startGame(host.token, host.seatSecret)
+    expect(started.ok).toBe(true)
+    expect((await getGameView(host.token, 0, host.seatSecret))?.phase).toBe(
+      'playing',
+    )
+  })
+
+  test('a started game cannot be re-joined or re-started (race guards)', async () => {
+    const { host } = await freshGame() // already playing — every seat claimed
+    // A started game is full, so a would-be joiner finds no open seat. This is
+    // the same guard that resolves two players racing the last lobby slot.
+    await expect(joinGame(host.token, 'Latecomer')).rejects.toThrow(
+      /No open seats/i,
+    )
+    const restart = await startGame(host.token, host.seatSecret)
+    expect(restart).toMatchObject({ ok: false })
+  })
+
+  test('capacity holds: the last open seat admits exactly one player', async () => {
+    const host = await createGame('Ada', 2)
+    await joinGame(host.token, 'Brunel') // fills the only open seat
+    await expect(joinGame(host.token, 'Third')).rejects.toThrow(
+      /No open seats/i,
+    )
+  })
+
+  test('open lobbies are discoverable, and leave the list once full', async () => {
+    const host = await createGame('Ada', 3)
+    const lobbies = await loadOpenLobbies()
+    const mine = lobbies.find((l) => l.token === host.token)
+    expect(mine).toMatchObject({
+      host: 'Ada',
+      capacity: 3,
+      claimed: 1,
+      open: true,
+    })
+    // fill it — a full lobby is no longer joinable, so it drops off the list
+    await joinGame(host.token, 'Brunel')
+    await joinGame(host.token, 'Watt')
+    const after = await loadOpenLobbies()
+    expect(after.find((l) => l.token === host.token)).toBeUndefined()
   })
 
   test('acting requires the right secret, the right turn, a whitelisted event', async () => {

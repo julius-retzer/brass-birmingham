@@ -38,6 +38,10 @@ export interface SeatRecord {
   kind?: 'human' | 'ai'
   /** difficulty tier for 'ai' seats */
   aiTier?: AiTierId
+  /** lobby ready-up: a human seat toggles this before the host may start.
+   *  AI seats are implicitly ready (their readiness is derived from `kind`),
+   *  so the field is only meaningful for claimed human seats. */
+  ready?: boolean
 }
 
 /** One chat line. `id` is the per-game monotonic `seq` from `chat_messages`
@@ -246,6 +250,56 @@ export async function loadActivityStats(
     activeGames: Number(row?.activeGames ?? 0),
     activePlayers: Number(row?.activePlayers ?? 0),
   }
+}
+
+/* ---------------- open-lobby discovery ---------------- */
+
+/** One row in the public lobby list: enough to render a card and offer a
+ *  Join, and NOTHING more — no snapshot, no secrets. `open` is true when at
+ *  least one human seat is still unclaimed. */
+export interface LobbySummary {
+  token: string
+  host: string | null
+  capacity: number
+  claimed: number
+  open: boolean
+  createdAt: string
+}
+
+/**
+ * List the games still in the `lobby` phase, newest first. Used by the public
+ * lobby-browser endpoint, so it must stay cheap: the 28–65KB `snapshot` jsonb
+ * is never selected — only `token`, `seats`, `created_at`. Seat counts are
+ * derived in JS from the small `seats` array (bounded to 4). Only lobbies with
+ * a still-open human seat are returned — a full lobby (all seats claimed,
+ * waiting on the host to start) is not joinable, so it does not belong on a
+ * "join a game" list. AI-only opponent seats never count as open (they are
+ * claimed at creation and cannot be joined off the wire).
+ */
+export async function loadOpenLobbies(limit = 50): Promise<LobbySummary[]> {
+  const rows = await db
+    .select({
+      token: games.token,
+      seats: games.seats,
+      createdAt: games.createdAt,
+    })
+    .from(games)
+    .where(eq(games.phase, 'lobby'))
+    .orderBy(desc(games.createdAt))
+    .limit(limit)
+  return rows
+    .map((row) => {
+      const humanOpen = row.seats.some((s) => s.kind !== 'ai' && !s.claimed)
+      return {
+        token: row.token,
+        host: row.seats[0]?.name ?? null,
+        capacity: row.seats.length,
+        claimed: row.seats.filter((s) => s.claimed).length,
+        open: humanOpen,
+        createdAt: row.createdAt,
+      }
+    })
+    .filter((l) => l.open)
 }
 
 /* ---------------- chat (normalized out of the game row) ---------------- */

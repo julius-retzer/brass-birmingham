@@ -7,7 +7,7 @@
     "node": ">=24.18.0"
   },
   "scripts": {
-    "build": "next build",
+    "build": "node scripts/vercel-migrate.mjs && next build",
     "check": "biome check && tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:local": "docker compose up -d --wait",

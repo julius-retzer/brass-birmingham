@@ -2903,16 +2903,23 @@ export const gameStore = setup({
         return true
       }
 
-      // Special handling for second link in double link building
+      // The second link of a double Network action may build off the FIRST
+      // link's new network extension: each link is placed separately, so the
+      // first link's connected locations are part of the network the second
+      // link is judged against (rules p.9 diagram — link B off link A's far
+      // end). The first link is only staged in context.selectedLink until
+      // execution, so fold it in provisionally when judging the second link's
+      // adjacency. (`withProvisionalLink` is a no-op for a first/single link,
+      // where selectedLink is still null.)
       if (event.type === 'SELECT_SECOND_LINK') {
         if (!context.selectedLink) {
           return false
         }
-
-        // Second link follows same network adjacency rules as regular links
-        // (No special adjacency requirement between the two links)
-        // Continue to regular network adjacency check below
       }
+      const networkPlayer =
+        event.type === 'SELECT_SECOND_LINK'
+          ? getCurrentPlayer(withProvisionalLink(context))
+          : currentPlayer
 
       // Check if link is adjacent to player's network
       // A location is part of your network if:
@@ -2922,12 +2929,12 @@ export const gameStore = setup({
       const playerLocations = new Set<CityId>()
 
       // Add locations with player's industries
-      currentPlayer.industries.forEach((industry) => {
+      networkPlayer.industries.forEach((industry) => {
         playerLocations.add(industry.location)
       })
 
       // Add locations adjacent to player's links (incl. farm breweries)
-      currentPlayer.links.forEach((link) => {
+      networkPlayer.links.forEach((link) => {
         for (const loc of linkConnectedLocations(link.from, link.to)) {
           playerLocations.add(loc)
         }

@@ -7,6 +7,7 @@
 // works and routes already on the board.
 import { useEffect } from 'react'
 import { type IndustryType } from '~/data/cards'
+import { canBuildTileInEra, getBuildableTileInEra } from '~/data/industryTiles'
 import { type Player } from '~/store/gameStore'
 import { PLAYER_FILL } from './board/board-map'
 import {
@@ -175,7 +176,10 @@ export function PlayerLedger({
               // The mat's next tile is simply the lowest one left — never the
               // next era-legal one. A barred tile blocks the industry until
               // Develop removes it, so highlighting past it would promise a
-              // build the engine refuses (rules p.4 step 2 / p.7).
+              // build the engine refuses (rules p.4 step 2 / p.7). Route the
+              // decision through the shared helper so this highlight can never
+              // drift from what the build/develop guards actually allow.
+              const buildableNext = getBuildableTileInEra(levels, era)
               return (
                 <div key={t} className="flex flex-col gap-1.5">
                   <span
@@ -187,15 +191,13 @@ export function PlayerLedger({
                   </span>
                   <div className="flex flex-col gap-1">
                     {tiles.map((tile, i) => {
-                      const eraOk =
-                        era === 'canal'
-                          ? tile.canBuildInCanalEra
-                          : tile.canBuildInRailEra
+                      const eraOk = canBuildTileInEra(tile, era)
                       // Only the lowest remaining tile is ever in play, and
                       // only if this era allows it — otherwise it is what the
-                      // player must Develop away.
-                      const isNext = i === 0 && eraOk
-                      const isBlocking = i === 0 && !eraOk
+                      // player must Develop away. `buildableNext` is the shared
+                      // helper's verdict on that lowest tile (null when barred).
+                      const isNext = i === 0 && buildableNext !== null
+                      const isBlocking = i === 0 && buildableNext === null
                       return (
                         <div
                           key={`${tile.id}-${i}`}

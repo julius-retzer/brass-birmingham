@@ -222,13 +222,22 @@ describe('intent log: atomicity with the version-guarded save', () => {
 
     // Backdate the game past the TTL, then sweep (bypassing the throttle by
     // moving `now` forward; the cutoff stays ~7 days in the past, so other
-    // suites' fresh games are untouched).
+    // suites' fresh games are untouched). The automatic sweep is disabled by
+    // default (analytics retention), so opt this exercise of the reap logic
+    // back in via the flag and restore it afterwards.
     await saveGame({
       ...record,
       version: record.version + 1,
       updatedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     })
-    await sweepStaleGames(Date.now() + 2 * 60 * 60 * 1000)
+    const priorFlag = process.env.BB_ENABLE_TTL_SWEEP
+    process.env.BB_ENABLE_TTL_SWEEP = '1'
+    try {
+      await sweepStaleGames(Date.now() + 2 * 60 * 60 * 1000)
+    } finally {
+      if (priorFlag === undefined) delete process.env.BB_ENABLE_TTL_SWEEP
+      else process.env.BB_ENABLE_TTL_SWEEP = priorFlag
+    }
 
     expect(await loadGame(host.token)).toBeNull()
     expect(await loadIntentLog(host.token)).toEqual([])

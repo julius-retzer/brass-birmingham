@@ -356,8 +356,10 @@ export async function createGame(
   return { token, seatId: 0, seatSecret: secret }
 }
 
-/** The public list of joinable lobbies, newest first. Sweeps stale games
- *  first (cheap, throttled) so the browser never advertises a dead table. */
+/** The public list of joinable lobbies, newest first. The stale-game sweep is
+ *  retained here as a lazy trigger but is disabled by default (see
+ *  `sweepStaleGames` — we keep all games for analytics); it is a no-op unless
+ *  `BB_ENABLE_TTL_SWEEP=1`. */
 export async function listLobbies(): Promise<LobbySummary[]> {
   await sweepStaleGames()
   return loadOpenLobbies()

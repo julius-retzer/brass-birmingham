@@ -33,6 +33,7 @@ import {
 } from '~/store/shared/resourceSources'
 import { disabledActionReason } from './action-reason'
 import { CardChip, cardTitle } from './cards'
+import { blockedIndustries, developableIndustries } from './develop-block'
 import {
   doubleLinkDisabledReason,
   showsDoubleLinkOption,
@@ -314,12 +315,8 @@ function DevelopTilePicker({
   const [counts, setCounts] = useState<Partial<Record<IndustryType, number>>>(
     {},
   )
-  const developable = INDUSTRY_TYPES.filter((t) => {
-    const tiles = currentPlayer.industryTilesOnMat[t] || []
-    return tiles.some(
-      (tw) => tw.quantityAvailable > 0 && isDevelopable(tw.tile),
-    )
-  })
+  const developable = developableIndustries(currentPlayer.industryTilesOnMat)
+  const blocked = blockedIndustries(currentPlayer.industryTilesOnMat)
   const available = (t: IndustryType) =>
     (currentPlayer.industryTilesOnMat[t] || [])
       .filter((tw) => isDevelopable(tw.tile))
@@ -381,6 +378,29 @@ function DevelopTilePicker({
           )
         })}
       </div>
+      {blocked.map(({ type, reason }) => (
+        <div key={type} className="flex flex-col gap-1">
+          <button
+            type="button"
+            className="bb2-option relative flex-col !items-center gap-1.5 py-2.5"
+            data-testid={`develop-blocked-${type}`}
+            disabled
+            title={reason}
+          >
+            <IndustryGlyph type={type} size={20} />
+            <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em]">
+              {type === 'manufacturer' ? 'Goods' : type}
+            </span>
+          </button>
+          <p
+            className="text-[12.5px] leading-snug"
+            data-testid={`develop-blocked-reason-${type}`}
+            style={{ color: '#d68d80' }}
+          >
+            {reason}
+          </p>
+        </div>
+      ))}
       <Confirm disabled={total === 0} onClick={() => onPick(selection)}>
         Scrap {total === 2 ? 'two tiles' : total === 1 ? 'one tile' : 'tiles'}
       </Confirm>

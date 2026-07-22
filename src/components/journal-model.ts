@@ -139,6 +139,14 @@ function chipFor(piece: string): JournalChip | null {
   if (income) return { text: `+${income[1]} income`, tone: 'income' }
   const penalty = /^-(\d+) income$/.exec(piece)
   if (penalty) return { text: `−${penalty[1]} income`, tone: 'penalty' }
+  const level = /^income level (-?\d+)$/.exec(piece)
+  if (level) {
+    const n = Number(level[1])
+    return {
+      text: `income level ${n < 0 ? '−' : ''}${Math.abs(n)}`,
+      tone: n < 0 ? 'penalty' : 'income',
+    }
+  }
   if (/^£\d+$/.test(piece)) return { text: piece, tone: 'money' }
   if (/^shortfall: £\d+$/.test(piece)) return { text: piece, tone: 'penalty' }
   if (

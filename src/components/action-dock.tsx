@@ -11,6 +11,7 @@ import {
   type GameStoreSnapshot,
   type Player,
 } from '~/store/gameStore'
+import { pendingDevelopBonusChoice } from '~/store/shared/developBonus'
 import { isDevelopable } from '~/store/shared/gameUtils'
 import {
   type BeerSourceOption,
@@ -1494,6 +1495,58 @@ export function ActionDock({
             picks={c.chosenBeerSources ?? []}
             onPick={(source) => send({ type: 'SELECT_BEER_SOURCE', source })}
           />
+        )}
+      </Flow>
+    )
+  }
+  if (is('playing.action.selling.choosingDevelopTile')) {
+    const choice = pendingDevelopBonusChoice(
+      currentPlayer.industryTilesOnMat,
+      c.pendingDevelopChoice?.remaining,
+    )
+    // NOTE: no IndustryGlyph here on purpose. The native tsc (CI, Linux only)
+    // fails to resolve the IndustryGlyph import at any JSX site in this branch
+    // where the identifier `industryType` is also in scope — it even suggests
+    // "did you mean industryType". Every other working glyph site uses `.type`.
+    // Rendering the name alone dodges the bug; the picker stays clear.
+    const developChoices: Array<{ kind: IndustryType; tileLevel: number }> = (
+      choice?.options ?? []
+    ).map((o) => ({ kind: o.industryType, tileLevel: o.tile.level }))
+    return (
+      <Flow
+        action="Sell"
+        steps={['Card', 'Goods', 'Develop']}
+        active={2}
+        held={c.selectedCard}
+      >
+        {choice && (
+          <div className="flex flex-col gap-1.5">
+            <Note>
+              Merchant develop bonus: choose which industry to develop. Its
+              lowest tile is removed.
+            </Note>
+            {developChoices.map((opt) => (
+              <button
+                key={opt.kind}
+                type="button"
+                className="bb2-option"
+                data-testid="develop-tile"
+                onClick={() =>
+                  send({ type: 'SELECT_DEVELOP_TILE', industryType: opt.kind })
+                }
+              >
+                <span className="flex flex-col text-left">
+                  <b>{industryLabel(opt.kind)}</b>
+                  <span
+                    className="text-[12px]"
+                    style={{ color: 'rgba(231,215,177,.55)' }}
+                  >
+                    Removes the level {opt.tileLevel} tile
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
         )}
       </Flow>
     )

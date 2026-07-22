@@ -11,6 +11,7 @@
 import { type CityId, cities, connections } from '../../data/board'
 import { type Card, type IndustryType } from '../../data/cards'
 import { type GameEvent, type GameStoreSnapshot } from '../../store/gameStore'
+import { pendingDevelopBonusChoice } from '../../store/shared/developBonus'
 import {
   type BeerSourceOption,
   type CoalSourceOption,
@@ -202,6 +203,18 @@ export function candidateMoves(snapshot: GameStoreSnapshot): LegalMove[] {
       push(
         { type: 'SELECT_COAL_SOURCE', source: option.source },
         `Take the coal from ${describeCoalOption(option)}`,
+      )
+    }
+  }
+  const developChoice = pendingDevelopBonusChoice(
+    me.industryTilesOnMat,
+    ctx.pendingDevelopChoice?.remaining,
+  )
+  if (developChoice?.hasChoice) {
+    for (const option of developChoice.options) {
+      push(
+        { type: 'SELECT_DEVELOP_TILE', industryType: option.industryType },
+        `Develop a level ${option.tile.level} ${option.industryType} tile (merchant bonus)`,
       )
     }
   }

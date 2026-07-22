@@ -104,6 +104,7 @@ const createTestGameState = (
     chosenCoalSources: [],
     pendingIronStep: null,
     pendingCoalStep: null,
+    pendingDevelopChoice: null,
     eraEndPending: false,
     winners: null,
     errorContext: null,

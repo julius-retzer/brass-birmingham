@@ -1,15 +1,22 @@
 'use client'
 
 // The player ledger — the digital equivalent of the physical player mat.
-// Opened from a player's rail card or the dock's OpenMatButton: remaining
-// industry tiles by type and
-// level (cost, VP, resource needs, next-buildable highlight), plus the
-// works and routes already on the board.
-import { useEffect } from 'react'
+// Opened from a player's rail card or the dock's OpenMatButton.
+//
+// Layout mirrors the real player board: one horizontal track per industry,
+// tiles laid left→right by level (lowest = next out) using the board's own
+// tile art. The per-tile facts (cost, resources, VP, income, links, beer,
+// develop) live in a docked readout that follows the highlighted tile —
+// progressive disclosure keeps the mat a clean, board-faithful overview.
+import { useEffect, useMemo, useState } from 'react'
 import { type IndustryType } from '~/data/cards'
-import { canBuildTileInEra, getBuildableTileInEra } from '~/data/industryTiles'
+import {
+  canBuildTileInEra,
+  getBuildableTileInEra,
+  type IndustryTile,
+} from '~/data/industryTiles'
 import { type Player } from '~/store/gameStore'
-import { PLAYER_FILL } from './board/board-map'
+import { INDUSTRY_FILL, INDUSTRY_INK, PLAYER_FILL } from './board/board-map'
 import {
   BeerSteinIcon,
   CanalIcon,
@@ -17,6 +24,7 @@ import {
   DevelopIcon,
   IncomeIcon,
   IndustryChip,
+  IndustryFragment,
   IronIcon,
   LaurelIcon,
   MatIcon,
@@ -44,6 +52,261 @@ const LABEL: Record<IndustryType, string> = {
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII']
 
+// Produced-cube fills, matching the board tile face (board-map.tsx BuiltTile).
+const PRODUCED_CUBE_FILL = {
+  coal: '#1d1b18',
+  iron: '#d07135',
+  beer: '#e8bc4f',
+} as const
+
+// The one resource a tile YIELDS when built (only one is ever non-zero).
+function producedOf(tile: IndustryTile) {
+  if (tile.coalProduced > 0)
+    return { kind: 'coal' as const, n: tile.coalProduced }
+  if (tile.ironProduced > 0)
+    return { kind: 'iron' as const, n: tile.ironProduced }
+  if (tile.beerProduced > 0)
+    return { kind: 'beer' as const, n: tile.beerProduced }
+  return null
+}
+
+// The board tile face rendered on a 52-unit grid (mirrors BuiltTile's
+// unflipped working side), scaled to `size`. Brass ring marks the next tile
+// out of the mat.
+function MatTileArt({
+  type,
+  tile,
+  size = 48,
+  next = false,
+  barred = false,
+}: {
+  type: IndustryType
+  tile: IndustryTile
+  size?: number
+  next?: boolean
+  barred?: boolean
+}) {
+  const prod = producedOf(tile)
+  const fill = INDUSTRY_FILL[type]
+  const ink = INDUSTRY_INK[type]
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 52 52"
+      role="img"
+      aria-label={`${LABEL[type]} ${ROMAN[tile.level] ?? tile.level}`}
+      style={{
+        display: 'block',
+        opacity: barred ? 0.9 : 1,
+        filter: next ? 'drop-shadow(0 0 5px rgba(230,189,99,.55))' : undefined,
+      }}
+    >
+      <rect
+        width="52"
+        height="52"
+        rx="5"
+        fill={fill}
+        stroke="#16130f"
+        strokeWidth="1.2"
+      />
+      <g transform="translate(5, 4)" style={{ color: ink }}>
+        <IndustryFragment type={type} />
+      </g>
+      <text
+        x="47"
+        y="13"
+        textAnchor="end"
+        fill={ink}
+        style={{
+          fontFamily: 'var(--bb-display)',
+          fontWeight: 700,
+          fontSize: 11.5,
+        }}
+      >
+        {ROMAN[tile.level] ?? tile.level}
+      </text>
+      {/* Resource cubes ride the right edge, starting BELOW the level
+          numeral (baseline y=13) so the two never overlap at any width. */}
+      {prod &&
+        prod.n > 0 &&
+        (prod.n <= 5 ? (
+          Array.from({ length: prod.n }, (_, i) => (
+            <rect
+              key={i}
+              x="41"
+              y={17 + i * 6.6}
+              width="6.2"
+              height="6.2"
+              rx="1"
+              fill={PRODUCED_CUBE_FILL[prod.kind]}
+              stroke="#f2e6c8"
+              strokeWidth="1"
+            />
+          ))
+        ) : (
+          <g>
+            <rect
+              x="41"
+              y="17"
+              width="6.2"
+              height="6.2"
+              rx="1"
+              fill={PRODUCED_CUBE_FILL[prod.kind]}
+              stroke="#f2e6c8"
+              strokeWidth="1"
+            />
+            <text
+              x="44.1"
+              y="31"
+              textAnchor="middle"
+              fill="#f2e6c8"
+              stroke="#16130f"
+              strokeWidth="0.5"
+              paintOrder="stroke"
+              style={{
+                fontFamily: 'var(--bb-display)',
+                fontWeight: 700,
+                fontSize: 11,
+              }}
+            >
+              {`×${prod.n}`}
+            </text>
+          </g>
+        ))}
+      {next && (
+        <rect
+          x="0.9"
+          y="0.9"
+          width="50.2"
+          height="50.2"
+          rx="5"
+          fill="none"
+          stroke="#e6bd63"
+          strokeWidth="2"
+        />
+      )}
+    </svg>
+  )
+}
+
+// A small coal/iron square, matching the "to build" legend.
+function BuildSquare({ kind }: { kind: 'coal' | 'iron' }) {
+  return (
+    <span
+      className="inline-block h-[8px] w-[8px] rounded-[2px]"
+      style={
+        kind === 'coal'
+          ? { background: '#55504a', border: '1px solid #8d867c' }
+          : { background: '#c2632f', border: '1px solid #7c3d1c' }
+      }
+    />
+  )
+}
+
+function LinkIcons({ n }: { n: number }) {
+  if (n === 0) return <span style={{ opacity: 0.5 }}>—</span>
+  return (
+    <>
+      {Array.from({ length: n }, (_, k) => (
+        <svg key={k} width="15" height="8" viewBox="0 0 15 8" aria-hidden>
+          <circle cx="2" cy="4" r="1.6" fill="currentColor" />
+          <line
+            x1="3.6"
+            y1="4"
+            x2="11"
+            y2="4"
+            stroke="currentColor"
+            strokeWidth="1.4"
+          />
+          <circle cx="12.6" cy="4" r="1.6" fill="currentColor" />
+        </svg>
+      ))}
+    </>
+  )
+}
+
+// One slot in an industry track: a tile, or an empty placeholder for a
+// depleted level. Tapping/hovering a tile drives the docked readout.
+function TrackSlot({
+  entry,
+  selected,
+  onSelect,
+}: {
+  entry: SlotEntry
+  selected: boolean
+  onSelect: () => void
+}) {
+  if (entry.kind === 'empty') {
+    return (
+      <span
+        aria-hidden
+        title={`no level ${entry.level} left`}
+        className="inline-block h-12 w-12 rounded-md"
+        style={{
+          border: '1px dashed rgba(231,215,177,.16)',
+          background: 'rgba(0,0,0,.18)',
+        }}
+      />
+    )
+  }
+  const { tile, count, next, barred } = entry
+  return (
+    <button
+      type="button"
+      data-testid={`mat-slot-${tile.id}`}
+      aria-pressed={selected}
+      onClick={onSelect}
+      onMouseEnter={onSelect}
+      onFocus={onSelect}
+      className="relative shrink-0 rounded-md transition-transform hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus:outline-none"
+      style={{ opacity: barred ? 0.42 : 1 }}
+    >
+      <MatTileArt
+        type={tile.type}
+        tile={tile}
+        size={48}
+        next={next}
+        barred={barred}
+      />
+      {count > 1 && (
+        <span
+          className="absolute -bottom-1.5 -right-1.5 grid h-[16px] min-w-[16px] place-items-center rounded-full px-1 text-[9.5px] font-bold leading-none"
+          style={{
+            background: '#231e17',
+            border: '1px solid var(--bb-brass-dim)',
+            color: 'var(--bb-brass-bright)',
+          }}
+        >
+          ×{count}
+        </span>
+      )}
+      {selected && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute rounded-lg"
+          style={{
+            inset: -3,
+            border: '1.5px solid var(--bb-brass-bright)',
+            boxShadow: '0 0 12px rgba(230,189,99,.4)',
+          }}
+        />
+      )}
+    </button>
+  )
+}
+
+interface TileSlot {
+  kind: 'tile'
+  level: number
+  tile: IndustryTile
+  count: number
+  next: boolean
+  barred: boolean
+  blocking: boolean
+}
+type SlotEntry = TileSlot | { kind: 'empty'; level: number }
+
 export function PlayerLedger({
   player,
   era,
@@ -64,38 +327,61 @@ export function PlayerLedger({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onClose])
 
-  // Each industry's remaining tiles, expanded one-per-token, lowest level
-  // first.
-  const stacks = INDUSTRY_TYPES.map((t) => {
-    const levels = [...(player.industryTilesOnMat[t] ?? [])].sort(
-      (a, b) => a.tile.level - b.tile.level,
-    )
-    const tiles = levels.flatMap((r) =>
-      Array.from({ length: r.quantityAvailable }, () => r.tile),
-    )
-    // Next tile out = the lowest one left, via the shared helper so this
-    // highlight can't drift from the build/develop guards.
-    return { type: t, tiles, buildableNext: getBuildableTileInEra(levels, era) }
-  })
+  // Each industry as a track: a slot per level (empty when depleted), the
+  // lowest remaining marked `next` (buildable this era) or `blocking` (the
+  // lowest is barred, so it must be Developed away first).
+  const tracks = useMemo(
+    () =>
+      INDUSTRY_TYPES.map((type) => {
+        const rows = [...(player.industryTilesOnMat[type] ?? [])].sort(
+          (a, b) => a.tile.level - b.tile.level,
+        )
+        // The one tile in play, via the shared helper so this highlight
+        // can't drift from the build/develop guards (null when barred).
+        const buildableNext = getBuildableTileInEra(rows, era)
+        const lowestLevel = rows.find((r) => r.quantityAvailable > 0)?.tile
+          .level
+        const slots: SlotEntry[] = rows.map((r) => {
+          if (r.quantityAvailable === 0)
+            return { kind: 'empty', level: r.tile.level }
+          const isLowest = r.tile.level === lowestLevel
+          return {
+            kind: 'tile',
+            level: r.tile.level,
+            tile: r.tile,
+            count: r.quantityAvailable,
+            next: isLowest && buildableNext !== null,
+            barred: !canBuildTileInEra(r.tile, era),
+            blocking: isLowest && buildableNext === null,
+          }
+        })
+        const remaining = rows.reduce((a, r) => a + r.quantityAvailable, 0)
+        return { type, slots, remaining }
+      }),
+    [player.industryTilesOnMat, era],
+  )
 
-  // Pack the stacks into balanced columns (greedy: tallest stack first into
-  // the currently shortest column) so a full fresh mat's tall tracks don't
-  // leave ragged whitespace beside short ones. Each column is then shown
-  // shortest-first — short stacks on top, tall on the bottom.
-  const COLUMN_COUNT = 3
-  const columns = Array.from({ length: COLUMN_COUNT }, () => ({
-    rows: 0,
-    stacks: [] as typeof stacks,
-  }))
-  for (const stack of [...stacks].sort(
-    (a, b) => b.tiles.length - a.tiles.length,
-  )) {
-    const target = columns.reduce((min, c) => (c.rows < min.rows ? c : min))
-    target.stacks.push(stack)
-    target.rows += stack.tiles.length + 1 // +1 for the label row
-  }
-  for (const c of columns)
-    c.stacks.sort((a, b) => a.tiles.length - b.tiles.length)
+  // All selectable tiles, flat, in track/level order — the readout reads
+  // from this and defaults to the first next-out tile.
+  const flatTiles = useMemo(
+    () =>
+      tracks.flatMap((tr) =>
+        tr.slots
+          .filter((s): s is TileSlot => s.kind === 'tile')
+          .map((s) => ({ ...s, industry: tr.type })),
+      ),
+    [tracks],
+  )
+  const defaultKey =
+    (flatTiles.find((f) => f.next) ?? flatTiles[0])?.tile.id ?? null
+
+  const [selectedId, setSelectedId] = useState<string | null>(defaultKey)
+  // Keep the readout valid if the mat changed underneath (e.g. reopened for
+  // another player): fall back to the current default.
+  const selected =
+    flatTiles.find((f) => f.tile.id === selectedId) ??
+    flatTiles.find((f) => f.tile.id === defaultKey) ??
+    null
 
   return (
     <div
@@ -148,9 +434,8 @@ export function PlayerLedger({
         </div>
         <hr className="bb2-rule" />
 
-        {/* Scrollable modal body — listing every tile individually can get
-            tall, so the body scrolls inside the modal rather than the page or
-            the overlay. */}
+        {/* Scrollable modal body — the body scrolls inside the modal rather
+            than the page or the overlay. */}
         <div className="-mr-2 flex-1 overflow-y-auto pr-2">
           {/* tile mat */}
           <div className="pt-4">
@@ -159,305 +444,63 @@ export function PlayerLedger({
               className="pt-1.5 text-[12.5px]"
               style={{ color: 'rgba(231,215,177,.5)' }}
             >
-              Lowest level builds first — the brass-ringed tile is the next one
-              out of the mat. Greyed tiles cannot be built in the {era} era.
+              Tiles build lowest level first — the brass-ringed tile is the next
+              one out. Hover or tap any tile to read its full stats below.
+              Greyed tiles cannot be built in the {era} era.
             </p>
-            <p
-              className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1.5 text-[11.5px]"
-              style={{ color: 'rgba(231,215,177,.45)' }}
-            >
-              <span className="flex items-center gap-1">
-                <span
-                  className="inline-block h-[7px] w-[7px] rounded-[1.5px]"
-                  style={{ background: '#55504a', border: '1px solid #8d867c' }}
-                />
-                coal to build
-              </span>
-              <span className="flex items-center gap-1">
-                <span
-                  className="inline-block h-[7px] w-[7px] rounded-[1.5px]"
-                  style={{ background: '#c2632f', border: '1px solid #7c3d1c' }}
-                />
-                iron to build
-              </span>
-              <span className="flex items-center gap-1">
-                <LaurelIcon size={11} /> victory points
-              </span>
-              <span className="flex items-center gap-1">
-                <IncomeIcon size={11} /> income when flipped
-              </span>
-              <span className="flex items-center gap-1">
-                <svg width="15" height="8" viewBox="0 0 15 8" aria-hidden>
-                  <circle cx="2" cy="4" r="1.6" fill="currentColor" />
-                  <line
-                    x1="3.6"
-                    y1="4"
-                    x2="11"
-                    y2="4"
-                    stroke="currentColor"
-                    strokeWidth="1.4"
-                  />
-                  <circle cx="12.6" cy="4" r="1.6" fill="currentColor" />
-                </svg>
-                link-scoring icons
-              </span>
-              <span className="flex items-center gap-1">
-                <CoalIcon size={11} /> resources produced when built
-              </span>
-              <span className="flex items-center gap-1">
-                <BeerSteinIcon size={11} /> beer needed to sell
-              </span>
-              <span className="flex items-center gap-1">
-                <DevelopIcon size={11} /> develop (<span aria-hidden>✕</span> =
-                cannot)
-              </span>
-            </p>
-            {/* height-packed columns (see packing above) so short stacks
-                don't leave a gap beside tall ones the way fixed grid rows did */}
-            <div className="flex flex-col gap-x-6 gap-y-6 pt-3 sm:flex-row sm:items-start">
-              {columns.map((col, ci) => (
-                <div key={ci} className="flex flex-1 flex-col gap-4">
-                  {col.stacks.map(({ type: t, tiles, buildableNext }) => (
-                    <div key={t} className="flex flex-col gap-1.5">
+
+            {/* industry tracks — one row each, tiles left→right by level.
+                Slots scroll horizontally on narrow screens so nothing runs
+                off-screen. */}
+            <div className="flex flex-col gap-2 pt-3">
+              {tracks.map((tr) => (
+                <div
+                  key={tr.type}
+                  className="grid grid-cols-[110px_1fr] items-center gap-3 rounded-md px-2.5 py-2"
+                  style={{
+                    background:
+                      'linear-gradient(180deg,rgba(255,240,200,.03),rgba(0,0,0,.12))',
+                    border: '1px solid rgba(231,215,177,.07)',
+                  }}
+                >
+                  <span
+                    className="flex items-center gap-1.5 text-[11.5px] font-bold uppercase tracking-[0.1em]"
+                    style={{ color: 'var(--bb-parchment)' }}
+                  >
+                    <IndustryChip type={tr.type} size={13} />
+                    {LABEL[tr.type]}
+                  </span>
+                  <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 py-1">
+                    {tr.slots.length === 0 ? (
                       <span
-                        className="flex items-center gap-1.5 text-[12.5px] font-bold uppercase tracking-[0.14em]"
-                        style={{ color: 'var(--bb-parchment)' }}
+                        className="text-[12px] italic"
+                        style={{ color: 'rgba(231,215,177,.35)' }}
                       >
-                        <IndustryChip type={t} size={14} />
-                        {LABEL[t]}
+                        None remaining
                       </span>
-                      <div className="flex flex-col gap-1">
-                        {tiles.map((tile, i) => {
-                          const eraOk = canBuildTileInEra(tile, era)
-                          // Only the lowest remaining tile is ever in play, and
-                          // only if this era allows it — otherwise it is what the
-                          // player must Develop away. `buildableNext` is the shared
-                          // helper's verdict on that lowest tile (null when barred).
-                          const isNext = i === 0 && buildableNext !== null
-                          const isBlocking = i === 0 && buildableNext === null
-                          // Resources a tile YIELDS when built (only one of the
-                          // three is ever non-zero): coal mines → coal, iron
-                          // works → iron, breweries → beer. All sourced from the
-                          // tile definition, never hardcoded.
-                          const producedKind =
-                            tile.coalProduced > 0
-                              ? ('coal' as const)
-                              : tile.ironProduced > 0
-                                ? ('iron' as const)
-                                : tile.beerProduced > 0
-                                  ? ('beer' as const)
-                                  : null
-                          const producedCount =
-                            tile.coalProduced ||
-                            tile.ironProduced ||
-                            tile.beerProduced
-                          // Lightbulb pottery tiles can only be removed by
-                          // selling, never Developed (rules p.6).
-                          const developable = !tile.hasLightbulbIcon
-                          return (
-                            <div
-                              key={`${tile.id}-${i}`}
-                              className="flex flex-wrap items-center gap-2 rounded border px-2 py-1.5 text-[13px]"
-                              style={{
-                                borderColor: isNext
-                                  ? 'var(--bb-brass-bright)'
-                                  : 'rgba(231,215,177,.12)',
-                                boxShadow: isNext
-                                  ? '0 0 0 1px rgba(230,189,99,.35)'
-                                  : undefined,
-                                opacity: eraOk ? 1 : 0.45,
-                                background: isNext
-                                  ? 'rgba(195,149,56,.09)'
-                                  : 'rgba(255,240,200,.02)',
-                              }}
-                            >
-                              <span
-                                className="bb2-display w-7 text-[13.5px] font-bold"
-                                style={{ color: 'var(--bb-brass-bright)' }}
-                              >
-                                {ROMAN[tile.level] ?? tile.level}
-                              </span>
-                              <span
-                                className="tabular-nums"
-                                style={{ color: 'var(--bb-parchment-bright)' }}
-                              >
-                                £{tile.cost}
-                              </span>
-                              {(tile.coalRequired > 0 ||
-                                tile.ironRequired > 0) && (
-                                <span className="flex items-center gap-1">
-                                  {Array.from(
-                                    { length: tile.coalRequired },
-                                    (_, k) => (
-                                      <span
-                                        key={`c${k}`}
-                                        className="inline-block h-[7px] w-[7px] rounded-[1.5px]"
-                                        style={{
-                                          background: '#55504a',
-                                          border: '1px solid #8d867c',
-                                        }}
-                                        title="coal required"
-                                      />
-                                    ),
-                                  )}
-                                  {Array.from(
-                                    { length: tile.ironRequired },
-                                    (_, k) => (
-                                      <span
-                                        key={`i${k}`}
-                                        className="inline-block h-[7px] w-[7px] rounded-[1.5px]"
-                                        style={{
-                                          background: '#c2632f',
-                                          border: '1px solid #7c3d1c',
-                                        }}
-                                        title="iron required"
-                                      />
-                                    ),
-                                  )}
-                                </span>
-                              )}
-                              {producedKind && (
-                                <span
-                                  className="flex items-center gap-0.5 text-[12px] tabular-nums"
-                                  style={{
-                                    color:
-                                      producedKind === 'coal'
-                                        ? '#b6ae9f'
-                                        : producedKind === 'iron'
-                                          ? '#d07135'
-                                          : '#d3a44a',
-                                  }}
-                                  title={`produces ${producedCount} ${producedKind} when built`}
-                                >
-                                  {producedKind === 'coal' ? (
-                                    <CoalIcon size={12} />
-                                  ) : producedKind === 'iron' ? (
-                                    <IronIcon size={12} />
-                                  ) : (
-                                    <BeerSteinIcon size={12} />
-                                  )}
-                                  ×{producedCount}
-                                </span>
-                              )}
-                              {tile.beerRequired > 0 && (
-                                <span
-                                  className="flex items-center gap-0.5 text-[12px] tabular-nums"
-                                  style={{ color: 'rgba(231,215,177,.6)' }}
-                                  title={`${tile.beerRequired} beer needed to sell`}
-                                >
-                                  <BeerSteinIcon size={12} />×
-                                  {tile.beerRequired}
-                                </span>
-                              )}
-                              <span
-                                className="ml-auto flex items-center gap-0.5 text-[12px]"
-                                style={{ color: 'rgba(231,215,177,.6)' }}
-                                title="victory points when flipped"
-                              >
-                                <LaurelIcon size={11} />
-                                {tile.victoryPoints}
-                              </span>
-                              <span
-                                className="flex items-center gap-0.5 text-[12px]"
-                                style={{ color: 'rgba(231,215,177,.6)' }}
-                                title="income advance when flipped"
-                              >
-                                <IncomeIcon size={11} />+
-                                {tile.incomeAdvancement}
-                              </span>
-                              <span
-                                className="flex items-center gap-0.5 text-[12px]"
-                                style={{ color: 'rgba(231,215,177,.6)' }}
-                                title={`${tile.linkScoringIcons} link-scoring icon(s) on the tile`}
-                              >
-                                {/* one •—• per printed icon, like the physical
-                                tile face (0 icons → an em-dash) */}
-                                {tile.linkScoringIcons === 0 ? (
-                                  <span style={{ opacity: 0.5 }}>—</span>
-                                ) : (
-                                  Array.from(
-                                    { length: tile.linkScoringIcons },
-                                    (_, k) => (
-                                      <svg
-                                        key={k}
-                                        width="15"
-                                        height="8"
-                                        viewBox="0 0 15 8"
-                                        aria-hidden
-                                      >
-                                        <circle
-                                          cx="2"
-                                          cy="4"
-                                          r="1.6"
-                                          fill="currentColor"
-                                        />
-                                        <line
-                                          x1="3.6"
-                                          y1="4"
-                                          x2="11"
-                                          y2="4"
-                                          stroke="currentColor"
-                                          strokeWidth="1.4"
-                                        />
-                                        <circle
-                                          cx="12.6"
-                                          cy="4"
-                                          r="1.6"
-                                          fill="currentColor"
-                                        />
-                                      </svg>
-                                    ),
-                                  )
-                                )}
-                              </span>
-                              <span
-                                className="flex items-center"
-                                style={{
-                                  color: developable
-                                    ? 'rgba(231,215,177,.32)'
-                                    : 'var(--bb-brass-bright)',
-                                }}
-                                title={
-                                  developable
-                                    ? 'can be developed'
-                                    : 'lightbulb tile — cannot be developed'
-                                }
-                              >
-                                <DevelopIcon size={12} />
-                                {!developable && (
-                                  <span className="ml-0.5 text-[11px] font-bold leading-none">
-                                    ✕
-                                  </span>
-                                )}
-                              </span>
-                              {isBlocking && (
-                                <span
-                                  data-testid={`mat-blocked-${tile.id}`}
-                                  className="w-full text-[11px] italic"
-                                  style={{ color: 'rgba(231,215,177,.5)' }}
-                                >
-                                  {era === 'rail'
-                                    ? 'canal-era tile — Develop to skip'
-                                    : 'rail-era tile — not yet buildable'}
-                                </span>
-                              )}
-                            </div>
-                          )
-                        })}
-                        {tiles.length === 0 && (
-                          <span
-                            className="text-[12px] italic"
-                            style={{ color: 'rgba(231,215,177,.35)' }}
-                          >
-                            None remaining
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    ) : (
+                      tr.slots.map((slot) => (
+                        <TrackSlot
+                          key={`${tr.type}-${slot.level}`}
+                          entry={slot}
+                          selected={
+                            slot.kind === 'tile' &&
+                            selected?.tile.id === slot.tile.id
+                          }
+                          onSelect={() => {
+                            if (slot.kind === 'tile')
+                              setSelectedId(slot.tile.id)
+                          }}
+                        />
+                      ))
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
+
+            {/* docked readout — follows the highlighted tile */}
+            {selected && <TileReadout slot={selected} era={era} />}
           </div>
 
           {/* board holdings */}
@@ -527,6 +570,188 @@ export function PlayerLedger({
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// The docked readout for the highlighted tile — every fact sourced from the
+// tile definition, never hardcoded.
+function TileReadout({
+  slot,
+  era,
+}: {
+  slot: TileSlot
+  era: 'canal' | 'rail'
+}) {
+  const { tile, count, next, barred, blocking } = slot
+  const status = next
+    ? 'Next out of the mat'
+    : blocking
+      ? era === 'rail'
+        ? 'Canal-era tile — Develop to skip'
+        : 'Rail-era tile — not yet buildable'
+      : barred
+        ? 'Not buildable this era'
+        : 'Later build'
+  const prod = producedOf(tile)
+  // Lightbulb pottery tiles can only be removed by selling (rules p.6).
+  const developable = !tile.hasLightbulbIcon
+
+  return (
+    <div
+      data-testid="mat-readout"
+      className="mt-3 rounded-md p-3.5"
+      style={{
+        border: '1px solid var(--bb-brass-hairline)',
+        background: 'linear-gradient(170deg,#2c2417,var(--bb-iron-panel))',
+        boxShadow: 'inset 0 1px 0 rgba(255,230,170,.08)',
+      }}
+    >
+      <div className="flex items-center gap-3">
+        <MatTileArt
+          type={tile.type}
+          tile={tile}
+          size={52}
+          next={next}
+          barred={barred}
+        />
+        <div>
+          <div
+            className="bb2-display text-[18px] font-bold"
+            style={{ color: 'var(--bb-parchment-bright)' }}
+          >
+            {LABEL[tile.type]} {ROMAN[tile.level] ?? tile.level}
+          </div>
+          <div
+            className="text-[11px] uppercase tracking-[0.12em]"
+            style={{ color: 'var(--bb-brass-bright)' }}
+          >
+            {status}
+            {count > 1 && ` · ${count} left`}
+          </div>
+        </div>
+      </div>
+      <div
+        className="mt-3 grid gap-2.5"
+        style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(92px,1fr))' }}
+      >
+        <ReadoutCell
+          k="Cost"
+          v={<span className="tabular-nums">£{tile.cost}</span>}
+        />
+        <ReadoutCell
+          k="To build"
+          v={
+            tile.coalRequired > 0 || tile.ironRequired > 0 ? (
+              <span className="flex items-center gap-1">
+                {Array.from({ length: tile.coalRequired }, (_, k) => (
+                  <BuildSquare key={`c${k}`} kind="coal" />
+                ))}
+                {Array.from({ length: tile.ironRequired }, (_, k) => (
+                  <BuildSquare key={`i${k}`} kind="iron" />
+                ))}
+              </span>
+            ) : (
+              <span style={{ color: 'rgba(231,215,177,.55)' }}>none</span>
+            )
+          }
+        />
+        <ReadoutCell
+          k="Victory pts"
+          v={
+            <span className="flex items-center gap-1">
+              <LaurelIcon size={14} />
+              {tile.victoryPoints}
+            </span>
+          }
+        />
+        <ReadoutCell
+          k="Income"
+          v={
+            <span className="flex items-center gap-1">
+              <IncomeIcon size={14} />+{tile.incomeAdvancement}
+            </span>
+          }
+        />
+        <ReadoutCell
+          k="Link icons"
+          v={<LinkIcons n={tile.linkScoringIcons} />}
+        />
+        <ReadoutCell
+          k="Beer to sell"
+          v={
+            tile.beerRequired > 0 ? (
+              <span className="flex items-center gap-1">
+                <BeerSteinIcon size={14} />
+                {tile.beerRequired}
+              </span>
+            ) : (
+              <span style={{ color: 'rgba(231,215,177,.55)' }}>none</span>
+            )
+          }
+        />
+        <ReadoutCell
+          k="Develop"
+          v={
+            developable ? (
+              <span className="flex items-center gap-1">
+                <DevelopIcon size={14} />
+                yes
+              </span>
+            ) : (
+              <span
+                className="flex items-center gap-1"
+                style={{ color: 'var(--bb-brass-bright)' }}
+              >
+                <DevelopIcon size={14} />
+                cannot
+              </span>
+            )
+          }
+        />
+        {prod && (
+          <ReadoutCell
+            k="Produces"
+            v={
+              <span className="flex items-center gap-1">
+                {prod.kind === 'coal' ? (
+                  <CoalIcon size={14} />
+                ) : prod.kind === 'iron' ? (
+                  <IronIcon size={14} />
+                ) : (
+                  <BeerSteinIcon size={14} />
+                )}
+                ×{prod.n}
+              </span>
+            }
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ReadoutCell({ k, v }: { k: string; v: React.ReactNode }) {
+  return (
+    <div
+      className="rounded p-2"
+      style={{
+        background: 'rgba(0,0,0,.2)',
+        border: '1px solid rgba(231,215,177,.08)',
+      }}
+    >
+      <div
+        className="mb-1 text-[9px] uppercase tracking-[0.14em]"
+        style={{ color: 'rgba(231,215,177,.4)' }}
+      >
+        {k}
+      </div>
+      <div
+        className="bb2-display flex items-center gap-1 text-[15px] font-semibold"
+        style={{ color: 'var(--bb-parchment)' }}
+      >
+        {v}
       </div>
     </div>
   )

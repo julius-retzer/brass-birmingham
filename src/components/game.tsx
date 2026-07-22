@@ -48,7 +48,10 @@ import { demoSnapshotWilds } from './demo/demo-snapshot-wilds'
 import { HandTray } from './hand-tray'
 import { computeHoverCities, focusCityFor } from './hover-highlight'
 import { LocateCityProvider, useLocateCityState } from './locate'
-import { pendingBeerChoice } from '~/store/shared/resourceSources'
+import {
+  pendingBeerChoice,
+  pendingCoalChoice,
+} from '~/store/shared/resourceSources'
 import { GameOverScreen, PassGate, RoundCurtain } from './overlays'
 import { OpenMatButton, PlayerLedger } from './player-ledger'
 import { PlayerRail } from './player-rail'
@@ -756,6 +759,26 @@ function GameInner({
     )
   }, [state, ctx])
 
+  // Same idea for a coal tie: while the machine is asking WHICH equally-close
+  // mine to drain (a build, a single or a double rail), spotlight the tied
+  // mines on the board. The choice is the engine's; we only render it.
+  const coalCandidateCities = useMemo(() => {
+    if (
+      !state.matches('playing.action.building.choosingCoalSource' as never) &&
+      !state.matches('playing.action.networking.choosingLinkCoal' as never) &&
+      !state.matches(
+        'playing.action.networking.choosingDoubleLinkCoal' as never,
+      )
+    ) {
+      return null
+    }
+    const choice = pendingCoalChoice(ctx)
+    if (!choice?.hasChoice) return null
+    return new Set<string>(
+      choice.options.map((option) => option.source.location),
+    )
+  }, [state, ctx])
+
   const boardPrompt = useMemo(() => {
     if (pickingSite) {
       const t = ctx.selectedIndustryTile?.type
@@ -962,7 +985,11 @@ function GameInner({
                   needsReveal ? null : PLAYER_FILL[currentPlayer.color]
                 }
                 hoverCities={
-                  needsReveal ? null : (beerCandidateCities ?? hoverCities)
+                  needsReveal
+                    ? null
+                    : (beerCandidateCities ??
+                      coalCandidateCities ??
+                      hoverCities)
                 }
                 locatedCity={locateState.locatedCity}
                 focusCity={needsReveal ? null : focusCityFor(hoveredCard)}

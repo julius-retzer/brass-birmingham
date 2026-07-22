@@ -76,13 +76,17 @@ import {
 } from './shared/gameUtils'
 import {
   type BeerSource,
+  type CoalSource,
   type IronSource,
   type Resource,
   beerChoiceSatisfied,
   canChooseBeerSource,
+  canChooseCoalSource,
   canChooseIronSource,
+  coalChoiceSatisfied,
   ironChoiceSatisfied,
   pendingBeerChoice,
+  pendingCoalChoice,
   pendingIronChoice,
   withProvisionalDoubleLink,
   withProvisionalLink,
@@ -268,12 +272,26 @@ export interface GameState {
   chosenBeerSources: BeerSource[]
   chosenIronSources: IronSource[]
   /**
+   * Which mine each equal-distance coal tie drains, in order — one entry per
+   * tie cube the action needs. Empty = the engine's nearest-mine auto-pick.
+   * Public board references only (like the beer/iron picks), so multiplayer
+   * need not filter them.
+   */
+  chosenCoalSources: CoalSource[]
+  /**
    * Which action the open iron-source step belongs to — set on entry to the
    * choosing state, so the engine never has to infer build-vs-develop from
    * context (the fields collide: an industry Develop card also sets
    * `selectedIndustryTile`). Null outside a choosingIronSource state.
    */
   pendingIronStep: 'build' | 'develop' | null
+  /**
+   * Which action the open coal-source step belongs to — set on entry, for the
+   * same reason as `pendingIronStep`. `build` sources one demand (the build
+   * city), `link` one (the placed rail link), `doubleLink` two (each rail in
+   * turn). Null outside a coal-choosing state.
+   */
+  pendingCoalStep: 'build' | 'link' | 'doubleLink' | null
   // Set when a round completes with the draw deck and all hands exhausted;
   // drives the automatic era-end transition
   eraEndPending: boolean
@@ -363,6 +381,11 @@ type GameEvent =
       /** Take one cube from this source (the `choosingIronSource` step). */
       type: 'SELECT_IRON_SOURCE'
       source: IronSource
+    }
+  | {
+      /** Drain this mine for one tied coal cube (a `choosing*Coal` step). */
+      type: 'SELECT_COAL_SOURCE'
+      source: CoalSource
     }
   | {
       type: 'CONFIRM'
@@ -706,7 +729,9 @@ export const gameStore = setup({
         pendingSale: null,
         chosenBeerSources: [],
         chosenIronSources: [],
+        chosenCoalSources: [],
         pendingIronStep: null,
+        pendingCoalStep: null,
         eraEndPending: false,
         winners: null,
         lastError: null,
@@ -921,6 +946,7 @@ export const gameStore = setup({
             tile,
             updatedHand,
             context.chosenIronSources ?? [],
+            context.chosenCoalSources ?? [],
           )
         } catch (error) {
           return {
@@ -968,6 +994,8 @@ export const gameStore = setup({
           selectedCard: null,
           selectedLocation: null,
           selectedIndustryTile: null,
+          chosenCoalSources: [],
+          pendingCoalStep: null,
           actionsRemaining: context.actionsRemaining - 1,
           spentMoney: context.spentMoney + totalCost,
           playerSpending: {
@@ -1067,6 +1095,7 @@ export const gameStore = setup({
           contextWithLink,
           [context.selectedLink.from, context.selectedLink.to],
           1,
+          context.chosenCoalSources ?? [],
         )
 
         if (!coalResult.success) {
@@ -1126,6 +1155,8 @@ export const gameStore = setup({
         selectedLink: null,
         selectedLocation: null,
         selectedIndustryTile: null,
+        chosenCoalSources: [],
+        pendingCoalStep: null,
         actionsRemaining: context.actionsRemaining - 1,
         spentMoney: context.spentMoney + totalCost,
         playerSpending: {
@@ -1149,9 +1180,10 @@ export const gameStore = setup({
 
     clearSecondLink: assign({
       selectedSecondLink: null,
-      // The double-link barrel belongs to this second link; drop any pick so a
-      // re-selected link asks again rather than inheriting the stale choice.
+      // The double-link barrel + coal belong to this second link; drop any
+      // picks so a re-selected link asks again rather than inheriting stale ones.
       chosenBeerSources: [],
+      chosenCoalSources: [],
     }),
 
     // Entered from selectingSecondLink — start the barrel pick fresh so a
@@ -1221,6 +1253,11 @@ export const gameStore = setup({
         playerWithFirstLink,
       )
 
+      // Coal tie picks are ordered first-link then second-link (the order
+      // pendingCoalChoice walked the demands). The first consumption reports
+      // how many it used so the second gets the rest.
+      const coalPicks = context.chosenCoalSources ?? []
+
       // Consume first coal (closest to first link, over both its endpoints)
       const firstCoalResult = consumeCoalFromSources(
         {
@@ -1230,6 +1267,7 @@ export const gameStore = setup({
         },
         [context.selectedLink.from, context.selectedLink.to],
         1,
+        coalPicks,
       )
 
       if (!firstCoalResult.success) {
@@ -1276,6 +1314,7 @@ export const gameStore = setup({
         },
         [context.selectedSecondLink.from, context.selectedSecondLink.to],
         1,
+        coalPicks.slice(firstCoalResult.picksUsed),
       )
 
       if (!secondCoalResult.success) {
@@ -1355,6 +1394,8 @@ export const gameStore = setup({
         selectedLocation: null,
         selectedIndustryTile: null,
         chosenBeerSources: [],
+        chosenCoalSources: [],
+        pendingCoalStep: null,
         actionsRemaining: context.actionsRemaining - 1,
         spentMoney: context.spentMoney + totalCost,
         playerSpending: {
@@ -2178,7 +2219,9 @@ export const gameStore = setup({
       pendingSale: null,
       chosenBeerSources: [],
       chosenIronSources: [],
+      chosenCoalSources: [],
       pendingIronStep: null,
+      pendingCoalStep: null,
     }),
 
     /** Hold a sale still while the player says where its beer comes from. */
@@ -2230,6 +2273,37 @@ export const gameStore = setup({
           picks.length >= required ? [event.source] : [...picks, event.source],
       }
     }),
+
+    // Entered from build / single link / double link — record which, so
+    // pendingCoalChoice knows the demands, and start the picks fresh (a
+    // cancelled-and-reselected action must re-ask, mirror of the iron steps).
+    enterBuildCoalStep: assign({
+      pendingCoalStep: 'build' as const,
+      chosenCoalSources: [],
+    }),
+    enterLinkCoalStep: assign({
+      pendingCoalStep: 'link' as const,
+      chosenCoalSources: [],
+    }),
+    enterDoubleLinkCoalStep: assign({
+      pendingCoalStep: 'doubleLink' as const,
+      chosenCoalSources: [],
+    }),
+
+    /**
+     * Drain one tied mine. Unlike beer/iron this never restarts the
+     * allocation: a coal action can span several tie cubes (a shortfall
+     * crossing into a farther tied tier, or the two rails of a double link),
+     * and pendingCoalChoice advances through them in order — the `always`
+     * auto-advances the moment the last tie is resolved.
+     */
+    chooseCoalSource: assign(({ context, event }) => {
+      if (event.type !== 'SELECT_COAL_SOURCE') return {}
+      const picks = context.chosenCoalSources ?? []
+      return { chosenCoalSources: [...picks, event.source] }
+    }),
+
+    clearCoalChoice: assign({ chosenCoalSources: [], pendingCoalStep: null }),
 
     selectLocation: assign(({ context, event }) => {
       if (event.type !== 'SELECT_LOCATION') return {}
@@ -2707,18 +2781,31 @@ export const gameStore = setup({
      * (`guard: { type: 'choiceSatisfied', params: { resource: 'beer' } }`),
      * mirroring how resourceSources.ts already pairs its selectors.
      */
-    choiceSatisfied: ({ context }, params: { resource: Resource }) =>
-      params.resource === 'beer'
-        ? beerChoiceSatisfied(context)
-        : ironChoiceSatisfied(context),
+    choiceSatisfied: ({ context }, params: { resource: Resource }) => {
+      if (params.resource === 'beer') return beerChoiceSatisfied(context)
+      if (params.resource === 'iron') return ironChoiceSatisfied(context)
+      return coalChoiceSatisfied(context)
+    },
 
     /** Only a source this step actually offers may be picked. */
-    canChooseSource: ({ context, event }, params: { resource: Resource }) =>
-      params.resource === 'beer'
-        ? event.type === 'SELECT_BEER_SOURCE' &&
+    canChooseSource: ({ context, event }, params: { resource: Resource }) => {
+      if (params.resource === 'beer') {
+        return (
+          event.type === 'SELECT_BEER_SOURCE' &&
           canChooseBeerSource(context, event.source)
-        : event.type === 'SELECT_IRON_SOURCE' &&
-          canChooseIronSource(context, event.source),
+        )
+      }
+      if (params.resource === 'iron') {
+        return (
+          event.type === 'SELECT_IRON_SOURCE' &&
+          canChooseIronSource(context, event.source)
+        )
+      }
+      return (
+        event.type === 'SELECT_COAL_SOURCE' &&
+        canChooseCoalSource(context, event.source)
+      )
+    },
 
     canExecuteSale: ({ context, event }) => {
       if (event.type !== 'SELECT_SALE') return false
@@ -3175,7 +3262,9 @@ export const gameStore = setup({
     pendingSale: null,
     chosenBeerSources: [],
     chosenIronSources: [],
+    chosenCoalSources: [],
     pendingIronStep: null,
+    pendingCoalStep: null,
     eraEndPending: false,
     winners: null,
     // Error state
@@ -3417,7 +3506,7 @@ export const gameStore = setup({
                         type: 'choiceSatisfied',
                         params: { resource: 'iron' },
                       },
-                      target: 'confirmingBuild',
+                      target: 'choosingCoalSource',
                     },
                   ],
                   on: {
@@ -3431,6 +3520,36 @@ export const gameStore = setup({
                     CANCEL: {
                       target: 'selectingLocation',
                       actions: 'clearLocation',
+                    },
+                  },
+                },
+                /**
+                 * Which mine pays for this build's coal — only when two or more
+                 * connected mines tie at the nearest distance. Auto-skipped
+                 * whenever the tile needs no coal or one nearest mine covers it.
+                 */
+                choosingCoalSource: {
+                  entry: 'enterBuildCoalStep',
+                  always: [
+                    {
+                      guard: {
+                        type: 'choiceSatisfied',
+                        params: { resource: 'coal' },
+                      },
+                      target: 'confirmingBuild',
+                    },
+                  ],
+                  on: {
+                    SELECT_COAL_SOURCE: {
+                      actions: 'chooseCoalSource',
+                      guard: {
+                        type: 'canChooseSource',
+                        params: { resource: 'coal' },
+                      },
+                    },
+                    CANCEL: {
+                      target: 'selectingLocation',
+                      actions: ['clearLocation', 'clearCoalChoice'],
                     },
                   },
                 },
@@ -3678,8 +3797,11 @@ export const gameStore = setup({
                 confirmingLink: {
                   on: {
                     CONFIRM: {
-                      target: '#brassGame.playing.actionComplete',
-                      actions: 'executeNetworkAction',
+                      // A rail link burns 1 coal; when two connected mines tie
+                      // at the nearest distance the player picks which. The
+                      // coal step auto-skips (and executes straight through)
+                      // for canal links and single-nearest-mine rail links.
+                      target: 'choosingLinkCoal',
                       guard: 'hasSelectedLink',
                     },
                     CHOOSE_DOUBLE_LINK_BUILD: {
@@ -3692,15 +3814,73 @@ export const gameStore = setup({
                     },
                   },
                 },
+                choosingLinkCoal: {
+                  entry: 'enterLinkCoalStep',
+                  always: [
+                    {
+                      guard: {
+                        type: 'choiceSatisfied',
+                        params: { resource: 'coal' },
+                      },
+                      target: '#brassGame.playing.actionComplete',
+                      actions: 'executeNetworkAction',
+                    },
+                  ],
+                  on: {
+                    SELECT_COAL_SOURCE: {
+                      actions: 'chooseCoalSource',
+                      guard: {
+                        type: 'canChooseSource',
+                        params: { resource: 'coal' },
+                      },
+                    },
+                    CANCEL: {
+                      target: 'confirmingLink',
+                      actions: 'clearCoalChoice',
+                    },
+                  },
+                },
                 selectingSecondLink: {
                   on: {
                     SELECT_SECOND_LINK: {
-                      target: 'choosingDoubleLinkBeer',
+                      target: 'choosingDoubleLinkCoal',
                       actions: 'selectSecondLink',
                       guard: 'canBuildLink',
                     },
                     CANCEL: {
                       target: 'confirmingLink',
+                      actions: 'clearSecondLink',
+                    },
+                  },
+                },
+                /**
+                 * The two rails each burn 1 coal (nearest mine, judged after
+                 * each is placed). This step asks the player to break any
+                 * equal-distance tie — first link's coal, then the second's —
+                 * then falls through to the beer step. Auto-skipped when
+                 * neither link's coal has a tie.
+                 */
+                choosingDoubleLinkCoal: {
+                  entry: 'enterDoubleLinkCoalStep',
+                  always: [
+                    {
+                      guard: {
+                        type: 'choiceSatisfied',
+                        params: { resource: 'coal' },
+                      },
+                      target: 'choosingDoubleLinkBeer',
+                    },
+                  ],
+                  on: {
+                    SELECT_COAL_SOURCE: {
+                      actions: 'chooseCoalSource',
+                      guard: {
+                        type: 'canChooseSource',
+                        params: { resource: 'coal' },
+                      },
+                    },
+                    CANCEL: {
+                      target: 'selectingSecondLink',
                       actions: 'clearSecondLink',
                     },
                   },

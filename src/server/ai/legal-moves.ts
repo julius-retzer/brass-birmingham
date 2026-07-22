@@ -13,8 +13,10 @@ import { type Card, type IndustryType } from '../../data/cards'
 import { type GameEvent, type GameStoreSnapshot } from '../../store/gameStore'
 import {
   type BeerSourceOption,
+  type CoalSourceOption,
   type IronSourceOption,
   pendingBeerChoice,
+  pendingCoalChoice,
   pendingIronChoice,
 } from '../../store/shared/resourceSources'
 
@@ -65,6 +67,11 @@ function describeIronOption(option: IronSourceOption): string {
     return option.price ? `the market (£${option.price}/cube)` : 'the market'
   }
   const where = `the iron works at ${cityName(option.source.location)}`
+  return option.own ? `your own ${where}` : `${option.ownerName}'s ${where}`
+}
+
+function describeCoalOption(option: CoalSourceOption): string {
+  const where = `the coal mine at ${cityName(option.source.location)}`
   return option.own ? `your own ${where}` : `${option.ownerName}'s ${where}`
 }
 
@@ -186,6 +193,15 @@ export function candidateMoves(snapshot: GameStoreSnapshot): LegalMove[] {
       push(
         { type: 'SELECT_IRON_SOURCE', source: option.source },
         `Take an iron from ${describeIronOption(option)}`,
+      )
+    }
+  }
+  const coalChoice = pendingCoalChoice(ctx)
+  if (coalChoice?.hasChoice) {
+    for (const option of coalChoice.options) {
+      push(
+        { type: 'SELECT_COAL_SOURCE', source: option.source },
+        `Take the coal from ${describeCoalOption(option)}`,
       )
     }
   }

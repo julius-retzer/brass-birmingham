@@ -267,12 +267,34 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
     disagree. `choosingDoubleLinkBeer` resets `chosenBeerSources` on entry (and
     `clearSecondLink`/the success return clear it) so a cancelled-and-reselected
     double link re-asks instead of inheriting a stale pick.
-  - Coal is deliberately excluded (closest-mine rule, not a choice). The
-    staged sale/picks reference only public board state, so
-    `filterSnapshotForSeat` needs nothing; a forged MP pick is refused by the
-    same guard. Pinned by `gameStore.sourcechoice.test.ts`,
-    `legal-moves.test.ts`, `intent.test.ts`, `e2e/beer-source.spec.ts` +
-    `?demo=beerchoice`.
+  - Coal now flows through the SAME machinery for equal-distance ties ONLY
+    (2026-07-22, supersedes its earlier exclusion): coal must come from the
+    CLOSEST connected mine, so the only choice it ever offers is the tie-break
+    between mines at the same nearest distance (rules L119-121) — distinct
+    distances still auto-pick, no prompt. `SELECT_COAL_SOURCE` +
+    `pendingCoalChoice`/`coalChoiceSatisfied`/`canChooseCoalSource`; picks in
+    `chosenCoalSources`, step in `pendingCoalStep`
+    (`build`|`link`|`doubleLink`). The tie logic is ONE shared allocator,
+    `runCoalAllocation` (`resourceSources.ts`), used by BOTH the choice
+    selector and `consumeCoalFromSources` (which gained a `preferredSources`
+    param + a `picksUsed` return so a double link slices its two demands) — a
+    tie is a cube where the nearest tier holds 2+ stocked mines AND more cubes
+    than the demand still needs, matching beer/iron's `hasSourceChoice`.
+    Machine steps `building.choosingCoalSource`,
+    `networking.choosingLinkCoal`, `networking.choosingDoubleLinkCoal`, each
+    auto-skipping via `always`+`coalChoiceSatisfied` (so the common
+    single-mine case and every existing pin stay transparent). The AI's
+    deterministic fallback picks the first-offered (nearest, discovery order) =
+    the historic auto-pick, so AI games never stall. Coal picks reference only
+    public board state, so `filterSnapshotForSeat` needs nothing; a forged MP
+    pick is refused by the same guard/`explainRefusal`. Pinned by
+    `gameStore.coaltiechoice.test.ts` + `intent.test.ts`; UI picker in
+    `action-dock.tsx` (`CoalSourcePicker`) + board spotlight in `game.tsx`.
+  - Beer/iron are a free "any source" pick. The staged sale/picks reference
+    only public board state, so `filterSnapshotForSeat` needs nothing; a forged
+    MP pick is refused by the same guard. Pinned by
+    `gameStore.sourcechoice.test.ts`, `legal-moves.test.ts`, `intent.test.ts`,
+    `e2e/beer-source.spec.ts` + `?demo=beerchoice`.
 - COAL "NEAREST MINE" CONSUMPTION (`consumeCoalFromSources` +
   `findConnectedCoalMines`, `market/marketActions.ts` + `shared/gameUtils.ts`):
   `findConnectedCoalMines` returns EVERY connected stocked mine ordered
@@ -286,7 +308,9 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   (`consumeCoalFromSources`/`findConnectedCoalMines`/`isLocationConnectedToMerchant`
   accept a `CityId | CityId[]` anchor). Keep guard/exec/double-first-coal/refusal
   in lockstep. Pinned by `gameStore.coalnearestmine.test.ts`. Equidistant-mine
-  ties are still auto-picked (discovery order) — a tie-choice UI is out of scope.
+  ties are a PLAYER CHOICE (2026-07-22, `gameStore.coaltiechoice.test.ts`) — see
+  the coal note under RESOURCE SOURCE CHOICE above; omitting a preference still
+  auto-picks discovery order.
 - Link scoring: 1 VP per •-• icon on built industry tiles in the two
   adjacent locations, plus `GAME_CONSTANTS.MERCHANT_LINK_ICONS` (2) at
   merchant locations.

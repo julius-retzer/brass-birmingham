@@ -141,52 +141,61 @@ export function calculateNetworkDistance(
 // RULES (p.5, L119-121): coal comes from the closest connected unflipped Coal
 // Mine (any owner), and "if a Coal Mine runs out of coal, and you need more,
 // choose the next closest Coal Mine" — free — before the coal market is ever
-// touched. So this returns EVERY connected stocked mine, ordered nearest-first,
-// and the consumer drains them in that order until the requirement is met.
-//
-// `location` may be a single city or, for a rail link (which touches two
-// locations), both of its endpoints — a mine's distance is then measured from
-// whichever endpoint is closer (min over the anchors). Passing both endpoints
-// makes the pick independent of the link's from/to orientation.
+// touched. `location` may be a single city or, for a rail link (which touches
+// two locations), both of its endpoints — a mine's distance is then measured
+// from whichever endpoint is closer (min over the anchors). Passing both
+// endpoints makes the pick independent of the link's from/to orientation.
+
+/**
+ * Every connected, unflipped, stocked coal mine (any owner) with the link
+ * distance from the anchor(s) at which it sits. Sorted nearest-first; within a
+ * distance tier the players'/industries' iteration order is kept (a stable
+ * sort), which is where an equal-distance tie between mines lives — the
+ * consuming player breaks it (rules L119-121).
+ */
+export function findConnectedCoalMinesByDistance(
+  context: GameState,
+  location: CityId | CityId[],
+): Array<{
+  mine: Player['industries'][number]
+  ownerId: string
+  distance: number
+}> {
+  const anchors = Array.isArray(location) ? location : [location]
+  const result: Array<{
+    mine: Player['industries'][number]
+    ownerId: string
+    distance: number
+  }> = []
+
+  for (const player of context.players) {
+    for (const mine of player.industries) {
+      if (mine.type !== 'coal' || mine.flipped || mine.coalCubesOnTile <= 0) {
+        continue
+      }
+      const distance = Math.min(
+        ...anchors.map((anchor) =>
+          calculateNetworkDistance(context, anchor, mine.location),
+        ),
+      )
+      if (distance !== Infinity) {
+        result.push({ mine, ownerId: player.id, distance })
+      }
+    }
+  }
+
+  result.sort((a, b) => a.distance - b.distance)
+  return result
+}
+
 export function findConnectedCoalMines(
   context: GameState,
   location: CityId | CityId[],
   _currentPlayer: Player,
 ): Player['industries'] {
-  const anchors = Array.isArray(location) ? location : [location]
-
-  const allCoalMines = context.players
-    .flatMap((player) => player.industries)
-    .filter(
-      (industry) =>
-        industry.type === 'coal' &&
-        !industry.flipped &&
-        industry.coalCubesOnTile > 0,
-    )
-
-  // Calculate distance to each coal mine and group by distance
-  const minesByDistance = new Map<number, Player['industries']>()
-
-  for (const mine of allCoalMines) {
-    const distance = Math.min(
-      ...anchors.map((anchor) =>
-        calculateNetworkDistance(context, anchor, mine.location),
-      ),
-    )
-    if (distance !== Infinity) {
-      // Only include connected mines
-      if (!minesByDistance.has(distance)) {
-        minesByDistance.set(distance, [])
-      }
-      minesByDistance.get(distance)!.push(mine)
-    }
-  }
-
-  // Return ALL connected mines, closest distance first (0 = same location,
-  // 1 = one link away, ...). Within a distance tier discovery order is kept,
-  // which is where an equidistant-mine tie is currently auto-resolved.
-  const distances = Array.from(minesByDistance.keys()).sort((a, b) => a - b)
-  return distances.flatMap((distance) => minesByDistance.get(distance) ?? [])
+  // ALL connected mines, closest distance first (0 = same location, 1 = one
+  // link away, ...) — the consumer drains them in that order until met.
+  return findConnectedCoalMinesByDistance(context, location).map((e) => e.mine)
 }
 
 export function findAvailableIronWorks(

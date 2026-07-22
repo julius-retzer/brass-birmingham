@@ -1504,6 +1504,15 @@ export function ActionDock({
       currentPlayer.industryTilesOnMat,
       c.pendingDevelopChoice?.remaining,
     )
+    // Project to a locally-typed shape before rendering: passing the imported
+    // DevelopBonusOption's member type straight into the IndustryGlyph JSX prop
+    // tripped a name-resolution bug in the native tsc on CI (compiled clean
+    // locally). A plain local array sidesteps it.
+    const developOptions: Array<{ industryType: IndustryType; level: number }> =
+      (choice?.options ?? []).map((o) => ({
+        industryType: o.industryType,
+        level: o.tile.level,
+      }))
     return (
       <Flow
         action="Sell"
@@ -1517,27 +1526,24 @@ export function ActionDock({
               Merchant develop bonus: choose which industry to develop. Its
               lowest tile is removed.
             </Note>
-            {choice.options.map((option) => (
+            {developOptions.map(({ industryType, level }) => (
               <button
-                key={option.industryType}
+                key={industryType}
                 type="button"
                 className="bb2-option"
                 data-testid="develop-tile"
                 onClick={() =>
-                  send({
-                    type: 'SELECT_DEVELOP_TILE',
-                    industryType: option.industryType,
-                  })
+                  send({ type: 'SELECT_DEVELOP_TILE', industryType })
                 }
               >
-                <IndustryGlyph type={option.industryType} size={16} />
+                <IndustryGlyph type={industryType} size={16} />
                 <span className="flex flex-col text-left">
-                  <b>{industryLabel(option.industryType)}</b>
+                  <b>{industryLabel(industryType)}</b>
                   <span
                     className="text-[12px]"
                     style={{ color: 'rgba(231,215,177,.55)' }}
                   >
-                    Removes the level {option.tile.level} tile
+                    Removes the level {level} tile
                   </span>
                 </span>
               </button>

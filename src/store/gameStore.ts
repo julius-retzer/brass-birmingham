@@ -2096,6 +2096,23 @@ export const gameStore = setup({
         const isFinalGameRound =
           context.isFinalRound || (context.era === 'rail' && isEraOver)
 
+        // Announce the turn order the spending just decided (least spender
+        // leads). Skipped on the game's final round — there is no next turn.
+        if (!isFinalGameRound) {
+          const orderLine = newTurnOrder
+            .map((playerId) => {
+              const p = updatedPlayers.find((pl) => pl.id === playerId)
+              return `${p?.name ?? playerId} £${context.playerSpending[playerId] || 0}`
+            })
+            .join(', ')
+          logs.push(
+            createLogEntry(
+              `Turn order set by spending, least first: ${orderLine}`,
+              'info',
+            ),
+          )
+        }
+
         // Money before settlement, so the summary can report the income
         // delta the players actually experienced (a shortfall pays only
         // what it can) rather than the nominal income figure.
@@ -2103,9 +2120,15 @@ export const gameStore = setup({
           updatedPlayers.map((player) => [player.id, player.money]),
         )
 
-        // 2. Collect income (if not final round of the game)
+        // 2. Collect income (if not final round of the game). Settle each
+        // player in the NEW turn order so the journal reads top-to-bottom in
+        // the order players will act next round; the players array itself
+        // keeps its original order (indices are load-bearing elsewhere).
         if (!isFinalGameRound) {
-          updatedPlayers = updatedPlayers.map((player) => {
+          const settledById = new Map<string, Player>()
+          for (const settleId of newTurnOrder) {
+            const player = updatedPlayers.find((p) => p.id === settleId)
+            if (!player) continue
             const updatedPlayer = { ...player }
 
             if (player.income >= 0) {
@@ -2113,7 +2136,7 @@ export const gameStore = setup({
               updatedPlayer.money += player.income
               logs.push(
                 createLogEntry(
-                  `${player.name} collected £${player.income} income`,
+                  `${player.name} collected £${player.income} income (income level ${player.income})`,
                   'info',
                 ),
               )
@@ -2126,7 +2149,7 @@ export const gameStore = setup({
                 updatedPlayer.money -= amountOwed
                 logs.push(
                   createLogEntry(
-                    `${player.name} paid £${amountOwed} negative income`,
+                    `${player.name} paid £${amountOwed} negative income (income level ${player.income})`,
                     'info',
                   ),
                 )
@@ -2207,15 +2230,16 @@ export const gameStore = setup({
 
                 logs.push(
                   createLogEntry(
-                    `${player.name} paid £${amountOwed} negative income (shortfall: £${shortfall})`,
+                    `${player.name} paid £${amountOwed} negative income (income level ${player.income}, shortfall: £${shortfall})`,
                     'info',
                   ),
                 )
               }
             }
 
-            return updatedPlayer
-          })
+            settledById.set(settleId, updatedPlayer)
+          }
+          updatedPlayers = updatedPlayers.map((p) => settledById.get(p.id) ?? p)
         }
 
         const income: Record<string, number> = {}

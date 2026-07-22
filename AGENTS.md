@@ -762,6 +762,16 @@ When updating this file, preserve this bar for all agents and keep entries conci
   device on). Both seed "already seen" from the booted snapshot so a resume/join
   never replays an old round. The summary is PUBLIC (spends and turn order are
   visible at any table) and passes `filterSnapshotForSeat` unfiltered.
+- END-OF-ROUND JOURNAL (2026-07-22): the same `nextPlayer` round-complete
+  branch also LOGS the transition — one `Turn order set by spending, least
+  first: <name £spent>, …` line, then the per-player income lines, both listed
+  in the NEW turn order (settlement iterates `newTurnOrder`; the players array
+  keeps its index order). Each income line carries the level as an `(income
+  level N)` fragment that `journal-model.ts` lifts into a chip (`chipFor`); both
+  lines are SKIPPED on the game's final round (no income, no next turn). Shapes
+  are additive, so pre-existing journals still render. Pinned by
+  `gameStore.endroundlog.test.ts`; teach `journal-model.ts` + its test about any
+  new round-end line shape in the same commit.
 - UNDO (2026-07-15) is HOTSEAT-ONLY and shell-level: `game.tsx` snapshots the
   machine at turn start (`turnAnchor`) and remounts from it; one action
   undoable while the same player still has an action left. Multiplayer undo

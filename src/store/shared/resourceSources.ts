@@ -15,15 +15,21 @@ import type { CityId } from '../../data/board'
 import type { IndustryType } from '../../data/cards'
 import { GAME_CONSTANTS } from '../constants'
 import type { GameState, Player } from '../gameStore'
-import { calculateNetworkDistance, getCurrentPlayer } from './gameUtils'
+import {
+  calculateNetworkDistance,
+  findConnectedCoalMinesByDistance,
+  getCurrentPlayer,
+} from './gameUtils'
 
 /**
- * The two resources whose source the player gets to choose. Coal is
- * deliberately absent: it comes from the closest connected mine by rule, so
- * there is never a question to ask. Every selector in this module comes in a
- * beer/iron pair keyed on this, and the machine's guards take it as a param.
+ * The resources whose source the player gets to choose. Beer and iron are a
+ * free "any source" pick; coal is different — it must come from the CLOSEST
+ * connected mine, so the only choice it ever offers is the tie-break between
+ * two or more mines that sit at the same nearest distance (rules L119-121).
+ * Every selector in this module comes in a beer/iron/coal set keyed on this,
+ * and the machine's guards take it as a param.
  */
-export type Resource = 'beer' | 'iron'
+export type Resource = 'beer' | 'iron' | 'coal'
 
 /**
  * A brewery source names a player's brewery tiles at a location. Two tiles of
@@ -38,6 +44,13 @@ export type BeerSource =
 export type IronSource =
   | { kind: 'ironworks'; ownerId: string; location: CityId }
   | { kind: 'market' }
+
+/**
+ * A coal source names one player's coal mine at a location. Coal always comes
+ * from the nearest connected mine; a source is only ever OFFERED as a choice
+ * when two or more mines tie at that nearest distance.
+ */
+export type CoalSource = { kind: 'mine'; ownerId: string; location: CityId }
 
 /**
  * A source on offer, with the consequences of taking from it. The engine owns
@@ -101,6 +114,27 @@ export interface IronChoice {
   hasChoice: boolean
 }
 
+export interface CoalSourceOption {
+  source: CoalSource
+  /** Cubes still on this mine at the point the choice is asked. */
+  available: number
+  own: boolean
+  ownerName?: string
+  /** Link distance from the consuming location — the same for every tied mine. */
+  distance: number
+  /** Taking this mine's LAST cube flips it, advancing its owner's income. */
+  flipsOwnerTile: boolean
+}
+
+export interface CoalChoice {
+  resource: 'coal'
+  /** Total cubes the action consumes (across every mine, tier and the market). */
+  required: number
+  /** The tied mines for the NEXT unresolved cube; empty when nothing to ask. */
+  options: CoalSourceOption[]
+  hasChoice: boolean
+}
+
 export const beerSourceKey = (source: BeerSource): string =>
   source.kind === 'merchant'
     ? `merchant:${source.location}`
@@ -110,6 +144,9 @@ export const ironSourceKey = (source: IronSource): string =>
   source.kind === 'market'
     ? 'market'
     : `ironworks:${source.ownerId}:${source.location}`
+
+export const coalSourceKey = (source: CoalSource): string =>
+  `mine:${source.ownerId}:${source.location}`
 
 const isUsableBrewery = (industry: Player['industries'][number]) =>
   industry.type === 'brewery' &&
@@ -281,6 +318,14 @@ export function describeIronSource(
   if (source.kind === 'market') return 'the iron market'
   const owner = context.players.find((player) => player.id === source.ownerId)
   return `${owner?.name ?? `player ${source.ownerId}`}'s iron works at ${source.location}`
+}
+
+export function describeCoalSource(
+  source: CoalSource,
+  context: GameState,
+): string {
+  const owner = context.players.find((player) => player.id === source.ownerId)
+  return `${owner?.name ?? `player ${source.ownerId}`}'s coal mine at ${source.location}`
 }
 
 /**
@@ -639,4 +684,239 @@ export function canChooseIronSource(
     (s) => ironSourceKey(s) === ironSourceKey(source),
   ).length
   return taken < option.available
+}
+
+/* ----- coal: nearest-mine consumption with equal-distance tie choice ----- */
+
+/**
+ * One coal demand: how many cubes to source, from where, in which board state.
+ * A build has one demand (the build city); a rail link one (both endpoints,
+ * link placed); a double link two (each link in turn, placed).
+ */
+export interface CoalDemand {
+  context: GameState
+  anchor: CityId | CityId[]
+  required: number
+}
+
+/**
+ * The result of walking an action's coal demands cube-by-cube: which mine each
+ * FREE cube drained, how many went to the market, how many of the player's
+ * picks were used, and — when `stopAtChoice` — the tied mines for the first
+ * unresolved cube (the choice the machine must pause on).
+ */
+export interface CoalAllocation {
+  fromMines: Array<{ ownerId: string; location: CityId }>
+  marketCubes: number
+  picksUsed: number
+  pendingChoiceTier: CoalSourceOption[] | null
+  error?: string
+}
+
+const coalMineKey = (ownerId: string, location: CityId) =>
+  `${ownerId}:${location}`
+
+/**
+ * Allocate coal for a sequence of demands, honouring the player's `picks` (one
+ * mine per tie cube, in order) and auto-picking the nearest mine everywhere a
+ * choice is not needed. Drain accumulates ACROSS demands (a mine emptied by the
+ * first rail link is gone for the second). This is the single place that
+ * decides which cube is a tie and which is automatic — consumption
+ * (`consumeCoalFromSources`), the pending-choice selector and the pick guard
+ * all route through it, so they can never disagree.
+ */
+export function runCoalAllocation(
+  demands: CoalDemand[],
+  picks: CoalSource[] | undefined,
+  opts: { stopAtChoice?: boolean } = {},
+): CoalAllocation {
+  const picksArr = picks ?? []
+  const drained = new Map<string, number>()
+  const fromMines: Array<{ ownerId: string; location: CityId }> = []
+  let picksUsed = 0
+  let marketCubes = 0
+
+  for (const demand of demands) {
+    let need = demand.required
+    while (need > 0) {
+      const connected = findConnectedCoalMinesByDistance(
+        demand.context,
+        demand.anchor,
+      )
+      const remainingOf = (entry: (typeof connected)[number]) =>
+        entry.mine.coalCubesOnTile -
+        (drained.get(coalMineKey(entry.ownerId, entry.mine.location)) ?? 0)
+      const stocked = connected.filter((entry) => remainingOf(entry) > 0)
+      if (stocked.length === 0) {
+        // No connected mine left — the rest of THIS demand falls to the market.
+        marketCubes += need
+        need = 0
+        break
+      }
+
+      const nearest = stocked[0]!.distance
+      const tier = stocked.filter((entry) => entry.distance === nearest)
+      const tierRemaining = tier.reduce(
+        (sum, entry) => sum + remainingOf(entry),
+        0,
+      )
+      // A tie is only a real CHOICE when draining a different mine changes the
+      // outcome — i.e. the tier holds more than this demand still needs. When
+      // the whole tier is consumed anyway, the order is immaterial (matches how
+      // beer/iron `hasSourceChoice` treats a fully-drained set).
+      const isChoice = tier.length >= 2 && tierRemaining > need
+
+      const drain = (entry: (typeof connected)[number]) => {
+        const key = coalMineKey(entry.ownerId, entry.mine.location)
+        drained.set(key, (drained.get(key) ?? 0) + 1)
+        fromMines.push({
+          ownerId: entry.ownerId,
+          location: entry.mine.location,
+        })
+        need--
+      }
+
+      if (isChoice) {
+        if (picksUsed < picksArr.length) {
+          const pick = picksArr[picksUsed]!
+          const match = tier.find(
+            (entry) =>
+              coalSourceKey({
+                kind: 'mine',
+                ownerId: entry.ownerId,
+                location: entry.mine.location,
+              }) === coalSourceKey(pick),
+          )
+          if (!match) {
+            return {
+              fromMines,
+              marketCubes: 0,
+              picksUsed,
+              pendingChoiceTier: null,
+              error: `${describeCoalSource(pick, demand.context)} is not among the closest connected coal mines.`,
+            }
+          }
+          picksUsed++
+          drain(match)
+          continue
+        }
+        if (opts.stopAtChoice) {
+          return {
+            fromMines,
+            marketCubes: 0,
+            picksUsed,
+            pendingChoiceTier: tier.map((entry) => ({
+              source: {
+                kind: 'mine' as const,
+                ownerId: entry.ownerId,
+                location: entry.mine.location,
+              },
+              available: remainingOf(entry),
+              own: entry.ownerId === getCurrentPlayer(demand.context)?.id,
+              ownerName: demand.context.players.find(
+                (p) => p.id === entry.ownerId,
+              )?.name,
+              distance: entry.distance,
+              flipsOwnerTile: remainingOf(entry) <= 1,
+            })),
+          }
+        }
+        // No pick and not stopping: keep the historic auto-pick (discovery
+        // order, nearest first) so a caller that passes no preference behaves
+        // exactly as before this choice existed.
+      }
+
+      drain(tier[0]!)
+    }
+  }
+
+  return { fromMines, marketCubes, picksUsed, pendingChoiceTier: null }
+}
+
+/** The ordered coal demands the machine is currently holding, or none. */
+export function coalDemands(context: GameState): CoalDemand[] {
+  switch (context.pendingCoalStep ?? null) {
+    case 'build': {
+      const location = context.selectedLocation
+      const required = context.selectedIndustryTile?.coalRequired ?? 0
+      return location && required > 0
+        ? [{ context, anchor: location, required }]
+        : []
+    }
+    case 'link': {
+      if (context.era !== 'rail' || !context.selectedLink) return []
+      return [
+        {
+          context: withProvisionalLink(context),
+          anchor: [context.selectedLink.from, context.selectedLink.to],
+          required: 1,
+        },
+      ]
+    }
+    case 'doubleLink': {
+      if (
+        context.era !== 'rail' ||
+        !context.selectedLink ||
+        !context.selectedSecondLink
+      ) {
+        return []
+      }
+      return [
+        {
+          context: withProvisionalLink(context),
+          anchor: [context.selectedLink.from, context.selectedLink.to],
+          required: 1,
+        },
+        {
+          context: withProvisionalDoubleLink(context),
+          anchor: [
+            context.selectedSecondLink.from,
+            context.selectedSecondLink.to,
+          ],
+          required: 1,
+        },
+      ]
+    }
+    default:
+      return []
+  }
+}
+
+/**
+ * The coal question the machine is holding right now: how much coal the action
+ * costs, and the tied mines for the next cube that needs the player to pick.
+ * `hasChoice` is false whenever coal has a single nearest source at every step
+ * (the overwhelmingly common case) — which is what auto-skips the choosing
+ * state. Null when this step spends no coal.
+ */
+export function pendingCoalChoice(context: GameState): CoalChoice | null {
+  const demands = coalDemands(context)
+  if (demands.length === 0) return null
+  const required = demands.reduce((sum, d) => sum + d.required, 0)
+  const alloc = runCoalAllocation(demands, context.chosenCoalSources ?? [], {
+    stopAtChoice: true,
+  })
+  return {
+    resource: 'coal',
+    required,
+    options: alloc.pendingChoiceTier ?? [],
+    hasChoice: alloc.pendingChoiceTier !== null,
+  }
+}
+
+export function coalChoiceSatisfied(context: GameState): boolean {
+  const choice = pendingCoalChoice(context)
+  if (!choice) return true
+  return !choice.hasChoice
+}
+
+export function canChooseCoalSource(
+  context: GameState,
+  source: CoalSource,
+): boolean {
+  const choice = pendingCoalChoice(context)
+  if (!choice?.hasChoice) return false
+  return choice.options.some(
+    (o) => coalSourceKey(o.source) === coalSourceKey(source),
+  )
 }

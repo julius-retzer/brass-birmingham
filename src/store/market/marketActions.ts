@@ -5,11 +5,11 @@ import type { GameState, Player } from '../gameStore'
 import {
   calculateNetworkDistance,
   checkAndFlipIndustryTilesLogic,
-  findConnectedCoalMines,
   getCurrentPlayer,
 } from '../shared/gameUtils'
 import {
   type BeerSource,
+  type CoalSource,
   type IronSource,
   beerSourceKey,
   describeBeerSource,
@@ -18,6 +18,7 @@ import {
   getIronSourceOptions,
   ironSourceKey,
   planResourceSources,
+  runCoalAllocation,
 } from '../shared/resourceSources'
 
 export function consumeCoalFromSources(
@@ -27,6 +28,11 @@ export function consumeCoalFromSources(
   // judged from any anchor too.
   location: CityId | CityId[],
   coalRequired: number,
+  // The player's choice of WHICH mine each tie cube drains, in order. Omit it
+  // and the engine keeps its historic auto-pick (nearest mine, discovery order
+  // within a tie). Only equal-distance ties are ever a choice — coal must come
+  // from the closest connected mine (rules L119-121).
+  preferredSources?: CoalSource[],
 ): {
   success: boolean
   updatedPlayers: Player[]
@@ -34,6 +40,9 @@ export function consumeCoalFromSources(
   coalCost: number
   logDetails: string[]
   errorMessage?: string
+  /** How many of `preferredSources` this consumption used (rest belong to a
+   * following demand, e.g. the second rail link). */
+  picksUsed: number
 } {
   let coalConsumed = 0
   let coalCost = 0
@@ -41,49 +50,57 @@ export function consumeCoalFromSources(
   let updatedPlayers = [...context.players]
   const updatedCoalMarket = context.coalMarket.map((level) => ({ ...level }))
 
-  const currentPlayer = getCurrentPlayer(context)
-
-  // First, try to consume from connected coal mines (free)
-  const connectedCoalMines = findConnectedCoalMines(
-    context,
-    location,
-    currentPlayer,
+  // Walk the mines cube-by-cube through the shared allocator so an explicit
+  // tie pick is honoured and a naming of a mine that is NOT the closest is
+  // refused (never silently re-pointed).
+  const alloc = runCoalAllocation(
+    [{ context, anchor: location, required: coalRequired }],
+    preferredSources,
   )
-  for (const coalMine of connectedCoalMines) {
-    if (coalConsumed >= coalRequired) break
-
-    if (coalMine.coalCubesOnTile > 0) {
-      // Consume as many cubes as possible from this mine (up to requirement)
-      const cubesToConsume = Math.min(
-        coalMine.coalCubesOnTile,
-        coalRequired - coalConsumed,
-      )
-
-      // Find the player who owns this coal mine and update it
-      updatedPlayers = updatedPlayers.map((player) => ({
-        ...player,
-        industries: player.industries.map((industry) =>
-          industry === coalMine
-            ? {
-                ...industry,
-                coalCubesOnTile: industry.coalCubesOnTile - cubesToConsume,
-              }
-            : industry,
-        ),
-      }))
-
-      coalConsumed += cubesToConsume
-      // Name the actual mine the coal came from (owner + city), matching how
-      // beer/iron entries name their source — the coal audit trail needs to
-      // show WHICH mine was drained, not just "a connected mine".
-      const owner = context.players.find((player) =>
-        player.industries.includes(coalMine),
-      )
-      const ownerLabel = owner ? `${owner.name}'s` : 'a'
-      logDetails.push(
-        `${cubesToConsume} coal from ${ownerLabel} coal mine at ${coalMine.location} (free)`,
-      )
+  if (alloc.error) {
+    return {
+      success: false,
+      updatedPlayers: context.players,
+      updatedCoalMarket: context.coalMarket,
+      coalCost: 0,
+      logDetails: [],
+      errorMessage: alloc.error,
+      picksUsed: 0,
     }
+  }
+
+  // Apply the free-mine drains, aggregating consecutive cubes from the same
+  // mine into one journal line (owner + city, matching PR#51's named audit
+  // trail) — "N coal from X's coal mine at LOC (free)".
+  const drainByMine = new Map<string, number>()
+  const mineOrder: Array<{ ownerId: string; location: CityId }> = []
+  for (const cube of alloc.fromMines) {
+    const key = `${cube.ownerId}:${cube.location}`
+    if (!drainByMine.has(key)) mineOrder.push(cube)
+    drainByMine.set(key, (drainByMine.get(key) ?? 0) + 1)
+  }
+  if (drainByMine.size > 0) {
+    updatedPlayers = updatedPlayers.map((player) => ({
+      ...player,
+      industries: player.industries.map((industry) => {
+        if (industry.type !== 'coal') return industry
+        const take = drainByMine.get(`${player.id}:${industry.location}`) ?? 0
+        if (take <= 0 || industry.coalCubesOnTile <= 0) return industry
+        return {
+          ...industry,
+          coalCubesOnTile:
+            industry.coalCubesOnTile - Math.min(take, industry.coalCubesOnTile),
+        }
+      }),
+    }))
+  }
+  coalConsumed += alloc.fromMines.length
+  for (const cube of mineOrder) {
+    const owner = context.players.find((player) => player.id === cube.ownerId)
+    const ownerLabel = owner ? `${owner.name}'s` : 'a'
+    logDetails.push(
+      `${drainByMine.get(`${cube.ownerId}:${cube.location}`)} coal from ${ownerLabel} coal mine at ${cube.location} (free)`,
+    )
   }
 
   // If still need coal, consume from coal market (cheapest first)
@@ -137,7 +154,7 @@ export function consumeCoalFromSources(
     const shortfall = coalRequired - coalConsumed
     const availableSources = []
 
-    if (connectedCoalMines.length > 0) {
+    if (alloc.fromMines.length > 0) {
       availableSources.push('connected coal mines (exhausted)')
     }
 
@@ -190,6 +207,7 @@ export function consumeCoalFromSources(
     coalCost: success ? coalCost : 0, // No cost on failure
     logDetails,
     errorMessage,
+    picksUsed: alloc.picksUsed,
   }
 }
 

@@ -168,9 +168,11 @@ describe('coal nearest-mine consumption (Bug A: shortfall rolls to next mine)', 
     expect(findMine(r.updatedPlayers, 'wolverhampton').coalCubesOnTile).toBe(0)
   })
 
-  it('equidistant mines: the engine still auto-picks one (tie-choice UI is out of scope)', () => {
-    // Documents current behaviour — a proper player choice for ties is tracked
-    // separately. Two mines both one link from birmingham; discovery order wins.
+  it('equidistant mines with NO preference: the engine auto-picks one (discovery order)', () => {
+    // Omitting a preference keeps the historic auto-pick, unit for unit — the
+    // equal-distance tie CHOICE is opt-in via preferredSources (pinned in
+    // gameStore.coaltiechoice.test.ts). Two mines both one link from
+    // birmingham; discovery order wins when nobody picks.
     const links = [
       { from: 'birmingham', to: 'dudley' },
       { from: 'birmingham', to: 'walsall' },

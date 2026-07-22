@@ -2,6 +2,18 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { createActor } from 'xstate'
 import { gameStore } from './gameStore'
+import { pendingCoalChoice } from './shared/resourceSources'
+
+// A rail link burns 1 coal; when two mines tie at the nearest distance the
+// engine pauses for the player to pick. These fixtures test consumption, not
+// the tie choice, so resolve any tie the old auto-pick way (first offered).
+const resolveCoalTies = (actor: ReturnType<typeof createActor>) => {
+  for (let guard = 0; guard < 8; guard++) {
+    const choice = pendingCoalChoice(actor.getSnapshot().context)
+    if (!choice?.hasChoice || !choice.options[0]) break
+    actor.send({ type: 'SELECT_COAL_SOURCE', source: choice.options[0].source })
+  }
+}
 
 // Track actors for cleanup
 let activeActors: ReturnType<typeof createActor>[] = []
@@ -70,6 +82,7 @@ const buildNetworkAction = (
   actor.send({ type: 'SELECT_CARD', cardId: cardToUse?.id })
   actor.send({ type: 'SELECT_LINK', from, to })
   actor.send({ type: 'CONFIRM' })
+  resolveCoalTies(actor)
 
   return { cardUsed: cardToUse, from, to }
 }

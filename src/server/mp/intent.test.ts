@@ -498,4 +498,96 @@ describe('applyIntent — source-choice picks over the wire', () => {
       'That beer source is not available for this action.',
     )
   })
+
+  // A rail link's coal comes from the closest connected mine; when two tie the
+  // consuming seat picks over the wire, like beer/iron. The pick and the
+  // whitelist entry must both be there or a networked human hard-sticks at the
+  // coal step.
+  const coalMineTile = { ...cottonTile, type: 'coal' as const, beerRequired: 0 }
+  const railCoalTieBoard = () => {
+    const actor = game()
+    actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
+    const seat = actor.getSnapshot().context.currentPlayerIndex
+    const meId = actor.getSnapshot().context.players[seat]!.id
+    // Two mines equidistant from the birmingham–dudley link (both endpoints).
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: seat,
+      money: 100,
+      industries: [
+        {
+          location: 'birmingham',
+          type: 'cotton',
+          level: 1,
+          flipped: false,
+          tile: cottonTile,
+          coalCubesOnTile: 0,
+          ironCubesOnTile: 0,
+          beerBarrelsOnTile: 0,
+        } as never,
+        {
+          location: 'birmingham',
+          type: 'coal',
+          level: 1,
+          flipped: false,
+          tile: coalMineTile,
+          coalCubesOnTile: 2,
+          ironCubesOnTile: 0,
+          beerBarrelsOnTile: 0,
+        } as never,
+        {
+          location: 'dudley',
+          type: 'coal',
+          level: 1,
+          flipped: false,
+          tile: coalMineTile,
+          coalCubesOnTile: 2,
+          ironCubesOnTile: 0,
+          beerBarrelsOnTile: 0,
+        } as never,
+      ],
+      links: [] as never,
+    })
+    const cardId = actor.getSnapshot().context.players[seat]!.hand[0]!.id
+    actor.send({ type: 'NETWORK' })
+    actor.send({ type: 'SELECT_CARD', cardId })
+    actor.send({ type: 'SELECT_LINK', from: 'birmingham', to: 'dudley' })
+    actor.send({ type: 'CONFIRM' })
+    const staged = actor.getPersistedSnapshot()
+    actor.stop()
+    return { staged, seat, meId }
+  }
+
+  test('a legitimate coal-tie pick is accepted over the wire', () => {
+    const { staged, seat, meId } = railCoalTieBoard()
+    const res = applyIntent(staged, seat, {
+      type: 'SELECT_COAL_SOURCE',
+      source: { kind: 'mine', ownerId: meId, location: 'dudley' },
+    })
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+
+    // The chosen dudley mine was drained (2 → 1); the link is placed.
+    const done = createActor(gameStore, {
+      snapshot: (res as { next: unknown }).next as never,
+    })
+    done.start()
+    const me = done.getSnapshot().context.players[seat]!
+    done.stop()
+    const dudley = me.industries.find(
+      (i) => i.type === 'coal' && i.location === 'dudley',
+    )!
+    expect(dudley.coalCubesOnTile).toBe(1)
+  })
+
+  test('a coal mine that is not among the closest is refused with a reason', () => {
+    const { staged, seat, meId } = railCoalTieBoard()
+    const res = applyIntent(staged, seat, {
+      type: 'SELECT_COAL_SOURCE',
+      // walsall holds no offered mine — coal is not a free pick.
+      source: { kind: 'mine', ownerId: meId, location: 'walsall' },
+    })
+    expect(res.ok).toBe(false)
+    expect((res as { error: string }).error).toMatch(/closest connected mines/i)
+  })
 })

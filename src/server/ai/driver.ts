@@ -44,7 +44,9 @@ export function rehydrateSnapshot(persisted: unknown): unknown {
       pendingSale?: unknown
       chosenBeerSources?: unknown
       chosenIronSources?: unknown
+      chosenCoalSources?: unknown
       pendingIronStep?: unknown
+      pendingCoalStep?: unknown
     }
   }
   for (const market of [clone.context?.coalMarket, clone.context?.ironMarket]) {
@@ -62,7 +64,9 @@ export function rehydrateSnapshot(persisted: unknown): unknown {
     if (ctx.pendingSale === undefined) ctx.pendingSale = null
     if (!Array.isArray(ctx.chosenBeerSources)) ctx.chosenBeerSources = []
     if (!Array.isArray(ctx.chosenIronSources)) ctx.chosenIronSources = []
+    if (!Array.isArray(ctx.chosenCoalSources)) ctx.chosenCoalSources = []
     if (ctx.pendingIronStep === undefined) ctx.pendingIronStep = null
+    if (ctx.pendingCoalStep === undefined) ctx.pendingCoalStep = null
   }
   return clone
 }

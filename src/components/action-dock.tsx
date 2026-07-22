@@ -578,29 +578,29 @@ function DevelopBonusPicker({
   onPick,
 }: {
   options: DevelopBonusOption[]
-  onPick: (industryType: DevelopBonusOption['industryType']) => void
+  onPick: (industryType: IndustryType) => void
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       <Note>
         Merchant develop bonus: choose which industry's lowest tile to remove.
       </Note>
-      {options.map((option) => (
+      {options.map(({ industryType, tile }) => (
         <button
-          key={option.industryType}
+          key={industryType}
           type="button"
           className="bb2-option"
           data-testid="develop-tile"
-          onClick={() => onPick(option.industryType)}
+          onClick={() => onPick(industryType)}
         >
-          <IndustryGlyph type={option.industryType} size={16} />
+          <IndustryGlyph type={industryType} size={16} />
           <span className="flex flex-col text-left">
-            <b>{industryLabel(option.industryType)}</b>
+            <b>{industryLabel(industryType)}</b>
             <span
               className="text-[12px]"
               style={{ color: 'rgba(231,215,177,.55)' }}
             >
-              Removes the level {option.tile.level} tile
+              Removes the level {tile.level} tile
             </span>
           </span>
         </button>

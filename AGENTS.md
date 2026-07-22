@@ -234,10 +234,15 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   {industryType}` (guard `canChooseDevelopTile`); NO cancel — the sale is
   already committed. Journal logs the developed tile either way. Wired
   through legal-moves (AI picks first-offered), mp `ALLOWED_EVENTS` +
-  `explainRefusal`, driver `rehydrateSnapshot` backfill, and the dock's
-  `DevelopBonusPicker`. Pinned by `gameStore.developbonus.test.ts` +
-  `shared/developBonus.test.ts` + `intent.test.ts`; the mp playthrough
-  (offline + e2e) resolves it adaptively when the shuffle seats Gloucester.
+  `explainRefusal`, driver `rehydrateSnapshot` backfill, and the picker inlined
+  in the dock's `choosingDevelopTile` branch (`action-dock.tsx`). Pinned by
+  `gameStore.developbonus.test.ts` + `shared/developBonus.test.ts` +
+  `intent.test.ts`; the mp playthrough (offline + e2e) resolves it adaptively
+  when the shuffle seats Gloucester. GOTCHA: that picker deliberately renders
+  NO `IndustryGlyph` — the Linux native `tsc` (CI only; clean on macOS) fails
+  to resolve the `IndustryGlyph` import at a JSX site sharing scope with an
+  `industryType` identifier ("did you mean industryType"). Keep an
+  `industryType`-named local out of any `IndustryGlyph` JSX subtree.
 - RESOURCE SOURCE CHOICE (beer + iron, added 2026-07-16) is a FIRST-CLASS
   MACHINE STATE, engine-owned. `src/store/shared/resourceSources.ts` is the
   single place that knows which sources are legal, what a step needs and what

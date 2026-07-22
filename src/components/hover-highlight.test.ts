@@ -6,7 +6,7 @@ import type {
   WildIndustryCard,
   WildLocationCard,
 } from '../data/cards'
-import { computeHoverCities } from './hover-highlight'
+import { computeHoverCities, focusCityFor } from './hover-highlight'
 
 const locationCard = (location: CityId): LocationCard => ({
   id: `loc-${location}`,
@@ -82,5 +82,20 @@ describe('computeHoverCities', () => {
     const anywhere = computeHoverCities(industryCard('pottery'), null)!
     const viaEmpty = computeHoverCities(industryCard('pottery'), new Set())!
     expect(anywhere).toEqual(viaEmpty)
+  })
+})
+
+describe('focusCityFor (card-hover map sync)', () => {
+  test('location card names its printed city as the pan target', () => {
+    expect(focusCityFor(locationCard('derby'))).toBe('derby')
+  })
+
+  test('industry, wild and no card never pan the map', () => {
+    const wildLoc: WildLocationCard = { id: 'wl', type: 'wild_location' }
+    const wildInd: WildIndustryCard = { id: 'wi', type: 'wild_industry' }
+    expect(focusCityFor(industryCard('coal'))).toBeNull()
+    expect(focusCityFor(wildLoc)).toBeNull()
+    expect(focusCityFor(wildInd)).toBeNull()
+    expect(focusCityFor(null)).toBeNull()
   })
 })

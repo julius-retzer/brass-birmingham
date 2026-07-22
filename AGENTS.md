@@ -494,8 +494,17 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   `LocateMark`, deliberately distinct from the brass legal pulse;
   reduced-motion drops the ping). Journal names resolve via `segmentPlaces`
   (journal-model.ts) — by raw city ID, never display-name matching. The state
-  is ONE `cityId|null` on purpose so brass-card-map-sync (pan-into-view for
-  hovered cards) can reuse it.
+  is ONE `cityId|null` on purpose.
+- CARD-MAP-SYNC (2026-07-21): hovering a LOCATION card in the hand tray
+  auto-pans the map (slight zoom-out, animated, debounced) when its city is
+  off-viewport — BoardMap's `focusCity` prop, fed by `focusCityFor`
+  (`hover-highlight.ts`) on both surfaces. DELIBERATE: separate from
+  `locatedCity` (name hover must never move the map); industry/wild cards
+  never pan; no snap-back on hover end; user gestures + board pick steps
+  suppress it. Decision logic is pure in `board/pan-into-view.ts`
+  (trigger/settle hysteresis — pinned by `pan-into-view.test.ts`); the
+  animated application (rAF + reduced-motion instant jump) lives in
+  `board-map.tsx`.
 
 ## AI opponents (added 2026-07-15)
 

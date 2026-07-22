@@ -16,6 +16,16 @@ import type { Card } from '../data/cards'
  * player's `networkCities`. Returns `null` when there is nothing to preview
  * (no card hovered, or a wild card that could go anywhere).
  */
+/**
+ * The single city the map should auto-pan to while `hoveredCard` is hovered
+ * (card-hover map sync), or `null` for no pan. Only LOCATION cards name one
+ * unambiguous city; industry cards spotlight a whole set (panning would have
+ * no single destination) and wild cards could go anywhere — both stay put.
+ */
+export function focusCityFor(hoveredCard: Card | null): string | null {
+  return hoveredCard?.type === 'location' ? hoveredCard.location : null
+}
+
 export function computeHoverCities(
   hoveredCard: Card | null,
   networkCities: ReadonlySet<CityId> | null,

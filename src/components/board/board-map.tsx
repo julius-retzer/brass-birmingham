@@ -17,6 +17,12 @@ import { type Merchant, type Player } from '~/store/gameStore'
 import { GAME_ICONS } from '../gameicons-data'
 import { IndustryFragment } from '../icons'
 import { VIEW_H, VIEW_W, cityPos, linkKey, routeBow } from './board-data'
+import {
+  FOCUS_PAN_ANIMATION_MS,
+  FOCUS_PAN_DEBOUNCE_MS,
+  easeInOutCubic,
+  planPanToCity,
+} from './pan-into-view'
 
 /* ---------------- palette (mirrors theme.css) ---------------- */
 
@@ -199,6 +205,14 @@ export interface BoardMapProps {
    */
   locatedCity?: string | null
   /**
+   * Card-hover map sync: the city a hovered hand card names (location cards
+   * only). When it sits outside the current viewport the map pans — with a
+   * slight zoom-out — to bring it into view (debounced; suppressed while a
+   * gesture or a board pick step is active). The map stays where it panned
+   * when the hover ends. Decision logic in `pan-into-view.ts`.
+   */
+  focusCity?: string | null
+  /**
    * Game-end scoring overlay: VP earned per city and per route by ONE player
    * (null = off). Annotated places get a brass VP roundel; everything else
    * recedes, so the score reads off the board. Links are destroyed by era
@@ -229,6 +243,7 @@ export function BoardMap({
   networkColor = null,
   hoverCities = null,
   locatedCity = null,
+  focusCity = null,
   vpAnnotations = null,
   vpColor = null,
 }: BoardMapProps) {
@@ -248,6 +263,7 @@ export function BoardMap({
     if (!svg) return
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
+      stopAutoPan()
       setVb((v) => {
         const rect = svg.getBoundingClientRect()
         const fx = (e.clientX - rect.left) / rect.width
@@ -296,6 +312,7 @@ export function BoardMap({
 
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return
+    stopAutoPan()
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     if (pointers.current.size === 2) {
       // second finger down — switch from pan to pinch (no click expected
@@ -362,13 +379,91 @@ export function BoardMap({
   }
   const wasDrag = () => drag.current?.moved ?? false
 
-  const zoomBy = (scale: number) =>
-    setVb((v) => {
+  const zoomBy = (scale: number) => {
+    stopAutoPan()
+    return setVb((v) => {
       const w = Math.min(Math.max(v.w * scale, VIEW_W / 6), VIEW_W * 1.3)
       const h = (w / VIEW_W) * VIEW_H
       return { x: v.x + (v.w - w) / 2, y: v.y + (v.h - h) / 2, w, h }
     })
-  const resetView = () => setVb({ x: 0, y: 0, w: VIEW_W, h: VIEW_H })
+  }
+  const resetView = () => {
+    stopAutoPan()
+    setVb({ x: 0, y: 0, w: VIEW_W, h: VIEW_H })
+  }
+
+  /* ---- card-hover map sync (auto-pan to a hovered card's city) ---- */
+
+  // Latest vb without retriggering the focus effect on every user pan.
+  const vbRef = useRef(vb)
+  vbRef.current = vb
+  const autoPanFrame = useRef<number | null>(null)
+
+  function stopAutoPan() {
+    if (autoPanFrame.current !== null) {
+      cancelAnimationFrame(autoPanFrame.current)
+      autoPanFrame.current = null
+    }
+  }
+
+  const animateVbTo = (target: {
+    x: number
+    y: number
+    w: number
+    h: number
+  }) => {
+    stopAutoPan()
+    // Reduced motion: land instantly instead of animating (the locate mark
+    // drops its ping under the same preference).
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setVb(target)
+      return
+    }
+    const from = vbRef.current
+    const start = performance.now()
+    const step = (now: number) => {
+      const t = Math.min((now - start) / FOCUS_PAN_ANIMATION_MS, 1)
+      const k = easeInOutCubic(t)
+      setVb({
+        x: from.x + (target.x - from.x) * k,
+        y: from.y + (target.y - from.y) * k,
+        w: from.w + (target.w - from.w) * k,
+        h: from.h + (target.h - from.h) * k,
+      })
+      autoPanFrame.current = t < 1 ? requestAnimationFrame(step) : null
+    }
+    autoPanFrame.current = requestAnimationFrame(step)
+  }
+
+  const pickingCity = legalCities !== null
+  const pickingLink = legalLinks !== null
+
+  useEffect(() => {
+    // Never yank the map while the player is aiming a board pick — and kill
+    // an animation already in flight when the picker opens under it (checked
+    // before focusCity: the hover may already have ended by then).
+    if (pickingCity || pickingLink) {
+      stopAutoPan()
+      return
+    }
+    if (!focusCity) return
+    const pos = cityPos[focusCity as CityId]
+    if (!pos) return
+    const timer = setTimeout(() => {
+      // A gesture in progress wins over the auto-pan.
+      if (pointers.current.size > 0) return
+      const target = planPanToCity(vbRef.current, pos, {
+        w: VIEW_W,
+        h: VIEW_H,
+      })
+      if (target) animateVbTo(target)
+    }, FOCUS_PAN_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+    // animateVbTo is stable in behaviour (refs + setState); listing it would
+    // retrigger the debounce on every render.
+  }, [focusCity, pickingCity, pickingLink])
+
+  useEffect(() => stopAutoPan, [])
 
   /* ---- derived game data ---- */
 
@@ -411,9 +506,6 @@ export function BoardMap({
       linkKey(l.to, l.from),
     ]),
   )
-
-  const pickingCity = legalCities !== null
-  const pickingLink = legalLinks !== null
 
   /* ---------------- render ---------------- */
 

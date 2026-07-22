@@ -904,21 +904,41 @@ When updating this file, preserve this bar for all agents and keep entries conci
   but the race handler is the safety net for the window before that.
 - DEPLOY (Vercel, wired 2026-07-15): ship is direct-PR → Vercel Git
   integration (project `brass-birmingham`, prod branch = `main`, PR previews
-  on). The Neon<->Vercel native integration (store "brass") manages the
-  `DATABASE_URL`/`POSTGRES_*`/`STACK_*` env vars. Per-environment DB
-  isolation is by Neon BRANCH, all in project `muddy-night-85782525`:
-  Vercel `production` → `main`, `preview` → the long-lived `preview` branch,
-  `development` → still `main`; local `.env` → `dev`. The preview isolation
-  is a manual preview-scoped `DATABASE_URL` override in Vercel (the shared
-  integration entry was narrowed to production+development) — a future
-  integration re-sync can clobber it. DURABLE FIX (needs a Neon-console
-  click, not in neonctl): project brass → Integrations → Vercel → enable
-  "create a branch per preview deployment". Previews sit behind Vercel
-  Deployment Protection (SSO) — viewable only when logged into the Vercel
-  account (for automated repro, append
+  on). Previews sit behind Vercel Deployment Protection (SSO) — viewable only
+  when logged into the Vercel account (for automated repro, append
   `?x-vercel-protection-bypass=<automation-secret>&x-vercel-set-bypass-cookie=true`
   — the secret is in Vercel project → Deployment Protection → Protection
   Bypass for Automation).
+- PROD DB = EU NEON PROJECT (cutover 2026-07-22): the app's runtime/prod
+  database is Neon project **`morning-frog-57242526`** ("brass-birmingham-eu",
+  region `aws-eu-central-1`, pg17), in the console-managed org
+  `org-wispy-frog-41468579` ("Julius Retzer"). It was migrated (pg_dump →
+  pg_restore of the whole `neondb`, incl. the `drizzle.__drizzle_migrations`
+  journal so build-time `migrate()` sees 0 pending) from the OLD project
+  `muddy-night-85782525` ("brass", `aws-us-east-1`), which had hit its free
+  plan limit in the Vercel-managed org. The OLD project is RETAINED UNTOUCHED
+  as rollback — do not delete it without owner sign-off.
+  - The native Vercel↔Neon integration (store "brass") was **DISCONNECTED**
+    from the Vercel project: it re-injected the OLD project's `DATABASE_URL`
+    on every deploy and clobbered manual edits (that was the real cause of
+    "runtime still on the old DB" during cutover). Vercel now manages the DB
+    env vars **manually** — only `DATABASE_URL` (pooled, runtime) and
+    `DATABASE_URL_UNPOOLED` (direct, build `migrate()`) matter; the app reads
+    nothing else (the old `POSTGRES_*`/`PG*`/`STACK_*` integration vars are
+    gone and were never read). Mapping: Vercel `production`+`development` →
+    new project `main`; `preview` → new project `preview` branch (both set to
+    the EU host, pooled + unpooled).
+  - ROLLBACK: re-point the three Vercel envs' `DATABASE_URL`/
+    `DATABASE_URL_UNPOOLED` back at `muddy-night-85782525` (or re-add the Neon
+    integration via Vercel → Storage), then redeploy prod. A plain
+    `vercel redeploy` reuses the OLD deploy's env snapshot — force a FRESH
+    build (`vercel deploy --prod`) so new env vars take effect.
+  - STILL ON THE OLD PROJECT (separate follow-up, not migrated): CI and
+    local-test ephemeral branching (`NEON_PROJECT_ID`/`NEON_API_KEY`, the
+    `ci`/`test`/`dev` parent branches — see the CI and Local-test-DB notes,
+    which still name `muddy-night-85782525`). They keep working because the old
+    project stays alive; move them to the EU project only if the owner wants
+    the old one retired.
 - DEPLOY MIGRATIONS (2026-07-21): the Vercel `build` script is
   `node scripts/vercel-migrate.mjs && next build` — it runs drizzle-orm's
   `migrate()` (pending-only, forward-only, idempotent) for ALL Vercel envs

@@ -1015,6 +1015,17 @@ When updating this file, preserve this bar for all agents and keep entries conci
   src/server/mp/intentlog.test.ts -t 'BB_REPLAY_TOKEN'` (DATABASE_URL at the
   branch holding it). Pinned by replay.test.ts (offline FULL mock-AI game,
   both eras) + intentlog.test.ts (DB round-trip, concurrency, sweep).
+- HOTSEAT REPLAY BRIDGE (2026-07-22): load a PAST MOMENT of a game into the
+  fully-local hotseat surface (all seats in one browser, every hand visible,
+  undo working) — `/?replay=<token>&cutoff=<seq>`. `game.tsx`'s boot fetches
+  `GET /api/replay?token=&cutoff=` (route.ts), which reads the source game's
+  intent log (`loadIntentLog`, DB, READ-ONLY — writes nothing) and replays the
+  prefix via `buildHotseatReplaySnapshot` (`hotseatReplay.ts`, pure →
+  `replayIntentLog`). `cutoff` is EXCLUSIVE (state BEFORE that seq; omit for the
+  whole game). The reconstructed snapshot becomes an ordinary `bb2-save-v1`
+  hotseat game — playing it needs no DB. Distinct from `seedReplica.ts` (which
+  seeds a DB-backed, hand-HIDING multiplayer game). Pinned offline by
+  `hotseatReplay.test.ts` (synthetic log → prefix replay → boots in gameStore).
 - Chat (normalized out 2026-07-16): chat lives in its OWN append-only
   `chat_messages` table (PK = game token + monotonic per-game `seq`, which is
   the wire `id`), NOT the game jsonb row. A POST /api/mp/chat appends ONE row

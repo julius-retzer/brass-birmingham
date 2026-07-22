@@ -201,6 +201,48 @@ export function Game() {
   // mount gate so SSR and hydration always agree.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    // ?replay=<token>&cutoff=<seq> — dev/support bridge: fetch a source game's
+    // durable intent log server-side, replay it to the moment BEFORE `cutoff`,
+    // and load THAT board into this fully-local hotseat (all seats in one
+    // browser, every hand visible, undo working). Once loaded it is a normal
+    // live game — playing it needs no DB. `cutoff` optional (whole game).
+    const replayToken = params.get('replay')
+    if (replayToken) {
+      const qs = new URLSearchParams({ token: replayToken })
+      const cutoff = params.get('cutoff')
+      if (cutoff) qs.set('cutoff', cutoff)
+      let cancelled = false
+      void (async () => {
+        try {
+          const res = await fetch(`/api/replay?${qs.toString()}`)
+          const body = (await res.json().catch(() => null)) as {
+            snapshot?: unknown
+            error?: string
+          } | null
+          if (!res.ok || !body?.snapshot) {
+            throw new Error(body?.error ?? `Replay failed (${res.status})`)
+          }
+          if (cancelled) return
+          // Drop any prior save so a refresh resumes THIS moment; the persist
+          // effect then re-saves it as an ordinary hotseat game.
+          clearSave()
+          setBoot({
+            kind: 'demo',
+            snapshot: rehydrateSnapshot(body.snapshot),
+            resumed: false,
+          })
+        } catch (err) {
+          if (cancelled) return
+          toast.error(
+            err instanceof Error ? err.message : 'Could not load that moment',
+          )
+          setBoot({ kind: 'fresh', resumed: false })
+        }
+      })()
+      return () => {
+        cancelled = true
+      }
+    }
     if (params.get('preview') === 'gameover') {
       setBoot({ kind: 'preview-gameover', resumed: false })
       return

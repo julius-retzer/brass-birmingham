@@ -3,8 +3,69 @@
 // Right-dock reference panels: the collapsible shell and the coal & iron
 // exchanges. The journal moved to journal.tsx (with its presentation model
 // in journal-model.ts).
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { type GameState } from '~/store/gameStore'
+
+/* ---------------- side-dock collapse ---------------- */
+
+// Whole-column collapse: slide the right dock (dock + exchanges + journal)
+// out to the screen edge so the board reclaims the width. Desktop-only —
+// on phones the dock stacks below the board, where hiding it buys nothing.
+// The preference is a single lightweight localStorage flag, deliberately
+// separate from the game save (bb2-save-v1) so it survives a new game.
+const PANEL_COLLAPSE_KEY = 'bb2-panel-collapsed-v1'
+
+export function usePanelCollapsed(): [boolean, () => void] {
+  const [collapsed, setCollapsed] = useState(false)
+  // Read after mount so SSR/first paint always agree (the shell renders
+  // client-side behind a boot gate, but keep this honest regardless).
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem(PANEL_COLLAPSE_KEY) === '1')
+    } catch {
+      // storage unavailable — session-only toggle, default expanded
+    }
+  }, [])
+  const toggle = useCallback(() => {
+    setCollapsed((c) => {
+      const next = !c
+      try {
+        localStorage.setItem(PANEL_COLLAPSE_KEY, next ? '1' : '0')
+      } catch {
+        // storage full/unavailable — the toggle still works this session
+      }
+      return next
+    })
+  }, [])
+  return [collapsed, toggle]
+}
+
+// The persistent handle that lives in the gutter between board and dock.
+// One affordance for both directions: chevron points toward the edge to
+// collapse, back toward the board to expand.
+export function SidePanelRail({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      data-testid="panel-collapse-toggle"
+      aria-expanded={!collapsed}
+      aria-label={collapsed ? 'Expand side panel' : 'Collapse side panel'}
+      title={collapsed ? 'Expand side panel' : 'Collapse side panel'}
+      className="bb2-panel-rail hidden flex-none lg:flex"
+    >
+      <span aria-hidden className="bb2-panel-rail-chevron">
+        {collapsed ? '‹' : '›'}
+      </span>
+    </button>
+  )
+}
 
 /* ---------------- collapsible shell ---------------- */
 

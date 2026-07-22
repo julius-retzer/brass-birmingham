@@ -159,18 +159,23 @@ export function PlayerLedger({
               </svg>
               link-scoring icons
             </span>
-            <span>×N tiles left</span>
           </p>
           <div className="grid grid-cols-2 gap-x-6 gap-y-4 pt-3 sm:grid-cols-3">
             {INDUSTRY_TYPES.map((t) => {
-              const rows = [...(player.industryTilesOnMat[t] ?? [])].sort(
+              const levels = [...(player.industryTilesOnMat[t] ?? [])].sort(
                 (a, b) => a.tile.level - b.tile.level,
+              )
+              // Show every remaining tile as its own token, lowest level
+              // first — the physical mat holds each copy separately, so we
+              // list identical tiles one-for-one instead of collapsing them
+              // into a count. Depleted levels drop out (no tile left to show).
+              const tiles = levels.flatMap((r) =>
+                Array.from({ length: r.quantityAvailable }, () => r.tile),
               )
               // The mat's next tile is simply the lowest one left — never the
               // next era-legal one. A barred tile blocks the industry until
               // Develop removes it, so highlighting past it would promise a
               // build the engine refuses (rules p.4 step 2 / p.7).
-              const nextIdx = rows.findIndex((r) => r.quantityAvailable > 0)
               return (
                 <div key={t} className="flex flex-col gap-1.5">
                   <span
@@ -181,20 +186,19 @@ export function PlayerLedger({
                     {LABEL[t]}
                   </span>
                   <div className="flex flex-col gap-1">
-                    {rows.map((r, i) => {
+                    {tiles.map((tile, i) => {
                       const eraOk =
                         era === 'canal'
-                          ? r.tile.canBuildInCanalEra
-                          : r.tile.canBuildInRailEra
-                      const depleted = r.quantityAvailable === 0
+                          ? tile.canBuildInCanalEra
+                          : tile.canBuildInRailEra
                       // Only the lowest remaining tile is ever in play, and
                       // only if this era allows it — otherwise it is what the
                       // player must Develop away.
-                      const isNext = i === nextIdx && eraOk
-                      const isBlocking = i === nextIdx && !eraOk
+                      const isNext = i === 0 && eraOk
+                      const isBlocking = i === 0 && !eraOk
                       return (
                         <div
-                          key={r.tile.id}
+                          key={`${tile.id}-${i}`}
                           className="flex flex-wrap items-center gap-2 rounded border px-2 py-1.5 text-[13px]"
                           style={{
                             borderColor: isNext
@@ -203,7 +207,7 @@ export function PlayerLedger({
                             boxShadow: isNext
                               ? '0 0 0 1px rgba(230,189,99,.35)'
                               : undefined,
-                            opacity: depleted ? 0.32 : eraOk ? 1 : 0.45,
+                            opacity: eraOk ? 1 : 0.45,
                             background: isNext
                               ? 'rgba(195,149,56,.09)'
                               : 'rgba(255,240,200,.02)',
@@ -213,19 +217,18 @@ export function PlayerLedger({
                             className="bb2-display w-7 text-[13.5px] font-bold"
                             style={{ color: 'var(--bb-brass-bright)' }}
                           >
-                            {ROMAN[r.tile.level] ?? r.tile.level}
+                            {ROMAN[tile.level] ?? tile.level}
                           </span>
                           <span
                             className="tabular-nums"
                             style={{ color: 'var(--bb-parchment-bright)' }}
                           >
-                            £{r.tile.cost}
+                            £{tile.cost}
                           </span>
-                          {(r.tile.coalRequired > 0 ||
-                            r.tile.ironRequired > 0) && (
+                          {(tile.coalRequired > 0 || tile.ironRequired > 0) && (
                             <span className="flex items-center gap-1">
                               {Array.from(
-                                { length: r.tile.coalRequired },
+                                { length: tile.coalRequired },
                                 (_, k) => (
                                   <span
                                     key={`c${k}`}
@@ -239,7 +242,7 @@ export function PlayerLedger({
                                 ),
                               )}
                               {Array.from(
-                                { length: r.tile.ironRequired },
+                                { length: tile.ironRequired },
                                 (_, k) => (
                                   <span
                                     key={`i${k}`}
@@ -260,27 +263,27 @@ export function PlayerLedger({
                             title="victory points when flipped"
                           >
                             <LaurelIcon size={11} />
-                            {r.tile.victoryPoints}
+                            {tile.victoryPoints}
                           </span>
                           <span
                             className="flex items-center gap-0.5 text-[12px]"
                             style={{ color: 'rgba(231,215,177,.6)' }}
                             title="income advance when flipped"
                           >
-                            <IncomeIcon size={11} />+{r.tile.incomeAdvancement}
+                            <IncomeIcon size={11} />+{tile.incomeAdvancement}
                           </span>
                           <span
                             className="flex items-center gap-0.5 text-[12px]"
                             style={{ color: 'rgba(231,215,177,.6)' }}
-                            title={`${r.tile.linkScoringIcons} link-scoring icon(s) on the tile`}
+                            title={`${tile.linkScoringIcons} link-scoring icon(s) on the tile`}
                           >
                             {/* one •—• per printed icon, like the physical
                                 tile face (0 icons → an em-dash) */}
-                            {r.tile.linkScoringIcons === 0 ? (
+                            {tile.linkScoringIcons === 0 ? (
                               <span style={{ opacity: 0.5 }}>—</span>
                             ) : (
                               Array.from(
-                                { length: r.tile.linkScoringIcons },
+                                { length: tile.linkScoringIcons },
                                 (_, k) => (
                                   <svg
                                     key={k}
@@ -314,19 +317,9 @@ export function PlayerLedger({
                               )
                             )}
                           </span>
-                          <span
-                            className="text-[12px] tabular-nums"
-                            style={{
-                              color: depleted
-                                ? 'var(--bb-danger)'
-                                : 'rgba(231,215,177,.6)',
-                            }}
-                          >
-                            ×{r.quantityAvailable}
-                          </span>
                           {isBlocking && (
                             <span
-                              data-testid={`mat-blocked-${r.tile.id}`}
+                              data-testid={`mat-blocked-${tile.id}`}
                               className="w-full text-[11px] italic"
                               style={{ color: 'rgba(231,215,177,.5)' }}
                             >
@@ -338,7 +331,7 @@ export function PlayerLedger({
                         </div>
                       )
                     })}
-                    {rows.length === 0 && (
+                    {tiles.length === 0 && (
                       <span
                         className="text-[12px] italic"
                         style={{ color: 'rgba(231,215,177,.35)' }}

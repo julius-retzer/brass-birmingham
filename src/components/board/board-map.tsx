@@ -213,6 +213,13 @@ export interface BoardMapProps {
    */
   focusCity?: string | null
   /**
+   * Hover-a-name spotlight: the id of the player whose network is hovered in
+   * the top rail right now (null = off). Their built links and industry tiles
+   * light up in their colour; everything else recedes so you can read who owns
+   * what at a glance. Purely presentational — reuses the your-network band.
+   */
+  highlightPlayerId?: string | null
+  /**
    * Game-end scoring overlay: VP earned per city and per route by ONE player
    * (null = off). Annotated places get a brass VP roundel; everything else
    * recedes, so the score reads off the board. Links are destroyed by era
@@ -244,6 +251,7 @@ export function BoardMap({
   hoverCities = null,
   locatedCity = null,
   focusCity = null,
+  highlightPlayerId = null,
   vpAnnotations = null,
   vpColor = null,
 }: BoardMapProps) {
@@ -490,6 +498,17 @@ export function BoardMap({
     return map
   }, [players])
 
+  // Hover-a-name spotlight: the hovered player's colour + the cities where
+  // they hold a tile. Links are matched per-route against builtLinks below.
+  const highlight = useMemo(() => {
+    if (!highlightPlayerId) return null
+    const p = players.find((pl) => pl.id === highlightPlayerId)
+    if (!p) return null
+    const cities = new Set<string>()
+    for (const ind of p.industries) cities.add(ind.location)
+    return { color: PLAYER_FILL[p.color], cities }
+  }, [highlightPlayerId, players])
+
   const merchantsByCity = useMemo(() => {
     const map = new Map<CityId, Merchant[]>()
     for (const m of merchants) {
@@ -696,12 +715,28 @@ export function BoardMap({
                 : types.includes('canal')
                   ? 'canal'
                   : 'rail'
+            const isHighlighted =
+              highlight !== null && built?.player.id === highlightPlayerId
             const dimmed =
               (pickingLink && !isLegal && !isSelected) ||
-              (vpAnnotations !== null && linkVp === undefined)
+              (vpAnnotations !== null && linkVp === undefined) ||
+              (highlight !== null && !isHighlighted)
 
             return (
               <g key={key} opacity={dimmed ? 0.3 : 1}>
+                {/* hover-a-name spotlight: a colour halo under the owner's
+                    route so their network reads at a glance */}
+                {isHighlighted && highlight && (
+                  <path
+                    d={d}
+                    fill="none"
+                    stroke={highlight.color}
+                    strokeOpacity="0.55"
+                    strokeWidth="12"
+                    strokeLinecap="round"
+                    pointerEvents="none"
+                  />
+                )}
                 {!activeThisEra && !built ? (
                   // ghost — corridor exists but not in this era
                   <path
@@ -894,7 +929,8 @@ export function BoardMap({
               entries={merchantsByCity.get(id) ?? []}
               dimmed={
                 pickingCity ||
-                (vpAnnotations !== null && !vpAnnotations.cities.has(id))
+                (vpAnnotations !== null && !vpAnnotations.cities.has(id)) ||
+                highlight !== null
               }
               inNetwork={networkCities?.has(id) ?? false}
               networkColor={networkColor}
@@ -919,10 +955,13 @@ export function BoardMap({
                 isSelected={selectedCity === id}
                 dimmed={
                   (pickingCity && !isLegal && selectedCity !== id) ||
-                  (vpAnnotations !== null && !vpAnnotations.cities.has(id))
+                  (vpAnnotations !== null && !vpAnnotations.cities.has(id)) ||
+                  (highlight !== null && !highlight.cities.has(id))
                 }
                 inNetwork={networkCities?.has(id) ?? false}
                 networkColor={networkColor}
+                highlighted={highlight?.cities.has(id) ?? false}
+                highlightColor={highlight?.color ?? null}
                 hoverHint={hoverCities?.has(id) ?? false}
                 located={locatedCity === id}
                 vp={vpAnnotations?.cities.get(id)}
@@ -1175,6 +1214,8 @@ function CityPlate({
   onClick,
   inNetwork = false,
   networkColor = null,
+  highlighted = false,
+  highlightColor = null,
   hoverHint = false,
   located = false,
   vp = undefined,
@@ -1189,6 +1230,9 @@ function CityPlate({
   onClick: () => void
   inNetwork?: boolean
   networkColor?: string | null
+  /** Hover-a-name spotlight: this plate holds a tile of the hovered player. */
+  highlighted?: boolean
+  highlightColor?: string | null
   hoverHint?: boolean
   located?: boolean
   /** Game-end: VP the shown player earned here (undefined = none). */
@@ -1280,6 +1324,22 @@ function CityPlate({
           stroke={networkColor}
           strokeOpacity="0.75"
           strokeWidth="2"
+          pointerEvents="none"
+        />
+      )}
+      {/* hover-a-name spotlight — same band, in the hovered player's colour */}
+      {highlighted && highlightColor && (
+        <rect
+          x="-7"
+          y="-7"
+          width={plateW + 14}
+          height={plateH + 14}
+          rx={isFarm ? 18 : 12}
+          fill={highlightColor}
+          fillOpacity="0.16"
+          stroke={highlightColor}
+          strokeOpacity="0.9"
+          strokeWidth="2.4"
           pointerEvents="none"
         />
       )}

@@ -42,12 +42,15 @@ export function PlayerRail({
   turnOrder,
   playerSpending,
   onOpenLedger,
+  onHoverPlayer,
 }: {
   players: Player[]
   currentPlayerId: string | undefined
   turnOrder: GameState['turnOrder']
   playerSpending: GameState['playerSpending']
   onOpenLedger?: (playerId: string) => void
+  /** Hovering/focusing a mat spotlights that player's network on the board. */
+  onHoverPlayer?: (playerId: string | null) => void
 }) {
   const ordered = [...players].sort(
     (a, b) => turnOrder.indexOf(a.id) - turnOrder.indexOf(b.id),
@@ -69,7 +72,16 @@ export function PlayerRail({
             className="bb2-mat min-w-[290px] text-left lg:min-w-0"
             data-testid={`mat-${p.id}`}
             data-current={isCurrent}
-            onClick={() => onOpenLedger?.(p.id)}
+            onClick={() => {
+              // Clear the spotlight so a tap (which fires mouseenter but no
+              // matching mouseleave on touch) can't wedge the board highlighted.
+              onHoverPlayer?.(null)
+              onOpenLedger?.(p.id)
+            }}
+            onMouseEnter={() => onHoverPlayer?.(p.id)}
+            onMouseLeave={() => onHoverPlayer?.(null)}
+            onFocus={() => onHoverPlayer?.(p.id)}
+            onBlur={() => onHoverPlayer?.(null)}
             title={`Open ${p.name}'s ledger`}
           >
             <div

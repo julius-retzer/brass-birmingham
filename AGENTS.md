@@ -267,12 +267,34 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
     disagree. `choosingDoubleLinkBeer` resets `chosenBeerSources` on entry (and
     `clearSecondLink`/the success return clear it) so a cancelled-and-reselected
     double link re-asks instead of inheriting a stale pick.
-  - Coal is deliberately excluded (closest-mine rule, not a choice). The
-    staged sale/picks reference only public board state, so
-    `filterSnapshotForSeat` needs nothing; a forged MP pick is refused by the
-    same guard. Pinned by `gameStore.sourcechoice.test.ts`,
-    `legal-moves.test.ts`, `intent.test.ts`, `e2e/beer-source.spec.ts` +
-    `?demo=beerchoice`.
+  - Coal now flows through the SAME machinery for equal-distance ties ONLY
+    (2026-07-22, supersedes its earlier exclusion): coal must come from the
+    CLOSEST connected mine, so the only choice it ever offers is the tie-break
+    between mines at the same nearest distance (rules L119-121) — distinct
+    distances still auto-pick, no prompt. `SELECT_COAL_SOURCE` +
+    `pendingCoalChoice`/`coalChoiceSatisfied`/`canChooseCoalSource`; picks in
+    `chosenCoalSources`, step in `pendingCoalStep`
+    (`build`|`link`|`doubleLink`). The tie logic is ONE shared allocator,
+    `runCoalAllocation` (`resourceSources.ts`), used by BOTH the choice
+    selector and `consumeCoalFromSources` (which gained a `preferredSources`
+    param + a `picksUsed` return so a double link slices its two demands) — a
+    tie is a cube where the nearest tier holds 2+ stocked mines AND more cubes
+    than the demand still needs, matching beer/iron's `hasSourceChoice`.
+    Machine steps `building.choosingCoalSource`,
+    `networking.choosingLinkCoal`, `networking.choosingDoubleLinkCoal`, each
+    auto-skipping via `always`+`coalChoiceSatisfied` (so the common
+    single-mine case and every existing pin stay transparent). The AI's
+    deterministic fallback picks the first-offered (nearest, discovery order) =
+    the historic auto-pick, so AI games never stall. Coal picks reference only
+    public board state, so `filterSnapshotForSeat` needs nothing; a forged MP
+    pick is refused by the same guard/`explainRefusal`. Pinned by
+    `gameStore.coaltiechoice.test.ts` + `intent.test.ts`; UI picker in
+    `action-dock.tsx` (`CoalSourcePicker`) + board spotlight in `game.tsx`.
+  - Beer/iron are a free "any source" pick. The staged sale/picks reference
+    only public board state, so `filterSnapshotForSeat` needs nothing; a forged
+    MP pick is refused by the same guard. Pinned by
+    `gameStore.sourcechoice.test.ts`, `legal-moves.test.ts`, `intent.test.ts`,
+    `e2e/beer-source.spec.ts` + `?demo=beerchoice`.
 - COAL "NEAREST MINE" CONSUMPTION (`consumeCoalFromSources` +
   `findConnectedCoalMines`, `market/marketActions.ts` + `shared/gameUtils.ts`):
   `findConnectedCoalMines` returns EVERY connected stocked mine ordered
@@ -286,7 +308,9 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   (`consumeCoalFromSources`/`findConnectedCoalMines`/`isLocationConnectedToMerchant`
   accept a `CityId | CityId[]` anchor). Keep guard/exec/double-first-coal/refusal
   in lockstep. Pinned by `gameStore.coalnearestmine.test.ts`. Equidistant-mine
-  ties are still auto-picked (discovery order) — a tie-choice UI is out of scope.
+  ties are a PLAYER CHOICE (2026-07-22, `gameStore.coaltiechoice.test.ts`) — see
+  the coal note under RESOURCE SOURCE CHOICE above; omitting a preference still
+  auto-picks discovery order.
 - Link scoring: 1 VP per •-• icon on built industry tiles in the two
   adjacent locations, plus `GAME_CONSTANTS.MERCHANT_LINK_ICONS` (2) at
   merchant locations.
@@ -752,9 +776,12 @@ When updating this file, preserve this bar for all agents and keep entries conci
   route handlers, EventSource auto-reconnects across dev restarts.
   WebSockets would need a custom server. Store = the `games` table (Drizzle,
   Neon/Postgres), one row per game keyed by token: jsonb `snapshot`/`seats`/
-  `messages`/`ai`, atomic upsert, 7-day TTL sweep (a DELETE) — so game state
+  `messages`/`ai`, atomic upsert — so game state
   and chat SURVIVE a redeploy (`.bb-games/` files, or any ephemeral-disk file,
-  did not). `saveGame` is version-guarded (upsert applies only when the stored
+  did not). The 7-day TTL sweep (`sweepStaleGames`, a DELETE) is DISABLED by
+  default (2026-07-22): we keep every game for analytics. It is a no-op unless
+  `BB_ENABLE_TTL_SWEEP=1`; the lazy call sites in `game.ts`
+  (`createGame`/`listLobbies`) stay wired so flipping the flag re-enables it. `saveGame` is version-guarded (upsert applies only when the stored
   `version` is lower; a stale writer throws 'Concurrent write').
 - REALTIME SYNC IS DB-AS-BUS (2026-07-15, decision doc
   `brass-realtime-arch-d6`): the `games.version` column IS the event bus —
@@ -937,8 +964,9 @@ When updating this file, preserve this bar for all agents and keep entries conci
   `applyView`/`applyChatDelta` in `mp-game.tsx`; full history stays in the
   table (swept when the game is), the view only ever ships the tail.
   Migration 0001 backfills the old jsonb `games.messages` (now vestigial —
-  kept only so the backfill stays re-runnable; drop once pre-migration games
-  age out under the 7-day TTL). Chat is public to seated players; there is no
+  kept only so the backfill stays re-runnable; drop it explicitly once
+  pre-migration games are gone — the TTL sweep no longer ages them out by
+  default, see the store note above). Chat is public to seated players; there is no
   seat-private channel. POST /api/mp/chat auths like act; spectators get no
   chat in `viewFor`. Turn notifications derive from SSE frames via
   `mp/turnNotify.ts` (`didBecomeMyTurn` — never fires on the first frame);

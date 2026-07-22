@@ -39,9 +39,11 @@ import { getCurrentPlayer } from './shared/gameUtils'
 import {
   beerSourceKey,
   canChooseBeerSource,
+  canChooseCoalSource,
   canChooseIronSource,
   ironSourceKey,
   pendingBeerChoice,
+  pendingCoalChoice,
   pendingIronChoice,
   withProvisionalLink,
 } from './shared/resourceSources'
@@ -280,6 +282,15 @@ export function explainRefusal(
       return offered
         ? 'That iron source has already supplied all available cubes.'
         : 'That iron source is not available for this action.'
+    }
+
+    case 'SELECT_COAL_SOURCE': {
+      const choice = pendingCoalChoice(context)
+      if (!choice?.hasChoice) return 'There is no coal source to choose here.'
+      if (canChooseCoalSource(context, event.source)) return null
+      // Coal is not a free pick — only mines tied at the nearest distance are
+      // offered (rules L119-121).
+      return 'That coal mine is not one of the closest connected mines you may choose from.'
     }
 
     case 'CHOOSE_DOUBLE_LINK_BUILD':

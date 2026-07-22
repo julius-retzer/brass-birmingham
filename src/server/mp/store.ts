@@ -505,8 +505,19 @@ export async function saveGame(
 
 let lastSweep = 0
 
-/** Lazily delete stale games; throttled so it costs nothing per-request. */
+/**
+ * Lazily delete stale games; throttled so it costs nothing per-request.
+ *
+ * DISABLED BY DEFAULT: the automatic TTL sweep is gated behind
+ * `BB_ENABLE_TTL_SWEEP=1` and off in every environment unless that is set. We
+ * currently keep all games — finished, abandoned, and lobbies alike — so their
+ * snapshots and intent logs stay available for analytics. The function is left
+ * intact so the sweep can be re-enabled by flipping the flag (or called
+ * directly with the flag set for a one-off manual cleanup) without a code
+ * change. The lazy call sites in `game.ts` become no-ops while the flag is off.
+ */
 export async function sweepStaleGames(now = Date.now()): Promise<void> {
+  if (process.env.BB_ENABLE_TTL_SWEEP !== '1') return
   if (now - lastSweep < 60 * 60 * 1000) return
   lastSweep = now
   // ISO-8601 timestamps sort lexicographically the same as chronologically,

@@ -14,10 +14,13 @@ import {
 import { isDevelopable } from '~/store/shared/gameUtils'
 import {
   type BeerSourceOption,
+  type CoalSourceOption,
   type IronSourceOption,
   beerSourceKey,
+  coalSourceKey,
   ironSourceKey,
   pendingBeerChoice,
+  pendingCoalChoice,
   pendingIronChoice,
 } from '~/store/shared/resourceSources'
 import { CardChip, cardTitle } from './cards'
@@ -481,6 +484,87 @@ function IronSourcePicker({
           </button>
         )
       })}
+    </div>
+  )
+}
+
+/* ----- coal source picker ----- */
+
+function coalSourceTitle(option: CoalSourceOption): React.ReactNode {
+  const where = (
+    <>
+      {'coal mine at '}
+      <CityName cityId={option.source.location} passive />
+    </>
+  )
+  return option.own ? (
+    <>
+      {'Your '}
+      {where}
+    </>
+  ) : (
+    <>
+      {option.ownerName}
+      {"'s "}
+      {where}
+    </>
+  )
+}
+
+function coalSourceCaption(option: CoalSourceOption): string {
+  // Only the pick that takes the mine's LAST cube flips it — a mine with cubes
+  // to spare does not, so don't promise an income advance that won't happen.
+  if (option.flipsOwnerTile) {
+    return option.own
+      ? "Free — your mine's last cube; taking it flips the tile and advances your income."
+      : `Free — ${option.ownerName}'s mine's last cube; taking it flips the tile and advances their income.`
+  }
+  return option.own
+    ? `Free — ${option.available} cubes left on your mine.`
+    : `Free — ${option.available} cubes left on ${option.ownerName}'s mine.`
+}
+
+/**
+ * Which mine pays for the coal. Coal must come from the CLOSEST connected mine,
+ * so this appears ONLY when two or more mines tie at that nearest distance
+ * (rules L119-121) — draining a rival's mine flips it and advances their
+ * income, so the tie is a real decision. Left untouched, the engine drains the
+ * nearest in discovery order, exactly as before.
+ */
+function CoalSourcePicker({
+  options,
+  onPick,
+}: {
+  options: CoalSourceOption[]
+  onPick: (source: CoalSourceOption['source']) => void
+}) {
+  const { handlersFor } = useLocateCity()
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Note>
+        {options.length} mines are equally close — choose which to drain.
+      </Note>
+      {options.map((option) => (
+        <button
+          key={coalSourceKey(option.source)}
+          type="button"
+          className="bb2-option"
+          data-testid="coal-source"
+          onClick={() => onPick(option.source)}
+          {...handlersFor(option.source.location)}
+        >
+          <IndustryChip type="coal" size={16} />
+          <span className="flex flex-col text-left">
+            <b>{coalSourceTitle(option)}</b>
+            <span
+              className="text-[12px]"
+              style={{ color: 'rgba(231,215,177,.55)' }}
+            >
+              {coalSourceCaption(option)}
+            </span>
+          </span>
+        </button>
+      ))}
     </div>
   )
 }
@@ -1113,6 +1197,28 @@ export function ActionDock({
     )
   }
 
+  // A build's coal comes from the closest connected mine; the machine only
+  // stops here when two or more tie at that distance (rules L119-121).
+  if (is('playing.action.building.choosingCoalSource')) {
+    const choice = pendingCoalChoice(c)
+    return (
+      <Flow
+        action="Build"
+        steps={['Card', 'Industry', 'Site', 'Coal', 'Confirm']}
+        active={3}
+        onCancel={cancel}
+        held={c.selectedCard}
+      >
+        {choice && (
+          <CoalSourcePicker
+            options={choice.options}
+            onPick={(source) => send({ type: 'SELECT_COAL_SOURCE', source })}
+          />
+        )}
+      </Flow>
+    )
+  }
+
   /* ---------- NETWORK ---------- */
   const netSteps = ['Card', 'Route', 'Confirm']
   if (is('playing.action.networking.selectingCard')) {
@@ -1186,6 +1292,27 @@ export function ActionDock({
       </Flow>
     )
   }
+  // A rail link's 1 coal comes from the closest connected mine; the machine
+  // pauses here only when two tie at that distance (rules L119-121).
+  if (is('playing.action.networking.choosingLinkCoal')) {
+    const choice = pendingCoalChoice(c)
+    return (
+      <Flow
+        action="Network"
+        steps={['Card', 'Route', 'Coal', 'Confirm']}
+        active={2}
+        onCancel={cancel}
+        held={c.selectedCard}
+      >
+        {choice && (
+          <CoalSourcePicker
+            options={choice.options}
+            onPick={(source) => send({ type: 'SELECT_COAL_SOURCE', source })}
+          />
+        )}
+      </Flow>
+    )
+  }
   if (is('playing.action.networking.selectingSecondLink')) {
     return (
       <Flow
@@ -1199,13 +1326,32 @@ export function ActionDock({
       </Flow>
     )
   }
+  if (is('playing.action.networking.choosingDoubleLinkCoal')) {
+    const choice = pendingCoalChoice(c)
+    return (
+      <Flow
+        action="Network"
+        steps={['Card', 'Route', 'Route II', 'Coal', 'Beer', 'Confirm']}
+        active={3}
+        onCancel={cancel}
+        held={c.selectedCard}
+      >
+        {choice && (
+          <CoalSourcePicker
+            options={choice.options}
+            onPick={(source) => send({ type: 'SELECT_COAL_SOURCE', source })}
+          />
+        )}
+      </Flow>
+    )
+  }
   if (is('playing.action.networking.choosingDoubleLinkBeer')) {
     const choice = pendingBeerChoice(c)
     return (
       <Flow
         action="Network"
-        steps={['Card', 'Route', 'Route II', 'Beer', 'Confirm']}
-        active={3}
+        steps={['Card', 'Route', 'Route II', 'Coal', 'Beer', 'Confirm']}
+        active={4}
         onCancel={cancel}
         held={c.selectedCard}
       >

@@ -59,7 +59,9 @@ const createTestContext = (overrides: Partial<GameState> = {}): GameState => {
     pendingSale: null,
     chosenBeerSources: [],
     chosenIronSources: [],
+    chosenCoalSources: [],
     pendingIronStep: null,
+    pendingCoalStep: null,
     eraEndPending: false,
     winners: null,
     errorContext: null

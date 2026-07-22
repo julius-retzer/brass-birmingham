@@ -17,7 +17,7 @@ import {
   sellIronToMarket, 
   isLocationConnectedToMerchant
 } from '../market/marketActions'
-import type { IronSource } from '../shared/resourceSources'
+import type { CoalSource, IronSource } from '../shared/resourceSources'
 import {
   canCityAccommodateIndustryType,
   canOverbuildIndustry,
@@ -239,6 +239,9 @@ export function buildIndustryTile(
   /** The player's choice of which iron works (or the market) each cube comes
    * from; omit to let the engine pick. */
   ironSources?: IronSource[],
+  /** The player's choice of which mine each equal-distance coal tie drains;
+   * omit to let the engine pick the nearest. */
+  coalSources?: CoalSource[],
 ): IndustryBuildResult {
   const location = context.selectedLocation!
 
@@ -315,8 +318,9 @@ export function buildIndustryTile(
       { ...context, players: updatedPlayersFromResources },
       context.selectedLocation!,
       tile.coalRequired,
+      coalSources,
     )
-    
+
     if (!coalResult.success) {
       throw new Error(coalResult.errorMessage || 'Coal consumption failed')
     }

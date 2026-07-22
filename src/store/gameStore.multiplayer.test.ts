@@ -33,7 +33,8 @@ vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 })
 
 // The store is DB-backed (Neon/Postgres); set DATABASE_URL to a dev branch.
 // We provision the schema once per run; rows are left in the dev branch (the
-// TTL sweep and the dev-branch lifecycle clean them up).
+// per-run branch lifecycle cleans them up — the automatic TTL sweep is
+// disabled by default now, see sweepStaleGames).
 beforeAll(async () => {
   await ensureTestSchema()
 })

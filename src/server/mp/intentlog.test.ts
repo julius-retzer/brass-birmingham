@@ -17,10 +17,12 @@ import {
   createGame,
   getGameView,
   joinGame,
+  newToken,
   setSeatReady,
   startGame,
 } from './game'
 import { normalizeSnapshotForComparison, replayIntentLog } from './replay'
+import { buildSeededReplica } from './seedReplica'
 import {
   type GameRecord,
   loadGame,
@@ -290,3 +292,65 @@ describe.runIf(!!REPLAY_TOKEN)('intent log: BB_REPLAY_TOKEN tool', () => {
     )
   })
 })
+
+// The "let me retry that exact moment" tool: reconstruct a NEW, claimable game
+// seeded at the state a source game was in JUST BEFORE a given intent seq, so a
+// player can re-play the disputed move themselves. Point DATABASE_URL at the
+// branch holding the source game and run:
+//   BB_SEED_FROM_TOKEN=<token> BB_SEED_CUTOFF_SEQ=<seq> \
+//     pnpm vitest run src/server/mp/intentlog.test.ts -t 'BB_SEED_FROM_TOKEN'
+// It replays the log up to AND INCLUDING <seq> and prints the new game's URL.
+// DRY-RUN by default — nothing is written unless BB_SEED_WRITE=1 is also set,
+// which performs exactly ONE new-game INSERT (row + its 'setup' intent-log row,
+// atomically via saveGame) and never touches the source game or any other row.
+const SEED_FROM = process.env.BB_SEED_FROM_TOKEN
+const SEED_CUTOFF = process.env.BB_SEED_CUTOFF_SEQ
+describe.runIf(!!SEED_FROM && !!SEED_CUTOFF)(
+  'intent log: BB_SEED_FROM_TOKEN replica tool',
+  () => {
+    test('seeds a claimable replica at the state before a cutoff seq', async () => {
+      const source = SEED_FROM!
+      const cutoff = Number(SEED_CUTOFF)
+      expect(
+        Number.isInteger(cutoff) && cutoff > 0,
+        'bad BB_SEED_CUTOFF_SEQ',
+      ).toBe(true)
+
+      const src = await loadGame(source)
+      expect(src, `source game ${source} not found`).toBeTruthy()
+      const rows = await loadIntentLog(source)
+      expect(rows.length, 'source has no intent log').toBeGreaterThan(0)
+
+      const token = newToken()
+      const { record, setupLog } = buildSeededReplica(rows, cutoff, {
+        token,
+        seats: src!.seats,
+        now: new Date().toISOString(),
+      })
+      const ctx = (
+        record.snapshot as {
+          context: { era: string; round: number; currentPlayerIndex: number }
+        }
+      ).context
+      console.log(
+        `[seed] from ${source} ≤ seq ${cutoff}: new game ${token} — ` +
+          `era ${ctx.era} round ${ctx.round}, seat ${ctx.currentPlayerIndex} to act`,
+      )
+      console.log(`[seed] URL: /g/${token}`)
+
+      if (process.env.BB_SEED_WRITE !== '1') {
+        console.log(
+          '[seed] DRY-RUN — set BB_SEED_WRITE=1 to insert. Nothing written.',
+        )
+        return
+      }
+      // Guard against the (astronomically unlikely) token collision so a write
+      // can only ever be an INSERT, never an overwrite.
+      expect(await loadGame(token), 'token collision').toBeNull()
+      await saveGame(record, setupLog)
+      const back = await loadGame(token)
+      expect(back?.phase).toBe('playing')
+      console.log(`[seed] INSERTED ${token}`)
+    })
+  },
+)

@@ -951,6 +951,19 @@ When updating this file, preserve this bar for all agents and keep entries conci
   src/server/mp/intentlog.test.ts -t 'BB_REPLAY_TOKEN'` (DATABASE_URL at the
   branch holding it). Pinned by replay.test.ts (offline FULL mock-AI game,
   both eras) + intentlog.test.ts (DB round-trip, concurrency, sweep).
+  SEED A PLAYABLE REPLICA at an exact past moment (let a player retry a
+  disputed move): `buildSeededReplica` (`seedReplica.ts`, pure — replays a
+  source log prefix ≤ a cutoff seq into a fresh `phase:'playing'` game with all
+  human seats UNCLAIMED, so a player claims a seat from the invite link) + the
+  env-gated tool in intentlog.test.ts:
+  `BB_SEED_FROM_TOKEN=<token> BB_SEED_CUTOFF_SEQ=<seq> [BB_SEED_WRITE=1] pnpm
+  vitest run src/server/mp/intentlog.test.ts -t 'BB_SEED_FROM_TOKEN'` — DRY-RUN
+  unless `BB_SEED_WRITE=1`, which does exactly ONE new-game INSERT and touches
+  no existing row. Pinned by seedReplica.test.ts (offline). GOTCHA: prod Neon
+  moved US→EU 2026-07-22 (project `brass-birmingham-eu`, `morning-frog-57242526`,
+  eu-central-1) — `vercel env pull` may return the OLD US endpoint or a
+  sensitive-masked DATABASE_URL; get the live conn from
+  `neonctl connection-string main --project-id morning-frog-57242526`.
 - Chat (normalized out 2026-07-16): chat lives in its OWN append-only
   `chat_messages` table (PK = game token + monotonic per-game `seq`, which is
   the wire `id`), NOT the game jsonb row. A POST /api/mp/chat appends ONE row

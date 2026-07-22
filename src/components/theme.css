@@ -46,13 +46,21 @@
   --bb-player-purple: #7d5a86;
   --bb-player-orange: #c07430;
 
-  /* industry colours (physical-tile inspired) */
-  --bb-ind-cotton: #ded1b4;
-  --bb-ind-coal: #3b3833;
-  --bb-ind-iron: #d07135;
-  --bb-ind-manufacturer: #a5433a;
-  --bb-ind-pottery: #c9a227;
-  --bb-ind-brewery: #7a8b3d;
+  /* industry colours (physical-tile inspired): base stop + bright companion.
+     Tuned so every industry clears the player liveries and each other under
+     the chip wash — brewery is oxblood, iron steel, manufacturer teal. */
+  --bb-ind-cotton: #ddd2b6;
+  --bb-ind-cotton-bright: #e6dcc0;
+  --bb-ind-coal: #4a463f;
+  --bb-ind-coal-bright: #8d867a;
+  --bb-ind-iron: #8a939b;
+  --bb-ind-iron-bright: #9fa8b0;
+  --bb-ind-manufacturer: #4e8f85;
+  --bb-ind-manufacturer-bright: #63a89d;
+  --bb-ind-pottery: #d29a72;
+  --bb-ind-pottery-bright: #d29a72;
+  --bb-ind-brewery: #7c3b47;
+  --bb-ind-brewery-bright: #96525e;
 
   /* --- typography (font vars provided by next/font in the layout) --- */
   --bb-display: var(--font-bb-display), "Fraunces", georgia, serif;
@@ -335,6 +343,18 @@
   text-transform: uppercase;
   color: var(--bb-parchment);
   white-space: nowrap;
+}
+
+/* Industry glyph coin: a wash of the industry tint (base stop set on --t)
+   behind an ink glyph, so industry reads by hue while the engraved glyph
+   keeps its surface ink. The wash is far too dim to impersonate a livery. */
+.bb2-indchip {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--t) 17%, transparent);
+  border: 1px solid color-mix(in srgb, var(--t) 48%, transparent);
+  color: var(--bb-parchment);
 }
 
 .bb2-era-plate {

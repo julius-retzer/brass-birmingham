@@ -103,6 +103,32 @@ export function IndustryGlyph({
   return <>{Icon(p)}</>
 }
 
+// The glyph inside a wash coin of its industry tint (treatment A): the coin
+// carries the colour, the glyph keeps surface ink. Coin diameter tracks the
+// glyph at 1.5x, matching the proof sheet.
+export function IndustryChip({
+  type,
+  size = 16,
+  className,
+  ...p
+}: IconProps & { type: IndustryType }) {
+  const diameter = Math.round(size * 1.5)
+  return (
+    <span
+      className={['bb2-indchip', className].filter(Boolean).join(' ')}
+      style={
+        {
+          '--t': `var(--bb-ind-${type})`,
+          width: diameter,
+          height: diameter,
+        } as React.CSSProperties
+      }
+    >
+      <IndustryGlyph type={type} size={size} {...p} />
+    </span>
+  )
+}
+
 /* ---------- actions & misc ---------- */
 
 export function BuildIcon(p: IconProps) {

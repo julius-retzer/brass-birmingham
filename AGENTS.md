@@ -438,6 +438,17 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   game itself never touches the DB.
 - All styles are scoped under `.bb2` (`theme.css`) with Fraunces + Barlow
   Semi Condensed via `next/font` in `src/app/page.tsx`.
+- INDUSTRY ICON COLOURS (2026-07-22): six industries each have a base + bright
+  stop (`--bb-ind-*` / `--bb-ind-*-bright` in `theme.css`); glyphs render inside
+  a `.bb2-indchip` wash coin via `IndustryChip` (`icons.tsx`) — the coin carries
+  the tint, the glyph keeps surface ink. Board tile faces use the SAME base
+  hexes (`INDUSTRY_FILL`/`INDUSTRY_INK`, `board-map.tsx`). On-tile resource
+  markers share one 1px parchment keyline `#f2e6c8` (cubes + merchant beer
+  barrel); a tier holding >5 cubes (only Iron Works IV) collapses to a count
+  numeral. DELIBERATE interim split: iron's on-tile CUBE fill stays orange
+  `#d07135` while the tile FACE is steel `#8a939b` — the market-vs-tile iron
+  hue reconcile is a separate follow-up, so do NOT "fix" the cube to match the
+  face.
 - The board is a custom SVG (`board/board-map.tsx`, geometry hand-tuned in
   `board-data.ts`) — NOT React Flow. Legal targets come from `state.can(...)`
   sets computed in `game.tsx`; the map dims illegal plates/routes and

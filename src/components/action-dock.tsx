@@ -33,7 +33,7 @@ import {
   BuildIcon,
   CanalIcon,
   DevelopIcon,
-  IndustryGlyph,
+  IndustryChip,
   LoanIcon,
   NetworkIcon,
   PassIcon,
@@ -231,7 +231,7 @@ function DevelopTilePicker({
               data-testid={`develop-${t}`}
               onClick={() => cycle(t)}
             >
-              <IndustryGlyph type={t} size={20} />
+              <IndustryChip type={t} size={20} />
               <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em]">
                 {t === 'manufacturer' ? 'Goods' : t}
               </span>
@@ -368,7 +368,7 @@ function BeerSourcePicker({
             onClick={() => onPick(option.source)}
             {...handlersFor(option.source.location)}
           >
-            <IndustryGlyph type="brewery" size={16} />
+            <IndustryChip type="brewery" size={16} />
             <span className="flex flex-col text-left">
               <b>
                 {beerSourceTitle(option)}
@@ -468,7 +468,7 @@ function IronSourcePicker({
               option.source.kind === 'market' ? null : option.source.location,
             )}
           >
-            <IndustryGlyph type="iron" size={16} />
+            <IndustryChip type="iron" size={16} />
             <span className="flex flex-col text-left">
               <b>
                 {ironSourceTitle(option)}
@@ -553,7 +553,7 @@ function CoalSourcePicker({
           onClick={() => onPick(option.source)}
           {...handlersFor(option.source.location)}
         >
-          <IndustryGlyph type="coal" size={16} />
+          <IndustryChip type="coal" size={16} />
           <span className="flex flex-col text-left">
             <b>{coalSourceTitle(option)}</b>
             <span
@@ -1050,7 +1050,7 @@ export function ActionDock({
                 send({ type: 'SELECT_INDUSTRY_TYPE', industryType: t })
               }
             >
-              <IndustryGlyph type={t} size={20} />
+              <IndustryChip type={t} size={20} />
               <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em]">
                 {t === 'manufacturer' ? 'Goods' : t}
               </span>
@@ -1120,7 +1120,7 @@ export function ActionDock({
                 className="inline-flex items-center gap-1.5 font-semibold"
                 style={{ color: 'var(--bb-parchment-bright)' }}
               >
-                <IndustryGlyph type={tile.type} size={14} />
+                <IndustryChip type={tile.type} size={14} />
                 {industryLabel(tile.type)} · level {tile.level} · £{tile.cost}
               </span>
               {(tile.coalRequired > 0 || tile.ironRequired > 0) && (
@@ -1566,7 +1566,7 @@ export function ActionDock({
                 onFocus={() => locate(s.location)}
                 onBlur={() => unlocate(s.location)}
               >
-                <IndustryGlyph type={s.type} size={16} />
+                <IndustryChip type={s.type} size={16} />
                 <span>
                   <b>{s.type === 'manufacturer' ? 'goods' : s.type}</b> at{' '}
                   <CityName cityId={s.location} focusable={false} />

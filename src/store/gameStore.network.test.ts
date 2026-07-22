@@ -465,6 +465,136 @@ describe('Game Store - Network Actions', () => {
     expect(snapshot.context.discardPile).toContainEqual(card)
   })
 
+  // Regression (live game y9KEazF6ldi9sQu4FXufhQ, Jules): the SECOND rail of a
+  // double Network action must be allowed to build off the FIRST link's new
+  // network extension. Each link is placed separately, so after the first link
+  // is chosen its far endpoint is part of the network the second link is judged
+  // against (rules p.9 diagram — link B off link A's far end). Previously the
+  // second-link adjacency ignored the staged first link, so a merchant like
+  // Shrewsbury reachable ONLY via the first link's far endpoint was refused.
+  test('double rail - second link may extend off the first link (rules p.9)', () => {
+    const { actor } = setupGame()
+
+    actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
+    let snapshot = actor.getSnapshot()
+    expect(snapshot.context.era).toBe('rail')
+
+    const pid = snapshot.context.currentPlayerIndex
+    // Player anchors the network ONLY at kidderminster (a coal mine, supplies
+    // both links' coal) and owns a brewery for the double link's beer. No links
+    // on the board (rail era just began). coalbrookdale is NOT in the network
+    // except via the first link that is about to be placed.
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: pid,
+      money: 50,
+      links: [],
+      industries: [
+        {
+          location: 'kidderminster',
+          type: 'coal',
+          level: 1,
+          flipped: false,
+          tile: {
+            id: 'coal_1',
+            type: 'coal',
+            level: 1,
+            canBuildInCanalEra: true,
+            canBuildInRailEra: false,
+            incomeAdvancement: 4,
+            victoryPoints: 1,
+            cost: 5,
+            incomeSpaces: 4,
+            linkScoringIcons: 1,
+            coalRequired: 0,
+            ironRequired: 0,
+            beerRequired: 0,
+            beerProduced: 0,
+            coalProduced: 2,
+            ironProduced: 0,
+            hasLightbulbIcon: false,
+            quantity: 2,
+          },
+          coalCubesOnTile: 3,
+          ironCubesOnTile: 0,
+          beerBarrelsOnTile: 0,
+        },
+        {
+          location: 'birmingham',
+          type: 'brewery',
+          level: 2,
+          flipped: false,
+          tile: {
+            id: 'brewery_2',
+            type: 'brewery',
+            level: 2,
+            canBuildInCanalEra: true,
+            canBuildInRailEra: true,
+            incomeAdvancement: 5,
+            victoryPoints: 5,
+            cost: 7,
+            incomeSpaces: 5,
+            linkScoringIcons: 1,
+            coalRequired: 1,
+            ironRequired: 0,
+            beerRequired: 0,
+            beerProduced: 1,
+            coalProduced: 0,
+            ironProduced: 0,
+            hasLightbulbIcon: false,
+            quantity: 1,
+          },
+          coalCubesOnTile: 0,
+          ironCubesOnTile: 0,
+          beerBarrelsOnTile: 2,
+        },
+      ],
+    })
+
+    snapshot = actor.getSnapshot()
+    const card = snapshot.context.players[pid]!.hand[0]!
+    actor.send({ type: 'NETWORK' })
+    actor.send({ type: 'SELECT_CARD', cardId: card.id })
+    // First link anchored at kidderminster (in network); coalbrookdale is only
+    // reached BY this link.
+    actor.send({ type: 'SELECT_LINK', from: 'coalbrookdale', to: 'kidderminster' })
+    actor.send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })
+    snapshot = actor.getSnapshot()
+    expect(
+      snapshot.matches({
+        playing: { action: { networking: 'selectingSecondLink' } },
+      }),
+    ).toBe(true)
+
+    // THE BUG: Shrewsbury connects only to coalbrookdale, which is in the
+    // network solely via the first link just chosen. It must be offered.
+    expect(
+      snapshot.can({
+        type: 'SELECT_SECOND_LINK',
+        from: 'coalbrookdale',
+        to: 'shrewsbury',
+      }),
+    ).toBe(true)
+
+    // And the whole double link must complete: £15 + coal (own mine) + beer.
+    const moneyBefore = snapshot.context.players[pid]!.money
+    actor.send({
+      type: 'SELECT_SECOND_LINK',
+      from: 'coalbrookdale',
+      to: 'shrewsbury',
+    })
+    resolveCoalTies(actor)
+    actor.send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
+    snapshot = actor.getSnapshot()
+
+    const links = snapshot.context.players[pid]!.links
+    expect(links).toHaveLength(2)
+    expect(
+      links.some((l) => l.to === 'shrewsbury' || l.from === 'shrewsbury'),
+    ).toBe(true)
+    expect(moneyBefore - snapshot.context.players[pid]!.money).toBe(15)
+  })
+
   test('single rail link building - cost £5 + 1 coal', () => {
     const { actor } = setupGame()
 

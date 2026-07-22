@@ -119,8 +119,10 @@ describe('Game Store - Build Actions', () => {
     expect(builtIndustry).toBeDefined()
     expect(builtIndustry!.type).toBe('coal')
     expect(builtIndustry!.location).toBe('dudley')
-    expect(snapshot.context.discardPile.length).toBe(1)
-    expect(snapshot.context.discardPile[0]!.id).toBe('coal_test')
+    // Setup seeds a face-down starting discard (1 per player, rules l.402), so
+    // the played card lands on top of those 2.
+    expect(snapshot.context.discardPile.length).toBe(3)
+    expect(snapshot.context.discardPile.at(-1)!.id).toBe('coal_test')
   })
 
   test('build industry - player state updates', () => {

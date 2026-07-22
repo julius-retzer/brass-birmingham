@@ -198,6 +198,11 @@ function parseSystemEntry(message: string): JournalItem | null {
   if (ERA_DIVIDERS.some((re) => re.test(message))) {
     return { ...base, kind: 'era', divider: message }
   }
+  // Deck exhaustion is a one-off turning point (hands start shrinking), so it
+  // reads as its own divider rather than a numbered action row.
+  if (/^Draw deck exhausted\b/.test(message)) {
+    return { ...base, kind: 'system', divider: message }
+  }
   return null
 }
 

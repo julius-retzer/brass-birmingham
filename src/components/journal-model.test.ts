@@ -271,6 +271,17 @@ describe('system entries and dividers', () => {
     expect(item.kind).toBe('system')
     expect(item.divider).toBeUndefined()
   })
+
+  test('draw-deck exhaustion becomes its own divider', () => {
+    const item = parse(
+      'Draw deck exhausted — hands shrink each round from here',
+      'system',
+    )
+    expect(item.kind).toBe('system')
+    expect(item.divider).toBe(
+      'Draw deck exhausted — hands shrink each round from here',
+    )
+  })
 })
 
 describe('errors and fallbacks', () => {

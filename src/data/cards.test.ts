@@ -2,7 +2,9 @@ import { describe, expect, test } from 'vitest'
 import {
   INDUSTRY_DISPLAY_NAMES,
   describeCardId,
+  getInitialCards,
   industryDisplayName,
+  roundsInEra,
 } from './cards'
 
 describe('industryDisplayName', () => {
@@ -53,5 +55,28 @@ describe('describeCardId', () => {
     expect(describeCardId('coventry')).toBeNull()
     expect(describeCardId('not_a_card')).toBeNull()
     expect(describeCardId('£30')).toBeNull()
+  })
+})
+
+describe('roundsInEra', () => {
+  test('the Rail Era runs deck / (players * 2) rounds — 10/9/8', () => {
+    expect(roundsInEra(2, 'rail')).toBe(10)
+    expect(roundsInEra(3, 'rail')).toBe(9)
+    expect(roundsInEra(4, 'rail')).toBe(8)
+  })
+
+  test('the Canal Era plays one extra round for its 1-action opener', () => {
+    expect(roundsInEra(2, 'canal')).toBe(11)
+    expect(roundsInEra(3, 'canal')).toBe(10)
+    expect(roundsInEra(4, 'canal')).toBe(8 + 1)
+  })
+
+  test('the rail total is derived from the real deck size, not a table', () => {
+    for (const players of [2, 3, 4]) {
+      const deckSize = getInitialCards(players).regularCards.length
+      expect(roundsInEra(players, 'rail')).toBe(
+        Math.floor(deckSize / (players * 2)),
+      )
+    }
   })
 })

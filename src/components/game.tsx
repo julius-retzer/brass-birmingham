@@ -17,7 +17,7 @@ import { toast } from 'sonner'
 import { createActor, transition } from 'xstate'
 import { Toaster } from '~/components/ui/sonner'
 import { type CityId, cities, connections } from '~/data/board'
-import { type Card, type IndustryType } from '~/data/cards'
+import { type Card, type IndustryType, roundsInEra } from '~/data/cards'
 import { type InspectFn, useXstateInspect } from '~/lib/xstate-inspector'
 import {
   type GameEvent,
@@ -928,7 +928,7 @@ function GameInner({
             {ctx.era} era
           </span>
           <span className="bb2-chip" data-testid="round-chip">
-            Round {ctx.round}
+            Round {ctx.round}/{roundsInEra(ctx.players.length, ctx.era)}
           </span>
           <span className="bb2-chip">
             Actions

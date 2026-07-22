@@ -703,8 +703,9 @@ describe('Brass Birmingham - Full Game Integration', () => {
 
     const snap = actor.getSnapshot() as any
     expect(snap.context.players).toHaveLength(4)
-    // 4-player deck: 64 cards - 32 dealt into hands leaves 32 to draw
-    expect(snap.context.drawPile).toHaveLength(64 - 4 * 8)
+    // 4-player deck: 64 cards − 32 dealt into hands − 4 into the starting
+    // discard piles (rules l.402) leaves 28 to draw
+    expect(snap.context.drawPile).toHaveLength(64 - 4 * 8 - 4)
 
     const actions = playFullGame(actor, greedyPolicy)
     const c = expectCompletedGame(actor, actions, 4)

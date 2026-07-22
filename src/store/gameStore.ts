@@ -660,6 +660,18 @@ export const gameStore = setup({
         currentIndex += GAME_CONSTANTS.STARTING_HAND_SIZE
       }
 
+      // Official setup (rules p.11, l.402): after drawing their 8-card hand
+      // each player draws 1 more card face down as their starting Discard
+      // Pile. We keep a single shared discard pile, so the per-player,
+      // face-down distinction has no effect once setup is done — deal one
+      // card per player into it. This brings the post-setup draw deck to the
+      // official 22/27/28 for 2/3/4 players.
+      const startingDiscard = shuffledCards.slice(
+        currentIndex,
+        currentIndex + playerCount,
+      )
+      currentIndex += playerCount
+
       // Initialize players with starting money, income, hands, and industry tiles
       const players: Player[] = event.players.map((playerData, index) => ({
         ...playerData,
@@ -709,7 +721,7 @@ export const gameStore = setup({
         ],
         logs: [createLogEntry('Game started', 'system')],
         drawPile: shuffledCards.slice(currentIndex),
-        discardPile: [],
+        discardPile: startingDiscard,
         wildLocationPile: wildLocationCards,
         wildIndustryPile: wildIndustryCards,
         selectedCard: null,
@@ -1959,6 +1971,13 @@ export const gameStore = setup({
 
       const newCards = drawCards(context, cardsNeeded)
       const updatedHand = [...currentPlayer.hand, ...newCards]
+      const newDrawPile = context.drawPile.slice(cardsNeeded)
+
+      // The deck can only reach empty here (refill is the sole draw within an
+      // era, and it just decreases). This branch runs on the single >0 → 0
+      // transition, so the notice logs exactly once per era; from here hands
+      // shrink each round (rules l.33).
+      const justExhausted = newDrawPile.length === 0
 
       debugLog('refillPlayerHand', context)
       return {
@@ -1967,7 +1986,18 @@ export const gameStore = setup({
           context.currentPlayerIndex,
           { hand: updatedHand },
         ),
-        drawPile: context.drawPile.slice(cardsNeeded),
+        drawPile: newDrawPile,
+        ...(justExhausted
+          ? {
+              logs: [
+                ...context.logs,
+                createLogEntry(
+                  'Draw deck exhausted — hands shrink each round from here',
+                  'system',
+                ),
+              ],
+            }
+          : {}),
       }
     }),
 

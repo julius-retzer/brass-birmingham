@@ -121,7 +121,9 @@ describe('Game Store - Basic Setup', () => {
     const snapshot = actor.getSnapshot()
 
     expect(snapshot.context.drawPile.length).toBeGreaterThan(0)
-    expect(snapshot.context.discardPile).toHaveLength(0)
+    // Official setup deals 1 face-down card per player as their starting
+    // discard pile (rules l.402); our shared pile holds one per player.
+    expect(snapshot.context.discardPile).toHaveLength(2)
     expect(snapshot.context.wildLocationPile.length).toBeGreaterThan(0)
     expect(snapshot.context.wildIndustryPile.length).toBeGreaterThan(0)
   })

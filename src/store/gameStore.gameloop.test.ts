@@ -130,7 +130,11 @@ describe('Game loop - automatic era end and game over', () => {
 
     // Give P1 a visible income level (start is level 0 since the income
     // track audit) so the era-end collection can be asserted.
-    actor.send({ type: 'TEST_SET_PLAYER_STATE', playerId: 0, income: 10 } as any)
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: 0,
+      income: 10,
+    } as any)
     const moneyBefore = (actor.getSnapshot() as any).context.players[0].money
 
     // Complete the final canal round
@@ -143,8 +147,28 @@ describe('Game loop - automatic era end and game over', () => {
     const p0 = s.context.players.find((p: any) => p.id === '1')
     expect(p0.money).toBe(moneyBefore + 10)
 
+    // Force rail-era exhaustion the same way, so the game ends in one more
+    // round with no income collected on that (final) round. The setup discard
+    // deal (rules l.402) reshuffles into the rail deck, so we must empty it
+    // explicitly rather than relying on the canal round having drained it.
+    actor.send({ type: 'TEST_SET_DRAW_PILE', drawPile: [] } as any)
+    s = actor.getSnapshot() as any
+    const railHand0 = s.context.players[0].hand
+    actor.send({
+      type: 'TEST_SET_PLAYER_HAND',
+      playerId: 0,
+      hand: [railHand0[0]],
+    } as any)
+    actor.send({
+      type: 'TEST_SET_PLAYER_HAND',
+      playerId: 1,
+      hand: [railHand0[1] ?? railHand0[0]],
+    } as any)
+
     // Now drive to game end and confirm no income is paid for the final round
-    const moneyBeforeFinal = s.context.players.map((p: any) => p.money)
+    const moneyBeforeFinal = (actor.getSnapshot() as any).context.players.map(
+      (p: any) => p.money,
+    )
     let guard = 0
     while (!actor.getSnapshot().matches('gameOver') && guard < 20) {
       const snap = actor.getSnapshot() as any

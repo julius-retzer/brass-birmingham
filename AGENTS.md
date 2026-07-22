@@ -209,7 +209,15 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   ties keep relative order). Do not rotate `currentPlayerIndex` directly.
 - Hands refill at END of turn (entry of the `nextPlayer` state), not per
   action. A player whose hand is empty takes fewer actions
-  (`canContinueTurn` guard) and is skipped between turns.
+  (`canContinueTurn` guard) and is skipped between turns. `refillPlayerHand`
+  logs the one-off "Draw deck exhausted" system line on the >0 → 0 transition
+  (once per era); `journal-model.ts` renders it as a divider.
+- SETUP SEEDS THE DISCARD PILE (rules l.402, added 2026-07-22): after dealing
+  8-card hands, `initializeGame` deals 1 more card PER PLAYER into the single
+  shared `discardPile`, so post-setup draw deck = 22/27/28 for 2/3/4 players
+  (not 24/30/32). Tests that assumed an empty starting discard must account
+  for the N seeded cards. Setup only — the rail-era reset still deals 8 to
+  hand with no extra discard. Pinned by `gameStore.setupdiscard.test.ts`.
 - Actions must NEVER throw inside `assign` (it kills the actor and, on the
   server, strands the persisted snapshot). Use the `lastError`/
   `errorContext` pattern; a failed execution returns without consuming the

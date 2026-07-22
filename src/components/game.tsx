@@ -930,6 +930,9 @@ function GameInner({
           <span className="bb2-chip" data-testid="round-chip">
             Round {ctx.round}
           </span>
+          <span className="bb2-chip" data-testid="deck-chip">
+            Deck {ctx.drawPile.length}
+          </span>
           <span className="bb2-chip">
             Actions
             <span className="flex items-center gap-1">

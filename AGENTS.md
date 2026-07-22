@@ -366,8 +366,11 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   the marker lives on Progress Track SPACES (0-99, `src/data/incomeTrack.ts`,
   `Player.incomeSpace`); flips/Oxford advance SPACES, loans drop 3 LEVELS to
   the highest space of the new level, setup = space 10 = level 0 (NOT level
-  10). Mapping + engine behaviour pinned in incomeTrack tests. Known
-  remaining data gap: link building does not validate against the board
+  10). Mapping + engine behaviour pinned in incomeTrack tests. The full
+  track is VISIBLE via `IncomeTrackModal` (`src/components/income-track.tsx`),
+  opened from the rail's Income stat; it renders every level from the pure
+  `incomeTrackLevels()` helper (never hand-guessed) with each player's marker.
+  Known remaining data gap: link building does not validate against the board
   graph `connections` (the UI enforces era + graph).
 - Build slot semantics are FREE-SLOT-FIRST (2026-07-13 bug hunt): a build
   goes into a free compatible slot when one exists — overbuild (replace,

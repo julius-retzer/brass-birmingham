@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+# CodeRabbit review is opt-in for this repo: PRs are NOT auto-reviewed on open,
+# so routine PRs don't consume the shared account's review budget. Ask for a
+# review on the PRs that want one, either way:
+#   - add the `coderabbit` label to the PR (auto-review then fires), or
+#   - comment `@coderabbitai review` (on-demand, always works regardless of config).
+reviews:
+  auto_review:
+    # Disable automatic per-PR review. A positive `labels` match below still
+    # triggers a review even while this is false, giving us the label opt-in.
+    enabled: false
+    # Auto-review only fires when this label is present on the PR.
+    labels:
+      - coderabbit

@@ -6,6 +6,7 @@ import {
   calculateNetworkDistance,
   checkAndFlipIndustryTilesLogic,
   getCurrentPlayer,
+  updatePlayerInList,
 } from '../shared/gameUtils'
 import {
   type BeerSource,
@@ -19,6 +20,7 @@ import {
   ironSourceKey,
   planResourceSources,
   runCoalAllocation,
+  withProvisionalLink,
 } from '../shared/resourceSources'
 
 export function consumeCoalFromSources(
@@ -653,5 +655,138 @@ export function consumeBeerFromSources(
     updatedMerchants,
     merchantBonusesCollected,
     logDetails,
+  }
+}
+
+// A rail link burns exactly 1 coal, sourced from the nearest connected mine or,
+// failing that, the coal market (rules L116/L308). Names where that cube comes
+// from and its price, engine-truthfully.
+export interface RailCoalSourceView {
+  kind: 'mine' | 'market'
+  // Mine location, or the connected merchant that opens the market.
+  location?: CityId
+  ownerName?: string
+  own?: boolean
+  cost: number
+}
+
+export interface RailLinkCostView {
+  from: CityId
+  to: CityId
+  coal: RailCoalSourceView | null
+}
+
+// The full cost of the rail Network action the machine is holding: one link
+// (context.selectedLink alone) or a double (both links set). Coal is judged
+// after each link is placed, matching consumption. `ok` is false when a link
+// cannot reach coal or the whole action is unaffordable — the single source of
+// truth for both the SELECT/CONFIRM guards and the dock's cost preview.
+export interface RailNetworkCostView {
+  ok: boolean
+  double: boolean
+  baseCost: number
+  coalTotal: number
+  total: number
+  links: RailLinkCostView[]
+}
+
+// Where the one cube for a link at `anchor` (both endpoints) comes from, in the
+// board state `ctx` (link already provisionally placed). `picks` honours the
+// player's tie choices, if any.
+function railCoalCubeView(
+  ctx: GameState,
+  anchor: CityId[],
+  picks: CoalSource[],
+): { view: RailCoalSourceView | null; cost: number; ok: boolean } {
+  const consume = consumeCoalFromSources(ctx, anchor, 1, picks)
+  if (!consume.success) return { view: null, cost: 0, ok: false }
+  const alloc = runCoalAllocation(
+    [{ context: ctx, anchor, required: 1 }],
+    picks,
+  )
+  if (alloc.fromMines.length > 0) {
+    const mine = alloc.fromMines[0]!
+    const owner = ctx.players.find((p) => p.id === mine.ownerId)
+    return {
+      view: {
+        kind: 'mine',
+        location: mine.location,
+        ownerName: owner?.name,
+        own: mine.ownerId === getCurrentPlayer(ctx)?.id,
+        cost: 0,
+      },
+      cost: 0,
+      ok: true,
+    }
+  }
+  const [merchant] = isLocationConnectedToMerchant(
+    ctx,
+    anchor,
+  ).connectedMerchants
+  return {
+    view: { kind: 'market', location: merchant, cost: consume.coalCost },
+    cost: consume.coalCost,
+    ok: true,
+  }
+}
+
+export function railNetworkCostView(
+  context: GameState,
+): RailNetworkCostView | null {
+  if (context.era !== 'rail' || context.selectedLink === null) return null
+  const idx = context.currentPlayerIndex
+  const picks = context.chosenCoalSources ?? []
+  const link1 = context.selectedLink
+
+  const ctx1 = withProvisionalLink(context)
+  const c1 = railCoalCubeView(ctx1, [link1.from, link1.to], picks)
+
+  if (context.selectedSecondLink === null) {
+    const total = GAME_CONSTANTS.RAIL_LINK_COST + c1.cost
+    return {
+      ok: c1.ok,
+      double: false,
+      baseCost: GAME_CONSTANTS.RAIL_LINK_COST,
+      coalTotal: c1.cost,
+      total,
+      links: [{ from: link1.from, to: link1.to, coal: c1.view }],
+    }
+  }
+
+  // Double: the second link's coal is judged with the first placed AND drained,
+  // matching execution (the first link is on the board before its coal, then
+  // both are before the second's).
+  const link2 = context.selectedSecondLink
+  const firstConsume = consumeCoalFromSources(
+    ctx1,
+    [link1.from, link1.to],
+    1,
+    picks,
+  )
+  const playerWithLinks = firstConsume.updatedPlayers[idx]!
+  const ctx2: GameState = {
+    ...context,
+    players: updatePlayerInList(firstConsume.updatedPlayers, idx, {
+      ...playerWithLinks,
+      links: [...playerWithLinks.links, { ...link2, type: 'rail' as const }],
+    }),
+    coalMarket: firstConsume.updatedCoalMarket,
+  }
+  const c2 = railCoalCubeView(
+    ctx2,
+    [link2.from, link2.to],
+    picks.slice(firstConsume.picksUsed),
+  )
+  const coalTotal = c1.cost + c2.cost
+  return {
+    ok: c1.ok && c2.ok,
+    double: true,
+    baseCost: GAME_CONSTANTS.RAIL_DOUBLE_LINK_COST,
+    coalTotal,
+    total: GAME_CONSTANTS.RAIL_DOUBLE_LINK_COST + coalTotal,
+    links: [
+      { from: link1.from, to: link1.to, coal: c1.view },
+      { from: link2.from, to: link2.to, coal: c2.view },
+    ],
   }
 }

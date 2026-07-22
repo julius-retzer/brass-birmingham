@@ -58,7 +58,7 @@ import { GameOverScreen, PassGate, RoundCurtain } from './overlays'
 import { OpenMatButton, PlayerLedger } from './player-ledger'
 import { PlayerRail } from './player-rail'
 import { SetupScreen } from './setup-screen'
-import { MarketsPanel } from './side-panels'
+import { MarketsPanel, SidePanelRail, usePanelCollapsed } from './side-panels'
 
 const SAVE_KEY = 'bb2-save-v1'
 
@@ -447,6 +447,7 @@ function GameInner({
   )
   const [ledgerFor, setLedgerFor] = useState<string | null>(null)
   const [incomeTrackOpen, setIncomeTrackOpen] = useState(false)
+  const [panelCollapsed, togglePanel] = usePanelCollapsed()
   const [hoveredCard, setHoveredCard] = useState<Card | null>(null)
   // Hover-a-name spotlight: the player whose rail mat is hovered/focused right
   // now — the board lights up their network (links + tiles) and recedes the rest.
@@ -1050,33 +1051,51 @@ function GameInner({
             </div>
           </div>
 
-          <aside className="flex w-full flex-none flex-col gap-3 pb-44 lg:w-[416px] lg:overflow-y-auto lg:pb-0">
-            <div className="bb2-panel bb2-panel-active flex flex-col gap-3 p-5">
-              {!needsReveal && (
-                <ActionDock
-                  snapshot={state as GameStoreSnapshot}
-                  send={send}
-                  currentPlayer={currentPlayer}
-                  canSellAnything={canSellAnything}
-                  viableIndustries={viableIndustries}
-                  confirmOutcome={confirmOutcome}
-                  actionsLeft={{
-                    remaining: ctx.actionsRemaining,
-                    max: maxActions,
-                  }}
-                  legalSiteCount={pickingSite ? (legalCities?.size ?? 0) : null}
-                  onUndo={canUndo ? onUndo : null}
-                />
-              )}
-              {!needsReveal && (
-                <OpenMatButton onClick={() => setLedgerFor(currentPlayer.id)} />
-              )}
+          <SidePanelRail collapsed={panelCollapsed} onToggle={togglePanel} />
+
+          <aside
+            data-testid="side-panel"
+            data-collapsed={panelCollapsed}
+            className={`flex w-full flex-none flex-col pb-44 transition-[width] duration-300 ease-in-out lg:pb-0 ${
+              panelCollapsed
+                ? 'lg:w-0 lg:overflow-hidden'
+                : 'lg:w-[416px] lg:overflow-y-auto'
+            }`}
+          >
+            {/* Inner keeps its full width so a collapse clips the column to
+                the edge instead of squashing its contents mid-animation. */}
+            <div className="flex w-full flex-col gap-3 lg:w-[416px]">
+              <div className="bb2-panel bb2-panel-active flex flex-col gap-3 p-5">
+                {!needsReveal && (
+                  <ActionDock
+                    snapshot={state as GameStoreSnapshot}
+                    send={send}
+                    currentPlayer={currentPlayer}
+                    canSellAnything={canSellAnything}
+                    viableIndustries={viableIndustries}
+                    confirmOutcome={confirmOutcome}
+                    actionsLeft={{
+                      remaining: ctx.actionsRemaining,
+                      max: maxActions,
+                    }}
+                    legalSiteCount={
+                      pickingSite ? (legalCities?.size ?? 0) : null
+                    }
+                    onUndo={canUndo ? onUndo : null}
+                  />
+                )}
+                {!needsReveal && (
+                  <OpenMatButton
+                    onClick={() => setLedgerFor(currentPlayer.id)}
+                  />
+                )}
+              </div>
+              <MarketsPanel
+                coalMarket={ctx.coalMarket}
+                ironMarket={ctx.ironMarket}
+              />
+              <JournalPanel logs={ctx.logs} players={ctx.players} />
             </div>
-            <MarketsPanel
-              coalMarket={ctx.coalMarket}
-              ironMarket={ctx.ironMarket}
-            />
-            <JournalPanel logs={ctx.logs} players={ctx.players} />
           </aside>
         </div>
 
@@ -1093,6 +1112,7 @@ function GameInner({
             selectedIds={handSel?.selectedIds ?? []}
             hint={handSel?.hint ?? null}
             onHoverCard={setHoveredCard}
+            panelCollapsed={panelCollapsed}
           />
         )}
 

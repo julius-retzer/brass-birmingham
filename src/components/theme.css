@@ -153,6 +153,39 @@
   );
 }
 
+/* The board↔dock collapse handle: a slim brass gutter rail. Persistent so
+   the same control both hides and restores the right column. */
+.bb2-panel-rail {
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  align-self: stretch;
+  border: 1px solid var(--bb-brass-hairline-soft);
+  border-radius: 6px;
+  background: linear-gradient(
+    170deg,
+    var(--bb-iron-raised) 0%,
+    var(--bb-iron-panel) 100%
+  );
+  color: rgba(231, 215, 177, 0.55);
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+.bb2-panel-rail:hover {
+  color: var(--bb-brass-bright);
+  border-color: var(--bb-brass);
+  background: linear-gradient(170deg, #2c2417 0%, var(--bb-iron-raised) 100%);
+}
+.bb2-panel-rail:focus-visible {
+  outline: 2px solid var(--bb-brass);
+  outline-offset: 2px;
+}
+.bb2-panel-rail-chevron {
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 700;
+}
+
 .bb2-panel-title {
   font-family: var(--bb-body);
   font-weight: 600;

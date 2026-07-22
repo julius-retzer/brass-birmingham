@@ -49,6 +49,8 @@ export interface HandTrayProps {
   hint?: string | null
   /** Hover preview: the shell highlights the card's targets on the map. */
   onHoverCard?: (card: GameCard | null) => void
+  /** Right dock collapsed — the tray extends toward the reclaimed edge. */
+  panelCollapsed?: boolean
 }
 
 export function HandTray({
@@ -58,6 +60,7 @@ export function HandTray({
   selectedIds = [],
   hint,
   onHoverCard,
+  panelCollapsed = false,
 }: HandTrayProps) {
   const n = hand.length
   const selecting = canSelect !== null
@@ -189,7 +192,9 @@ export function HandTray({
   return (
     <div
       ref={rootRef}
-      className="bb2-handtray pointer-events-none fixed bottom-0 left-0 right-0 z-40 flex flex-col items-center lg:right-[428px]"
+      className={`bb2-handtray pointer-events-none fixed bottom-0 left-0 right-0 z-40 flex flex-col items-center transition-[right] duration-300 ease-in-out ${
+        panelCollapsed ? 'lg:right-[44px]' : 'lg:right-[428px]'
+      }`}
       style={
         { '--bb-hint-clear': `${hintClearance(lens)}px` } as React.CSSProperties
       }

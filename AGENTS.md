@@ -567,6 +567,13 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   dock type. The right column is `lg:w-[416px]` and the hand tray clears it
   with `lg:right-[428px]` — keep those in sync; both are lg-gated so phone
   (w-full / right-0) is untouched.
+- PANEL COLLAPSE (2026-07-22): the right column collapses to the board edge
+  (lg-only) via `usePanelCollapsed` + `SidePanelRail` (`side-panels.tsx`),
+  shared by `game.tsx` and `mp-game.tsx`. Collapsed = aside `lg:w-0` (inner
+  keeps `lg:w-[416px]` so it clips, not squashes) and the hand tray moves to
+  `lg:right-[44px]` — a THIRD offset to keep in sync with the two above. The
+  pref is its own localStorage flag `bb2-panel-collapsed-v1` (separate from
+  `bb2-save-v1`, survives a new game; session-only if storage is unavailable).
 - HOVER-TO-LOCATE (2026-07-17): hovering/focusing any city NAME (journal,
   source pickers, sale list, dock steps, ledger, card chips) spotlights its
   plate on the map. The name reads as interactive (`.bb2-locate-name` in

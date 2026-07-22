@@ -31,7 +31,12 @@ import { GameOverScreen, RoundCurtain } from '../overlays'
 import { OpenMatButton, PlayerLedger } from '../player-ledger'
 import { PlayerRail } from '../player-rail'
 import { JournalPanel } from '../journal'
-import { CollapsiblePanel, MarketsPanel } from '../side-panels'
+import {
+  CollapsiblePanel,
+  MarketsPanel,
+  SidePanelRail,
+  usePanelCollapsed,
+} from '../side-panels'
 import { UNREACHABLE, refusalToShow } from './refusal'
 import { didBecomeMyTurn, playTurnChime, titleForTurn } from './turnNotify'
 import { useInFlight } from './use-in-flight'
@@ -905,6 +910,7 @@ function MpTable({
   applyView: (view: GameViewWire) => void
 }) {
   const [ledgerFor, setLedgerFor] = useState<string | null>(null)
+  const [panelCollapsed, togglePanel] = usePanelCollapsed()
   const [hoveredCard, setHoveredCard] = useState<Card | null>(null)
   // Hover-a-name spotlight: the player whose rail mat is hovered/focused right
   // now — the board lights up their network (links + tiles) and recedes the rest.
@@ -1376,119 +1382,136 @@ function MpTable({
             </div>
           </div>
 
-          <aside className="flex w-full flex-none flex-col gap-3 pb-44 lg:w-[416px] lg:overflow-y-auto lg:pb-0">
-            <div
-              className={`bb2-panel bb2-panel-active flex flex-col gap-3 p-5 ${myTurn && inFlight ? 'bb2-busy' : ''}`}
-              aria-busy={myTurn && inFlight}
-            >
-              {myTurn ? (
-                <ActionDock
-                  snapshot={state}
-                  send={send as never}
-                  currentPlayer={currentPlayer}
-                  canSellAnything={canSellAnything}
-                  actionsLeft={{
-                    remaining: ctx.actionsRemaining,
-                    max: maxActions,
-                  }}
-                />
-              ) : aiTurn ? (
-                <div className="flex flex-col gap-2" data-testid="ai-panel">
-                  <span className="bb2-panel-title">
-                    The rival&rsquo;s desk
-                  </span>
-                  <p
-                    className="text-[14px]"
-                    style={{ color: 'var(--bb-parchment)' }}
-                  >
-                    <b style={{ color: 'var(--bb-brass-bright)' }}>
-                      {currentPlayer.name}
-                    </b>{' '}
-                    <span
-                      className="text-[11px] uppercase tracking-[0.12em]"
+          <SidePanelRail collapsed={panelCollapsed} onToggle={togglePanel} />
+
+          <aside
+            data-testid="side-panel"
+            data-collapsed={panelCollapsed}
+            className={`flex w-full flex-none flex-col pb-44 transition-[width] duration-300 ease-in-out lg:pb-0 ${
+              panelCollapsed
+                ? 'lg:w-0 lg:overflow-hidden'
+                : 'lg:w-[416px] lg:overflow-y-auto'
+            }`}
+          >
+            {/* Inner keeps its full width so a collapse clips the column to
+                the edge instead of squashing its contents mid-animation. */}
+            <div className="flex w-full flex-col gap-3 lg:w-[416px]">
+              <div
+                className={`bb2-panel bb2-panel-active flex flex-col gap-3 p-5 ${myTurn && inFlight ? 'bb2-busy' : ''}`}
+                aria-busy={myTurn && inFlight}
+              >
+                {myTurn ? (
+                  <ActionDock
+                    snapshot={state}
+                    send={send as never}
+                    currentPlayer={currentPlayer}
+                    canSellAnything={canSellAnything}
+                    actionsLeft={{
+                      remaining: ctx.actionsRemaining,
+                      max: maxActions,
+                    }}
+                  />
+                ) : aiTurn ? (
+                  <div className="flex flex-col gap-2" data-testid="ai-panel">
+                    <span className="bb2-panel-title">
+                      The rival&rsquo;s desk
+                    </span>
+                    <p
+                      className="text-[14px]"
+                      style={{ color: 'var(--bb-parchment)' }}
+                    >
+                      <b style={{ color: 'var(--bb-brass-bright)' }}>
+                        {currentPlayer.name}
+                      </b>{' '}
+                      <span
+                        className="text-[11px] uppercase tracking-[0.12em]"
+                        style={{ color: 'rgba(231,215,177,.5)' }}
+                      >
+                        ({currentSeat?.aiTier?.difficulty ?? 'ai'})
+                      </span>{' '}
+                      {aiIsThinking ? (
+                        <span
+                          className="animate-pulse"
+                          data-testid="ai-thinking"
+                        >
+                          is thinking…
+                        </span>
+                      ) : (
+                        <span>is moving…</span>
+                      )}
+                    </p>
+                    <p
+                      className="text-[12px]"
                       style={{ color: 'rgba(231,215,177,.5)' }}
                     >
-                      ({currentSeat?.aiTier?.difficulty ?? 'ai'})
-                    </span>{' '}
-                    {aiIsThinking ? (
-                      <span className="animate-pulse" data-testid="ai-thinking">
-                        is thinking…
-                      </span>
-                    ) : (
-                      <span>is moving…</span>
-                    )}
-                  </p>
-                  <p
-                    className="text-[12px]"
-                    style={{ color: 'rgba(231,215,177,.5)' }}
+                      Its moves and reasoning appear in the rival&rsquo;s
+                      journal below.
+                    </p>
+                  </div>
+                ) : (
+                  <div
+                    className="flex flex-col gap-2"
+                    data-testid="waiting-panel"
                   >
-                    Its moves and reasoning appear in the rival&rsquo;s journal
-                    below.
-                  </p>
-                </div>
-              ) : (
-                <div
-                  className="flex flex-col gap-2"
-                  data-testid="waiting-panel"
-                >
-                  <span className="bb2-panel-title">The table</span>
-                  <p
-                    className="text-[14px]"
-                    style={{ color: 'var(--bb-parchment)' }}
-                  >
-                    Waiting for{' '}
-                    <b style={{ color: 'var(--bb-brass-bright)' }}>
-                      {currentPlayer.name}
-                    </b>{' '}
-                    to act…
-                  </p>
-                  <p
-                    className="text-[12px]"
-                    style={{ color: 'rgba(231,215,177,.5)' }}
-                  >
-                    Moves appear here live. Your hand stays private below.
-                  </p>
-                </div>
-              )}
-              {/* Always yours, never the seat that happens to be acting. */}
-              {me && <OpenMatButton onClick={() => setLedgerFor(me.id)} />}
-            </div>
-            {view.ai && <AiMindPanel ai={view.ai} seats={view.seats} />}
-            <MarketsPanel
-              coalMarket={ctx.coalMarket}
-              ironMarket={ctx.ironMarket}
-            />
-            <ChatPanel
-              messages={view.messages ?? []}
-              you={you}
-              seats={view.seats}
-              onSend={(text) => {
-                void (async () => {
-                  try {
-                    const res = await fetch('/api/mp/chat', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        token,
-                        seatId: creds.seatId,
-                        seatSecret: creds.seatSecret,
-                        text,
-                      }),
-                    })
-                    const body = (await res.json()) as {
-                      ok: boolean
-                      view?: GameViewWire
+                    <span className="bb2-panel-title">The table</span>
+                    <p
+                      className="text-[14px]"
+                      style={{ color: 'var(--bb-parchment)' }}
+                    >
+                      Waiting for{' '}
+                      <b style={{ color: 'var(--bb-brass-bright)' }}>
+                        {currentPlayer.name}
+                      </b>{' '}
+                      to act…
+                    </p>
+                    <p
+                      className="text-[12px]"
+                      style={{ color: 'rgba(231,215,177,.5)' }}
+                    >
+                      Moves appear here live. Your hand stays private below.
+                    </p>
+                  </div>
+                )}
+                {/* Always yours, never the seat that happens to be acting. */}
+                {me && <OpenMatButton onClick={() => setLedgerFor(me.id)} />}
+              </div>
+              {view.ai && <AiMindPanel ai={view.ai} seats={view.seats} />}
+              <MarketsPanel
+                coalMarket={ctx.coalMarket}
+                ironMarket={ctx.ironMarket}
+              />
+              <ChatPanel
+                messages={view.messages ?? []}
+                you={you}
+                seats={view.seats}
+                onSend={(text) => {
+                  void (async () => {
+                    try {
+                      const res = await fetch('/api/mp/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          token,
+                          seatId: creds.seatId,
+                          seatSecret: creds.seatSecret,
+                          text,
+                        }),
+                      })
+                      const body = (await res.json()) as {
+                        ok: boolean
+                        view?: GameViewWire
+                      }
+                      // Apply the sender's fresh view (with the new message) at once,
+                      // same version-guarded path as an SSE frame.
+                      if (body.ok && body.view) applyView(body.view)
+                    } catch {
+                      toast.error('Could not send the message')
                     }
-                    // Apply the sender's fresh view (with the new message) at once,
-                    // same version-guarded path as an SSE frame.
-                    if (body.ok && body.view) applyView(body.view)
-                  } catch {
-                    toast.error('Could not send the message')
-                  }
-                })()
-              }}
-            />
-            <JournalPanel logs={ctx.logs} players={ctx.players} />
+                  })()
+                }}
+              />
+              <JournalPanel logs={ctx.logs} players={ctx.players} />
+            </div>
           </aside>
         </div>
 
@@ -1504,6 +1527,7 @@ function MpTable({
           selectedIds={handSel?.selectedIds ?? []}
           hint={handSel?.hint ?? null}
           onHoverCard={setHoveredCard}
+          panelCollapsed={panelCollapsed}
         />
 
         {ledgerPlayer && (

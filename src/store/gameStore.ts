@@ -51,6 +51,7 @@ import {
   consumeBeerFromSources,
   consumeCoalFromSources,
   consumeIronFromSources,
+  railNetworkCostView,
 } from './market/marketActions'
 import {
   calculateLinkVictoryPoints,
@@ -648,6 +649,20 @@ export const validateSale = (
   }
 
   return { isValid: true, industry }
+}
+
+// A rail Network action is payable when every link reaches coal once placed
+// (rules L116/L308) and the player can afford the base cost plus any market
+// coal (Brass has no debt). The preview (`railNetworkCostView`) reads
+// `context.selectedLink`/`selectedSecondLink` and is the single source of truth
+// for both SELECT candidacy and the confirm guards, so an offered route is
+// always confirmable and the dock's cost display can never drift from the
+// guard. The double form also needs beer, checked separately by
+// `canCompleteDoubleLink`.
+function railNetworkPayable(context: GameState): boolean {
+  const preview = railNetworkCostView(context)
+  if (preview === null || !preview.ok) return false
+  return getCurrentPlayer(context).money >= preview.total
 }
 
 // Setup the machine with proper typing
@@ -2994,30 +3009,11 @@ export const gameStore = setup({
       if (context.selectedLink === null) {
         return false
       }
-
-      const linkCost =
-        context.era === 'canal'
-          ? GAME_CONSTANTS.CANAL_LINK_COST
-          : GAME_CONSTANTS.RAIL_LINK_COST
-      let coalCost = 0
-
-      // Check coal availability for rail era links. Judge against the
-      // post-placement network (both endpoints), matching execution — a mine
-      // reachable only through the new link must be seen here too.
       if (context.era === 'rail') {
-        const coalResult = consumeCoalFromSources(
-          withProvisionalLink(context),
-          [context.selectedLink.from, context.selectedLink.to],
-          1,
-        )
-        if (!coalResult.success) {
-          return false
-        }
-        coalCost = coalResult.coalCost
+        return railNetworkPayable(context)
       }
-
       // Brass has no debt: the player must be able to pay the full cost
-      return getCurrentPlayer(context).money >= linkCost + coalCost
+      return getCurrentPlayer(context).money >= GAME_CONSTANTS.CANAL_LINK_COST
     },
     canBuildLink: ({ context, event }) => {
       if (event.type !== 'SELECT_LINK' && event.type !== 'SELECT_SECOND_LINK') {
@@ -3039,8 +3035,8 @@ export const gameStore = setup({
 
       const currentPlayer = getCurrentPlayer(context)
 
-      // Brass has no debt. Coal cost isn't known until a link is picked, so
-      // this only gates on the base cost; hasSelectedLink checks cost + coal.
+      // Brass has no debt. The base cost is a fast reject before the network
+      // and (rail) coal checks; the full cost incl. coal is enforced below.
       const baseLinkCost =
         context.era === 'canal'
           ? GAME_CONSTANTS.CANAL_LINK_COST
@@ -3095,7 +3091,24 @@ export const gameStore = setup({
       })
 
       // Check if either end of the new link is part of player's network
-      return playerLocations.has(event.from) || playerLocations.has(event.to)
+      const isAdjacent =
+        playerLocations.has(event.from) || playerLocations.has(event.to)
+      if (!isAdjacent) {
+        return false
+      }
+
+      // A rail link must also reach coal once placed and be fully affordable
+      // (rules L116/L308). The event carries the concrete route, so coal is
+      // computable here — folding it in makes an offered route always
+      // confirmable (no coal-dead spur pulses as selectable). Canal links need
+      // no coal, so the adjacency + base-cost checks above suffice.
+      if (context.era === 'rail') {
+        const candidate = { from: event.from, to: event.to }
+        return event.type === 'SELECT_SECOND_LINK'
+          ? railNetworkPayable({ ...context, selectedSecondLink: candidate })
+          : railNetworkPayable({ ...context, selectedLink: candidate })
+      }
+      return true
     },
     canSelectLocation: ({ context, event }) => {
       if (event.type !== 'SELECT_LOCATION') return false
@@ -3335,47 +3348,8 @@ export const gameStore = setup({
       }
 
       // Brass has no debt: £15 plus the coal for both links must be payable.
-      // Mirror execution: the FIRST link is on the board before its coal is
-      // sourced, anchored over both its endpoints.
-      const firstCoal = consumeCoalFromSources(
-        withProvisionalLink(context),
-        [context.selectedLink.from, context.selectedLink.to],
-        1,
-      )
-      if (!firstCoal.success) {
-        return false
-      }
-      // ...and both links are on the board before the second link's coal.
-      const playerWithLinks =
-        firstCoal.updatedPlayers[context.currentPlayerIndex]!
-      const secondCoal = consumeCoalFromSources(
-        {
-          ...context,
-          players: updatePlayerInList(
-            firstCoal.updatedPlayers,
-            context.currentPlayerIndex,
-            {
-              ...playerWithLinks,
-              links: [
-                ...playerWithLinks.links,
-                { ...context.selectedSecondLink, type: 'rail' as const },
-              ],
-            },
-          ),
-          coalMarket: firstCoal.updatedCoalMarket,
-        },
-        [context.selectedSecondLink.from, context.selectedSecondLink.to],
-        1,
-      )
-      if (!secondCoal.success) {
-        return false
-      }
-
-      const totalCost =
-        GAME_CONSTANTS.RAIL_DOUBLE_LINK_COST +
-        firstCoal.coalCost +
-        secondCoal.coalCost
-      return getCurrentPlayer(context).money >= totalCost
+      // Each link sources coal after it is placed (rules L116/L308).
+      return railNetworkPayable(context)
     },
   },
 }).createMachine({

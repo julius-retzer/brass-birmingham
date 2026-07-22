@@ -8,15 +8,22 @@ import { type CityId, cities } from '~/data/board'
 import { type Card, type IndustryType } from '~/data/cards'
 import {
   type GameEvent,
+  type GameState,
   type GameStoreSnapshot,
   type Player,
 } from '~/store/gameStore'
+import {
+  type RailCoalSourceView,
+  railNetworkCostView,
+} from '~/store/market/marketActions'
 import { pendingDevelopBonusChoice } from '~/store/shared/developBonus'
 import { isDevelopable } from '~/store/shared/gameUtils'
 import {
+  type BeerSource,
   type BeerSourceOption,
   type CoalSourceOption,
   type IronSourceOption,
+  beerChoiceForDoubleLink,
   beerSourceKey,
   coalSourceKey,
   ironSourceKey,
@@ -65,6 +72,128 @@ function LinkLabel({
     <>
       <CityName cityId={link.from} /> — <CityName cityId={link.to} />
     </>
+  )
+}
+
+/**
+ * Read-only "sourced from" line naming where a rail link's 1 coal comes from —
+ * a connected mine (free) or the coal market (£). The names are hover-to-locate
+ * CityNames. Facts come from the engine (`railNetworkCostView`); never
+ * re-derived here.
+ */
+function CoalSourceText({ coal }: { coal: RailCoalSourceView | null }) {
+  if (!coal) return null
+  if (coal.kind === 'mine') {
+    return (
+      <span>
+        coal: free from{' '}
+        {coal.location ? (
+          <CityName cityId={coal.location} />
+        ) : (
+          'a connected mine'
+        )}
+        {coal.ownerName && !coal.own ? ` (${coal.ownerName})` : ''}
+      </span>
+    )
+  }
+  return (
+    <span>
+      coal: {coal.location ? <CityName cityId={coal.location} /> : ''} market £
+      {coal.cost}
+    </span>
+  )
+}
+
+/** The beer feeding a double rail's second link — own or a rival's brewery. */
+function BeerSourceText({
+  source,
+  currentPlayer,
+  players,
+}: {
+  source: BeerSource
+  currentPlayer: Player
+  players: Player[]
+}) {
+  if (source.kind === 'merchant') {
+    return (
+      <span>
+        beer: <CityName cityId={source.location} /> merchant
+      </span>
+    )
+  }
+  const own = source.ownerId === currentPlayer.id
+  const owner = players.find((p) => p.id === source.ownerId)
+  return (
+    <span>
+      beer: {own ? 'your' : `${owner?.name ?? 'a rival'}'s`} brewery at{' '}
+      <CityName cityId={source.location} />
+    </span>
+  )
+}
+
+/**
+ * The concrete cost of the rail Network action the machine is holding, shown
+ * before the player commits: base £ + coal (+ beer for a double), then each
+ * link's coal source and the beer source named inline. All engine-computed
+ * (`railNetworkCostView` / `beerChoiceForDoubleLink`) so it can never disagree
+ * with the confirm guard.
+ */
+function NetworkCostBreakdown({
+  context,
+  currentPlayer,
+}: {
+  context: GameState
+  currentPlayer: Player
+}) {
+  const view = railNetworkCostView(context)
+  if (!view?.ok) return null
+
+  let beer: BeerSource | null = null
+  if (view.double) {
+    const choice = beerChoiceForDoubleLink(context, currentPlayer)
+    const picked = (context.chosenBeerSources ?? [])[0]
+    beer =
+      choice?.options.find(
+        (o) => picked && beerSourceKey(o.source) === beerSourceKey(picked),
+      )?.source ??
+      // No explicit pick: name the engine's auto-pick (first offered).
+      choice?.options[0]?.source ??
+      null
+  }
+
+  return (
+    <div
+      className="flex flex-col gap-1 text-[12.5px]"
+      style={{ color: 'rgba(231,215,177,.62)' }}
+      data-testid="network-cost"
+    >
+      <div className="tabular-nums">
+        <b style={{ color: 'var(--bb-parchment-bright)' }}>
+          Lay {view.double ? '2 tracks' : '1 track'}
+        </b>{' '}
+        — £{view.baseCost} + {view.double ? '2 coal + 1 beer' : '1 coal'}
+      </div>
+      {view.links.map((link) => (
+        <div
+          key={`${link.from}-${link.to}`}
+          className="flex flex-wrap items-center gap-x-1"
+        >
+          {view.double && (
+            <span>
+              <CityName cityId={link.from} /> — <CityName cityId={link.to} />:
+            </span>
+          )}
+          <CoalSourceText coal={link.coal} />
+        </div>
+      ))}
+      {beer && (
+        <BeerSourceText
+          source={beer}
+          currentPlayer={currentPlayer}
+          players={context.players}
+        />
+      )}
+    </div>
   )
 }
 
@@ -1275,6 +1404,9 @@ export function ActionDock({
           </b>{' '}
           ({c.era})
         </Note>
+        {c.era === 'rail' ? (
+          <NetworkCostBreakdown context={c} currentPlayer={currentPlayer} />
+        ) : null}
         <Confirm
           disabled={!can({ type: 'CONFIRM' })}
           onClick={() => send({ type: 'CONFIRM' })}
@@ -1386,6 +1518,7 @@ export function ActionDock({
             <LinkLabel link={c.selectedSecondLink} />
           </b>
         </Note>
+        <NetworkCostBreakdown context={c} currentPlayer={currentPlayer} />
         <Confirm
           disabled={!can({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })}
           onClick={() => send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })}

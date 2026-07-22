@@ -1,10 +1,6 @@
 'use client'
 
-// The income Progress Track — the snaking 0..99 track printed around the
-// board edge, made visible. Shows every income level with its £/round coin
-// value, the non-linear number of spaces it spans (1→2→3→4 as income climbs,
-// so higher income is slower to reach), and where each player's marker sits.
-// Opened from the rail's Income stat; mirrors PlayerLedger's modal shell.
+// The income Progress Track made visible; mirrors PlayerLedger's modal shell.
 import { useEffect } from 'react'
 import { incomeTrackLevels } from '~/data/incomeTrack'
 import { type Player } from '~/store/gameStore'
@@ -13,7 +9,6 @@ import { IncomeIcon } from './icons'
 
 const TRACK = incomeTrackLevels()
 
-// £/round the coin pays. Negative levels are a debt settled from the treasury.
 function formatIncome(level: number): string {
   return level < 0 ? `−£${-level}` : `£${level}`
 }
@@ -27,7 +22,6 @@ export function IncomeTrackModal({
   currentPlayerId: string | undefined
   onClose: () => void
 }) {
-  // Escape closes, matching every other overlay in the game.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -39,7 +33,6 @@ export function IncomeTrackModal({
   const currentPlayer = players.find((p) => p.id === currentPlayerId)
   const currentLevel = currentPlayer?.income
 
-  // Which players sit on each space, resolved once.
   const playersOnSpace = new Map<number, Player[]>()
   for (const p of players) {
     const list = playersOnSpace.get(p.incomeSpace) ?? []
@@ -47,7 +40,7 @@ export function IncomeTrackModal({
     playersOnSpace.set(p.incomeSpace, list)
   }
 
-  // Highest income at the top — reads like climbing the track.
+  // Highest income at the top.
   const rows = [...TRACK].reverse()
 
   return (
@@ -137,7 +130,7 @@ export function IncomeTrackModal({
           levels; a negative level is a debt paid from your treasury.
         </p>
 
-        {/* the track — scrolls within the modal, highest income first */}
+        {/* track */}
         <div
           className="mt-3 flex flex-col gap-[3px] overflow-y-auto pr-1"
           data-testid="income-track-levels"

@@ -22,7 +22,6 @@ function Stat({
   icon?: React.ReactNode
   accent?: string
   testId?: string
-  /** When set, the value becomes a nested control (e.g. open the track). */
   onClick?: () => void
   title?: string
 }) {
@@ -39,8 +38,7 @@ function Stat({
     <div className="flex min-w-[52px] flex-col items-start gap-0.5">
       <span className="bb2-stat-label">{label}</span>
       {onClick ? (
-        // The rail card is itself a button, so this sub-affordance is a
-        // role=button span that stops propagation rather than a real <button>.
+        // role=button span, not a real <button>: the rail card is already one.
         <span
           role="button"
           tabIndex={0}

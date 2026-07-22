@@ -387,7 +387,7 @@ function DevelopTilePicker({
             disabled
             title={reason}
           >
-            <IndustryGlyph type={type} size={20} />
+            <IndustryChip type={type} size={20} />
             <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em]">
               {type === 'manufacturer' ? 'Goods' : type}
             </span>

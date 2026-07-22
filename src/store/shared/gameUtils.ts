@@ -544,11 +544,18 @@ export function canOverbuildIndustry(
   reason?: string
   existingIndustry?: { industry: Player['industries'][0]; playerIndex: number }
 } {
-  const existingIndustry = findExistingIndustryAtLocation(
-    context,
-    location,
-    industryType,
+  // Multiple same-type tiles can share a location (e.g. Cannock's two
+  // coal-capable slots). The overbuild is judged against the tile actually
+  // being REPLACED — the builder's own when they have one (rules p.7: own
+  // tiles overbuild without restriction), never an opponent's picked up by
+  // player-order accident.
+  const ownIndustry = context.players[currentPlayerIndex]!.industries.find(
+    (industry) =>
+      industry.location === location && industry.type === industryType,
   )
+  const existingIndustry = ownIndustry
+    ? { industry: ownIndustry, playerIndex: currentPlayerIndex }
+    : findExistingIndustryAtLocation(context, location, industryType)
 
   if (!existingIndustry) {
     return { canOverbuild: true } // No existing industry to overbuild

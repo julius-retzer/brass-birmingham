@@ -404,6 +404,9 @@ function GameInner({
   )
   const [ledgerFor, setLedgerFor] = useState<string | null>(null)
   const [hoveredCard, setHoveredCard] = useState<Card | null>(null)
+  // Hover-a-name spotlight: the player whose rail mat is hovered/focused right
+  // now — the board lights up their network (links + tiles) and recedes the rest.
+  const [hoveredPlayerId, setHoveredPlayerId] = useState<string | null>(null)
   // Hover-to-locate: which city's NAME (journal, pickers, ledger…) is under
   // the cursor/focus right now — its plate gets the map's surveyor's mark.
   const locateState = useLocateCityState()
@@ -966,6 +969,7 @@ function GameInner({
           turnOrder={ctx.turnOrder}
           playerSpending={ctx.playerSpending}
           onOpenLedger={(id) => setLedgerFor(id)}
+          onHoverPlayer={setHoveredPlayerId}
         />
 
         {/* ---------- main: board + dock ---------- */}
@@ -996,6 +1000,7 @@ function GameInner({
                 }
                 locatedCity={locateState.locatedCity}
                 focusCity={needsReveal ? null : focusCityFor(hoveredCard)}
+                highlightPlayerId={needsReveal ? null : hoveredPlayerId}
               />
             </div>
           </div>

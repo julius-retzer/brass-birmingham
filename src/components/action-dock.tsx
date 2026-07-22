@@ -512,9 +512,16 @@ function coalSourceTitle(option: CoalSourceOption): React.ReactNode {
 }
 
 function coalSourceCaption(option: CoalSourceOption): string {
+  // Only the pick that takes the mine's LAST cube flips it — a mine with cubes
+  // to spare does not, so don't promise an income advance that won't happen.
+  if (option.flipsOwnerTile) {
+    return option.own
+      ? "Free — your mine's last cube; taking it flips the tile and advances your income."
+      : `Free — ${option.ownerName}'s mine's last cube; taking it flips the tile and advances their income.`
+  }
   return option.own
-    ? 'Free — flips your mine when its last cube goes, advancing your income.'
-    : `Free — flips ${option.ownerName}'s mine when its last cube goes, advancing their income.`
+    ? `Free — ${option.available} cubes left on your mine.`
+    : `Free — ${option.available} cubes left on ${option.ownerName}'s mine.`
 }
 
 /**
@@ -534,7 +541,9 @@ function CoalSourcePicker({
   const { handlersFor } = useLocateCity()
   return (
     <div className="flex flex-col gap-1.5">
-      <Note>Two mines are equally close — choose which to drain.</Note>
+      <Note>
+        {options.length} mines are equally close — choose which to drain.
+      </Note>
       {options.map((option) => (
         <button
           key={coalSourceKey(option.source)}

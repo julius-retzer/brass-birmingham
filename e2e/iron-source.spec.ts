@@ -37,10 +37,13 @@ test('the iron picker offers every works but never the market, and the develop c
   await confirm.click()
 
   // The journal renders the tile count as a chip and the iron consumption
-  // as a demoted detail line — same words, restructured.
+  // as a demoted detail line — same words, restructured. Industry names are
+  // proper-cased on render ("Iron works"), so match case-insensitively while
+  // still pinning the source: this must fail if the line vanishes or the iron
+  // is reported as coming from the market instead of the free works.
   await expect(
     page
-      .getByText(/developed removed 1 tile 1 iron from iron works \(free\)/)
+      .getByText(/developed removed 1 tile 1 iron from iron works \(free\)/i)
       .first(),
   ).toBeVisible()
 })

@@ -4,11 +4,14 @@
 // verified against the printed coins on the photographed track.
 import { describe, expect, it } from 'vitest'
 import {
+  MAX_INCOME_LEVEL,
   MAX_INCOME_SPACE,
+  MIN_INCOME_LEVEL,
   STARTING_INCOME_SPACE,
   advanceIncomeSpaces,
   highestSpaceForLevel,
   incomeLevelForSpace,
+  incomeTrackLevels,
 } from './incomeTrack'
 
 describe('income track — space → level mapping (retail board)', () => {
@@ -93,5 +96,49 @@ describe('income track — helpers', () => {
     expect(advanceIncomeSpaces(10, 5)).toBe(15)
     expect(incomeLevelForSpace(advanceIncomeSpaces(10, 5))).toBe(3)
     expect(advanceIncomeSpaces(97, 10)).toBe(99)
+  })
+})
+
+describe('income track — full-track view derivation', () => {
+  const track = incomeTrackLevels()
+
+  it('covers every level from -10 to 30 in ascending order', () => {
+    expect(track[0]!.level).toBe(MIN_INCOME_LEVEL)
+    expect(track[track.length - 1]!.level).toBe(MAX_INCOME_LEVEL)
+    expect(track.map((l) => l.level)).toEqual(
+      Array.from(
+        { length: MAX_INCOME_LEVEL - MIN_INCOME_LEVEL + 1 },
+        (_, i) => MIN_INCOME_LEVEL + i,
+      ),
+    )
+  })
+
+  it('reproduces the non-linear spacing (1→2→3→4 spaces per level)', () => {
+    const spacesFor = (level: number) =>
+      track.find((l) => l.level === level)!.spaces.length
+    expect(spacesFor(-10)).toBe(1)
+    expect(spacesFor(0)).toBe(1)
+    expect(spacesFor(1)).toBe(2)
+    expect(spacesFor(10)).toBe(2)
+    expect(spacesFor(11)).toBe(3)
+    expect(spacesFor(20)).toBe(3)
+    expect(spacesFor(21)).toBe(4)
+    expect(spacesFor(29)).toBe(4)
+    expect(spacesFor(30)).toBe(3)
+  })
+
+  it('spaces tile the whole track 0..99 with no gaps or overlaps', () => {
+    const all = track.flatMap((l) => l.spaces)
+    expect(all).toEqual(
+      Array.from({ length: MAX_INCOME_SPACE + 1 }, (_, i) => i),
+    )
+  })
+
+  it('every space maps back to its own level', () => {
+    for (const { level, spaces } of track) {
+      for (const space of spaces) {
+        expect(incomeLevelForSpace(space)).toBe(level)
+      }
+    }
   })
 })

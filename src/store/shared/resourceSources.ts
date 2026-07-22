@@ -424,6 +424,37 @@ export function beerChoiceForSale(
 }
 
 /**
+ * A copy of `context` with the single selected link provisionally on the
+ * current player's board. A rail link's coal is sourced from a mine connected
+ * "after it is placed" (rules p.7, L116/L308) — so the guard, execution and
+ * refusal explainer all judge coal against this post-placement network, never
+ * the raw pre-placement one (which hides a mine reachable only through the new
+ * link). Returns `context` unchanged when no link is selected.
+ */
+export function withProvisionalLink(context: GameState): GameState {
+  if (!context.selectedLink) return context
+  const me = context.players[context.currentPlayerIndex]
+  if (!me) return context
+  const updated = {
+    ...me,
+    links: [
+      ...me.links,
+      {
+        from: context.selectedLink.from,
+        to: context.selectedLink.to,
+        type: context.era,
+      },
+    ],
+  }
+  return {
+    ...context,
+    players: context.players.map((p, i) =>
+      i === context.currentPlayerIndex ? updated : p,
+    ),
+  }
+}
+
+/**
  * A copy of `context` with both selected rail links provisionally on the
  * current player's board. The rules judge the double link's beer reachability
  * "after placement" (p.9), and execution consumes beer with both rails built —

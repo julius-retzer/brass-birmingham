@@ -22,7 +22,9 @@ import type { IndustryTile } from '../../data/industryTiles'
  * removed from a Player Mat via Build, never via Develop (rulebook p.7,
  * "Potteries and the Lightbulb Icon").
  */
-export function isDevelopable(tile: Pick<IndustryTile, 'type' | 'hasLightbulbIcon'>): boolean {
+export function isDevelopable(
+  tile: Pick<IndustryTile, 'type' | 'hasLightbulbIcon'>,
+): boolean {
   return tile.type !== 'pottery' || !tile.hasLightbulbIcon
 }
 
@@ -135,12 +137,24 @@ export function calculateNetworkDistance(
 }
 
 // Resource consumption utility functions
+//
+// RULES (p.5, L119-121): coal comes from the closest connected unflipped Coal
+// Mine (any owner), and "if a Coal Mine runs out of coal, and you need more,
+// choose the next closest Coal Mine" — free — before the coal market is ever
+// touched. So this returns EVERY connected stocked mine, ordered nearest-first,
+// and the consumer drains them in that order until the requirement is met.
+//
+// `location` may be a single city or, for a rail link (which touches two
+// locations), both of its endpoints — a mine's distance is then measured from
+// whichever endpoint is closer (min over the anchors). Passing both endpoints
+// makes the pick independent of the link's from/to orientation.
 export function findConnectedCoalMines(
   context: GameState,
-  location: CityId,
-  currentPlayer: Player,
+  location: CityId | CityId[],
+  _currentPlayer: Player,
 ): Player['industries'] {
-  // RULE: Find closest (fewest Link tiles distant) connected unflipped Coal Mines
+  const anchors = Array.isArray(location) ? location : [location]
+
   const allCoalMines = context.players
     .flatMap((player) => player.industries)
     .filter(
@@ -154,7 +168,11 @@ export function findConnectedCoalMines(
   const minesByDistance = new Map<number, Player['industries']>()
 
   for (const mine of allCoalMines) {
-    const distance = calculateNetworkDistance(context, location, mine.location)
+    const distance = Math.min(
+      ...anchors.map((anchor) =>
+        calculateNetworkDistance(context, anchor, mine.location),
+      ),
+    )
     if (distance !== Infinity) {
       // Only include connected mines
       if (!minesByDistance.has(distance)) {
@@ -164,16 +182,11 @@ export function findConnectedCoalMines(
     }
   }
 
-  // Return mines at the closest distance (0 = same location, 1 = one link away, etc.)
+  // Return ALL connected mines, closest distance first (0 = same location,
+  // 1 = one link away, ...). Within a distance tier discovery order is kept,
+  // which is where an equidistant-mine tie is currently auto-resolved.
   const distances = Array.from(minesByDistance.keys()).sort((a, b) => a - b)
-  if (distances.length > 0) {
-    const closestDistance = distances[0]
-    if (closestDistance !== undefined) {
-      return minesByDistance.get(closestDistance) || []
-    }
-  }
-
-  return [] // No connected mines
+  return distances.flatMap((distance) => minesByDistance.get(distance) ?? [])
 }
 
 export function findAvailableIronWorks(

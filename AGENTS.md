@@ -273,6 +273,20 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
     same guard. Pinned by `gameStore.sourcechoice.test.ts`,
     `legal-moves.test.ts`, `intent.test.ts`, `e2e/beer-source.spec.ts` +
     `?demo=beerchoice`.
+- COAL "NEAREST MINE" CONSUMPTION (`consumeCoalFromSources` +
+  `findConnectedCoalMines`, `market/marketActions.ts` + `shared/gameUtils.ts`):
+  `findConnectedCoalMines` returns EVERY connected stocked mine ordered
+  nearest-first (not just the closest tier), so a shortfall in the nearest mine
+  rolls to the next-closest — free — and the coal MARKET is charged only once
+  ALL connected mines are exhausted (rules L119-121). Rail-link coal is judged
+  AFTER the link is placed (rules L116/L308): the exec, the `hasSelectedLink`
+  guard, the double-link guard's first coal, and `refusal.ts` all source coal
+  against `withProvisionalLink(context)` (`shared/resourceSources.ts`), anchored
+  over BOTH endpoints `[from, to]` so the pick is orientation-independent
+  (`consumeCoalFromSources`/`findConnectedCoalMines`/`isLocationConnectedToMerchant`
+  accept a `CityId | CityId[]` anchor). Keep guard/exec/double-first-coal/refusal
+  in lockstep. Pinned by `gameStore.coalnearestmine.test.ts`. Equidistant-mine
+  ties are still auto-picked (discovery order) — a tie-choice UI is out of scope.
 - Link scoring: 1 VP per •-• icon on built industry tiles in the two
   adjacent locations, plus `GAME_CONSTANTS.MERCHANT_LINK_ICONS` (2) at
   merchant locations.

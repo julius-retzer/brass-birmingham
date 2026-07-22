@@ -22,7 +22,10 @@ import {
 
 export function consumeCoalFromSources(
   context: GameState,
-  location: CityId,
+  // A single city, or — for a rail link — both of its endpoints. Coal is
+  // sourced from the mine closest to any anchor, and market connection is
+  // judged from any anchor too.
+  location: CityId | CityId[],
   coalRequired: number,
 ): {
   success: boolean
@@ -146,9 +149,12 @@ export function consumeCoalFromSources(
       availableSources.push('coal markets')
     }
 
+    const locationLabel = (
+      Array.isArray(location) ? location : [location]
+    ).join('/')
     if (availableSources.length === 0) {
       logDetails.push(
-        `Coal consumption failed: need ${shortfall} more coal. No coal mines or market connection available from ${location}.`,
+        `Coal consumption failed: need ${shortfall} more coal. No coal mines or market connection available from ${locationLabel}.`,
       )
     } else {
       logDetails.push(
@@ -305,10 +311,12 @@ export function consumeIronFromSources(
   }
 }
 
-// Helper function to check if a location is connected to any merchant
+// Helper function to check if a location is connected to any merchant.
+// `location` may be a single city or, for a rail link, both endpoints —
+// connection from ANY anchor counts.
 export function isLocationConnectedToMerchant(
   context: GameState,
-  location: CityId,
+  location: CityId | CityId[],
 ): { connected: boolean; connectedMerchants: CityId[] } {
   const merchantLocations: CityId[] = [
     'warrington',
@@ -318,15 +326,16 @@ export function isLocationConnectedToMerchant(
     'shrewsbury',
   ]
 
+  const anchors = Array.isArray(location) ? location : [location]
   const connectedMerchants: CityId[] = []
 
   for (const merchantLocation of merchantLocations) {
-    const distance = calculateNetworkDistance(
-      context,
-      location,
-      merchantLocation,
+    const reachable = anchors.some(
+      (anchor) =>
+        calculateNetworkDistance(context, anchor, merchantLocation) !==
+        Infinity,
     )
-    if (distance !== Infinity) {
+    if (reachable) {
       connectedMerchants.push(merchantLocation)
     }
   }

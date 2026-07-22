@@ -27,17 +27,17 @@ import {
 /* ---------------- palette (mirrors theme.css) ---------------- */
 
 const INDUSTRY_FILL: Record<IndustryType, string> = {
-  cotton: '#ded1b4',
-  coal: '#3b3833',
-  iron: '#d07135',
-  manufacturer: '#a5433a',
-  pottery: '#c9a227',
-  brewery: '#7a8b3d',
+  cotton: '#ddd2b6',
+  coal: '#4a463f',
+  iron: '#8a939b',
+  manufacturer: '#4e8f85',
+  pottery: '#d29a72',
+  brewery: '#7c3b47',
 }
 const INDUSTRY_INK: Record<IndustryType, string> = {
   cotton: '#2a2014',
   coal: '#e7d7b1',
-  iron: '#1f1208',
+  iron: '#16130f',
   manufacturer: '#f2e6c8',
   pottery: '#2a2014',
   brewery: '#f2e6c8',
@@ -1431,13 +1431,17 @@ function BuiltTile({ occ }: { occ: BuiltIndustry }) {
   const fill = occ.flipped ? '#f2e6c8' : INDUSTRY_FILL[occ.type]
   const ink = occ.flipped ? INDUSTRY_FILL[occ.type] : INDUSTRY_INK[occ.type]
   const statInk = occ.flipped ? '#4a3d29' : ink
+  // On-tile resource markers: the fill carries the resource identity, a
+  // single 1px parchment keyline (shared with the merchant beer barrel)
+  // lifts every marker off its face and off the owner ribbon. Iron stays the
+  // shipped orange for now — its market/tile hue reconcile lands separately.
   const cubes =
     occ.type === 'coal'
-      ? { n: occ.coalCubesOnTile, c: '#1d1b18', s: '#e7d7b1' }
+      ? { n: occ.coalCubesOnTile, c: '#1d1b18' }
       : occ.type === 'iron'
-        ? { n: occ.ironCubesOnTile, c: '#d07135', s: '#3a2010' }
+        ? { n: occ.ironCubesOnTile, c: '#d07135' }
         : occ.type === 'brewery'
-          ? { n: occ.beerBarrelsOnTile, c: '#e8bc4f', s: '#5c451a' }
+          ? { n: occ.beerBarrelsOnTile, c: '#e8bc4f' }
           : null
 
   return (
@@ -1467,24 +1471,58 @@ function BuiltTile({ occ }: { occ: BuiltIndustry }) {
       >
         {ROMAN[occ.level] ?? occ.level}
       </text>
-      {/* resource cubes riding on the tile */}
+      {/* resource cubes riding on the tile — up to five in a column that
+          clears the owner ribbon; six or more (only Iron Works IV reaches
+          six) collapses to a count numeral so no cube goes silently missing. */}
       {cubes && cubes.n > 0 && (
         <g>
-          {Array.from({ length: Math.min(cubes.n, 5) }, (_, i) => (
-            <rect
-              key={i}
-              x={SLOT - 11}
-              y={17 + i * 6.4}
-              width="5.6"
-              height="5.6"
-              rx="1"
-              fill={cubes.c}
-              stroke={cubes.s}
-              strokeWidth="0.8"
-            >
-              <title>resource cube on tile</title>
-            </rect>
-          ))}
+          {cubes.n <= 5 ? (
+            Array.from({ length: cubes.n }, (_, i) => (
+              <rect
+                key={i}
+                x={SLOT - 11}
+                y={13 + i * 6.6}
+                width="6.2"
+                height="6.2"
+                rx="1"
+                fill={cubes.c}
+                stroke="#f2e6c8"
+                strokeWidth="1"
+              >
+                <title>resource cube on tile</title>
+              </rect>
+            ))
+          ) : (
+            <g>
+              <rect
+                x={SLOT - 11}
+                y="13"
+                width="6.2"
+                height="6.2"
+                rx="1"
+                fill={cubes.c}
+                stroke="#f2e6c8"
+                strokeWidth="1"
+              />
+              <text
+                x={SLOT - 7.9}
+                y="27"
+                textAnchor="middle"
+                fill="#f2e6c8"
+                stroke="#16130f"
+                strokeWidth="0.5"
+                paintOrder="stroke"
+                style={{
+                  fontFamily: 'var(--bb-display)',
+                  fontWeight: 700,
+                  fontSize: 11,
+                }}
+              >
+                {`×${cubes.n}`}
+                <title>{`${cubes.n} resource cubes on tile`}</title>
+              </text>
+            </g>
+          )}
         </g>
       )}
       {/* printed stats: VP roundel · link icons · income advance.
@@ -1714,8 +1752,8 @@ function MerchantPlate({
                     rx="4.2"
                     ry="5.2"
                     fill="#e8bc4f"
-                    stroke="#5c451a"
-                    strokeWidth="1.2"
+                    stroke="#f2e6c8"
+                    strokeWidth="1"
                   />
                   <line
                     x1="-4.2"

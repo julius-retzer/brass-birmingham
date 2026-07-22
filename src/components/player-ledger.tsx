@@ -12,7 +12,7 @@ import { PLAYER_FILL } from './board/board-map'
 import {
   CanalIcon,
   IncomeIcon,
-  IndustryGlyph,
+  IndustryChip,
   LaurelIcon,
   MatIcon,
   RailIcon,
@@ -177,7 +177,7 @@ export function PlayerLedger({
                     className="flex items-center gap-1.5 text-[12.5px] font-bold uppercase tracking-[0.14em]"
                     style={{ color: 'var(--bb-parchment)' }}
                   >
-                    <IndustryGlyph type={t} size={14} />
+                    <IndustryChip type={t} size={14} />
                     {LABEL[t]}
                   </span>
                   <div className="flex flex-col gap-1">
@@ -364,7 +364,7 @@ export function PlayerLedger({
                   className="flex items-center gap-2 text-[13.5px]"
                   style={{ color: 'var(--bb-parchment)' }}
                 >
-                  <IndustryGlyph type={ind.type} size={13} />
+                  <IndustryChip type={ind.type} size={13} />
                   <span className="capitalize">
                     {LABEL[ind.type]} {ROMAN[ind.level] ?? ind.level}
                   </span>

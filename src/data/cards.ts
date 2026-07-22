@@ -1,3 +1,4 @@
+import { GAME_CONSTANTS } from '../store/constants'
 import { type CityId, cities } from './board'
 
 export type IndustryType =
@@ -372,4 +373,26 @@ export function getInitialCards(playerCount: number): CardDecks {
     wildLocationCards,
     wildIndustryCards,
   }
+}
+
+/**
+ * How many rounds an era lasts for a given player count.
+ *
+ * The deck is fixed per player count (40/54/64 regular cards for 2/3/4
+ * players) and a normal turn spends its two actions on two cards, so an era
+ * runs `deck / (players * 2)` rounds once the draw pile and every hand are
+ * empty — 10/9/8 for 2/3/4 players. The Canal Era's opening round grants only
+ * one action (see GAME_CONSTANTS.FIRST_ROUND_ACTIONS), leaving the deck one
+ * round short, so the Canal Era plays one extra round (11/10/9). This mirrors
+ * the engine's own end-of-era detection rather than hard-coding a table.
+ */
+export function roundsInEra(
+  playerCount: number,
+  era: 'canal' | 'rail',
+): number {
+  const deckSize = getInitialCards(playerCount).regularCards.length
+  const railRounds = Math.floor(
+    deckSize / (playerCount * GAME_CONSTANTS.NORMAL_ROUND_ACTIONS),
+  )
+  return era === 'canal' ? railRounds + 1 : railRounds
 }

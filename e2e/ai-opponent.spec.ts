@@ -34,8 +34,7 @@ test('found a company against an AI rival and watch it take its turn', async ({
 
   // No lobby: the AI seat is claimed at creation, the game is live.
   await expect(page.getByTestId('era-plate')).toHaveText('canal era')
-  await expect(page.getByTestId('you-chip')).toHaveText('You are Ada')
-  await expect(page.getByTestId('round-chip')).toHaveText('Round 1')
+  await expect(page.getByTestId('round-chip')).toHaveText('Round 1/11')
 
   // The rival's journal panel is present before the AI has moved.
   await expect(page.getByTestId('ai-mind')).toBeVisible()
@@ -56,6 +55,6 @@ test('found a company against an AI rival and watch it take its turn', async ({
   )
   await expect(page.getByTestId('ai-cost')).toContainText('model call')
   // …and play returns to Ada for round 2.
-  await expect(page.getByTestId('round-chip')).toHaveText('Round 2')
+  await expect(page.getByTestId('round-chip')).toHaveText('Round 2/11')
   await expect(page.getByTestId('action-pass')).toBeVisible()
 })

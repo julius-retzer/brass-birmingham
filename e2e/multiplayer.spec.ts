@@ -62,7 +62,6 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
   // the game starts for BOTH, live
   await expect(host.getByTestId('era-plate')).toHaveText('canal era')
   await expect(guest.getByTestId('era-plate')).toHaveText('canal era')
-  await expect(guest.getByTestId('you-chip')).toHaveText('You are Brunel')
   // Ada opens; the guest is spectating her turn behind the waiting panel
   await expect(guest.getByTestId('waiting-panel')).toBeVisible()
   await expect(guest.getByText('Waiting for Ada to act…')).toBeVisible()
@@ -92,8 +91,8 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
   // Two-tap pass: arm, then confirm.
   await guest.getByTestId('action-pass').click()
   await guest.getByTestId('action-pass').click()
-  await expect(host.getByTestId('round-chip')).toHaveText('Round 2')
-  await expect(guest.getByTestId('round-chip')).toHaveText('Round 2')
+  await expect(host.getByTestId('round-chip')).toHaveText('Round 2/11')
+  await expect(guest.getByTestId('round-chip')).toHaveText('Round 2/11')
 
   /* ---- table talk: message, unread badge, reply ---- */
   await host.getByTestId('chat-toggle').click()
@@ -116,8 +115,7 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
 
   /* ---- mid-game refresh reclaims the seat from the stored secret ---- */
   await guest.reload()
-  await expect(guest.getByTestId('you-chip')).toHaveText('You are Brunel')
-  await expect(guest.getByTestId('round-chip')).toHaveText('Round 2')
+  await expect(guest.getByTestId('round-chip')).toHaveText('Round 2/11')
 
   /* ---- wire hygiene: read the guest's OWN stream bytes and inspect ---- */
   const rawEvent = await guest.evaluate(

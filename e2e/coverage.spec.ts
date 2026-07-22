@@ -73,7 +73,7 @@ test('Network: claim a canal route by clicking it on the map', async ({
   // £19 − £3 canal; this was the LAST action of Eliza's turn, so the
   // device passes on (round 8 continues with the next player).
   await expect(treasuryOf(page, 'Eliza')).toHaveText('£16')
-  await expect(page.getByTestId('round-chip')).toHaveText('Round 8')
+  await expect(page.getByTestId('round-chip')).toHaveText('Round 8/10')
   await expect(page.getByTestId('pass-curtain')).toBeVisible()
 })
 
@@ -242,7 +242,7 @@ test('Scout: discard three cards for the two wilds', async ({ page }) => {
     page.getByText(/Eliza scouted gained 2 wild cards discarded 3 cards/),
   ).toBeVisible()
   // Her turn ends but the round continues with the next player.
-  await expect(page.getByTestId('round-chip')).toHaveText('Round 8')
+  await expect(page.getByTestId('round-chip')).toHaveText('Round 8/10')
 })
 
 test('Develop: scrap the lowest tile, consuming iron', async ({ page }) => {
@@ -260,7 +260,7 @@ test('Develop: scrap the lowest tile, consuming iron', async ({ page }) => {
 
   await expect(page.getByText(/Eliza developed removed 1 tile/)).toBeVisible()
   // Her turn ends but the round continues with the next player.
-  await expect(page.getByTestId('round-chip')).toHaveText('Round 8')
+  await expect(page.getByTestId('round-chip')).toHaveText('Round 8/10')
 })
 
 test('era transition: one pass ends the Canal Era and opens the Rail Era', async ({
@@ -268,7 +268,7 @@ test('era transition: one pass ends the Canal Era and opens the Rail Era', async
 }) => {
   await page.goto('/?demo=eraend')
   await expect(page.getByTestId('era-plate')).toHaveText('canal era')
-  await expect(page.getByTestId('round-chip')).toHaveText('Round 10')
+  await expect(page.getByTestId('round-chip')).toHaveText('Round 10/10')
 
   // Passing is two-tap: the first click arms the button, the second confirms.
   await page.getByTestId('action-pass').click()
@@ -285,7 +285,7 @@ test('era transition: one pass ends the Canal Era and opens the Rail Era', async
   await expect(
     page.getByText('All players drew new 8-card hands').first(),
   ).toBeVisible()
-  await expect(page.getByTestId('round-chip')).toHaveText('Round 1')
+  await expect(page.getByTestId('round-chip')).toHaveText('Round 1/9')
 })
 
 test('capstone: play the final turns through the UI to the winner', async ({
@@ -293,7 +293,7 @@ test('capstone: play the final turns through the UI to the winner', async ({
 }) => {
   await page.goto('/?demo=gameend')
   await expect(page.getByTestId('era-plate')).toHaveText('rail era')
-  await expect(page.getByTestId('round-chip')).toHaveText('Round 8')
+  await expect(page.getByTestId('round-chip')).toHaveText('Round 8/9')
 
   // Play the game out: pass every remaining turn (8 passes across three
   // players, with the hotseat curtain between turns) until the books close.

@@ -39,7 +39,7 @@ test('round end: curtain reports spends and switches the turn order', async ({
   await page.getByRole('button', { name: '2', exact: true }).click()
   await page.getByPlaceholder('Eliza').fill('Ada')
   await page.getByRole('button', { name: 'Open the ledger' }).click()
-  await expect(page.getByTestId('round-chip')).toHaveText('Round 1')
+  await expect(page.getByTestId('round-chip')).toHaveText('Round 1/11')
 
   // Ada claims a canal route — £3 spent.
   await page.getByTestId('action-network').click()
@@ -77,7 +77,7 @@ test('round end: curtain reports spends and switches the turn order', async ({
   // Dismissing hands the board back, in the new round.
   await page.getByTestId('round-curtain-dismiss').click()
   await expect(curtain).toBeHidden()
-  await expect(page.getByTestId('round-chip')).toHaveText('Round 2')
+  await expect(page.getByTestId('round-chip')).toHaveText('Round 2/11')
 })
 
 test('round curtain: any key dismisses it and it does not return', async ({

@@ -13,6 +13,7 @@ import { createActor } from 'xstate'
 import { Toaster } from '~/components/ui/sonner'
 import { type CityId, cities, connections } from '~/data/board'
 import type { Card } from '~/data/cards'
+import { roundsInEra } from '~/data/cards'
 import {
   type GameStoreSnapshot,
   type Player,
@@ -1293,7 +1294,7 @@ function MpTable({
             {ctx.era} era
           </span>
           <span className="bb2-chip" data-testid="round-chip">
-            Round {ctx.round}
+            Round {ctx.round}/{roundsInEra(ctx.players.length, ctx.era)}
           </span>
           <span className="bb2-chip" data-testid="deck-chip">
             Deck {ctx.drawPile.length}
@@ -1309,13 +1310,6 @@ function MpTable({
                 />
               ))}
             </span>
-          </span>
-          <span
-            className="bb2-chip"
-            data-testid="you-chip"
-            style={{ color: 'var(--bb-brass)' }}
-          >
-            You are {me.name}
           </span>
           <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 lg:flex-nowrap lg:gap-3">
             {inFlight && (

@@ -33,7 +33,7 @@ test('fresh game: setup charter → Loan action end-to-end → pass gate', async
 
   // Round 1, canal era, Ada to act with £17.
   await expect(page.getByTestId('era-plate')).toHaveText('canal era')
-  await expect(page.getByTestId('round-chip')).toHaveText('Round 1')
+  await expect(page.getByTestId('round-chip')).toHaveText('Round 1/11')
   await expect(treasuryOf(page, 'Ada')).toHaveText('£17')
 
   // Loan: choose action → discard any card → confirm.

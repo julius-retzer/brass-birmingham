@@ -11,6 +11,7 @@
 import { describe, expect, test } from 'vitest'
 import { createActor } from 'xstate'
 import { gameStore } from '../../store/gameStore'
+import { pendingDevelopBonusChoice } from '../../store/shared/developBonus'
 import {
   pendingBeerChoice,
   pendingIronChoice,
@@ -288,6 +289,20 @@ describe('networked playthrough — wire-legal events only, both pickers reached
                 (m) => m.location === cotton.merchant && m.hasBeer,
               ).length,
           ).toBe(barrelsBefore - 1)
+          // Selling to a develop merchant (Gloucester) grants a develop bonus:
+          // with a full mat the wire stops here for the tile choice. Send the
+          // pick before confirming — a CONFIRM would be refused mid-choice.
+          if (table.at().includes('choosingDevelopTile')) {
+            const develop = pendingDevelopBonusChoice(
+              table.ctx().players[s]!.industryTilesOnMat,
+              table.ctx().pendingDevelopChoice?.remaining,
+            )
+            expect(develop?.hasChoice).toBe(true)
+            table.send(s, {
+              type: 'SELECT_DEVELOP_TILE',
+              industryType: develop!.options[0]!.industryType,
+            })
+          }
           table.send(s, { type: 'CONFIRM' })
         },
       },

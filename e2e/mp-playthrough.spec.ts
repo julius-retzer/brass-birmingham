@@ -394,6 +394,17 @@ test('two browsers play a realistic opening: every action, both source pickers, 
         // The legal pick — the merchant's barrel — executes the sale.
         await sources.filter({ hasText: "merchant's barrel" }).first().click()
         await expect(page.getByText(/Flipped 1 industry/).first()).toBeVisible()
+        // Selling to the Gloucester merchant grants a develop bonus, which
+        // stops for a tile choice when the mat offers more than one track.
+        const developPicker = page.getByTestId('develop-tile')
+        if (
+          await developPicker
+            .first()
+            .isVisible()
+            .catch(() => false)
+        ) {
+          await developPicker.first().click()
+        }
         await page.getByTestId('confirm-action').click()
         await settle(page)
 

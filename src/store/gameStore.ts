@@ -91,6 +91,7 @@ import {
   withProvisionalDoubleLink,
   withProvisionalLink,
 } from './shared/resourceSources'
+import { getDevelopBonusOptions } from './shared/developBonus'
 
 export type LogEntryType = 'system' | 'action' | 'info' | 'error'
 
@@ -292,6 +293,15 @@ export interface GameState {
    * turn). Null outside a coal-choosing state.
    */
   pendingCoalStep: 'build' | 'link' | 'doubleLink' | null
+  /**
+   * A merchant "Develop" beer bonus (Gloucester) owed to the current player:
+   * `remaining` tiles still to remove from their mat, for no iron cost. Only
+   * set when 2+ industry tracks could be developed — a single legal option is
+   * auto-applied at sale time, so the machine never enters the choosing step
+   * for it. Cleared as each pick lands. Public (mats are open information), so
+   * multiplayer need not filter it.
+   */
+  pendingDevelopChoice: { remaining: number; merchant: CityId } | null
   // Set when a round completes with the draw deck and all hands exhausted;
   // drives the automatic era-end transition
   eraEndPending: boolean
@@ -388,6 +398,14 @@ type GameEvent =
       source: CoalSource
     }
   | {
+      /**
+       * Remove this industry's lowest tile for a merchant Develop bonus (the
+       * `selling.choosingDevelopTile` step).
+       */
+      type: 'SELECT_DEVELOP_TILE'
+      industryType: IndustryType
+    }
+  | {
       type: 'CONFIRM'
     }
   | {
@@ -418,6 +436,7 @@ type GameEvent =
       income?: number
       industries?: Player['industries']
       links?: Player['links']
+      industryTilesOnMat?: Player['industryTilesOnMat']
     }
   | {
       type: 'TEST_SET_FINAL_ROUND'
@@ -732,6 +751,7 @@ export const gameStore = setup({
         chosenCoalSources: [],
         pendingIronStep: null,
         pendingCoalStep: null,
+        pendingDevelopChoice: null,
         eraEndPending: false,
         winners: null,
         lastError: null,
@@ -1700,6 +1720,13 @@ export const gameStore = setup({
         incomeSpace: soldSpace,
       }
 
+      // A develop bonus with a genuine choice (2+ developable tracks) is
+      // deferred to the choosingDevelopTile step; a single option is applied
+      // here so the common case never stops. Extra journal lines from that
+      // auto-apply ride along in this bucket.
+      let pendingDevelopChoice: GameState['pendingDevelopChoice'] = null
+      const bonusLogs: LogEntry[] = []
+
       // Apply merchant bonuses
       for (const bonus of beerResult.merchantBonusesCollected) {
         switch (bonus.type) {
@@ -1729,51 +1756,50 @@ export const gameStore = setup({
               },
             ]
             break
-          case 'develop':
-            // Remove 1 of the lowest level tiles of any industry from Player Mat
-            // RULE: Find lowest level tile (excluding pottery with lightbulb icon)
-            let lowestLevel = Infinity
-            let industryTypeToRemove: IndustryType | null = null
-
-            for (const [industryType, tilesWithQuantity] of Object.entries(
+          case 'develop': {
+            // Remove one of the LOWEST-level tiles of ANY industry track (rules
+            // p.6/p.7), for no iron cost. The player chooses which track when
+            // more than one is developable; a single option is auto-applied so
+            // the flow never stops needlessly. A track whose lowest tile is a
+            // lightbulb Pottery is never developable (getDevelopBonusOptions).
+            const options = getDevelopBonusOptions(
               updatedPlayer.industryTilesOnMat,
-            )) {
-              for (const tileWithQty of tilesWithQuantity) {
-                if (tileWithQty.quantityAvailable === 0) continue
-                const tile = tileWithQty.tile
-
-                // Skip pottery tiles with lightbulb icon
-                if (!isDevelopable(tile)) {
-                  continue
-                }
-
-                if (tile.level < lowestLevel) {
-                  lowestLevel = tile.level
-                  industryTypeToRemove = industryType as IndustryType
-                }
-              }
+            )
+            if (options.length === 0) {
+              // Nothing on the mat can be developed — the bonus is forfeit.
+              bonusLogs.push(
+                createLogEntry(
+                  `${currentPlayer.name}'s merchant develop bonus was forfeit — no tile can be developed`,
+                  'info',
+                ),
+              )
+              break
             }
-
-            // Decrement quantity of the lowest level tile found
-            if (industryTypeToRemove) {
-              const tilesWithQuantity =
-                updatedPlayer.industryTilesOnMat[industryTypeToRemove]
-              const tileToRemove = tilesWithQuantity
-                .filter((t) => t.quantityAvailable > 0)
-                .map((t) => t.tile)
-                .find((t) => t.level === lowestLevel && isDevelopable(t))
-
-              if (tileToRemove) {
-                updatedPlayer.industryTilesOnMat = {
-                  ...updatedPlayer.industryTilesOnMat,
-                  [industryTypeToRemove]: decrementTileQuantity(
-                    tilesWithQuantity,
-                    tileToRemove,
-                  ),
-                }
+            if (options.length === 1) {
+              const only = options[0]!
+              updatedPlayer.industryTilesOnMat = {
+                ...updatedPlayer.industryTilesOnMat,
+                [only.industryType]: decrementTileQuantity(
+                  updatedPlayer.industryTilesOnMat[only.industryType]!,
+                  only.tile,
+                ),
               }
+              bonusLogs.push(
+                createLogEntry(
+                  `${currentPlayer.name} developed a level ${only.tile.level} ${only.industryType} tile (merchant develop bonus)`,
+                  'action',
+                ),
+              )
+              break
+            }
+            // A real choice — defer to the choosingDevelopTile step. Gloucester
+            // grants one tile (bonus.value), but keep it general.
+            pendingDevelopChoice = {
+              remaining: bonus.value,
+              merchant: bonus.merchantLocation,
             }
             break
+          }
         }
       }
 
@@ -1803,6 +1829,8 @@ export const gameStore = setup({
         // The staged sale is done; reset so the next SELECT_SALE stages afresh.
         pendingSale: null,
         chosenBeerSources: [],
+        // A merchant develop bonus needing a choice pauses at choosingDevelopTile.
+        pendingDevelopChoice,
         lastError: null,
         errorContext: null,
         logs: [
@@ -1811,6 +1839,7 @@ export const gameStore = setup({
             `${currentPlayer.name} sold ${industryToSell.type} at ${event.location} to merchant at ${event.merchant} (flipped, income +${incomeAdvancement}, ${beerResult.logDetails.join(', ')})`,
             'action',
           ),
+          ...bonusLogs,
           ...(autoFlipResult.logs || []),
         ],
       }
@@ -1837,6 +1866,7 @@ export const gameStore = setup({
         salesMadeThisAction: 0,
         pendingSale: null,
         chosenBeerSources: [],
+        pendingDevelopChoice: null,
         actionsRemaining: context.actionsRemaining - 1,
         lastError: null,
         errorContext: null,
@@ -2222,6 +2252,7 @@ export const gameStore = setup({
       chosenCoalSources: [],
       pendingIronStep: null,
       pendingCoalStep: null,
+      pendingDevelopChoice: null,
     }),
 
     /** Hold a sale still while the player says where its beer comes from. */
@@ -2304,6 +2335,48 @@ export const gameStore = setup({
     }),
 
     clearCoalChoice: assign({ chosenCoalSources: [], pendingCoalStep: null }),
+
+    /**
+     * Apply one merchant develop-bonus pick: remove the chosen track's lowest
+     * tile from the mat (no iron), decrement what is owed, and clear the
+     * pending choice once satisfied. The guard `canChooseDevelopTile` has
+     * already checked the track is a legal, developable option.
+     */
+    chooseDevelopTile: assign(({ context, event }) => {
+      if (event.type !== 'SELECT_DEVELOP_TILE') return {}
+      const pending = context.pendingDevelopChoice
+      if (!pending) return {}
+      const player = getCurrentPlayer(context)
+      const chosen = getDevelopBonusOptions(player.industryTilesOnMat).find(
+        (o) => o.industryType === event.industryType,
+      )
+      if (!chosen) return {}
+      const updatedMat = {
+        ...player.industryTilesOnMat,
+        [event.industryType]: decrementTileQuantity(
+          player.industryTilesOnMat[event.industryType]!,
+          chosen.tile,
+        ),
+      }
+      const remaining = pending.remaining - 1
+      return {
+        players: updatePlayerInList(
+          context.players,
+          context.currentPlayerIndex,
+          { industryTilesOnMat: updatedMat },
+        ),
+        pendingDevelopChoice: remaining > 0 ? { ...pending, remaining } : null,
+        logs: [
+          ...context.logs,
+          createLogEntry(
+            `${player.name} developed a level ${chosen.tile.level} ${chosen.industryType} tile (merchant develop bonus)`,
+            'action',
+          ),
+        ],
+      }
+    }),
+
+    clearDevelopChoice: assign({ pendingDevelopChoice: null }),
 
     selectLocation: assign(({ context, event }) => {
       if (event.type !== 'SELECT_LOCATION') return {}
@@ -2438,6 +2511,9 @@ export const gameStore = setup({
         }),
         ...(event.industries !== undefined && { industries: event.industries }),
         ...(event.links !== undefined && { links: event.links }),
+        ...(event.industryTilesOnMat !== undefined && {
+          industryTilesOnMat: event.industryTilesOnMat,
+        }),
       }
 
       return {
@@ -2810,6 +2886,30 @@ export const gameStore = setup({
     canExecuteSale: ({ context, event }) => {
       if (event.type !== 'SELECT_SALE') return false
       return validateSale(context, event).isValid
+    },
+
+    /**
+     * The merchant develop bonus is fully resolved (or there is nothing left
+     * to develop) — the choosingDevelopTile step auto-advances. Never blocks
+     * the flow: a mat with no developable track drains straight through.
+     */
+    developBonusSatisfied: ({ context }) => {
+      const pending = context.pendingDevelopChoice
+      if (!pending || pending.remaining <= 0) return true
+      return (
+        getDevelopBonusOptions(getCurrentPlayer(context).industryTilesOnMat)
+          .length === 0
+      )
+    },
+
+    /** Only a track this bonus actually offers may be developed. */
+    canChooseDevelopTile: ({ context, event }) => {
+      if (event.type !== 'SELECT_DEVELOP_TILE') return false
+      const pending = context.pendingDevelopChoice
+      if (!pending || pending.remaining <= 0) return false
+      return getDevelopBonusOptions(
+        getCurrentPlayer(context).industryTilesOnMat,
+      ).some((o) => o.industryType === event.industryType)
     },
 
     // You cannot take a loan if it would take your income level below -10
@@ -3265,6 +3365,7 @@ export const gameStore = setup({
     chosenCoalSources: [],
     pendingIronStep: null,
     pendingCoalStep: null,
+    pendingDevelopChoice: null,
     eraEndPending: false,
     winners: null,
     // Error state
@@ -3694,7 +3795,7 @@ export const gameStore = setup({
                         type: 'choiceSatisfied',
                         params: { resource: 'beer' },
                       },
-                      target: 'selectingSale',
+                      target: 'choosingDevelopTile',
                       actions: 'executeStagedSale',
                     },
                   ],
@@ -3710,6 +3811,30 @@ export const gameStore = setup({
                       // Nothing was flipped yet — the staged sale is free to drop
                       target: 'selectingSale',
                       actions: 'clearStagedSale',
+                    },
+                  },
+                },
+                /**
+                 * Which industry track a Gloucester merchant develop bonus
+                 * removes its lowest tile from — only when 2+ tracks are
+                 * developable. Auto-skipped when the sale grants no develop
+                 * bonus, or a single option was already applied at sale time.
+                 * The sale is irreversible by now, so there is no CANCEL: the
+                 * bonus resolves (or drains when nothing is developable) and
+                 * the flow returns to selectingSale for the next sale/CONFIRM.
+                 */
+                choosingDevelopTile: {
+                  always: [
+                    {
+                      guard: 'developBonusSatisfied',
+                      target: 'selectingSale',
+                      actions: 'clearDevelopChoice',
+                    },
+                  ],
+                  on: {
+                    SELECT_DEVELOP_TILE: {
+                      actions: 'chooseDevelopTile',
+                      guard: 'canChooseDevelopTile',
                     },
                   },
                 },

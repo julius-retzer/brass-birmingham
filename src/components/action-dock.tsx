@@ -11,6 +11,10 @@ import {
   type GameStoreSnapshot,
   type Player,
 } from '~/store/gameStore'
+import {
+  type DevelopBonusOption,
+  pendingDevelopBonusChoice,
+} from '~/store/shared/developBonus'
 import { isDevelopable } from '~/store/shared/gameUtils'
 import {
   type BeerSourceOption,
@@ -561,6 +565,42 @@ function CoalSourcePicker({
               style={{ color: 'rgba(231,215,177,.55)' }}
             >
               {coalSourceCaption(option)}
+            </span>
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function DevelopBonusPicker({
+  options,
+  onPick,
+}: {
+  options: DevelopBonusOption[]
+  onPick: (industryType: DevelopBonusOption['industryType']) => void
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Note>
+        Merchant develop bonus: choose which industry's lowest tile to remove.
+      </Note>
+      {options.map((option) => (
+        <button
+          key={option.industryType}
+          type="button"
+          className="bb2-option"
+          data-testid="develop-tile"
+          onClick={() => onPick(option.industryType)}
+        >
+          <IndustryGlyph type={option.industryType} size={16} />
+          <span className="flex flex-col text-left">
+            <b>{industryLabel(option.industryType)}</b>
+            <span
+              className="text-[12px]"
+              style={{ color: 'rgba(231,215,177,.55)' }}
+            >
+              Removes the level {option.tile.level} tile
             </span>
           </span>
         </button>
@@ -1493,6 +1533,29 @@ export function ActionDock({
             required={choice.required}
             picks={c.chosenBeerSources ?? []}
             onPick={(source) => send({ type: 'SELECT_BEER_SOURCE', source })}
+          />
+        )}
+      </Flow>
+    )
+  }
+  if (is('playing.action.selling.choosingDevelopTile')) {
+    const choice = pendingDevelopBonusChoice(
+      currentPlayer.industryTilesOnMat,
+      c.pendingDevelopChoice?.remaining,
+    )
+    return (
+      <Flow
+        action="Sell"
+        steps={['Card', 'Goods', 'Develop']}
+        active={2}
+        held={c.selectedCard}
+      >
+        {choice && (
+          <DevelopBonusPicker
+            options={choice.options}
+            onPick={(industryType) =>
+              send({ type: 'SELECT_DEVELOP_TILE', industryType })
+            }
           />
         )}
       </Flow>

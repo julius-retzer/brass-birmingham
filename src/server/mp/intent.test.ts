@@ -591,3 +591,102 @@ describe('applyIntent — source-choice picks over the wire', () => {
     expect((res as { error: string }).error).toMatch(/closest connected mines/i)
   })
 })
+
+// Selling to the Gloucester merchant and drinking its beer grants a Develop
+// bonus. With two developable tracks the machine stops at choosingDevelopTile;
+// a networked human must be able to send the pick, and a forged off-offer pick
+// must be refused by name (not left hard-stuck).
+describe('applyIntent — merchant develop bonus tile choice', () => {
+  const matTile = (type: string, level: number, hasLightbulbIcon = false) => ({
+    quantityAvailable: 1,
+    tile: {
+      id: `${type}_${level}`,
+      type,
+      level,
+      hasLightbulbIcon,
+      canBuildInCanalEra: true,
+      canBuildInRailEra: true,
+    },
+  })
+
+  const developBonusBoard = () => {
+    const actor = game()
+    const seat = actor.getSnapshot().context.currentPlayerIndex
+    actor.send({
+      type: 'TEST_SET_MERCHANTS',
+      merchants: [gloucesterMerchant({ bonusType: 'develop', bonusValue: 1 })],
+    })
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: seat,
+      money: 30,
+      industries: [
+        {
+          location: 'worcester',
+          type: 'cotton',
+          level: 1,
+          flipped: false,
+          tile: cottonTile,
+          coalCubesOnTile: 0,
+          ironCubesOnTile: 0,
+          beerBarrelsOnTile: 0,
+        } as never,
+      ],
+      links: [{ from: 'worcester', to: 'gloucester', type: 'canal' }] as never,
+      industryTilesOnMat: {
+        coal: [matTile('coal', 1)],
+        iron: [matTile('iron', 1)],
+      } as never,
+    })
+    const cardId = actor.getSnapshot().context.players[seat]!.hand[0]!.id
+    actor.send({ type: 'SELL' })
+    actor.send({ type: 'SELECT_CARD', cardId })
+    actor.send({
+      type: 'SELECT_SALE',
+      location: 'worcester',
+      industryType: 'cotton',
+      merchant: 'gloucester',
+    })
+    const staged = actor.getPersistedSnapshot()
+    actor.stop()
+    return { staged, seat }
+  }
+
+  test('a legitimate develop-tile pick is accepted over the wire', () => {
+    const { staged, seat } = developBonusBoard()
+    const res = applyIntent(staged, seat, {
+      type: 'SELECT_DEVELOP_TILE',
+      industryType: 'iron',
+    })
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    const done = createActor(gameStore, {
+      snapshot: (res as { next: unknown }).next as never,
+    })
+    done.start()
+    const me = done.getSnapshot().context.players[seat]!
+    done.stop()
+    // The chosen track's lowest tile (iron_1) is removed; coal_1 is untouched.
+    const ironLowest = me.industryTilesOnMat.iron!.find(
+      (t) => t.tile.id === 'iron_1',
+    )!
+    const coalLowest = me.industryTilesOnMat.coal!.find(
+      (t) => t.tile.id === 'coal_1',
+    )!
+    expect(ironLowest.quantityAvailable).toBe(0)
+    expect(coalLowest.quantityAvailable).toBe(1)
+  })
+
+  test('a develop pick for a track not on offer is refused by name', () => {
+    const { staged, seat } = developBonusBoard()
+    const res = applyIntent(staged, seat, {
+      type: 'SELECT_DEVELOP_TILE',
+      // The seller has no brewery tiles on the mat.
+      industryType: 'brewery',
+    })
+    expect(res.ok).toBe(false)
+    expect((res as { error: string }).error).toMatch(
+      /cannot develop a brewery/i,
+    )
+  })
+})

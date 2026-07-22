@@ -35,6 +35,7 @@ import {
   consumeCoalFromSources,
   consumeIronFromSources,
 } from './market/marketActions'
+import { getDevelopBonusOptions } from './shared/developBonus'
 import { getCurrentPlayer } from './shared/gameUtils'
 import {
   beerSourceKey,
@@ -291,6 +292,20 @@ export function explainRefusal(
       // Coal is not a free pick — only mines tied at the nearest distance are
       // offered (rules L119-121).
       return 'That coal mine is not one of the closest connected mines you may choose from.'
+    }
+
+    case 'SELECT_DEVELOP_TILE': {
+      const pending = context.pendingDevelopChoice
+      if (!pending || pending.remaining <= 0) {
+        return 'There is no develop bonus to spend here.'
+      }
+      const options = getDevelopBonusOptions(
+        getCurrentPlayer(context).industryTilesOnMat,
+      )
+      if (!options.some((o) => o.industryType === event.industryType)) {
+        return `You cannot develop a ${event.industryType} tile — its lowest tile is not one you may remove.`
+      }
+      return null
     }
 
     case 'CHOOSE_DOUBLE_LINK_BUILD':

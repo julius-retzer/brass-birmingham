@@ -220,6 +220,24 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   being sold to. Merchants are per-slot entries (a location can appear
   twice), shuffled from the official tile pool at setup; blanks buy
   nothing and hold no beer.
+- MERCHANT DEVELOP BONUS TILE CHOICE (2026-07-22): the Gloucester develop
+  bonus (remove one lowest tile of ANY track, no iron — rules p.6/p.7) is a
+  PLAYER CHOICE, engine-owned, mirroring the coal/beer/iron source steps.
+  `src/store/shared/developBonus.ts` is the single place that decides which
+  tracks are legal (`getDevelopBonusOptions` — a track is excluded when its
+  lowest tile is a lightbulb Pottery, which cannot be developed) and the step
+  view (`pendingDevelopBonusChoice` → `{required, options, hasChoice}`).
+  `executeStagedSale` auto-applies a SINGLE option and only sets
+  `pendingDevelopChoice` (+ enters `selling.choosingDevelopTile`) for 2+
+  tracks; the step `always`-skips via `developBonusSatisfied` so the common
+  case and every existing pin stay transparent. Event `SELECT_DEVELOP_TILE
+  {industryType}` (guard `canChooseDevelopTile`); NO cancel — the sale is
+  already committed. Journal logs the developed tile either way. Wired
+  through legal-moves (AI picks first-offered), mp `ALLOWED_EVENTS` +
+  `explainRefusal`, driver `rehydrateSnapshot` backfill, and the dock's
+  `DevelopBonusPicker`. Pinned by `gameStore.developbonus.test.ts` +
+  `shared/developBonus.test.ts` + `intent.test.ts`; the mp playthrough
+  (offline + e2e) resolves it adaptively when the shuffle seats Gloucester.
 - RESOURCE SOURCE CHOICE (beer + iron, added 2026-07-16) is a FIRST-CLASS
   MACHINE STATE, engine-owned. `src/store/shared/resourceSources.ts` is the
   single place that knows which sources are legal, what a step needs and what

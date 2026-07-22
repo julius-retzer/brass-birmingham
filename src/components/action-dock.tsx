@@ -24,12 +24,12 @@ import {
   pendingCoalChoice,
   pendingIronChoice,
 } from '~/store/shared/resourceSources'
+import { disabledActionReason } from './action-reason'
 import { CardChip, cardTitle } from './cards'
 import {
   doubleLinkDisabledReason,
   showsDoubleLinkOption,
 } from './double-link-availability'
-import { CityName, useLocateCity } from './locate'
 import {
   BuildIcon,
   CanalIcon,
@@ -42,6 +42,7 @@ import {
   ScoutIcon,
   SellIcon,
 } from './icons'
+import { CityName, useLocateCity } from './locate'
 
 export const INDUSTRY_TYPES: IndustryType[] = [
   'cotton',
@@ -841,6 +842,8 @@ export function ActionDock({
 }: ActionDockProps) {
   const is = (path: string) => snapshot.matches(path as never)
   const can = (event: GameEvent) => snapshot.can(event)
+  const whyDisabled = (event: GameEvent, fallback: string) =>
+    disabledActionReason(snapshot, event, fallback)
   const { locate, unlocate } = useLocateCity()
   const c = snapshot.context
 
@@ -1153,7 +1156,10 @@ export function ActionDock({
         <Confirm
           disabled={!can({ type: 'CONFIRM' })}
           onClick={() => send({ type: 'CONFIRM' })}
-          disabledReason="The ledger refuses this build — check your funds and coal / iron access from this site."
+          disabledReason={whyDisabled(
+            { type: 'CONFIRM' },
+            'This build cannot be completed from this site.',
+          )}
           outcome={confirmOutcome}
         >
           Raise the works
@@ -1278,7 +1284,10 @@ export function ActionDock({
         <Confirm
           disabled={!can({ type: 'CONFIRM' })}
           onClick={() => send({ type: 'CONFIRM' })}
-          disabledReason="This route can't be claimed — it must touch your network and be payable."
+          disabledReason={whyDisabled(
+            { type: 'CONFIRM' },
+            'This route cannot be claimed.',
+          )}
           outcome={confirmOutcome}
         >
           Lay the {c.era === 'canal' ? 'canal' : 'track'}
@@ -1389,7 +1398,10 @@ export function ActionDock({
         <Confirm
           disabled={!can({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })}
           onClick={() => send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })}
-          disabledReason="Two rails need £15, 2 coal and 1 beer within reach."
+          disabledReason={whyDisabled(
+            { type: 'EXECUTE_DOUBLE_NETWORK_ACTION' },
+            'Two rails cannot be laid from here.',
+          )}
           outcome={confirmOutcome}
         >
           Lay both tracks
@@ -1445,7 +1457,10 @@ export function ActionDock({
         <Confirm
           disabled={!can({ type: 'CONFIRM' })}
           onClick={() => send({ type: 'CONFIRM' })}
-          disabledReason="No iron within reach (or none on the market you can afford)."
+          disabledReason={whyDisabled(
+            { type: 'CONFIRM' },
+            'This develop cannot be completed.',
+          )}
           outcome={confirmOutcome}
         >
           Scrap the tile
@@ -1640,6 +1655,10 @@ export function ActionDock({
             <Confirm
               disabled={!can({ type: 'CONFIRM' })}
               onClick={() => send({ type: 'CONFIRM' })}
+              disabledReason={whyDisabled(
+                { type: 'CONFIRM' },
+                'This sale cannot be closed.',
+              )}
             >
               Close the sale
             </Confirm>
@@ -1668,7 +1687,9 @@ export function ActionDock({
           disabled={!can({ type: 'CONFIRM' })}
           onClick={() => send({ type: 'CONFIRM' })}
           disabledReason={
-            picked.length < 3 ? undefined : 'Scout is not available right now.'
+            picked.length < 3
+              ? undefined
+              : whyDisabled({ type: 'CONFIRM' }, 'Scout is not available.')
           }
         >
           Send the scout
@@ -1708,6 +1729,10 @@ export function ActionDock({
         <Confirm
           disabled={!can({ type: 'CONFIRM' })}
           onClick={() => send({ type: 'CONFIRM' })}
+          disabledReason={whyDisabled(
+            { type: 'CONFIRM' },
+            'This loan cannot be taken.',
+          )}
         >
           Sign with the bank
         </Confirm>

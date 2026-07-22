@@ -166,14 +166,69 @@ const explainBuildConfirm = (context: GameState): string | null => {
   return null
 }
 
-/** CONFIRM on a develop — hasSelectedTilesForDevelop's iron affordability. */
+/** CONFIRM on a develop — mirrors hasSelectedTilesForDevelop (iron sourceable
+ * AND affordable; no tile named ⇒ the single lowest, count 1). */
 const explainDevelopConfirm = (context: GameState): string | null => {
-  const count = context.selectedTilesForDevelop.length
-  if (count === 0) return 'No tiles selected to develop.'
+  const selected = context.selectedTilesForDevelop
+  const count = selected.length > 0 ? selected.length : 1
+  const label = count === 1 ? 'this tile' : `these ${count} tiles`
   const player = getCurrentPlayer(context)
-  const { ironCost } = consumeIronFromSources(context, count)
-  if (player.money < ironCost) {
-    return `Not enough money: you have ${money(player.money)}, the iron to develop ${count === 1 ? 'this tile' : `these ${count} tiles`} costs ${money(ironCost)}.`
+  const iron = consumeIronFromSources(
+    context,
+    count,
+    context.chosenIronSources ?? [],
+  )
+  if (!iron.success) {
+    return (
+      iron.errorMessage ??
+      `No iron reachable to develop ${label} — Develop consumes ${count} iron.`
+    )
+  }
+  if (player.money < iron.ironCost) {
+    return `Not enough money: you have ${money(player.money)}, the iron to develop ${label} costs ${money(iron.ironCost)}.`
+  }
+  return null
+}
+
+/** CONFIRM on a loan — mirrors canTakeLoan (card held + income stays legal). */
+const explainLoanConfirm = (context: GameState): string | null => {
+  if (context.selectedCard === null) return 'No card selected for the loan.'
+  const player = getCurrentPlayer(context)
+  const after = player.income - GAME_CONSTANTS.LOAN_INCOME_PENALTY
+  if (after < GAME_CONSTANTS.MIN_INCOME) {
+    return `A loan drops your income ${GAME_CONSTANTS.LOAN_INCOME_PENALTY} levels to ${after}, below the minimum of ${GAME_CONSTANTS.MIN_INCOME}.`
+  }
+  return null
+}
+
+/** CONFIRM on a scout — mirrors canScout (three cards, no wild in hand, piles). */
+const explainScoutConfirm = (context: GameState): string | null => {
+  const player = getCurrentPlayer(context)
+  if (
+    player.hand.some(
+      (c) => c.type === 'wild_location' || c.type === 'wild_industry',
+    )
+  ) {
+    return 'You cannot Scout while holding a wild card.'
+  }
+  if (
+    context.wildLocationPile.length === 0 ||
+    context.wildIndustryPile.length === 0
+  ) {
+    return 'No wild cards are left to Scout for.'
+  }
+  if (
+    context.selectedCardsForScout.length !== GAME_CONSTANTS.SCOUT_CARDS_REQUIRED
+  ) {
+    return `Scout needs exactly ${GAME_CONSTANTS.SCOUT_CARDS_REQUIRED} cards discarded.`
+  }
+  return null
+}
+
+/** CONFIRM on a sell — mirrors hasSoldThisAction: at least one industry flipped. */
+const explainSellConfirm = (context: GameState): string | null => {
+  if (context.salesMadeThisAction === 0) {
+    return 'Flip at least one industry before closing the sale.'
   }
   return null
 }
@@ -314,39 +369,11 @@ export function explainRefusal(
     case 'EXECUTE_DOUBLE_NETWORK_ACTION':
       return explainDoubleLink(context)
 
-    case 'TAKE_LOAN': {
-      if (context.selectedCard === null) return 'No card selected for the loan.'
-      const player = getCurrentPlayer(context)
-      const after = player.income - GAME_CONSTANTS.LOAN_INCOME_PENALTY
-      if (after < GAME_CONSTANTS.MIN_INCOME) {
-        return `A loan drops your income ${GAME_CONSTANTS.LOAN_INCOME_PENALTY} levels to ${after}, below the minimum of ${GAME_CONSTANTS.MIN_INCOME}.`
-      }
-      return null
-    }
+    case 'TAKE_LOAN':
+      return explainLoanConfirm(context)
 
-    case 'SCOUT': {
-      const player = getCurrentPlayer(context)
-      if (
-        player.hand.some(
-          (c) => c.type === 'wild_location' || c.type === 'wild_industry',
-        )
-      ) {
-        return 'You cannot Scout while holding a wild card.'
-      }
-      if (
-        context.wildLocationPile.length === 0 ||
-        context.wildIndustryPile.length === 0
-      ) {
-        return 'No wild cards are left to Scout for.'
-      }
-      if (
-        context.selectedCardsForScout.length !==
-        GAME_CONSTANTS.SCOUT_CARDS_REQUIRED
-      ) {
-        return `Scout needs exactly ${GAME_CONSTANTS.SCOUT_CARDS_REQUIRED} cards discarded.`
-      }
-      return null
-    }
+    case 'SCOUT':
+      return explainScoutConfirm(context)
 
     case 'CONFIRM':
       if (at({ playing: { action: { networking: 'confirmingLink' } } })) {
@@ -357,6 +384,15 @@ export function explainRefusal(
       }
       if (at({ playing: { action: { developing: 'confirmingDevelop' } } })) {
         return explainDevelopConfirm(context)
+      }
+      if (at({ playing: { action: { takingLoan: 'confirmingLoan' } } })) {
+        return explainLoanConfirm(context)
+      }
+      if (at({ playing: { action: { scouting: 'selectingCards' } } })) {
+        return explainScoutConfirm(context)
+      }
+      if (at({ playing: { action: { selling: 'selectingSale' } } })) {
+        return explainSellConfirm(context)
       }
       return null
 

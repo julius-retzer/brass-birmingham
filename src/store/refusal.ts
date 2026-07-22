@@ -165,11 +165,8 @@ const explainBuildConfirm = (context: GameState): string | null => {
   return null
 }
 
-/**
- * CONFIRM on a develop — mirrors hasSelectedTilesForDevelop: the iron for the
- * chosen tiles must both be sourceable AND affordable. When no tiles are named
- * the machine develops the single lowest, so price against a count of 1.
- */
+/** CONFIRM on a develop — mirrors hasSelectedTilesForDevelop (iron sourceable
+ * AND affordable; no tile named ⇒ the single lowest, count 1). */
 const explainDevelopConfirm = (context: GameState): string | null => {
   const selected = context.selectedTilesForDevelop
   const count = selected.length > 0 ? selected.length : 1
@@ -373,8 +370,6 @@ export function explainRefusal(
       if (at({ playing: { action: { developing: 'confirmingDevelop' } } })) {
         return explainDevelopConfirm(context)
       }
-      // These three settle a card-consuming action on CONFIRM; the machine's
-      // own event for each is CONFIRM, so name the missing piece per step.
       if (at({ playing: { action: { takingLoan: 'confirmingLoan' } } })) {
         return explainLoanConfirm(context)
       }

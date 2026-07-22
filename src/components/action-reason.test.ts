@@ -1,7 +1,3 @@
-// The disabled-confirm reason is the engine's own definite reason, never a
-// generic "needs X, Y, Z" list and never an "X or Y". This drives a real actor
-// to a disabled "Lay both tracks" double-rail confirm and asserts the wired
-// reason (disabledActionReason) is exactly what explainRefusal reports.
 import { afterEach, describe, expect, test } from 'vitest'
 import { createActor } from 'xstate'
 import type { CityId } from '~/data/board'
@@ -28,8 +24,6 @@ const resolveCoalTies = (actor: ReturnType<typeof createActor>) => {
   }
 }
 
-// A brewery (beer) plus a coal mine, so the whole double-rail path is legal
-// until we deliberately break one requirement.
 const industriesWithBeerAndCoal =
   (): GameState['players'][number]['industries'] => [
     {
@@ -173,7 +167,7 @@ describe('disabled action reason', () => {
 
   test('disabled double-rail confirm shows the engine reason, not the generic list', () => {
     const { actor, playerId } = reachConfirmingDoubleLink()
-    // Knock money below the £15 double-rail cost while everything else is fine.
+    // below the £15 double-rail cost, everything else fine
     actor.send({ type: 'TEST_SET_PLAYER_STATE', playerId, money: 14 })
     const snap = actor.getSnapshot()
 
@@ -182,9 +176,7 @@ describe('disabled action reason', () => {
     const engineReason = explainRefusal(snap, EXECUTE)
     const wired = disabledActionReason(snap, EXECUTE, GENERIC)
 
-    // The dock renders exactly what the engine reports.
     expect(wired).toBe(engineReason)
-    // Definite, specific — not the generic requirement list, and never an "or".
     expect(wired).not.toBe(GENERIC)
     expect(wired).not.toMatch(/\bor\b/i)
     expect(wired).toContain('14')
@@ -195,9 +187,8 @@ describe('disabled action reason', () => {
     const live = actor.getSnapshot()
     const first = live.context.selectedLink!
 
-    // Surgery: strip every coal source (no connected mine, empty market) while
-    // keeping beer reachable. EXECUTE's refusal case reads only context, so a
-    // context-only snapshot stand-in is enough to exercise explainDoubleLink.
+    // strip every coal source (no mine, empty market), keep beer; EXECUTE's
+    // refusal reads only context, so a context-only stand-in suffices
     const starved = {
       ...live,
       context: {

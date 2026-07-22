@@ -841,9 +841,6 @@ export function ActionDock({
 }: ActionDockProps) {
   const is = (path: string) => snapshot.matches(path as never)
   const can = (event: GameEvent) => snapshot.can(event)
-  // The definite reason a disabled confirm is refused — the engine's own, not a
-  // hand-written requirement list. Falls back to the generic line only when the
-  // engine cannot pin a single cause.
   const whyDisabled = (event: GameEvent, fallback: string) =>
     disabledActionReason(snapshot, event, fallback)
   const { locate, unlocate } = useLocateCity()

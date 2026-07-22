@@ -2502,10 +2502,12 @@ export const gameStore = setup({
         }
       }
 
-      // Reset merchant beer - place 1 beer on each merchant space (per rules)
+      // Reset merchant beer - place 1 beer on each beer barrel space beside a
+      // (non-blank) Merchant tile (rules p.9). Blank tiles have no barrel
+      // space, so they never hold beer — same gate as setup (`goods.length`).
       const updatedMerchants = context.merchants.map((merchant) => ({
         ...merchant,
-        hasBeer: true,
+        hasBeer: merchant.industryIcons.length > 0,
       }))
       logMessages.push('Merchant beer reset for Rail Era')
 

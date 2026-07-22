@@ -442,6 +442,19 @@ button.bb2-mat:hover {
   color: var(--bb-parchment-bright);
   font-variant-numeric: tabular-nums;
 }
+/* A stat value that doubles as a control (opens the income track). */
+.bb2-stat-tap {
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.bb2-stat-tap:hover,
+.bb2-stat-tap:focus-visible {
+  background: rgba(230, 189, 99, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(230, 189, 99, 0.35);
+  outline: none;
+}
 
 /* ---------------- cards ---------------- */
 

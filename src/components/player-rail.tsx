@@ -14,24 +14,56 @@ function Stat({
   icon,
   accent,
   testId,
+  onClick,
+  title,
 }: {
   label: string
   value: React.ReactNode
   icon?: React.ReactNode
   accent?: string
   testId?: string
+  /** When set, the value becomes a nested control (e.g. open the track). */
+  onClick?: () => void
+  title?: string
 }) {
+  const inner = (
+    <span
+      className="bb2-stat-value flex items-center gap-1"
+      style={accent ? { color: accent } : undefined}
+    >
+      {icon}
+      {value}
+    </span>
+  )
   return (
     <div className="flex min-w-[52px] flex-col items-start gap-0.5">
       <span className="bb2-stat-label">{label}</span>
-      <span
-        className="bb2-stat-value flex items-center gap-1"
-        data-testid={testId}
-        style={accent ? { color: accent } : undefined}
-      >
-        {icon}
-        {value}
-      </span>
+      {onClick ? (
+        // The rail card is itself a button, so this sub-affordance is a
+        // role=button span that stops propagation rather than a real <button>.
+        <span
+          role="button"
+          tabIndex={0}
+          data-testid={testId}
+          title={title}
+          className="bb2-stat-tap -mx-1 rounded px-1"
+          onClick={(e) => {
+            e.stopPropagation()
+            onClick()
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              e.stopPropagation()
+              onClick()
+            }
+          }}
+        >
+          {inner}
+        </span>
+      ) : (
+        <span data-testid={testId}>{inner}</span>
+      )}
     </div>
   )
 }
@@ -42,6 +74,7 @@ export function PlayerRail({
   turnOrder,
   playerSpending,
   onOpenLedger,
+  onOpenIncomeTrack,
   onHoverPlayer,
 }: {
   players: Player[]
@@ -49,6 +82,8 @@ export function PlayerRail({
   turnOrder: GameState['turnOrder']
   playerSpending: GameState['playerSpending']
   onOpenLedger?: (playerId: string) => void
+  /** Tapping a player's Income stat opens the shared income-track view. */
+  onOpenIncomeTrack?: () => void
   /** Hovering/focusing a mat spotlights that player's network on the board. */
   onHoverPlayer?: (playerId: string | null) => void
 }) {
@@ -128,6 +163,16 @@ export function PlayerRail({
                   label="Income"
                   value={p.income}
                   icon={<IncomeIcon size={12} />}
+                  testId="open-income-track"
+                  title="Open the income track"
+                  onClick={
+                    onOpenIncomeTrack
+                      ? () => {
+                          onHoverPlayer?.(null)
+                          onOpenIncomeTrack()
+                        }
+                      : undefined
+                  }
                 />
                 <Stat
                   label="Victory"

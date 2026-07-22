@@ -40,3 +40,33 @@ export function highestSpaceForLevel(level: number): number {
 export function advanceIncomeSpaces(space: number, spaces: number): number {
   return Math.min(MAX_INCOME_SPACE, Math.max(0, space) + Math.max(0, spaces))
 }
+
+/** The lowest and highest income level printed on the track. */
+export const MIN_INCOME_LEVEL = -10
+export const MAX_INCOME_LEVEL = 30
+
+export interface IncomeTrackLevel {
+  /** The income level (= £ collected per round; negative levels are a debt). */
+  level: number
+  /** Progress-track spaces (0..99) this level spans, ascending. */
+  spaces: number[]
+}
+
+/**
+ * The full income track as an ordered list of levels, each with the exact
+ * progress-track spaces it spans — derived entirely from the audited
+ * `highestSpaceForLevel`/`incomeLevelForSpace` mapping so the non-linear
+ * spacing (1→2→3→4 spaces per level) is never hand-guessed. Ascending by
+ * level (lowest income first).
+ */
+export function incomeTrackLevels(): IncomeTrackLevel[] {
+  const levels: IncomeTrackLevel[] = []
+  for (let level = MIN_INCOME_LEVEL; level <= MAX_INCOME_LEVEL; level++) {
+    const last = highestSpaceForLevel(level)
+    const prev = level > MIN_INCOME_LEVEL ? highestSpaceForLevel(level - 1) : -1
+    const spaces: number[] = []
+    for (let space = prev + 1; space <= last; space++) spaces.push(space)
+    levels.push({ level, spaces })
+  }
+  return levels
+}

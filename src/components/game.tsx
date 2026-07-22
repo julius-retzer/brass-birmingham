@@ -28,6 +28,10 @@ import {
 } from '~/store/gameStore'
 import { refreshEmbeddedTileStats } from '~/store/saveMigration'
 import {
+  pendingBeerChoice,
+  pendingCoalChoice,
+} from '~/store/shared/resourceSources'
+import {
   ActionDock,
   type ConfirmOutcome,
   INDUSTRY_TYPES,
@@ -37,26 +41,23 @@ import {
 import { linkKey } from './board/board-data'
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from './board/board-map'
 import { demoSnapshot } from './demo/demo-snapshot'
-import { demoSnapshotEraEnd } from './demo/demo-snapshot-era-end'
-import { demoSnapshotGameEnd } from './demo/demo-snapshot-game-end'
-import { demoSnapshotRail } from './demo/demo-snapshot-rail'
 import { demoSnapshotBeerChoice } from './demo/demo-snapshot-beer-choice'
 import { demoSnapshotDoubleBeer } from './demo/demo-snapshot-double-beer'
+import { demoSnapshotEraEnd } from './demo/demo-snapshot-era-end'
+import { demoSnapshotGameEnd } from './demo/demo-snapshot-game-end'
 import { demoSnapshotIronChoice } from './demo/demo-snapshot-iron-choice'
+import { demoSnapshotRail } from './demo/demo-snapshot-rail'
 import { demoSnapshotSell } from './demo/demo-snapshot-sell'
 import { demoSnapshotWilds } from './demo/demo-snapshot-wilds'
 import { HandTray } from './hand-tray'
 import { computeHoverCities, focusCityFor } from './hover-highlight'
+import { IncomeTrackModal } from './income-track'
+import { JournalPanel } from './journal'
 import { LocateCityProvider, useLocateCityState } from './locate'
-import {
-  pendingBeerChoice,
-  pendingCoalChoice,
-} from '~/store/shared/resourceSources'
 import { GameOverScreen, PassGate, RoundCurtain } from './overlays'
 import { OpenMatButton, PlayerLedger } from './player-ledger'
 import { PlayerRail } from './player-rail'
 import { SetupScreen } from './setup-screen'
-import { JournalPanel } from './journal'
 import { MarketsPanel } from './side-panels'
 
 const SAVE_KEY = 'bb2-save-v1'
@@ -403,6 +404,7 @@ function GameInner({
       : null,
   )
   const [ledgerFor, setLedgerFor] = useState<string | null>(null)
+  const [incomeTrackOpen, setIncomeTrackOpen] = useState(false)
   const [hoveredCard, setHoveredCard] = useState<Card | null>(null)
   // Hover-a-name spotlight: the player whose rail mat is hovered/focused right
   // now — the board lights up their network (links + tiles) and recedes the rest.
@@ -467,13 +469,13 @@ function GameInner({
   // An open ledger swallows the keypress — PlayerLedger closes itself.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || ledgerFor) return
+      if (e.key !== 'Escape' || ledgerFor || incomeTrackOpen) return
       const snap = actorRef.getSnapshot()
       if (snap.can({ type: 'CANCEL' })) send({ type: 'CANCEL' })
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [ledgerFor, actorRef, send])
+  }, [ledgerFor, incomeTrackOpen, actorRef, send])
 
   // ---------- undo (first action of the turn, hotseat) ----------
   // Snapshot the machine when a player's turn begins; while they still
@@ -969,6 +971,7 @@ function GameInner({
           turnOrder={ctx.turnOrder}
           playerSpending={ctx.playerSpending}
           onOpenLedger={(id) => setLedgerFor(id)}
+          onOpenIncomeTrack={() => setIncomeTrackOpen(true)}
           onHoverPlayer={setHoveredPlayerId}
         />
 
@@ -1058,6 +1061,14 @@ function GameInner({
             era={ctx.era}
             isCurrent={ledgerPlayer.id === currentPlayer.id}
             onClose={() => setLedgerFor(null)}
+          />
+        )}
+
+        {incomeTrackOpen && (
+          <IncomeTrackModal
+            players={ctx.players}
+            currentPlayerId={currentPlayer.id}
+            onClose={() => setIncomeTrackOpen(false)}
           />
         )}
 

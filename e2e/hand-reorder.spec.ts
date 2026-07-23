@@ -8,9 +8,12 @@ import { expect, test } from '@playwright/test'
  * never an event. So every test here checks the same two things: the fan moved,
  * and the saved snapshot's hand did not.
  *
- * Three ways in, because the tray's pointer budget was already spent on
- * hover/peek/long-press-browse: a mouse drag, the ◀ ▶ handles that ride a
- * raised card (the touch route), and Shift+Arrow on a focused card.
+ * The ways in depend on the pointer, because the tray's budget was already
+ * spent on hover/peek/long-press-browse: DESKTOP (fine pointer) gets a mouse
+ * drag + Shift+Arrow; TOUCH (coarse pointer) gets the ◀ ▶ handles that ride a
+ * raised card + Shift+Arrow. The handles are coarse-only: on a mouse the trip
+ * from card to handle leaves the hover region and lowers the card before the
+ * click lands, so they never appear on desktop.
  */
 
 const fanOrder = (page: import('@playwright/test').Page) =>
@@ -34,7 +37,7 @@ const savedHands = (page: import('@playwright/test').Page) =>
   })
 
 test.describe('desktop', () => {
-  test('the handles reorder the fan, and the order survives a reload', async ({
+  test('no ◀ ▶ handles on desktop; keyboard order survives a reload', async ({
     page,
   }) => {
     await page.goto('/?demo')
@@ -46,11 +49,16 @@ test.describe('desktop', () => {
     expect(engineBefore).not.toBeNull()
     expect(before.indexOf('card-coalbrookdale_3')).toBe(3)
 
-    // The handles only ride a RAISED card — the fan stays clean at rest.
-    await expect(page.getByTestId('move-left-coalbrookdale_3')).toBeHidden()
+    // The ◀ ▶ handles are TOUCH-ONLY: on a fine pointer the hover-gap makes
+    // them unclickable, so they never render — desktop uses drag + keyboard.
     await card.hover()
-    await page.getByTestId('move-left-coalbrookdale_3').click()
+    await expect(card).toHaveAttribute('data-raised', 'true')
+    await expect(page.getByTestId('move-left-coalbrookdale_3')).toHaveCount(0)
+    await expect(page.getByTestId('move-right-coalbrookdale_3')).toHaveCount(0)
 
+    // Keyboard reorder still works and is remembered for the session.
+    await card.focus()
+    await page.keyboard.press('Shift+ArrowLeft')
     await expect
       .poll(async () => (await fanOrder(page)).indexOf('card-coalbrookdale_3'))
       .toBe(2)
@@ -143,7 +151,14 @@ test.describe('desktop', () => {
 })
 
 test.describe('phone', () => {
-  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
+  // isMobile flips the emulated primary pointer to coarse, which is what gates
+  // the ◀ ▶ handles on (matchMedia('(pointer: coarse)') — see hand-tray.tsx).
+  // hasTouch alone leaves the primary pointer fine, so the handles would hide.
+  test.use({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+  })
 
   test('tap to peek, then the handles move the card', async ({ page }) => {
     await page.goto('/?demo')

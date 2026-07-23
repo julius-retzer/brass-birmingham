@@ -11,12 +11,16 @@
 // persistent lens. Pure geometry lives in hand-tray-layout.ts.
 //
 // The fan is also REORDERABLE (display only — see hand-order.ts; the engine's
-// hand is never touched). Three ways in, because the tray's pointer budget is
-// already spent: a mouse drag (fine pointers only — touch's long-press is the
-// browse gesture and stays that), the ◀ ▶ handles that flank a raised card,
-// and Shift+Arrow on a focused card. A drag is only ever read as a drag
-// once the pointer travels DRAG_SLOP_PX, and it swallows the click it would
-// otherwise synthesize, so dragging can never be mistaken for selecting.
+// hand is never touched). Which ways in depend on the pointer, because the
+// tray's pointer budget is already spent: on DESKTOP (fine pointer) a mouse
+// drag or Shift+Arrow on a focused card; on TOUCH (coarse pointer) the ◀ ▶
+// handles that flank a raised card, plus Shift+Arrow (keyboard stays on every
+// platform for accessibility). The handles are COARSE-ONLY on purpose: a mouse
+// leaves the card's hover region on the way to a handle, so the card lowers and
+// the handle vanishes before the click lands — desktop keeps drag + keyboard
+// instead. A drag is only ever read as a drag once the pointer travels
+// DRAG_SLOP_PX, and it swallows the click it would otherwise synthesize, so
+// dragging can never be mistaken for selecting.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { type Card as GameCard } from '~/data/cards'
 import { CardFaceContent, cardTitle } from './cards'
@@ -476,14 +480,18 @@ export function HandTray({
                   <CardFaceContent card={card} />
                 </span>
               </button>
-              {/* Reorder handles: the touch (and plain-click) route, since
-                the long-press already belongs to the browse gesture. They
-                ride the raised card so the fan stays clean at rest, FLANK the
-                magnified visual rather than covering it (moveHandleLayout),
-                and counter-rotate out of the fan's tilt so the arrows read
-                straight. They must not bubble: a pointerdown here would arm a
-                browse/drag, and a pointerup would toggle the peek back off. */}
-              {reorderable && raised && !draggingId && (
+              {/* Reorder handles: the TOUCH route (coarse pointers only —
+                see the header). On a mouse the trip from card to handle leaves
+                the hover region and lowers the card before the click lands, so
+                desktop uses drag + keyboard instead. The long-press already
+                belongs to the browse gesture, so on touch these are the tap
+                route. They ride the raised card so the fan stays clean at rest,
+                FLANK the magnified visual rather than covering it
+                (moveHandleLayout), and counter-rotate out of the fan's tilt so
+                the arrows read straight. They must not bubble: a pointerdown
+                here would arm a browse/drag, and a pointerup would toggle the
+                peek back off. */}
+              {reorderable && coarse && raised && !draggingId && (
                 <span
                   className="bb2-card-move"
                   style={

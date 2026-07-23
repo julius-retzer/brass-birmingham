@@ -50,6 +50,7 @@ const seat = (seatId: number, name: string | null): SeatRecord => ({
 async function seedGame(opts: {
   ageMs?: number
   phase?: GameRecord['phase']
+  archived?: boolean
   seats: SeatRecord[]
 }): Promise<void> {
   const token = randomUUID().replace(/-/g, '')
@@ -60,6 +61,7 @@ async function seedGame(opts: {
     phase: opts.phase ?? 'playing',
     name: '',
     visibility: 'public',
+    archived: opts.archived ?? false,
     createdAt: stamp,
     updatedAt: stamp,
     version: 1,
@@ -131,6 +133,19 @@ describe('loadActivityStats', () => {
   test('excludes a finished game even when it was just touched', async () => {
     await seedGame({
       phase: 'over',
+      seats: [seat(0, 'Ada'), seat(1, 'Brunel')],
+    })
+    expect(await loadActivityStats(ACTIVE_WINDOW_MS, NOW)).toEqual({
+      activeGames: 0,
+      activePlayers: 0,
+    })
+  })
+
+  test('excludes an archived lobby even when just touched (host removed it)', async () => {
+    // A host-archived lobby keeps its version bump but is not "in progress".
+    await seedGame({
+      phase: 'lobby',
+      archived: true,
       seats: [seat(0, 'Ada'), seat(1, 'Brunel')],
     })
     expect(await loadActivityStats(ACTIVE_WINDOW_MS, NOW)).toEqual({

@@ -62,6 +62,9 @@ export interface GameRecord {
   /** 'public' games are advertised in the lobby browser; 'private' ones are
    *  invite-link only and never returned by `loadOpenLobbies` */
   visibility: 'public' | 'private'
+  /** hidden from discovery but kept for analytics — see the `archived` column.
+   *  Set by the weekly archive sweep or a host archiving their own lobby. */
+  archived: boolean
   createdAt: string
   updatedAt: string
   version: number
@@ -88,6 +91,7 @@ function rowToRecord(row: GameRow): GameRecord {
     phase: row.phase,
     name: row.name,
     visibility: row.visibility,
+    archived: row.archived,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     version: row.version,
@@ -107,6 +111,7 @@ function recordToRow(game: GameRecord): GameRow {
     phase: game.phase,
     name: game.name,
     visibility: game.visibility,
+    archived: game.archived,
     createdAt: game.createdAt,
     updatedAt: game.updatedAt,
     version: game.version,
@@ -252,7 +257,16 @@ export async function loadActivityStats(
       activePlayers: sql<number>`coalesce(sum(${seated}), 0)`,
     })
     .from(games)
-    .where(and(gte(games.updatedAt, cutoff), ne(games.phase, 'over')))
+    .where(
+      and(
+        gte(games.updatedAt, cutoff),
+        ne(games.phase, 'over'),
+        // An archived lobby is not "in progress" even if a host archived it
+        // moments ago (item 6 bumps version but keeps the stale updatedAt; a
+        // freshly host-archived lobby would otherwise count here).
+        eq(games.archived, false),
+      ),
+    )
   const row = rows[0]
   // Postgres count()/sum() are bigint — they arrive as strings over neon-http.
   return {
@@ -291,6 +305,10 @@ export interface LobbySummary {
  * only by its invite link, so its token must never appear on this public list
  * (that is also a small security win — private tokens stay off the public
  * endpoint). `public` is the default, so existing rows keep showing.
+ *
+ * ARCHIVED games are likewise excluded at the SQL level: the weekly sweep and
+ * a host's own "remove from lobby" both flip `archived` true, which drops the
+ * table off this list while KEEPING the row for analytics.
  */
 export async function loadOpenLobbies(limit = 50): Promise<LobbySummary[]> {
   const rows = await db
@@ -301,7 +319,13 @@ export async function loadOpenLobbies(limit = 50): Promise<LobbySummary[]> {
       createdAt: games.createdAt,
     })
     .from(games)
-    .where(and(eq(games.phase, 'lobby'), eq(games.visibility, 'public')))
+    .where(
+      and(
+        eq(games.phase, 'lobby'),
+        eq(games.visibility, 'public'),
+        eq(games.archived, false),
+      ),
+    )
     .orderBy(desc(games.createdAt))
     .limit(limit)
   return rows
@@ -561,4 +585,46 @@ export async function sweepStaleGames(now = Date.now()): Promise<void> {
         db.select({ token: games.token }).from(games),
       ),
     )
+}
+
+/** How long a never-started lobby may sit untouched before the weekly sweep
+ *  archives it (hides it from discovery, keeps the row). */
+export const LOBBY_ARCHIVE_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
+
+/**
+ * Archive — NEVER delete — lobbies nobody ever started that have gone stale.
+ *
+ * This is the weekly Vercel-Cron sweep (item 5). It flips `archived` true on
+ * every game still in the `lobby` phase, not already archived, and untouched
+ * for `ttlMs`. Started (`playing`) and finished (`over`) games are left alone
+ * — only dead never-started lobbies are cleaned up, and even they SURVIVE as
+ * rows (with their chat + intent log) for analytics; they simply drop off the
+ * public lobby list (`loadOpenLobbies` filters archived) and any client still
+ * sitting on one converges to the "game no longer exists" screen via the
+ * version bump.
+ *
+ * A single bulk UPDATE (no per-row load/save). `updatedAt` is deliberately NOT
+ * bumped: it is the staleness clock, and a fresh timestamp would both re-hide
+ * the row from a future re-sweep check and make it look active. `version` IS
+ * bumped so the stream poll notices and refreshes watchers. Returns how many
+ * lobbies were archived.
+ */
+export async function archiveStaleLobbies(
+  now = Date.now(),
+  ttlMs = LOBBY_ARCHIVE_TTL_MS,
+): Promise<number> {
+  // ISO-8601 timestamps sort lexicographically the same as chronologically.
+  const cutoff = new Date(now - ttlMs).toISOString()
+  const archived = await db
+    .update(games)
+    .set({ archived: true, version: sql`${games.version} + 1` })
+    .where(
+      and(
+        eq(games.phase, 'lobby'),
+        eq(games.archived, false),
+        lt(games.updatedAt, cutoff),
+      ),
+    )
+    .returning({ token: games.token })
+  return archived.length
 }

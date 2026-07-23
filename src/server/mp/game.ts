@@ -196,6 +196,10 @@ export interface GameView {
   phase: GameRecord['phase']
   /** the table's name, or '' when unnamed (public metadata) */
   name: string
+  /** true once the game is archived (swept as a dead lobby, or removed by its
+   *  host) — the client shows a "game no longer exists" dead-end rather than a
+   *  lobby/join screen. */
+  archived: boolean
   version: number
   you: number | null
   /** the seat that currently holds host powers (start the game, release seats).
@@ -347,6 +351,7 @@ export function viewFor(
     token: game.token,
     phase: game.phase,
     name: game.name,
+    archived: game.archived,
     version: game.version,
     you: authed ? seatId : null,
     hostSeatId: effectiveHostSeat(game)?.seatId ?? null,
@@ -426,6 +431,7 @@ export async function createGame(
     phase: 'lobby',
     name: (options.name ?? '').trim().slice(0, GAME_NAME_MAX_LENGTH),
     visibility: options.visibility === 'private' ? 'private' : 'public',
+    archived: false,
     createdAt: now,
     updatedAt: now,
     version: 1,
@@ -498,6 +504,52 @@ function startEngine(game: GameRecord): void {
   actor.stop()
 }
 
+/** The exact reason a join is refused because the game is gone (archived).
+ *  Stable string so the client can distinguish it from a full table. */
+export const GAME_GONE_ERROR = 'This game no longer exists.'
+
+/**
+ * Host removes their OWN lobby from discovery (item 6). This ARCHIVES the game
+ * — it does NOT delete the row (kept for analytics, and reversible) — so the
+ * user-visible effect ("my table is gone from the lobby browser") matches a
+ * delete while the data survives. Authorized as a HOST action: only the
+ * effective host's secret works (post-#88 that is seat 0, or the next seated
+ * human if seat 0 was vacated — see effectiveHostSeat). A non-host seat or a
+ * stranger is refused. Only a lobby-phase game can be removed this way; a game
+ * in progress is not on the lobby browser and archiving it would strand its
+ * players. Idempotent: archiving an already-archived lobby just succeeds.
+ */
+export async function archiveGame(
+  token: string,
+  hostSecret: string,
+): Promise<
+  { ok: true; view: GameView; version: number } | { ok: false; error: string }
+> {
+  return withGameLock(token, async () => {
+    const game = await loadGame(token)
+    if (!game) return { ok: false, error: 'Game not found' }
+    const host = effectiveHostSeat(game)
+    if (!host || !secretMatches(hostSecret, host.secretHash)) {
+      return { ok: false, error: 'Only the host can remove this game' }
+    }
+    if (game.phase !== 'lobby') {
+      return { ok: false, error: 'Only a lobby can be removed' }
+    }
+    if (!game.archived) {
+      game.archived = true
+      game.version++
+      game.updatedAt = new Date().toISOString()
+      await saveGame(game)
+      broadcast(token)
+    }
+    return {
+      ok: true,
+      view: viewFor(game, host.seatId, hostSecret),
+      version: game.version,
+    }
+  })
+}
+
 export async function joinGame(
   token: string,
   name: string,
@@ -505,6 +557,12 @@ export async function joinGame(
   return withGameLock(token, async () => {
     const game = await loadGame(token)
     if (!game) throw new Error('Game not found')
+    // An archived game is gone from discovery and cannot be joined — report it
+    // as such so the UI shows a clear "no longer exists, start a new one"
+    // dead-end, distinct from a genuinely full table (see GAME_GONE_ERROR /
+    // the JoinScreen). The UI reaches this from the view's `archived` flag
+    // first; this is defense-in-depth for a direct POST.
+    if (game.archived) throw new Error(GAME_GONE_ERROR)
     // Join takes the first OPEN human seat. This is what makes both races safe
     // under the per-game lock: a started game has every seat claimed (startGame
     // requires it), and two players racing the last open seat serialize here —

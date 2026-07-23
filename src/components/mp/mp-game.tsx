@@ -92,6 +92,8 @@ interface GameViewWire {
   phase: 'lobby' | 'playing' | 'over'
   /** table name, or '' when unnamed */
   name?: string
+  /** true once the game is archived (swept dead lobby, or host-removed) */
+  archived?: boolean
   version: number
   you: number | null
   /** seat currently holding host powers (usually 0; transfers if 0 is vacated) */
@@ -337,6 +339,15 @@ export function MpGame({ token }: { token: string }) {
     )
   }
 
+  // Archived = the game is gone (swept dead lobby, or the host removed it).
+  // Show a clear "no longer exists" dead-end with a create-new call to action,
+  // for EVERYONE (a would-be joiner opening the link, a co-player still on the
+  // lobby) — never the confusing "all seats taken" join screen. Checked before
+  // join/lobby so it wins.
+  if (view.archived) {
+    return <GoneScreen />
+  }
+
   if (view.you === null) {
     return (
       <JoinScreen
@@ -364,6 +375,30 @@ function Centered({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-6 text-center">
       {children}
     </div>
+  )
+}
+
+/** Clear dead-end for a game that no longer exists — swept as a dead lobby or
+ *  removed by its host. Distinct from a genuinely full table: a create-new CTA
+ *  instead of "all seats taken". */
+function GoneScreen() {
+  return (
+    <Centered>
+      <span
+        className="bb2-display text-2xl font-bold"
+        style={{ color: 'var(--bb-parchment-bright)' }}
+        data-testid="game-gone"
+      >
+        This game no longer exists
+      </span>
+      <p className="text-[13px]" style={{ color: 'rgba(231,215,177,.55)' }}>
+        The table was closed or removed. Start a fresh one — it only takes a
+        moment.
+      </p>
+      <a href="/" className="bb2-confirm mt-2" data-testid="gone-host-new">
+        Host a new game
+      </a>
+    </Centered>
   )
 }
 
@@ -543,6 +578,35 @@ function LobbyScreen({
     }
   }
 
+  const removeGame = async () => {
+    if (!creds) return
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(
+        'Remove this table? It disappears from the lobby for everyone. This cannot be undone here.',
+      )
+    ) {
+      return
+    }
+    setBusy(true)
+    try {
+      const res = await fetch('/api/mp/archive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, seatSecret: creds.seatSecret }),
+      })
+      if (!res.ok) {
+        const body = (await res.json()) as { error?: string }
+        throw new Error(body.error ?? 'Could not remove the game')
+      }
+      // The table is gone — take the host home to start a new one.
+      if (typeof window !== 'undefined') window.location.assign('/')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not remove the game')
+      setBusy(false)
+    }
+  }
+
   const startHint = !allClaimed
     ? 'Waiting for every seat to be claimed…'
     : !allReady
@@ -660,6 +724,15 @@ function LobbyScreen({
           >
             {startHint}
           </p>
+          <button
+            type="button"
+            className="bb2-ghost-btn w-full"
+            data-testid="lobby-remove"
+            disabled={busy}
+            onClick={() => void removeGame()}
+          >
+            Remove this table
+          </button>
         </div>
       )}
 

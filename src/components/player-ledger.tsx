@@ -74,7 +74,7 @@ const CUBE_TOP_Y = 17
 // the top one shows as a cardboard edge STACK_PITCH tall; a small alternating
 // x jitter keeps the pile looking hand-stacked rather than die-cut. The
 // jitter never exceeds STACK_PAD_X, so layers stay inside the viewBox.
-const STACK_PITCH = 4.6
+const STACK_PITCH = 5.2
 const STACK_JITTER = [0, 1.3, -0.9, 0.7, -0.5, 1] as const
 const STACK_PAD_X = 1.6
 
@@ -164,6 +164,17 @@ function MatTileArt({
               rx="5"
               fill="#16130f"
               opacity={0.3 + i * 0.12}
+            />
+            {/* Catch-light along the cardboard edge — keeps each layer
+                legible even on near-black tile fills (coal). */}
+            <line
+              x1={x + 3.5}
+              y1={y + 50.4}
+              x2={x + 48.5}
+              y2={y + 50.4}
+              stroke="#f2e6c8"
+              strokeWidth="1"
+              opacity="0.16"
             />
           </g>
         )

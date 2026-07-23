@@ -566,9 +566,10 @@ export async function sweepStaleGames(now = Date.now()): Promise<void> {
   // so a string `<` comparison is a correct TTL cutoff.
   const cutoff = new Date(now - GAME_TTL_MS).toISOString()
   await db.delete(games).where(lt(games.updatedAt, cutoff))
-  // Chat and intent-log rows are tied to game lifetime; drop any now-orphaned
-  // by the sweep above (anti-join is cheap at this scale and keeps deletion in
-  // one place).
+  // Chat and intent-log rows are tied to game lifetime. Since migration 0006
+  // both `token` columns are FKs with ON DELETE CASCADE, so the delete above
+  // already took them — these anti-joins are now a cheap belt-and-braces pass
+  // that also clears any orphan predating the constraint.
   await db
     .delete(chatMessages)
     .where(

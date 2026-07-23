@@ -96,11 +96,18 @@ export const games = pgTable(
  * Chat is public to seated players; there is no seat-private channel, so no
  * per-seat filtering is needed on the chat rows themselves (the game view
  * still gates whether an unauthenticated viewer sees any chat at all).
+ *
+ * `token` is a real FOREIGN KEY with ON DELETE CASCADE: chat has no life of
+ * its own, so deleting a game — by the TTL sweep or by hand in the DB console
+ * — takes its chat with it. Before the FK existed (migration `0006`) such a
+ * delete silently orphaned these rows.
  */
 export const chatMessages = pgTable(
   'chat_messages',
   {
-    token: text('token').notNull(),
+    token: text('token')
+      .notNull()
+      .references(() => games.token, { onDelete: 'cascade' }),
     /** monotonically increasing per game; the message id on the wire */
     seq: integer('seq').notNull(),
     seatId: integer('seat_id').notNull(),
@@ -131,12 +138,15 @@ export const chatMessages = pgTable(
  * Server-side only: never shipped to clients, never read on the stream poll
  * (egress discipline) — only by the replay tooling (`../mp/replay.ts`) and the
  * TTL sweep. Same normalization pattern as `chat_messages`: PK (token, seq),
- * swept when the game is swept.
+ * `token` a FOREIGN KEY with ON DELETE CASCADE, so the log dies with its game
+ * however the game row is deleted (sweep or DB console) — see `chatMessages`.
  */
 export const gameIntents = pgTable(
   'game_intents',
   {
-    token: text('token').notNull(),
+    token: text('token')
+      .notNull()
+      .references(() => games.token, { onDelete: 'cascade' }),
     /** monotonically increasing per game; allocated inside the save statement */
     seq: integer('seq').notNull(),
     kind: text('kind', { enum: ['setup', 'intent'] }).notNull(),

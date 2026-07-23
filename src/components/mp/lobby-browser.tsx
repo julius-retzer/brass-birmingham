@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 interface LobbyWire {
   token: string
+  name: string
   host: string | null
   capacity: number
   claimed: number
@@ -120,7 +121,11 @@ export function LobbyBrowser() {
                   className="text-[15px] font-semibold"
                   style={{ color: 'var(--bb-parchment-bright)' }}
                 >
-                  {l.host ? `${l.host}’s table` : 'A table'}
+                  {l.name?.trim()
+                    ? l.name
+                    : l.host
+                      ? `${l.host}’s table`
+                      : 'A table'}
                 </span>
                 <span
                   className="text-[12px]"

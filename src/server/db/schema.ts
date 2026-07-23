@@ -39,6 +39,17 @@ export const games = pgTable(
     phase: text('phase', { enum: ['lobby', 'playing', 'over'] })
       .notNull()
       .default('lobby'),
+    /** optional short table name captured at create; '' when the host left it
+     *  blank (the lobby browser then falls back to "<host>'s table"). Additive,
+     *  safe default so existing rows read as unnamed. */
+    name: text('name').notNull().default(''),
+    /** 'public' tables are advertised by the lobby browser; 'private' tables
+     *  are reachable by invite link only and never returned by
+     *  `loadOpenLobbies`. Additive with a 'public' default so existing rows
+     *  keep their current (listed) behaviour. */
+    visibility: text('visibility', { enum: ['public', 'private'] })
+      .notNull()
+      .default('public'),
     version: integer('version').notNull().default(1),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),

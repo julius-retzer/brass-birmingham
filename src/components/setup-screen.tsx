@@ -39,9 +39,15 @@ export function SetupScreen({
   onStart: (players: SetupPlayer[]) => void
 }) {
   const router = useRouter()
-  const [mode, setMode] = useState<'local' | 'online' | 'ai'>('local')
+  // Default to opening an online table — most sessions here are networked, so
+  // "Play online" is the primary path. The other modes stay one tap away.
+  const [mode, setMode] = useState<'local' | 'online' | 'ai'>('online')
   const [count, setCount] = useState(3)
   const [names, setNames] = useState<string[]>(DEFAULT_NAMES)
+  // Online-table metadata: an optional short name shown in the lobby browser +
+  // masthead, and whether the table is listed publicly or invite-link only.
+  const [gameName, setGameName] = useState('')
+  const [visibility, setVisibility] = useState<'public' | 'private'>('public')
   // Default rival: haiku — fast and nearly as cheap as the budget tier
   // (the Clerk reasons for ~a minute per decision).
   const [tiers, setTiers] = useState<AiTierId[]>([
@@ -78,6 +84,8 @@ export function SetupScreen({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: names[0]?.trim() || DEFAULT_NAMES[0],
+          gameName: gameName.trim(),
+          visibility,
           playerCount: count,
           ...(mode === 'ai' ? { opponents: tiers.slice(0, count - 1) } : {}),
         }),
@@ -277,14 +285,55 @@ export function SetupScreen({
               </div>
             ))}
           {mode === 'online' && (
-            <p
-              className="text-[12px]"
-              style={{ color: 'rgba(231,215,177,.5)' }}
-            >
-              You&rsquo;ll get a link to share — the other{' '}
-              {count - 1 === 1 ? 'player claims' : 'players claim'} their seats
-              by opening it. No accounts, ever.
-            </p>
+            <>
+              <input
+                value={gameName}
+                onChange={(e) => setGameName(e.target.value)}
+                placeholder="Table name (optional)"
+                maxLength={40}
+                data-testid="game-name"
+                className="w-full rounded border bg-transparent px-3 py-2 text-[14px] outline-none transition-colors"
+                style={{
+                  borderColor: 'rgba(231,215,177,.2)',
+                  color: 'var(--bb-parchment-bright)',
+                }}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className="bb2-option justify-center py-2"
+                  data-selected={visibility === 'public'}
+                  data-testid="visibility-public"
+                  onClick={() => setVisibility('public')}
+                >
+                  <span className="text-[11px] font-bold uppercase tracking-[0.12em]">
+                    Public
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="bb2-option justify-center py-2"
+                  data-selected={visibility === 'private'}
+                  data-testid="visibility-private"
+                  onClick={() => setVisibility('private')}
+                >
+                  <span className="text-[11px] font-bold uppercase tracking-[0.12em]">
+                    Private
+                  </span>
+                </button>
+              </div>
+              <p
+                className="text-[12px]"
+                style={{ color: 'rgba(231,215,177,.5)' }}
+              >
+                You&rsquo;ll get a link to share — the other{' '}
+                {count - 1 === 1 ? 'player claims' : 'players claim'} their
+                seats by opening it. No accounts, ever.{' '}
+                {visibility === 'public'
+                  ? 'This table is listed on the open-tables page.'
+                  : 'Private tables are reachable by link only — not listed publicly.'}
+              </p>
+            </>
           )}
           {mode === 'ai' && (
             <p

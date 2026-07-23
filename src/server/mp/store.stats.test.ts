@@ -58,6 +58,8 @@ async function seedGame(opts: {
   await saveGame({
     token,
     phase: opts.phase ?? 'playing',
+    name: '',
+    visibility: 'public',
     createdAt: stamp,
     updatedAt: stamp,
     version: 1,
@@ -127,7 +129,10 @@ describe('loadActivityStats', () => {
   })
 
   test('excludes a finished game even when it was just touched', async () => {
-    await seedGame({ phase: 'over', seats: [seat(0, 'Ada'), seat(1, 'Brunel')] })
+    await seedGame({
+      phase: 'over',
+      seats: [seat(0, 'Ada'), seat(1, 'Brunel')],
+    })
     expect(await loadActivityStats(ACTIVE_WINDOW_MS, NOW)).toEqual({
       activeGames: 0,
       activePlayers: 0,

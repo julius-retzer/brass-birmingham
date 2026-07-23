@@ -18,6 +18,10 @@ export async function POST(req: Request) {
   try {
     const body = (await req.json()) as {
       name?: string
+      /** optional short table name shown in the lobby browser + masthead */
+      gameName?: string
+      /** 'private' hides the table from the public lobby list */
+      visibility?: unknown
       playerCount?: number
       /** seats 1..n-1: 'human' or an AI tier id */
       opponents?: unknown[]
@@ -25,6 +29,7 @@ export async function POST(req: Request) {
     const opponents = (body.opponents ?? []).map((o) =>
       isAiTierId(o) ? o : ('human' as const),
     )
+    const visibility = body.visibility === 'private' ? 'private' : 'public'
     if (
       opponents.some((o) => o !== 'human') &&
       !aiOpponentsEnabled(process.env.VERCEL_ENV)
@@ -38,6 +43,7 @@ export async function POST(req: Request) {
       String(body.name ?? ''),
       Number(body.playerCount ?? 0),
       opponents,
+      { name: String(body.gameName ?? ''), visibility },
     )
     return NextResponse.json(result)
   } catch (e) {

@@ -760,3 +760,94 @@ describe('multiplayer: concurrent-write protection', () => {
     expect(settled!.updatedAt).toBe(first.updatedAt)
   })
 })
+
+describe('multiplayer: the starting player is randomized server-side', () => {
+  // Bucket B item 1: Brass deals a random first-player marker. The mp service
+  // supplies a random startingPlayerIndex at start, baked into the persisted
+  // snapshot — so it is deterministic per game and identical for every client,
+  // never the host (seat 0) every time.
+  const startedCtx = async (token: string) => {
+    const g = await loadGame(token)
+    return (
+      g!.snapshot as {
+        context: { currentPlayerIndex: number; turnOrder: string[] }
+      }
+    ).context
+  }
+
+  test('a forced non-zero draw makes a non-host seat lead, order rotated', async () => {
+    // floor(0.75 * 2) === 1 → seat 1 leads a 2-player table.
+    const spy = vi.spyOn(Math, 'random').mockReturnValue(0.75)
+    try {
+      const { host } = await freshGame()
+      const ctx = await startedCtx(host.token)
+      expect(ctx.currentPlayerIndex).toBe(1)
+      // turnOrder rotated to begin at the starting player; both seats present.
+      expect(ctx.turnOrder[0]).toBe('2')
+      expect([...ctx.turnOrder].sort()).toEqual(['1', '2'])
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  test('the chosen order is stable — reloading a game yields the same leader', async () => {
+    const { host } = await freshGame()
+    const a = await startedCtx(host.token)
+    const b = await startedCtx(host.token)
+    expect(b.currentPlayerIndex).toBe(a.currentPlayerIndex)
+    expect(b.turnOrder).toEqual(a.turnOrder)
+  })
+
+  test('over many games the first player is not always seat 0', async () => {
+    // Real randomness over many 2-player games: the leader must vary (it was
+    // ALWAYS seat 0 before this change). With 20 fair coin flips, "all the
+    // same" has probability 2·2⁻²⁰ ≈ 2e-6 — effectively never, no retries.
+    const leaders = new Set<number>()
+    for (let n = 0; n < 20; n++) {
+      const { host } = await freshGame()
+      leaders.add((await startedCtx(host.token)).currentPlayerIndex)
+    }
+    expect(leaders.size).toBeGreaterThan(1)
+  })
+})
+
+describe('multiplayer: table names and private/public visibility', () => {
+  // Bucket B items 3 + 4: an optional table name captured at create and shown
+  // in the lobby list; a visibility flag that keeps private tables off the
+  // public list (default public → existing games keep showing).
+  test('a named public game appears in the lobby list with its name', async () => {
+    const host = await createGame('Ada', 3, [], {
+      name: '  Ada’s ironworks  ',
+      visibility: 'public',
+    })
+    const lobbies = await loadOpenLobbies()
+    const mine = lobbies.find((l) => l.token === host.token)
+    // trimmed at create
+    expect(mine?.name).toBe('Ada’s ironworks')
+  })
+
+  test('an over-long name is capped at create', async () => {
+    const host = await createGame('Ada', 2, [], { name: 'x'.repeat(200) })
+    const g = await loadGame(host.token)
+    expect(g!.name.length).toBe(40)
+  })
+
+  test('a private game is reachable by token but never listed publicly', async () => {
+    const host = await createGame('Ada', 3, [], { visibility: 'private' })
+    // still loadable directly (invite-link flow)
+    const g = await loadGame(host.token)
+    expect(g!.visibility).toBe('private')
+    // but absent from the public list
+    const lobbies = await loadOpenLobbies()
+    expect(lobbies.find((l) => l.token === host.token)).toBeUndefined()
+  })
+
+  test('visibility defaults to public — an unnamed game still lists', async () => {
+    const host = await createGame('Ada', 3)
+    const g = await loadGame(host.token)
+    expect(g!.visibility).toBe('public')
+    expect(g!.name).toBe('')
+    const lobbies = await loadOpenLobbies()
+    expect(lobbies.find((l) => l.token === host.token)).toBeTruthy()
+  })
+})

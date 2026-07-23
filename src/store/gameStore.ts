@@ -329,6 +329,15 @@ type GameEvent =
         > &
           Partial<Pick<Player, 'incomeSpace'>>
       >
+      // Optional index (into `players`) of the player who takes the first
+      // turn. Omitted → seat 0 leads (hotseat default, and every existing
+      // test). The mp service passes a server-chosen RANDOM index so the
+      // starting player is not always the host; the choice is baked into the
+      // persisted snapshot, so it is deterministic per game and identical for
+      // every client. The initial `turnOrder` is rotated to begin at this
+      // player, keeping `currentPlayerIndex`/`turnOrder` in lockstep so the
+      // round engine cycles through all seats correctly.
+      startingPlayerIndex?: number
     }
   | {
       type: 'JOIN_GAME'
@@ -726,9 +735,24 @@ export const gameStore = setup({
         industries: [],
       }))
 
+      // Starting player: default seat 0, or a caller-supplied index (the mp
+      // service randomizes this). Rotate the initial turn order to begin at
+      // that player so `currentPlayerIndex` and `turnOrder[0]` agree — the
+      // round engine walks `turnOrder`, so a mismatch would drop players from
+      // the first round.
+      const rawStart = event.startingPlayerIndex ?? 0
+      const startIndex =
+        Number.isInteger(rawStart) && rawStart >= 0 && rawStart < playerCount
+          ? rawStart
+          : 0
+      const initialTurnOrder = players
+        .map((p) => p.id)
+        .slice(startIndex)
+        .concat(players.map((p) => p.id).slice(0, startIndex))
+
       return {
         players,
-        currentPlayerIndex: 0,
+        currentPlayerIndex: startIndex,
         era: 'canal' as const,
         round: 1,
         actionsRemaining: GAME_CONSTANTS.FIRST_ROUND_ACTIONS,
@@ -766,7 +790,7 @@ export const gameStore = setup({
         selectedCardsForScout: [],
         spentMoney: 0,
         playerSpending: {},
-        turnOrder: players.map((p) => p.id), // Initial turn order
+        turnOrder: initialTurnOrder, // Initial turn order (starts at startIndex)
         roundSummary: null,
         isFinalRound: false,
         selectedLink: null,

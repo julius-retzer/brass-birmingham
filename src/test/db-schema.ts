@@ -16,9 +16,10 @@ import { db } from '~/server/db'
  *
  * Two shapes, both benign:
  *
- *  - The object EXISTS ALREADY (42P07 duplicate_table / 42710 duplicate_object,
- *    or an "already exists" message when no code surfaces). Re-running the
- *    shipped migrations over a populated branch.
+ *  - The object EXISTS ALREADY (42P07 duplicate_table / 42710 duplicate_object /
+ *    42701 duplicate_column for an additive `ALTER TABLE … ADD COLUMN`, or an
+ *    "already exists" message when no code surfaces). Re-running the shipped
+ *    migrations over a populated branch.
  *
  *  - The object was created CONCURRENTLY, a hair before us. vitest runs the DB
  *    suites in parallel workers against ONE database; when the branch is missing
@@ -40,7 +41,7 @@ export function isBenignSchemaRace(err: unknown): boolean {
       message?: string
       schema?: string
     }
-    if (code === '42P07' || code === '42710') return true
+    if (code === '42P07' || code === '42710' || code === '42701') return true
     if (code === '23505' && schema === 'pg_catalog') return true
     // Only trust the message when no code pinned the failure — an unrelated
     // error carrying these words shouldn't slip through.

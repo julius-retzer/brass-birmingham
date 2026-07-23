@@ -96,6 +96,7 @@ test.describe('phone: fit + tap-to-peek', () => {
   test('a full 8-card opening hand fits a 375px viewport', async ({ page }) => {
     // A fresh game deals the worst case: 8 cards (the ?demo hand holds 5).
     await page.goto('/?fresh=1')
+    await page.getByTestId('mode-local').tap()
     await page.getByRole('button', { name: '2', exact: true }).tap()
     await page.getByRole('button', { name: 'Open the ledger' }).tap()
 

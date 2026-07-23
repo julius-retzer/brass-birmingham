@@ -36,6 +36,8 @@ test('round end: curtain reports spends and switches the turn order', async ({
   page,
 }) => {
   await page.goto('/?fresh=1')
+  // "Play online" is the default mode now — pick the local hotseat charter.
+  await page.getByTestId('mode-local').click()
   await page.getByRole('button', { name: '2', exact: true }).click()
   await page.getByPlaceholder('Eliza').fill('Ada')
   await page.getByRole('button', { name: 'Open the ledger' }).click()
@@ -84,6 +86,7 @@ test('round curtain: any key dismisses it and it does not return', async ({
   page,
 }) => {
   await page.goto('/?fresh=1')
+  await page.getByTestId('mode-local').click()
   await page.getByRole('button', { name: '2', exact: true }).click()
   await page.getByRole('button', { name: 'Open the ledger' }).click()
 

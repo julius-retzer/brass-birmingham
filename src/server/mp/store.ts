@@ -57,6 +57,11 @@ export interface ChatMessage {
 export interface GameRecord {
   token: string
   phase: 'lobby' | 'playing' | 'over'
+  /** optional short table name (capped/trimmed at create); '' when unnamed */
+  name: string
+  /** 'public' games are advertised in the lobby browser; 'private' ones are
+   *  invite-link only and never returned by `loadOpenLobbies` */
+  visibility: 'public' | 'private'
   createdAt: string
   updatedAt: string
   version: number
@@ -81,6 +86,8 @@ function rowToRecord(row: GameRow): GameRecord {
   return {
     token: row.token,
     phase: row.phase,
+    name: row.name,
+    visibility: row.visibility,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     version: row.version,
@@ -98,6 +105,8 @@ function recordToRow(game: GameRecord): GameRow {
   return {
     token: game.token,
     phase: game.phase,
+    name: game.name,
+    visibility: game.visibility,
     createdAt: game.createdAt,
     updatedAt: game.updatedAt,
     version: game.version,
@@ -259,6 +268,8 @@ export async function loadActivityStats(
  *  least one human seat is still unclaimed. */
 export interface LobbySummary {
   token: string
+  /** the table's name, or '' when the host left it blank */
+  name: string
   host: string | null
   capacity: number
   claimed: number
@@ -275,16 +286,22 @@ export interface LobbySummary {
  * waiting on the host to start) is not joinable, so it does not belong on a
  * "join a game" list. AI-only opponent seats never count as open (they are
  * claimed at creation and cannot be joined off the wire).
+ *
+ * PRIVATE games are excluded at the SQL level: a `private` table is reachable
+ * only by its invite link, so its token must never appear on this public list
+ * (that is also a small security win — private tokens stay off the public
+ * endpoint). `public` is the default, so existing rows keep showing.
  */
 export async function loadOpenLobbies(limit = 50): Promise<LobbySummary[]> {
   const rows = await db
     .select({
       token: games.token,
+      name: games.name,
       seats: games.seats,
       createdAt: games.createdAt,
     })
     .from(games)
-    .where(eq(games.phase, 'lobby'))
+    .where(and(eq(games.phase, 'lobby'), eq(games.visibility, 'public')))
     .orderBy(desc(games.createdAt))
     .limit(limit)
   return rows
@@ -292,6 +309,7 @@ export async function loadOpenLobbies(limit = 50): Promise<LobbySummary[]> {
       const humanOpen = row.seats.some((s) => s.kind !== 'ai' && !s.claimed)
       return {
         token: row.token,
+        name: row.name,
         host: row.seats[0]?.name ?? null,
         capacity: row.seats.length,
         claimed: row.seats.filter((s) => s.claimed).length,

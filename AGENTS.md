@@ -660,6 +660,21 @@ What this means in practice:
   decide which cards are clickable — the shell asks the machine per card
   (`state.can({SELECT_CARD, cardId})`), the single source of truth, so it
   survives the MP intent→broadcast→rebuild round-trip.
+- HAND ORDER IS A VIEW PERMUTATION (2026-07-23): players reorder their own fan
+  (mouse drag, the ◀ ▶ handles flanking a raised card, Shift+Arrow on a focused
+  card). `hand-order.ts` owns it — a per-player card-id list under its OWN
+  localStorage key `bb2-hand-order-v1` (session-only fallback), applied by
+  `arrange()` on the way into the tray by BOTH shells. It must NEVER write
+  `context.players[].hand` (that order is game state: refill and draw) and
+  never send an event; remembered ids hold their places, drawn cards append,
+  a card that left the hand is skipped. A drag only counts past
+  `DRAG_SLOP_PX` and swallows its synthesized click, so it can never read as
+  a SELECT_CARD. Geometry for the handles is pure (`moveHandleLayout` /
+  `moveHandleShiftX`, `hand-tray-layout.ts`): they flank the magnified card
+  rather than covering it, because the card's own tap point IS the select
+  gesture on touch — a control over the face broke `card.tap()` outright.
+  Pinned by `hand-order.test.ts`, `hand-tray-layout.test.ts`,
+  `e2e/hand-reorder.spec.ts`.
 - HELD-CARD BANNER (2026-07-17): the DOCK also names the held card — a shared
   `HeldCard` (`Holding <CardChip>`) rendered by the `Flow` wrapper (via a
   `held` prop on every `<Flow>` / `DevelopTilePicker`) AND the `cardSelected`

@@ -548,6 +548,7 @@ button.bb2-card {
 }
 .bb2-card-seat {
   display: block;
+  position: relative;
   flex: none;
   transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2);
   /* The long-press browse gesture owns touches that start on a card: no
@@ -634,6 +635,45 @@ button.bb2-card {
   right: 0;
   bottom: 0;
   top: calc(-1 * var(--bb-lens-reach, 134px));
+}
+
+/* Reorder handles on the raised card: one at each end of a strip that spans
+ * the magnified visual, so they FLANK the card instead of covering it (see
+ * moveHandleLayout — geometry is inline, this is only the chrome). The strip
+ * itself is click-transparent; only the two buttons take pointer events, so
+ * the card's own tap point is untouched — the second tap on a peeked card is
+ * how touch selects it. It is wider than the 108px seat; the seat overflows. */
+.bb2-card-move {
+  position: absolute;
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+.bb2-card-movebtn {
+  pointer-events: auto;
+  display: grid;
+  place-items: center;
+  width: var(--bb-move-size, 30px);
+  height: var(--bb-move-size, 30px);
+  border-radius: 999px;
+  border: 1px solid var(--bb-brass);
+  background: rgba(20, 16, 11, 0.92);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+  color: var(--bb-brass-bright);
+  font-size: calc(var(--bb-move-size, 30px) * 0.42);
+  line-height: 1;
+  cursor: pointer;
+}
+.bb2-card-movebtn:hover:not(:disabled) {
+  background: rgba(60, 46, 24, 0.95);
+  color: #fff2cf;
+}
+.bb2-card-movebtn:disabled {
+  opacity: 0.28;
+  cursor: default;
 }
 
 /* Magnification is decorative; motion-sensitive players get the end state. */

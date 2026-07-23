@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  CARD_H,
   CARD_W,
   FAN_SPACING,
   LENS_COARSE,
@@ -12,6 +13,8 @@ import {
   hintClearance,
   lensReach,
   lensShiftX,
+  moveHandleLayout,
+  moveHandleShiftX,
 } from './hand-tray-layout'
 
 describe('fanLayout', () => {
@@ -179,5 +182,69 @@ describe('hintClearance', () => {
     // Static per device: a touch tray must hold room for its own big peek
     // even while nothing is raised, or the pill would jump on every tap.
     expect(hintClearance(LENS_COARSE)).toBeGreaterThan(hintClearance(LENS_FINE))
+  })
+})
+
+describe('moveHandleLayout', () => {
+  it('hangs the handles clear of the magnified card on both sides', () => {
+    const { size, width } = moveHandleLayout(LENS_FINE, false)
+    const lensWidth = CARD_W * LENS_FINE.scale
+    // Each handle sits entirely outside the card it belongs to — that is what
+    // keeps the card's own tap point (second tap = select) free.
+    expect((width - lensWidth) / 2).toBeGreaterThanOrEqual(size)
+  })
+
+  it('is thumb sized on a coarse pointer, and still clears the bigger lens', () => {
+    const fine = moveHandleLayout(LENS_FINE, false)
+    const coarse = moveHandleLayout(LENS_COARSE, true)
+    expect(coarse.size).toBeGreaterThanOrEqual(44)
+    expect(coarse.size).toBeGreaterThan(fine.size)
+    expect(
+      (coarse.width - CARD_W * LENS_COARSE.scale) / 2,
+    ).toBeGreaterThanOrEqual(coarse.size)
+  })
+
+  it('centres the strip on the magnified card, not on the seat', () => {
+    for (const lens of [LENS_FINE, LENS_COARSE]) {
+      const { size, bottom } = moveHandleLayout(lens, lens === LENS_COARSE)
+      // Handle centre === lens centre: rise + half the magnified height.
+      expect(bottom + size / 2).toBeCloseTo(
+        lens.rise + (CARD_H * lens.scale) / 2,
+      )
+    }
+  })
+})
+
+describe('moveHandleShiftX', () => {
+  const handles = moveHandleLayout(LENS_COARSE, true)
+
+  it("pulls an edge card's strip back inside the tray", () => {
+    // The phone fan: 541 layout px (390 / 0.72), 5 cards at full spacing.
+    // Without a clamp the outer handle of card 3 runs off the right edge.
+    const width = 541
+    const shift = moveHandleShiftX(3, 5, FAN_SPACING, width, handles)
+    expect(shift).toBeLessThan(0)
+    // The clamp folds the rotation term in, so the seat-relative right edge
+    // is what has to fit — and it now does.
+    expect(
+      width / 2 + (3 - 2) * FAN_SPACING + shift + handles.width / 2,
+    ).toBeLessThanOrEqual(width)
+  })
+
+  it('leaves a middle card alone', () => {
+    expect(moveHandleShiftX(2, 5, FAN_SPACING, 1600, handles)).toBe(0)
+  })
+
+  it('is a no-op before the tray has been measured', () => {
+    expect(moveHandleShiftX(0, 5, FAN_SPACING, null, handles)).toBe(0)
+  })
+
+  it('accounts for the fan rotation, unlike the lens clamp', () => {
+    // Same card, same tray: the strip's clamp is stricter than the lens's
+    // because the strip is wider AND rides higher above the rotation pivot.
+    const width = 541
+    const lensOnly = lensShiftX(4, 5, FAN_SPACING, width, LENS_COARSE.scale)
+    const strip = moveHandleShiftX(4, 5, FAN_SPACING, width, handles)
+    expect(Math.abs(strip)).toBeGreaterThan(Math.abs(lensOnly))
   })
 })

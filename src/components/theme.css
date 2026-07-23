@@ -724,6 +724,22 @@ button.bb2-card {
   background: rgba(195, 149, 56, 0.18);
   border-color: var(--bb-brass);
 }
+/* Finger-sized on touch. The board's zoom controls are the ONLY way back to
+   a readable scale on a phone, so they must not stay a 30px mouse target.
+   Coarse-pointer only — desktop keeps the compact 30px buttons. */
+.bb2-board-ctrl.is-home {
+  font-size: 12px;
+}
+@media (pointer: coarse) {
+  .bb2-board-ctrl {
+    width: 42px;
+    height: 42px;
+    font-size: 19px;
+  }
+  .bb2-board-ctrl.is-home {
+    font-size: 16px;
+  }
+}
 
 /* legal-target pulse on SVG nodes */
 @keyframes bb2-target-pulse {

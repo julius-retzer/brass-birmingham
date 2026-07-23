@@ -613,6 +613,25 @@ What this means in practice:
   manual path:
   `axi eval 'document.querySelector("[data-conn=\"belper|leek\"]").focus()'`
   then `axi press Enter`.
+- PAN/ZOOM MATHS LIVES IN `board/viewport.ts` (2026-07-23) — never inline a
+  `(clientX - rect.left) / rect.width` again. The board svg is letterboxed
+  inside its element (`preserveAspectRatio="xMidYMid meet"`): at 390px that is
+  ~68px of empty bar above and below, so element-rect fractions made vertical
+  panning ~1.5x too slow and slid the pinch focal point off the fingers.
+  Everything (wheel, +/−, one-finger pan, pinch) goes through that module's
+  `contentBox`/`pointFraction`/`zoomAtFraction`/`panByPixels`/`pinchView`, all
+  `clampView`-bounded so the board can never be panned off screen — it owns
+  `clampAxis`, which `pan-into-view.ts` imports rather than duplicating.
+  Two fingers pan as well as zoom; lifting one hands the gesture to the other.
+  Phone-specific chrome: the legend is `sm:`-gated (it sat ON the home control
+  at 390px) and `.bb2-board-ctrl` is 42px under `@media (pointer: coarse)`.
+  Pinned by `viewport.test.ts` + `e2e/board-touch-zoom.spec.ts`, which drives
+  REAL multi-touch via CDP `Input.dispatchTouchEvent` — Playwright's
+  touchscreen API is single-point, and synthetic pointer events prove nothing
+  about the browser gesture path (same blind spot as the setPointerCapture
+  bug above). GOTCHA for that spec: a phone-viewport `click` scrolls the board
+  out of the viewport, and touch coordinates are viewport-relative — measure
+  boxes only after `scrollIntoViewIfNeeded()`.
 - SVG Z-ORDER IS DOCUMENT ORDER (2026-07-23). Routes run city-centre to
   city-centre, so 10 of the 39 route midpoints sit inside a plate or its name
   ribbon — a built link's boat/locomotive marker painted there vanishes under

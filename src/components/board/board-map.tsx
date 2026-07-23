@@ -34,6 +34,15 @@ import {
 } from './pan-into-view'
 import { farmBrewerySpurStyle } from './route-style'
 import { CUBE, cubeCells } from './tile-cubes'
+import {
+  FULL_VIEW,
+  type PinchStart,
+  type ViewBox,
+  panByPixels,
+  pinchView,
+  pointFraction,
+  zoomAtFraction,
+} from './viewport'
 
 /* ---------------- palette (mirrors theme.css) ---------------- */
 
@@ -238,36 +247,42 @@ export function BoardMap({
   vpColor = null,
 }: BoardMapProps) {
   const svgRef = useRef<SVGSVGElement | null>(null)
-  const [vb, setVb] = useState({ x: 0, y: 0, w: VIEW_W, h: VIEW_H })
+  const [vb, setVb] = useState<ViewBox>(FULL_VIEW)
+  // Latest COMMITTED vb for the gesture handlers and the focus effect, without
+  // retriggering either on every user pan. Written from an effect, NEVER in the
+  // render body: React may discard or replay a render, which would otherwise
+  // leave this ref describing a view the DOM never adopted. Safe at passive
+  // timing because every read is at a gesture BOUNDARY (pointerdown, the
+  // one-finger handoff, an animation start) — a pinch or pan in flight works
+  // off the view it captured when the gesture began, never off this ref.
+  const vbRef = useRef(vb)
+  useEffect(() => {
+    vbRef.current = vb
+  }, [vb])
   const drag = useRef<{
     px: number
     py: number
-    vb: { x: number; y: number; w: number; h: number }
+    vb: ViewBox
     moved: boolean
   } | null>(null)
 
   /* ---- pan / zoom ---- */
 
+  // All client→board maths goes through `viewport.ts`, which measures against
+  // the LETTERBOXED content box rather than the element rect — see the note
+  // there. Never inline the old `(clientX - rect.left) / rect.width` form.
   useEffect(() => {
     const svg = svgRef.current
     if (!svg) return
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
       stopAutoPan()
-      setVb((v) => {
-        const rect = svg.getBoundingClientRect()
-        const fx = (e.clientX - rect.left) / rect.width
-        const fy = (e.clientY - rect.top) / rect.height
-        const scale = e.deltaY > 0 ? 1.14 : 1 / 1.14
-        const w = Math.min(Math.max(v.w * scale, VIEW_W / 6), VIEW_W * 1.3)
-        const h = (w / VIEW_W) * VIEW_H
-        return {
-          x: v.x + (v.w - w) * fx,
-          y: v.y + (v.h - h) * fy,
-          w,
-          h,
-        }
-      })
+      const { fx, fy } = pointFraction(
+        svg.getBoundingClientRect(),
+        e.clientX,
+        e.clientY,
+      )
+      setVb((v) => zoomAtFraction(v, e.deltaY > 0 ? 1.14 : 1 / 1.14, fx, fy))
     }
     svg.addEventListener('wheel', onWheel, { passive: false })
     return () => svg.removeEventListener('wheel', onWheel)
@@ -275,16 +290,18 @@ export function BoardMap({
 
   // Live pointer positions — one pointer pans, two pointers pinch-zoom.
   const pointers = useRef(new Map<number, { x: number; y: number }>())
-  const pinch = useRef<{
-    dist: number
-    vb: { x: number; y: number; w: number; h: number }
-  } | null>(null)
+  const pinch = useRef<PinchStart | null>(null)
 
-  const pinchDistance = () => {
+  /** Distance + midpoint of the two live pointers (0 when fewer than two). */
+  const pinchSpan = () => {
     const pts = [...pointers.current.values()]
-    if (pts.length < 2) return 0
+    if (pts.length < 2) return null
     const [a, b] = pts as [{ x: number; y: number }, { x: number; y: number }]
-    return Math.hypot(a.x - b.x, a.y - b.y)
+    return {
+      dist: Math.hypot(a.x - b.x, a.y - b.y),
+      midX: (a.x + b.x) / 2,
+      midY: (a.y + b.y) / 2,
+    }
   }
 
   // IMPORTANT: never setPointerCapture on pointerdown. Capturing retargets
@@ -300,6 +317,11 @@ export function BoardMap({
     }
   }
 
+  /** Begin (or restart) a one-finger pan from `e`'s position. */
+  const seatDrag = (clientX: number, clientY: number, moved: boolean): void => {
+    drag.current = { px: clientX, py: clientY, vb: vbRef.current, moved }
+  }
+
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return
     stopAutoPan()
@@ -307,47 +329,43 @@ export function BoardMap({
     if (pointers.current.size === 2) {
       // second finger down — switch from pan to pinch (no click expected
       // from a two-finger gesture, so capturing immediately is safe)
-      pinch.current = { dist: pinchDistance(), vb }
+      const span = pinchSpan()
+      const svg = svgRef.current
+      if (span && svg) {
+        const { fx, fy } = pointFraction(
+          svg.getBoundingClientRect(),
+          span.midX,
+          span.midY,
+        )
+        pinch.current = { view: vbRef.current, fx, fy, dist: span.dist }
+      }
       if (drag.current) drag.current.moved = true
       for (const id of pointers.current.keys()) capturePointer(id)
       return
     }
-    drag.current = { px: e.clientX, py: e.clientY, vb, moved: false }
+    seatDrag(e.clientX, e.clientY, false)
   }
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     const svg = svgRef.current
     if (!svg || !pointers.current.has(e.pointerId)) return
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
 
-    if (pinch.current && pointers.current.size >= 2) {
-      const p = pinch.current
-      const dist = pinchDistance()
-      if (dist <= 0 || p.dist <= 0) return
-      const rect = svg.getBoundingClientRect()
-      const pts = [...pointers.current.values()]
-      const midX = (pts[0]!.x + pts[1]!.x) / 2
-      const midY = (pts[0]!.y + pts[1]!.y) / 2
-      const fx = (midX - rect.left) / rect.width
-      const fy = (midY - rect.top) / rect.height
-      const w = Math.min(
-        Math.max(p.vb.w * (p.dist / dist), VIEW_W / 6),
-        VIEW_W * 1.3,
+    const p = pinch.current
+    if (p && pointers.current.size >= 2) {
+      const span = pinchSpan()
+      if (!span) return
+      const { fx, fy } = pointFraction(
+        svg.getBoundingClientRect(),
+        span.midX,
+        span.midY,
       )
-      const h = (w / VIEW_W) * VIEW_H
-      setVb({
-        x: p.vb.x + (p.vb.w - w) * fx,
-        y: p.vb.y + (p.vb.h - h) * fy,
-        w,
-        h,
-      })
+      // One gesture, both effects: spreading zooms, sliding pans.
+      setVb(pinchView(p, span.dist, fx, fy))
       return
     }
 
     const d = drag.current
     if (!d) return
-    const rect = svg.getBoundingClientRect()
-    const dx = ((e.clientX - d.px) / rect.width) * d.vb.w
-    const dy = ((e.clientY - d.py) / rect.height) * d.vb.h
     if (
       !d.moved &&
       Math.abs(e.clientX - d.px) + Math.abs(e.clientY - d.py) > 4
@@ -357,11 +375,27 @@ export function BoardMap({
       capturePointer(e.pointerId)
     }
     if (!d.moved) return
-    setVb({ x: d.vb.x - dx, y: d.vb.y - dy, w: d.vb.w, h: d.vb.h })
+    setVb(
+      panByPixels(
+        d.vb,
+        svg.getBoundingClientRect(),
+        e.clientX - d.px,
+        e.clientY - d.py,
+      ),
+    )
   }
   const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
     pointers.current.delete(e.pointerId)
     if (pointers.current.size < 2) pinch.current = null
+    const [remaining] = [...pointers.current.values()]
+    if (remaining) {
+      // Lifting one finger of a pinch hands the gesture back to the other:
+      // re-seat the pan from where that finger IS, against the zoom the pinch
+      // just left behind (its stale start view would otherwise jump the map).
+      // Seeded as already-moved so no stray click fires from a two-finger tap.
+      seatDrag(remaining.x, remaining.y, true)
+      return
+    }
     // Delay so child click handlers can consult wasDrag()
     setTimeout(() => {
       drag.current = null
@@ -371,22 +405,15 @@ export function BoardMap({
 
   const zoomBy = (scale: number) => {
     stopAutoPan()
-    return setVb((v) => {
-      const w = Math.min(Math.max(v.w * scale, VIEW_W / 6), VIEW_W * 1.3)
-      const h = (w / VIEW_W) * VIEW_H
-      return { x: v.x + (v.w - w) / 2, y: v.y + (v.h - h) / 2, w, h }
-    })
+    return setVb((v) => zoomAtFraction(v, scale, 0.5, 0.5))
   }
   const resetView = () => {
     stopAutoPan()
-    setVb({ x: 0, y: 0, w: VIEW_W, h: VIEW_H })
+    setVb(FULL_VIEW)
   }
 
   /* ---- card-hover map sync (auto-pan to a hovered card's city) ---- */
 
-  // Latest vb without retriggering the focus effect on every user pan.
-  const vbRef = useRef(vb)
-  vbRef.current = vb
   const autoPanFrame = useRef<number | null>(null)
 
   function stopAutoPan() {
@@ -1040,18 +1067,19 @@ export function BoardMap({
         </button>
         <button
           type="button"
-          className="bb2-board-ctrl"
+          className="bb2-board-ctrl is-home"
           onClick={resetView}
           aria-label="Reset view"
-          style={{ fontSize: 12 }}
         >
           ⌂
         </button>
       </div>
 
-      {/* legend */}
+      {/* legend — hidden on phones: it is decorative, and at 390px it runs
+          under the zoom controls and swallows the reset button, which is the
+          one control a pinched-in player needs to find their way back. */}
       <div
-        className="absolute bottom-3 left-3 z-10 flex items-center gap-4 rounded border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+        className="absolute bottom-3 left-3 z-10 hidden items-center gap-4 rounded border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] sm:flex"
         style={{
           background: 'rgba(20,16,11,.85)',
           borderColor: 'var(--bb-brass-hairline-soft)',

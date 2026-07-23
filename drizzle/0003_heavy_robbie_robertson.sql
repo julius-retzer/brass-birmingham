@@ -1,0 +1,2 @@
+CREATE INDEX "games_phase_created_idx" ON "games" USING btree ("phase","created_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "games_updated_active_idx" ON "games" USING btree ("updated_at") WHERE "games"."phase" <> 'over';

@@ -2,10 +2,19 @@ import { NextResponse } from 'next/server'
 import { aiOpponentsEnabled } from '~/lib/features'
 import { isAiTierId } from '~/server/ai/types'
 import { createGame } from '~/server/mp/game'
+import { allowCreate, clientIpFrom } from '~/server/mp/rate-limit'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
+  // Unauthenticated by design ("no accounts, ever"), so the only brake on
+  // mass creation is this per-IP window — see rate-limit.ts for thresholds.
+  if (!allowCreate(clientIpFrom(req))) {
+    return NextResponse.json(
+      { error: 'Too many games created from this address — try again later.' },
+      { status: 429, headers: { 'Retry-After': '3600' } },
+    )
+  }
   try {
     const body = (await req.json()) as {
       name?: string

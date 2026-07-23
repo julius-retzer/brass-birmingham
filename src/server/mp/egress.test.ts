@@ -122,11 +122,14 @@ describe('poll-tick egress', () => {
     )
   })
 
-  test('kicking a no-AI game never reads the full game row', async () => {
+  test('kicking a no-AI game reads NOTHING — not even the peek', async () => {
     const store = await import('./store')
     const { createGame, joinGame } = await import('./game')
     // A 2-human game, both seats claimed but still a lobby (no auto-start).
-    // Either way it has no AI seat, so the cheap peek short-circuits the kick.
+    // An all-human game is cached as such at creation (and the cache would
+    // also self-derive from the first peek after an instance restart), so a
+    // kick — which the SSE poll fires every ~1.2s per open tab — must cost
+    // ZERO DB queries here: neither the cheap peek nor the full row.
     const host = await createGame('Ada', 2, [])
     await joinGame(host.token, 'Bea')
     // Let the creation/join kicks settle so the aiRunning dedup is clear.
@@ -136,8 +139,7 @@ describe('poll-tick egress', () => {
     const loadAiPeekSpy = vi.spyOn(store, 'loadAiPeek')
     await kickAiTurns(host.token)
 
-    // The cheap peek decided "not an AI's turn" — the full row was never read.
-    expect(loadAiPeekSpy).toHaveBeenCalled()
+    expect(loadAiPeekSpy).not.toHaveBeenCalled()
     expect(loadGameSpy).not.toHaveBeenCalled()
     loadGameSpy.mockRestore()
     loadAiPeekSpy.mockRestore()

@@ -1244,3 +1244,18 @@ When updating this file, preserve this bar for all agents and keep entries conci
   pill (`theme.css`), an `sr-only` `role=status` live region, dims the dock
   (`.bb2-busy`, `aria-busy`), and gates board-click / hand-select handlers so
   a move can't be double-fired. Do NOT drive any game state off this signal.
+- ABUSE GUARDRAILS (2026-07-23): `src/server/mp/rate-limit.ts` holds the
+  per-IP in-memory limits on the two unauthenticated hot endpoints — game
+  create (`CREATE_LIMIT_MAX`/hour, 429 in `create/route.ts`) and concurrent
+  SSE streams (`STREAM_CAP_PER_IP`, 429 in `stream/route.ts`; the release is
+  idempotent and wired into cleanup AND cancel). Deliberately in-process/per-
+  instance — the 2026-07-23 arch verdict forbids new vendors (no Upstash);
+  do not "upgrade" it without that decision reopening. Streams keep
+  `seat`/`secret` OPTIONAL — requiring auth to stream is a reserved
+  spectating decision, not an oversight. `maybeRunAiTurns` skips `loadAiPeek`
+  for all-human games via the HMR-safe `noAiSeats` token cache (seat kinds
+  are immutable per game; seeded in `createGame`, derived from the first peek
+  otherwise; pinned by `egress.test.ts`) — that peek was ~half of all idle DB
+  load. `games` carries `games_phase_created_idx` + the partial
+  `games_updated_active_idx` (migration 0003) matching the exact predicates
+  of the two public scan endpoints (`loadOpenLobbies`, `loadActivityStats`).

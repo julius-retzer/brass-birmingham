@@ -29,6 +29,7 @@ import {
   kickAiTurns,
   subscribe,
 } from '~/server/mp/game'
+import { acquireStreamSlot, clientIpFrom } from '~/server/mp/rate-limit'
 import { loadGame, loadVersionAndSeq } from '~/server/mp/store'
 
 export const runtime = 'nodejs'
@@ -56,6 +57,20 @@ export async function GET(req: NextRequest) {
 
   const game = await loadGame(token).catch(() => null)
   if (!game) return new Response('Game not found', { status: 404 })
+
+  // Abuse bound: each stream holds a serverless slot for up to 290s and polls
+  // Neon every ~1.2s, and `seat`/`secret` stay OPTIONAL (spectating is an open
+  // product question — auth is deliberately NOT required here). So the bound
+  // is a per-IP concurrent-stream cap: legitimate tables (≤4 players, a tab
+  // or two each) never come near it, while one address can no longer hold
+  // unbounded streams. Cap + rationale in rate-limit.ts.
+  const releaseStreamSlot = acquireStreamSlot(clientIpFrom(req))
+  if (!releaseStreamSlot) {
+    return new Response('Too many open streams from this address', {
+      status: 429,
+      headers: { 'Retry-After': '30' },
+    })
+  }
 
   // Recovery: if the server restarted mid-AI-turn, the first client to
   // reconnect restarts the turn-runner (no-op when it's a human's turn).
@@ -86,6 +101,7 @@ export async function GET(req: NextRequest) {
 
       const cleanup = () => {
         open = false
+        releaseStreamSlot() // idempotent — cancel/abort/close can all fire
         unsub()
         if (pollTimer) clearTimeout(pollTimer)
         if (closeTimer) clearTimeout(closeTimer)
@@ -171,6 +187,7 @@ export async function GET(req: NextRequest) {
       req.signal.addEventListener('abort', cleanup)
     },
     cancel() {
+      releaseStreamSlot()
       unsub()
     },
   })

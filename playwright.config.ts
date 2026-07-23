@@ -36,6 +36,14 @@ if (localDb) {
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
+  // Playwright's local default is half the logical cores (5 here), and each
+  // worker is a browser plus its share of the dev server — enough that a few
+  // concurrent runs on one machine saturate it. The cap is PER REPO COPY, so N
+  // worktrees testing at once is still N × this; it lowers the multiplier
+  // rather than bounding the machine. PW_WORKERS widens or narrows a single run
+  // without editing this file. CI machines are dedicated, so they keep the
+  // default.
+  workers: process.env.CI ? undefined : Number(process.env.PW_WORKERS ?? 2),
   retries: 0,
   reporter: [['list']],
   globalSetup: './e2e/global-db.ts',

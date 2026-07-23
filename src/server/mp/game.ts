@@ -194,6 +194,8 @@ export interface AiView {
 export interface GameView {
   token: string
   phase: GameRecord['phase']
+  /** the table's name, or '' when unnamed (public metadata) */
+  name: string
   version: number
   you: number | null
   /** the seat that currently holds host powers (start the game, release seats).
@@ -344,6 +346,7 @@ export function viewFor(
   return {
     token: game.token,
     phase: game.phase,
+    name: game.name,
     version: game.version,
     you: authed ? seatId : null,
     hostSeatId: effectiveHostSeat(game)?.seatId ?? null,
@@ -359,12 +362,19 @@ export function viewFor(
 
 /* ---------------- lifecycle ---------------- */
 
+/** Longest table name we store; anything longer is trimmed at create. */
+export const GAME_NAME_MAX_LENGTH = 40
+
 export async function createGame(
   hostName: string,
   playerCount: number,
   /** seats 1..n-1: 'human' keeps the seat open for a join; a tier id
    *  seats an AI opponent driven by the server */
   opponents: Array<'human' | AiTierId> = [],
+  /** optional table metadata captured at create. `name` is trimmed/capped and
+   *  defaults to '' (unnamed); `visibility` defaults to 'public' so nothing
+   *  about existing behaviour changes unless a private table is requested. */
+  options: { name?: string; visibility?: 'public' | 'private' } = {},
 ): Promise<{ token: string; seatId: number; seatSecret: string }> {
   await sweepStaleGames()
   if (playerCount < 2 || playerCount > 4) throw new Error('2–4 players')
@@ -414,6 +424,8 @@ export async function createGame(
   const game: GameRecord = {
     token,
     phase: 'lobby',
+    name: (options.name ?? '').trim().slice(0, GAME_NAME_MAX_LENGTH),
+    visibility: options.visibility === 'private' ? 'private' : 'public',
     createdAt: now,
     updatedAt: now,
     version: 1,
@@ -460,8 +472,16 @@ export async function listLobbies(): Promise<LobbySummary[]> {
 function startEngine(game: GameRecord): void {
   const actor = createActor(gameStore)
   actor.start()
+  // Randomize the starting player ONCE, server-side, at game start (Brass
+  // deals a random first-player marker). The chosen index is fed into
+  // START_GAME and thus baked into the persisted snapshot, so it is
+  // deterministic per game and every client reads the same turn order — never
+  // re-randomized per render or per client. Default (no index) would always
+  // seat 0 (the host) first.
+  const startingPlayerIndex = Math.floor(Math.random() * game.seats.length)
   actor.send({
     type: 'START_GAME',
+    startingPlayerIndex,
     players: game.seats.map((s) => ({
       id: String(s.seatId + 1),
       name: s.name ?? `Player ${s.seatId + 1}`,

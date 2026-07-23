@@ -29,6 +29,12 @@ describe('isBenignSchemaRace', () => {
     expect(isBenignSchemaRace(pgError({ code: '42710' }))).toBe(true)
   })
 
+  it('accepts duplicate_column (42701) — an additive ADD COLUMN re-run/raced', () => {
+    // Re-running `ALTER TABLE games ADD COLUMN name …` over a branch that
+    // already has the column, or a parallel worker adding it a hair earlier.
+    expect(isBenignSchemaRace(pgError({ code: '42701' }))).toBe(true)
+  })
+
   // The regression this file exists for. Two DB suites run in parallel workers
   // against ONE fresh ephemeral branch; both find `chat_messages` absent and
   // issue CREATE TABLE at the same instant. The loser does NOT get a polite

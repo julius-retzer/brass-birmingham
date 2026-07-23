@@ -25,8 +25,10 @@ test('fresh game: setup charter → Loan action end-to-end → pass gate', async
 }) => {
   await page.goto('/?fresh=1')
 
-  // Setup charter: pick 2 players, name player 1, start.
+  // Setup charter: pick the local hotseat mode (online is the default now),
+  // 2 players, name player 1, start.
   await expect(page.getByText('Company charter')).toBeVisible()
+  await page.getByTestId('mode-local').click()
   await page.getByRole('button', { name: '2', exact: true }).click()
   await page.getByPlaceholder('Eliza').fill('Ada')
   await page.getByRole('button', { name: 'Open the ledger' }).click()

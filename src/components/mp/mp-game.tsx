@@ -90,6 +90,8 @@ interface ChatMessageWire {
 interface GameViewWire {
   token: string
   phase: 'lobby' | 'playing' | 'over'
+  /** table name, or '' when unnamed */
+  name?: string
   version: number
   you: number | null
   /** seat currently holding host powers (usually 0; transfers if 0 is vacated) */
@@ -559,7 +561,7 @@ function LobbyScreen({
         className="bb2-display text-5xl font-black"
         style={{ color: 'var(--bb-parchment-bright)' }}
       >
-        Waiting to begin
+        {view.name?.trim() ? view.name : 'Waiting to begin'}
       </h1>
       <ShareLink />
       <div
@@ -1297,7 +1299,7 @@ function MpTable({
               className="bb2-display text-[13px] italic"
               style={{ color: 'rgba(231,215,177,.55)' }}
             >
-              Birmingham · online
+              {view.name?.trim() ? view.name : 'Birmingham · online'}
             </span>
           </div>
           <span

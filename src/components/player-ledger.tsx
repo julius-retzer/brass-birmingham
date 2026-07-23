@@ -59,6 +59,17 @@ const PRODUCED_CUBE_FILL = {
   beer: '#e8bc4f',
 } as const
 
+// On-tile cube geometry, on the tile's own 52-unit grid. Cubes sit in a
+// TWO-WIDE grid down the right edge (like the printed tile) so even Iron
+// Works IV's six fit inside the face: 2x3 bottoms out at y=38.1, well clear
+// of the 52-unit edge. A single vertical column overflowed past six.
+const CUBE_SIZE = 6.2
+const CUBE_PITCH = 7.2
+const CUBE_COL_X = [33.4, 40.6] as const
+// A trailing odd cube centres between the two columns.
+const CUBE_LONE_X = 37
+const CUBE_TOP_Y = 17
+
 // The one resource a tile YIELDS when built (only one is ever non-zero).
 function producedOf(tile: IndustryTile) {
   if (tile.coalProduced > 0)
@@ -126,54 +137,30 @@ function MatTileArt({
       >
         {ROMAN[tile.level] ?? tile.level}
       </text>
-      {/* Resource cubes ride the right edge, starting BELOW the level
-          numeral (baseline y=13) so the two never overlap at any width. */}
-      {prod &&
-        prod.n > 0 &&
-        (prod.n <= 5 ? (
-          Array.from({ length: prod.n }, (_, i) => (
-            <rect
-              key={i}
-              x="41"
-              y={17 + i * 6.6}
-              width="6.2"
-              height="6.2"
-              rx="1"
-              fill={PRODUCED_CUBE_FILL[prod.kind]}
-              stroke="#f2e6c8"
-              strokeWidth="1"
-            />
-          ))
-        ) : (
-          <g>
-            <rect
-              x="41"
-              y="17"
-              width="6.2"
-              height="6.2"
-              rx="1"
-              fill={PRODUCED_CUBE_FILL[prod.kind]}
-              stroke="#f2e6c8"
-              strokeWidth="1"
-            />
-            <text
-              x="44.1"
-              y="31"
-              textAnchor="middle"
-              fill="#f2e6c8"
-              stroke="#16130f"
-              strokeWidth="0.5"
-              paintOrder="stroke"
-              style={{
-                fontFamily: 'var(--bb-display)',
-                fontWeight: 700,
-                fontSize: 11,
-              }}
-            >
-              {`×${prod.n}`}
-            </text>
-          </g>
-        ))}
+      {/* Resource cubes ride the right edge in a two-wide grid, starting
+          BELOW the level numeral (baseline y=13) so the two never overlap.
+          Every cube is drawn — no count-numeral shortcut on the mat. */}
+      {prod && prod.n > 0 && (
+        <g>
+          {Array.from({ length: prod.n }, (_, i) => {
+            const column = i % 2
+            const lone = column === 0 && i === prod.n - 1
+            return (
+              <rect
+                key={i}
+                x={lone ? CUBE_LONE_X : CUBE_COL_X[column]}
+                y={CUBE_TOP_Y + Math.floor(i / 2) * CUBE_PITCH}
+                width={CUBE_SIZE}
+                height={CUBE_SIZE}
+                rx="1"
+                fill={PRODUCED_CUBE_FILL[prod.kind]}
+                stroke="#f2e6c8"
+                strokeWidth="1"
+              />
+            )
+          })}
+        </g>
+      )}
       {next && (
         <rect
           x="0.9"
@@ -269,11 +256,15 @@ function TrackSlot({
         next={next}
         barred={barred}
       />
+      {/* The count sits INSIDE the tile's bottom-left — the glyph stops
+          well above it and the cubes hug the right edge, so it collides
+          with neither, and the selection ring (drawn outside the tile)
+          can never run through it. */}
       {count > 1 && (
         <span
-          className="absolute -bottom-1.5 -right-1.5 grid h-[16px] min-w-[16px] place-items-center rounded-full px-1 text-[9.5px] font-bold leading-none"
+          className="pointer-events-none absolute bottom-1 left-1 grid h-[15px] min-w-[15px] place-items-center rounded-full px-1 text-[9.5px] font-bold leading-none"
           style={{
-            background: '#231e17',
+            background: 'rgba(22,19,15,.88)',
             border: '1px solid var(--bb-brass-dim)',
             color: 'var(--bb-brass-bright)',
           }}
@@ -288,7 +279,7 @@ function TrackSlot({
           style={{
             inset: -3,
             border: '1.5px solid var(--bb-brass-bright)',
-            boxShadow: '0 0 12px rgba(230,189,99,.4)',
+            boxShadow: '0 0 8px rgba(230,189,99,.4)',
           }}
         />
       )}
@@ -470,7 +461,13 @@ export function PlayerLedger({
                     <IndustryChip type={tr.type} size={13} />
                     {LABEL[tr.type]}
                   </span>
-                  <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 py-1">
+                  {/* Horizontal slot scroll only. The padding has to be
+                      deep enough to swallow the selection ring (3px) and
+                      the hover lift (2px): anything poking past the
+                      padding box counts as scrollable overflow, and since
+                      overflow-y computes to `auto` beside overflow-x, that
+                      showed up as a phantom vertical scrollbar per track. */}
+                  <div className="-mx-2.5 flex items-center gap-1.5 overflow-x-auto overflow-y-hidden px-2.5 py-2.5">
                     {tr.slots.length === 0 ? (
                       <span
                         className="text-[12px] italic"

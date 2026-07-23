@@ -2,6 +2,7 @@ import { type Actor, StateFrom, and, assign, not, setup } from 'xstate'
 import {
   type CityId,
   FARM_BREWERIES,
+  connections,
   linkConnectedLocations,
 } from '../data/board'
 import {
@@ -32,8 +33,11 @@ import {
 } from '../data/industryTiles'
 import {
   type ValidationResult,
+  buildCompletionAt,
   buildIndustryTile,
+  canBuildIndustryAt,
   eraRestrictionMessage,
+  hasBuildableSite,
   validateBuildActionSelections,
   // Non-throwing validation functions
   validateBuildActionSelectionsResult,
@@ -2885,40 +2889,26 @@ export const gameStore = setup({
     isSelectedCardIndustry: ({ context }) =>
       context.selectedCard?.type === 'industry',
     canCompleteBuild: ({ context }) => {
-      // For REAL location cards, just need card and location (wild location
-      // cards fall through to the full tile + location + resources check).
-      if (context.selectedCard?.type === 'location') {
-        return (
-          context.selectedCard !== null && context.selectedLocation !== null
-        )
-      }
-
-      // For industry cards, need card, tile, location AND sufficient resources
-      if (
-        context.selectedCard === null ||
-        context.selectedIndustryTile === null ||
-        context.selectedLocation === null
-      ) {
+      if (context.selectedCard === null || context.selectedLocation === null) {
         return false
       }
 
-      const tile = context.selectedIndustryTile
-
-      // Check coal availability if required
-      if (tile.coalRequired > 0) {
-        const coalResult = consumeCoalFromSources(
+      // Whenever a tile is chosen (every real flow — location, wild-location and
+      // industry cards all settle a tile before confirm) the build must be fully
+      // completable: slot/overbuild, coal + iron reach, AND affordability. This
+      // matches canSelectLocation so a selected site is always confirmable, and
+      // closes the dead-confirm gap for location-card builds (which previously
+      // returned true here without any resource/funds check).
+      if (context.selectedIndustryTile) {
+        return buildCompletionAt(
           context,
           context.selectedLocation,
-          tile.coalRequired,
-        )
-        if (!coalResult.success) {
-          return false
-        }
+          context.selectedIndustryTile,
+        ).ok
       }
 
-      // Iron is always available from market with fallback pricing, so no check needed
-
-      return true
+      // Location-card fallback with no tile settled — nothing to price.
+      return context.selectedCard.type === 'location'
     },
     /**
      * The source question this step asks is answered (or there was none).
@@ -3020,6 +3010,22 @@ export const gameStore = setup({
         return false
       }
 
+      // The connection must be a real board edge that carries the current era.
+      // (Was a documented rules gap the UI/AI each backfilled with their own
+      // era filter — now the machine owns it, so every caller collapses to
+      // can().)
+      const connection = connections.find(
+        (c) =>
+          (c.from === event.from && c.to === event.to) ||
+          (c.from === event.to && c.to === event.from),
+      )
+      if (!connection) {
+        return false
+      }
+      if (!(connection.types as readonly string[]).includes(context.era)) {
+        return false
+      }
+
       // Check if any player already has a link on this connection
       const existingLink = context.players.some((player) =>
         player.links.some(
@@ -3114,8 +3120,21 @@ export const gameStore = setup({
       if (event.type !== 'SELECT_LOCATION') return false
       if (!context.selectedCard) return false
 
-      // Farm Breweries may only be reached with a Brewery Industry or a
-      // Wild Industry card — never location/wild-location cards (rules p.5)
+      // The tile is always settled by now (an industry card auto-picks it at
+      // SELECT_CARD; location/wild cards pass through selectingIndustryType).
+      // The build must be COMPLETABLE here — compatible slot/overbuild, coal +
+      // iron within reach, affordable — so a slot-legal-but-dead city is never
+      // offered on either surface (audit F2).
+      if (context.selectedIndustryTile) {
+        return canBuildIndustryAt(
+          context,
+          context.selectedCard,
+          context.selectedIndustryTile,
+          event.cityId,
+        ).ok
+      }
+
+      // No tile settled: fall back to the card/network checks alone.
       if (
         FARM_BREWERIES.has(event.cityId) &&
         (context.selectedCard.type === 'location' ||
@@ -3123,39 +3142,20 @@ export const gameStore = setup({
       ) {
         return false
       }
-
-      const currentPlayer = getCurrentPlayer(context)
-
-      // Validate based on card type and network requirements
-      const isValidBuild = validateIndustryBuildLocation(
-        context,
-        currentPlayer,
-        context.selectedCard,
-        event.cityId,
-      )
-
-      if (!isValidBuild) {
+      if (
+        !validateIndustryBuildLocation(
+          context,
+          getCurrentPlayer(context),
+          context.selectedCard,
+          event.cityId,
+        )
+      ) {
         return false
       }
-
-      // Additional location card validation
       if (context.selectedCard.type === 'location') {
         const locationCard = context.selectedCard as LocationCard
         return locationCard.location === event.cityId
       }
-
-      // For industry and wild cards the industry tile is already chosen —
-      // check the location can accommodate it, either in a free slot or as
-      // a legal overbuild
-      if (context.selectedIndustryTile) {
-        return canPlaceOrOverbuildIndustry(
-          context,
-          event.cityId,
-          context.selectedIndustryTile.type,
-          context.selectedIndustryTile.level,
-        )
-      }
-
       return true
     },
     canSelectIndustryType: ({ context, event }) => {
@@ -3177,25 +3177,22 @@ export const gameStore = setup({
         return false
       }
 
-      // For location cards, check if the location can accommodate this
-      // industry type - either in a free slot or as a legal overbuild
+      // The industry must have somewhere it can actually be built. A location
+      // card fixes the site, so that one city is the whole question; a
+      // wild-location or industry card is viable while ANY city still completes.
+      // Rejecting here means the wizard never offers an industry whose only
+      // outcome is a dead confirm (audit F3).
       if (context.selectedCard.type === 'location') {
         const locationCard = context.selectedCard as LocationCard
-        return canPlaceOrOverbuildIndustry(
+        return canBuildIndustryAt(
           context,
+          context.selectedCard,
+          buildableTile,
           locationCard.location as CityId,
-          event.industryType,
-          buildableTile.level,
-        )
+        ).ok
       }
 
-      // For wild location cards, can build anywhere (no slot restriction)
-      if (context.selectedCard.type === 'wild_location') {
-        return true
-      }
-
-      // For industry cards, location validation happens later when location is selected
-      return true
+      return hasBuildableSite(context, context.selectedCard, buildableTile)
     },
     isLocationCardSelected: ({ context }) => {
       // Only REAL location cards skip location selection (the city is

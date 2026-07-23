@@ -209,7 +209,7 @@ describe('journal completeness', () => {
     actor.send({
       type: 'SELECT_SECOND_LINK',
       from: 'birmingham',
-      to: 'wolverhampton',
+      to: 'dudley',
     })
     actor.send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
 

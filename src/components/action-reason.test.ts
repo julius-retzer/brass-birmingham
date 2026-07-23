@@ -144,7 +144,7 @@ const reachConfirmingDoubleLink = () => {
   actor.send({
     type: 'SELECT_SECOND_LINK',
     from: 'birmingham',
-    to: 'wolverhampton',
+    to: 'dudley',
   })
 
   return { actor, playerId }

@@ -1,13 +1,9 @@
 // Enumerate the machine's legal events at the current decision point.
 //
 // The engine's own guards are the single source of truth: we generate a
-// deterministic candidate list and keep what `snapshot.can(...)` accepts.
-// Two engine gotchas shape this module:
-//  - `can()` under-validates some flows (a slot-legal build can still fail
-//    at CONFIRM execution) — the driver handles that with its
-//    execute-validate-retry loop, not here.
-//  - `canBuildLink` does not check the era (documented rules gap) — we
-//    filter link candidates by era exactly like the UI does.
+// deterministic candidate list and keep what `snapshot.can(...)` accepts. No
+// rule is re-derived here — era and board-graph legality for links, and build
+// completability for sites, are the guards' own business.
 import { type CityId, cities, connections } from '../../data/board'
 import { type Card, type IndustryType } from '../../data/cards'
 import { type GameEvent, type GameStoreSnapshot } from '../../store/gameStore'
@@ -141,8 +137,6 @@ export function candidateMoves(snapshot: GameStoreSnapshot): LegalMove[] {
   }
 
   for (const conn of connections) {
-    // era filter — the engine guard does not check it (rules gap)
-    if (!(conn.types as readonly string[]).includes(ctx.era)) continue
     push(
       { type: 'SELECT_LINK', from: conn.from, to: conn.to },
       `Claim ${ctx.era} link: ${cityName(conn.from)}–${cityName(conn.to)}`,

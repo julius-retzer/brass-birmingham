@@ -208,9 +208,9 @@ function flowDeadEnd(
       playing: { action: { networking: 'selectingSecondLink' } },
     })
     for (const conn of connections) {
-      if (!(conn.types as readonly string[]).includes(after.context.era)) {
-        continue
-      }
+      // No era filter here on purpose: `canBuildLink` owns the era/edge rule,
+      // so `can()` below already rejects an off-era corridor. A local copy
+      // could only drift and make this probe skip a viable link.
       const event: GameEvent = second
         ? { type: 'SELECT_SECOND_LINK', from: conn.from, to: conn.to }
         : { type: 'SELECT_LINK', from: conn.from, to: conn.to }

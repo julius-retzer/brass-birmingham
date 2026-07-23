@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { createActor } from 'xstate'
 import { Toaster } from '~/components/ui/sonner'
-import { type CityId, cities, connections } from '~/data/board'
+import { type CityId, cities } from '~/data/board'
 import type { Card } from '~/data/cards'
 import { roundsInEra } from '~/data/cards'
 import {
@@ -22,10 +22,10 @@ import {
 import { explainRefusal } from '~/store/refusal'
 import { refreshEmbeddedTileStats } from '~/store/saveMigration'
 import { ActionDock, SELLABLE, getHandSelection } from '../action-dock'
-import { linkKey } from '../board/board-data'
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from '../board/board-map'
 import { HandTray } from '../hand-tray'
 import { computeHoverCities, focusCityFor } from '../hover-highlight'
+import { legalCityTargets, legalLinkTargets } from '../legal-targets'
 import { LocateCityProvider, useLocateCityState } from '../locate'
 import { GameOverScreen, RoundCurtain } from '../overlays'
 import { OpenMatButton, PlayerLedger } from '../player-ledger'
@@ -1077,14 +1077,12 @@ function MpTable({
   const pickingSecondLink =
     myTurn && is('playing.action.networking.selectingSecondLink')
 
-  const legalCities = useMemo(() => {
-    if (!pickingSite || !state) return null
-    const set = new Set<string>()
-    for (const id of Object.keys(cities) as CityId[]) {
-      if (state.can({ type: 'SELECT_LOCATION', cityId: id })) set.add(id)
-    }
-    return set
-  }, [pickingSite, state])
+  // Candidates only — the machine owns legality (shared with the hotseat
+  // surface, so the two can never offer different sets).
+  const legalCities = useMemo(
+    () => (pickingSite && state ? legalCityTargets(state) : null),
+    [pickingSite, state],
+  )
 
   // Hovering a card in my hand previews its build targets on the map,
   // scoped to my own network — the same soft hint as the hotseat surface
@@ -1095,25 +1093,13 @@ function MpTable({
     [hoveredCard, me],
   )
 
-  const legalLinks = useMemo(() => {
-    if ((!pickingLink && !pickingSecondLink) || !state || !ctx) return null
-    const set = new Set<string>()
-    for (const conn of connections) {
-      if (!(conn.types as readonly string[]).includes(ctx.era)) continue
-      const ev = pickingSecondLink
-        ? ({
-            type: 'SELECT_SECOND_LINK',
-            from: conn.from,
-            to: conn.to,
-          } as const)
-        : ({ type: 'SELECT_LINK', from: conn.from, to: conn.to } as const)
-      if (state.can(ev)) {
-        set.add(linkKey(conn.from, conn.to))
-        set.add(linkKey(conn.to, conn.from))
-      }
-    }
-    return set
-  }, [pickingLink, pickingSecondLink, state, ctx])
+  const legalLinks = useMemo(
+    () =>
+      (pickingLink || pickingSecondLink) && state
+        ? legalLinkTargets(state, pickingSecondLink)
+        : null,
+    [pickingLink, pickingSecondLink, state],
+  )
 
   const boardPrompt = useMemo(() => {
     if (!ctx) return null
@@ -1208,29 +1194,19 @@ function MpTable({
 
   const onCityClick = (cityId: CityId) => {
     if (!myTurn || inFlight) return
-    if (state.can({ type: 'SELECT_LOCATION', cityId })) {
-      send({ type: 'SELECT_LOCATION', cityId })
+    const event = { type: 'SELECT_LOCATION', cityId } as const
+    if (state.can(event)) {
+      send(event)
     } else {
       toast.error(
-        `${cities[cityId]?.name ?? cityId} is not a legal site for this build.`,
+        explainRefusal(state, event) ??
+          `${cities[cityId]?.name ?? cityId} is not a legal site for this build.`,
       )
     }
   }
 
   const onLinkClick = (from: CityId, to: CityId) => {
     if (!myTurn || inFlight) return
-    const conn = connections.find(
-      (c) =>
-        (c.from === from && c.to === to) || (c.from === to && c.to === from),
-    )
-    if (conn && !(conn.types as readonly string[]).includes(ctx.era)) {
-      toast.error(
-        ctx.era === 'canal'
-          ? 'That corridor only carries rail — not available in the Canal Era.'
-          : 'That corridor was canal-only — not available in the Rail Era.',
-      )
-      return
-    }
     // The client gates the click itself, so the server's refusal reason would
     // never be reached for an illegal route. Ask the SAME explainer the server
     // uses — everything it needs (money, links, era) is public state already

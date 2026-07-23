@@ -198,11 +198,7 @@ describe('Game Store - Network Actions', () => {
 
     const initialCoalMarket = [...snapshot.context.coalMarket]
 
-    const { from, to } = buildNetworkAction(
-      actor,
-      'birmingham',
-      'wolverhampton',
-    )
+    const { from, to } = buildNetworkAction(actor, 'birmingham', 'dudley')
     snapshot = actor.getSnapshot()
 
     const updatedPlayer = snapshot.context.players[0]!
@@ -240,8 +236,8 @@ describe('Game Store - Network Actions', () => {
       actor.send({ type: 'CONFIRM' })
     }
 
-    // Now build adjacent link
-    buildNetworkAction(actor, 'coventry', 'nuneaton')
+    // Now build another canal-legal link (birmingham–walsall)
+    buildNetworkAction(actor, 'birmingham', 'walsall')
     snapshot = actor.getSnapshot()
 
     const player =
@@ -250,12 +246,12 @@ describe('Game Store - Network Actions', () => {
       ]!
     const links = player.links
 
-    // Should have built second link connected to first
+    // Should have built the link
     expect(links.length).toBe(1)
     const link = links[0]!
     expect(
-      (link.from === 'coventry' && link.to === 'nuneaton') ||
-        (link.from === 'nuneaton' && link.to === 'coventry'),
+      (link.from === 'birmingham' && link.to === 'walsall') ||
+        (link.from === 'walsall' && link.to === 'birmingham'),
     ).toBe(true)
   })
 
@@ -394,11 +390,9 @@ describe('Game Store - Network Actions', () => {
     actor.send({
       type: 'SELECT_SECOND_LINK',
       from: 'birmingham',
-      to: 'wolverhampton',
+      to: 'dudley',
     })
     snapshot = actor.getSnapshot()
-    console.log('State after SELECT_SECOND_LINK:', snapshot.value)
-    console.log('selectedSecondLink:', snapshot.context.selectedSecondLink)
     expect(
       snapshot.matches({
         playing: { action: { networking: 'confirmingDoubleLink' } },
@@ -434,11 +428,11 @@ describe('Game Store - Network Actions', () => {
     )
     expect(firstLink).toBeDefined()
 
-    // Verify second link: birmingham <-> wolverhampton
+    // Verify second link: birmingham <-> dudley
     const secondLink = newLinks.find(
       (link) =>
-        (link.from === 'birmingham' && link.to === 'wolverhampton') ||
-        (link.from === 'wolverhampton' && link.to === 'birmingham'),
+        (link.from === 'birmingham' && link.to === 'dudley') ||
+        (link.from === 'dudley' && link.to === 'birmingham'),
     )
     expect(secondLink).toBeDefined()
 
@@ -876,14 +870,14 @@ describe('Game Store - Network Actions', () => {
       ],
     })
 
-    // Set up opponent with brewery at wolverhampton (should be usable if connected to second rail)
+    // Set up opponent with brewery at dudley (should be usable if connected to second rail)
     const opponentId = currentPlayerId === 0 ? 1 : 0
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
       playerId: opponentId,
       industries: [
         {
-          location: 'wolverhampton',
+          location: 'dudley',
           type: 'brewery',
           level: 1,
           flipped: false,
@@ -943,11 +937,11 @@ describe('Game Store - Network Actions', () => {
     actor.send({ type: 'SELECT_LINK', from: 'coventry', to: 'nuneaton' })
     actor.send({ type: 'CHOOSE_DOUBLE_LINK_BUILD' })
 
-    // Select second link: birmingham <-> wolverhampton (should connect to opponent's brewery)
+    // Select second link: birmingham <-> dudley (should connect to opponent's brewery)
     actor.send({
       type: 'SELECT_SECOND_LINK',
       from: 'birmingham',
-      to: 'wolverhampton',
+      to: 'dudley',
     })
 
     // Each rail's coal comes first; resolve any equal-distance tie the way the
@@ -1123,11 +1117,11 @@ describe('Game Store - Network Actions', () => {
     snapshot = actor.getSnapshot()
     console.log('After choosing double link:', snapshot.value)
 
-    // Second rail to wolverhampton (opponent brewery at stoke is NOT connected)
+    // Second rail to dudley (opponent brewery at stoke is NOT connected)
     actor.send({
       type: 'SELECT_SECOND_LINK',
       from: 'birmingham',
-      to: 'wolverhampton',
+      to: 'dudley',
     })
     snapshot = actor.getSnapshot()
     console.log('After second link selection:', snapshot.value)
@@ -1255,14 +1249,14 @@ describe('Game Store - Network Actions', () => {
           ironCubesOnTile: 0,
           beerBarrelsOnTile: 0,
         },
-        // Coal mine at wolverhampton (becomes closest to second link after it's built)
+        // Coal mine at dudley (becomes closest to second link after it's built)
         {
-          location: 'wolverhampton',
+          location: 'dudley',
           type: 'coal',
           level: 1,
           flipped: false,
           tile: {
-            id: 'coal_1_wolverhampton',
+            id: 'coal_1_dudley',
             type: 'coal',
             level: 1,
             canBuildInCanalEra: true,
@@ -1297,12 +1291,12 @@ describe('Game Store - Network Actions', () => {
       snapshot.context.players[currentPlayerId]!.industries.find(
         (i) => i.location === 'coventry',
       )?.coalCubesOnTile || 0
-    const wolverhamptonCoalBefore =
+    const dudleyCoalBefore =
       snapshot.context.players[currentPlayerId]!.industries.find(
-        (i) => i.location === 'wolverhampton',
+        (i) => i.location === 'dudley',
       )?.coalCubesOnTile || 0
 
-    // Build double rail: coventry->nuneaton, birmingham->wolverhampton
+    // Build double rail: coventry->nuneaton, birmingham->dudley
     actor.send({ type: 'NETWORK' })
     const card = snapshot.context.players[currentPlayerId]!.hand[0]!
     actor.send({ type: 'SELECT_CARD', cardId: card.id })
@@ -1311,7 +1305,7 @@ describe('Game Store - Network Actions', () => {
     actor.send({
       type: 'SELECT_SECOND_LINK',
       from: 'birmingham',
-      to: 'wolverhampton',
+      to: 'dudley',
     })
     resolveCoalTies(actor)
     actor.send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
@@ -1323,22 +1317,22 @@ describe('Game Store - Network Actions', () => {
       snapshot.context.players[currentPlayerId]!.industries.find(
         (i) => i.location === 'coventry',
       )?.coalCubesOnTile || 0
-    const wolverhamptonCoalAfter =
+    const dudleyCoalAfter =
       snapshot.context.players[currentPlayerId]!.industries.find(
-        (i) => i.location === 'wolverhampton',
+        (i) => i.location === 'dudley',
       )?.coalCubesOnTile || 0
 
     // First coal should come from coventry (closest to first link)
     expect(coventryCoalAfter).toBe(coventryCoalBefore - 1)
 
-    // Second coal should come from wolverhampton (closest to second link after it's built)
-    expect(wolverhamptonCoalAfter).toBe(wolverhamptonCoalBefore - 1)
+    // Second coal should come from dudley (closest to second link after it's built)
+    expect(dudleyCoalAfter).toBe(dudleyCoalBefore - 1)
 
     // Total coal consumed should be exactly 2
     const totalCoalConsumed =
       coventryCoalBefore -
       coventryCoalAfter +
-      (wolverhamptonCoalBefore - wolverhamptonCoalAfter)
+      (dudleyCoalBefore - dudleyCoalAfter)
     expect(totalCoalConsumed).toBe(2)
   })
 

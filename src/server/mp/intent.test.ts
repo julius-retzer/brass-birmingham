@@ -275,15 +275,13 @@ describe('applyIntent — a refusal names what is missing', () => {
     expect((res as { error: string }).error).toContain('is not allowed')
   })
 
-  // Path 2: the guard ACCEPTS and execution fails. The engine's actions never
-  // throw — they set lastError and refuse to consume the action. The pre-fix
-  // server persisted that snapshot and answered ok; these pin that it now
-  // refuses, verbatim, and keeps nothing.
-  test('an execution failure is reported verbatim and consumes nothing', () => {
+  // Path 2: an unaffordable build. The funds check used to live in execution
+  // (buildIndustryTile), past the guard; it is now part of the build guards, so
+  // the doomed industry is refused at the pick — still BY NAME, and still
+  // consuming nothing.
+  test('an unaffordable build is refused by name and consumes nothing', () => {
     const actor = game()
     const idx = actor.getSnapshot().context.currentPlayerIndex
-    // £2 buys no industry tile: build's funds check lives in execution
-    // (buildIndustryTile), past the guard.
     actor.send({ type: 'TEST_SET_PLAYER_STATE', playerId: idx, money: 2 })
     actor.send({
       type: 'TEST_SET_PLAYER_HAND',
@@ -299,20 +297,72 @@ describe('applyIntent — a refusal names what is missing', () => {
     })
     actor.send({ type: 'BUILD' })
     actor.send({ type: 'SELECT_CARD', cardId: 'loc_birmingham_1' })
-    actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
-    actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'cotton' })
 
     const before = actor.getPersistedSnapshot()
     const moneyBefore = actor.getSnapshot().context.players[idx]!.money
-    const res = applyIntent(before, idx, { type: 'CONFIRM' })
+    const res = applyIntent(before, idx, {
+      type: 'SELECT_INDUSTRY_TYPE',
+      industryType: 'cotton',
+    })
     actor.stop()
 
     expect(res.ok).toBe(false)
-    // The engine's own words, naming the shortfall — not "Build action failed".
-    expect((res as { error: string }).error).toContain('Insufficient funds')
+    // The engine's own words, naming the shortfall — not "not legal right now".
+    expect((res as { error: string }).error).toContain('Not enough money')
     expect((res as { error: string }).error).toContain('£2')
     expect(res).not.toHaveProperty('next')
     expect(moneyBefore).toBe(2)
+  })
+
+  // Path 2 proper: the guard ACCEPTS and execution still refuses. No organic
+  // route reaches it any more (the build guards now mirror the executor's own
+  // cost/slot checks), so it is driven synthetically — a persisted record whose
+  // selected tile claims an era the executor rejects. The branch stays as the
+  // safety net for future guard/executor drift, and this is its only pin.
+  test('an execution failure is reported verbatim and consumes nothing', () => {
+    const actor = game()
+    const idx = actor.getSnapshot().context.currentPlayerIndex
+    actor.send({ type: 'TEST_SET_PLAYER_STATE', playerId: idx, money: 40 })
+    actor.send({
+      type: 'TEST_SET_PLAYER_HAND',
+      playerId: idx,
+      hand: [
+        {
+          id: 'loc_birmingham_1',
+          type: 'location',
+          location: 'birmingham',
+          color: 'other',
+        },
+      ],
+    })
+    actor.send({ type: 'BUILD' })
+    actor.send({ type: 'SELECT_CARD', cardId: 'loc_birmingham_1' })
+    actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'cotton' })
+    actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    expect(actor.getSnapshot().can({ type: 'CONFIRM' })).toBe(true)
+
+    const persisted = actor.getPersistedSnapshot() as unknown as {
+      context: {
+        selectedIndustryTile: { canBuildInCanalEra: boolean } | null
+        lastError: string | null
+      }
+    }
+    // Corrupt the settled tile the way no legal flow ever could: the guards
+    // price the tile (cost/slot/resources), only the executor asks the era
+    // flag — so `can(CONFIRM)` stays true while execution refuses.
+    persisted.context.selectedIndustryTile!.canBuildInCanalEra = false
+    const moneyBefore = actor.getSnapshot().context.players[idx]!.money
+
+    const res = applyIntent(persisted, idx, { type: 'CONFIRM' })
+    actor.stop()
+
+    expect(res.ok).toBe(false)
+    // The engine's own lastError, passed through untouched.
+    expect((res as { error: string }).error).toMatch(/canal/i)
+    // Nothing persisted: no snapshot to write, so the action is not consumed
+    // and the error never becomes shared state.
+    expect(res).not.toHaveProperty('next')
+    expect(moneyBefore).toBe(40)
   })
 
   // A record written by the PRE-FIX server can already carry a lastError.
@@ -321,32 +371,14 @@ describe('applyIntent — a refusal names what is missing', () => {
   test('a stale lastError on an old record does not refuse the next legal move', () => {
     const actor = game()
     const idx = actor.getSnapshot().context.currentPlayerIndex
-    actor.send({ type: 'TEST_SET_PLAYER_STATE', playerId: idx, money: 2 })
-    actor.send({
-      type: 'TEST_SET_PLAYER_HAND',
-      playerId: idx,
-      hand: [
-        {
-          id: 'loc_birmingham_2',
-          type: 'location',
-          location: 'birmingham',
-          color: 'other',
-        },
-      ],
-    })
-    // Produce a real lastError, then persist it the way the old server did.
-    actor.send({ type: 'BUILD' })
-    actor.send({ type: 'SELECT_CARD', cardId: 'loc_birmingham_2' })
-    actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
-    actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'cotton' })
-    actor.send({ type: 'CONFIRM' })
-    const stale = actor.getSnapshot().context.lastError
-    expect(stale).not.toBeNull() // the record now carries a stale reason
+    const persisted = actor.getPersistedSnapshot() as unknown as {
+      context: { lastError: string | null }
+    }
+    // Stamp the record the way the pre-fix server persisted one.
+    persisted.context.lastError = 'Insufficient funds from a previous turn'
 
     // TAKE_LOAN is legal and does not clear lastError — the exact seam.
-    const res = applyIntent(actor.getPersistedSnapshot(), idx, {
-      type: 'TAKE_LOAN',
-    })
+    const res = applyIntent(persisted, idx, { type: 'TAKE_LOAN' })
     actor.stop()
 
     expect(res.ok).toBe(true)

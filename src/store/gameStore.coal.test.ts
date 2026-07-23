@@ -215,8 +215,8 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
       const initialMoney = snapshot.context.players[currentPlayerId]!.money
       const initialCoalMarket = [...snapshot.context.coalMarket]
 
-      // Build rail link from warrington (should use coal market)
-      buildNetworkAction(actor, 'warrington', 'birmingham')
+      // Build rail link from warrington (merchant) — reaches the coal market
+      buildNetworkAction(actor, 'warrington', 'stoke')
       snapshot = actor.getSnapshot()
 
       // Verify link was built
@@ -298,7 +298,7 @@ describe('Coal Consumption - Comprehensive Test Suite', () => {
       // In practice, the £8 fallback would be used when market is empty
 
       // Build rail link from gloucester (merchant location)
-      buildNetworkAction(actor, 'gloucester', 'birmingham')
+      buildNetworkAction(actor, 'gloucester', 'worcester')
       snapshot = actor.getSnapshot()
 
       // Verify link was built (would use fallback price if market empty)

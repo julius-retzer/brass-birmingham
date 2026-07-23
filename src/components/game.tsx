@@ -16,7 +16,7 @@ import { Component, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { createActor, transition } from 'xstate'
 import { Toaster } from '~/components/ui/sonner'
-import { type CityId, cities, connections } from '~/data/board'
+import { type CityId, cities } from '~/data/board'
 import { type Card, type IndustryType, roundsInEra } from '~/data/cards'
 import { type InspectFn, useXstateInspect } from '~/lib/xstate-inspector'
 import {
@@ -26,6 +26,7 @@ import {
   type Player,
   gameStore,
 } from '~/store/gameStore'
+import { explainRefusal } from '~/store/refusal'
 import { refreshEmbeddedTileStats } from '~/store/saveMigration'
 import {
   pendingBeerChoice,
@@ -38,7 +39,6 @@ import {
   SELLABLE,
   getHandSelection,
 } from './action-dock'
-import { linkKey } from './board/board-data'
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from './board/board-map'
 import { demoSnapshot } from './demo/demo-snapshot'
 import { demoSnapshotBeerChoice } from './demo/demo-snapshot-beer-choice'
@@ -52,6 +52,7 @@ import { demoSnapshotWilds } from './demo/demo-snapshot-wilds'
 import { HandTray } from './hand-tray'
 import { computeHoverCities, focusCityFor } from './hover-highlight'
 import { IncomeTrackModal } from './income-track'
+import { legalCityTargets, legalLinkTargets } from './legal-targets'
 import { JournalPanel } from './journal'
 import { LocateCityProvider, useLocateCityState } from './locate'
 import { GameOverScreen, PassGate, RoundCurtain } from './overlays'
@@ -149,20 +150,6 @@ const probeSnapshot = (actorRef: {
 // is what lets one restored snapshot be fanned across many candidate probes.
 const probeStep = (snap: GameStoreSnapshot, event: GameEvent) =>
   transition(gameStore, snap as never, event as never)[0] as GameStoreSnapshot
-
-// From a snapshot sitting in building.selectingLocation, can the build be
-// COMPLETED at this city? The SELECT_LOCATION guard only checks the slot;
-// coal access and payment are validated at CONFIRM (guard + execution), so
-// a slot-legal city can still be a dead end (audit follow-up: iron works
-// at Coventry pulsed legal, then the confirm refused without a why).
-const buildCompletesAt = (
-  source: GameStoreSnapshot,
-  cityId: CityId,
-): boolean => {
-  const snap = probeStep(source, { type: 'SELECT_LOCATION', cityId })
-  if (!snap.can({ type: 'CONFIRM' })) return false
-  return probeStep(snap, { type: 'CONFIRM' }).context.lastError === null
-}
 
 const snapshotCurrentPlayerId = (snapshot: unknown): string | null => {
   const ctx = (
@@ -573,59 +560,19 @@ function GameInner({
   const pickingLink = is('playing.action.networking.selectingLink')
   const pickingSecondLink = is('playing.action.networking.selectingSecondLink')
 
-  // Cities where the build can actually be COMPLETED — slot-legal per the
-  // SELECT_LOCATION guard, then a full dry-run for coal access / payment.
-  // `slotOnlyCities` keeps the slot-legal-but-uncompletable ones so a click
-  // there can explain WHY instead of a generic refusal.
-  const [legalCities, slotOnlyCities] = useMemo(() => {
-    if (!pickingSite) return [null, null] as const
-    const legal = new Set<string>()
-    const slotOnly = new Set<string>()
-    // One restore, then a pure probe per city. A restore that fails leaves
-    // `base` null and every slot-legal city falls open to the guard's answer,
-    // exactly as a per-city probe failure always has.
-    let base: GameStoreSnapshot | null = null
-    try {
-      base = probeSnapshot(actorRef)
-    } catch {
-      base = null
-    }
-    for (const id of Object.keys(cities) as CityId[]) {
-      if (!state.can({ type: 'SELECT_LOCATION', cityId: id })) continue
-      try {
-        if (!base) throw new Error('no probe')
-        if (buildCompletesAt(base, id)) legal.add(id)
-        else slotOnly.add(id)
-      } catch {
-        legal.add(id) // fail open to the guard's answer
-      }
-    }
-    return [legal, slotOnly] as const
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickingSite, state, actorRef])
+  // Candidates only — the machine owns legality (shared with the mp surface).
+  const legalCities = useMemo(
+    () => (pickingSite ? legalCityTargets(state) : null),
+    [pickingSite, state],
+  )
 
-  const legalLinks = useMemo(() => {
-    if (!pickingLink && !pickingSecondLink) return null
-    const set = new Set<string>()
-    for (const conn of connections) {
-      // The engine's canBuildLink guard doesn't check the era (documented
-      // rules gap) — enforce it here so rail-only ghosts never pulse as
-      // legal canals and vice versa.
-      if (!(conn.types as readonly string[]).includes(ctx.era)) continue
-      const ev = pickingSecondLink
-        ? ({
-            type: 'SELECT_SECOND_LINK',
-            from: conn.from,
-            to: conn.to,
-          } as const)
-        : ({ type: 'SELECT_LINK', from: conn.from, to: conn.to } as const)
-      if (state.can(ev)) {
-        set.add(linkKey(conn.from, conn.to))
-        set.add(linkKey(conn.to, conn.from))
-      }
-    }
-    return set
-  }, [pickingLink, pickingSecondLink, state, ctx.era])
+  const legalLinks = useMemo(
+    () =>
+      pickingLink || pickingSecondLink
+        ? legalLinkTargets(state, pickingSecondLink)
+        : null,
+    [pickingLink, pickingSecondLink, state],
+  )
 
   // Exact "is any sale possible?" — walk a shadow actor into the sale step
   // and ask the machine's own guards (audit: Sell used to demand a discard
@@ -673,57 +620,20 @@ function GameInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, actorRef, currentPlayer, ctx.merchants])
 
-  // Which industries can actually complete a build with the selected card?
-  // The machine validates slot compatibility for a REAL location card only
-  // inside executeBuildAction (audit: cotton at Coventry sailed through
-  // Card → Industry → Confirm and failed at the very end). Walk a detached
-  // shadow actor through each industry and keep the ones that survive —
-  // the engine's own rules stay the single source of truth.
+  // Candidates only — canSelectIndustryType owns viability (the industry must
+  // have a site left that can be slotted, supplied and paid for).
   const viableIndustries = useMemo(() => {
     if (!is('playing.action.building.selectingIndustryType') || !currentPlayer)
       return null
-    try {
-      const viable = new Set<IndustryType>()
-      // One restore for the whole sweep; each industry is a pure branch off it.
-      const base = probeSnapshot(actorRef)
-      for (const industryType of INDUSTRY_TYPES) {
-        if (!state.can({ type: 'SELECT_INDUSTRY_TYPE', industryType })) continue
-        const snap = probeStep(base, {
-          type: 'SELECT_INDUSTRY_TYPE',
-          industryType,
-        })
-        if (
-          snap.matches({ playing: { action: { building: 'confirmingBuild' } } })
-        ) {
-          // Location card — the site is fixed, so dry-run the build itself.
-          if (
-            snap.can({ type: 'CONFIRM' }) &&
-            probeStep(snap, { type: 'CONFIRM' }).context.lastError === null
-          ) {
-            viable.add(industryType)
-          }
-        } else if (
-          snap.matches({
-            playing: { action: { building: 'selectingLocation' } },
-          })
-        ) {
-          // Industry / wild card — viable if the build COMPLETES somewhere
-          // (a slot-legal city can still lack coal access or funds).
-          for (const id of Object.keys(cities) as CityId[]) {
-            if (!snap.can({ type: 'SELECT_LOCATION', cityId: id })) continue
-            if (buildCompletesAt(snap, id)) {
-              viable.add(industryType)
-              break
-            }
-          }
-        }
+    const viable = new Set<IndustryType>()
+    for (const industryType of INDUSTRY_TYPES) {
+      if (state.can({ type: 'SELECT_INDUSTRY_TYPE', industryType })) {
+        viable.add(industryType)
       }
-      return viable
-    } catch {
-      return null // fail open — buttons fall back to the machine's can()
     }
+    return viable
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, actorRef, currentPlayer])
+  }, [state, currentPlayer])
 
   // Dry-run the pending confirm on a shadow actor: surfaces the engine's
   // exact refusal BEFORE the player commits, and prices the action all-in
@@ -848,53 +758,35 @@ function GameInner({
     ctx.era,
   ])
 
+  // Every rejected click is answered by the engine's own explainer, so the
+  // player is told what is missing instead of "not legal".
   const onCityClick = (cityId: CityId) => {
     const name = cities[cityId]?.name ?? cityId
-    if (slotOnlyCities?.has(cityId)) {
-      // The machine's guard would accept the slot, but the dry run shows
-      // the build can never be confirmed there — explain instead of
-      // letting the player walk into a dead Confirm step.
-      toast.error(
-        `${name} has a free slot, but the build can't be completed there — no coal/iron within reach, or you can't pay for it.`,
-      )
-      return
-    }
-    if (
-      state.can({ type: 'SELECT_LOCATION', cityId }) &&
-      (legalCities === null || legalCities.has(cityId))
-    ) {
-      send({ type: 'SELECT_LOCATION', cityId })
+    const event = { type: 'SELECT_LOCATION', cityId } as const
+    if (state.can(event)) {
+      send(event)
     } else {
-      toast.error(`${name} is not a legal site for this build.`)
+      toast.error(
+        explainRefusal(state, event) ??
+          `${name} is not a legal site for this build.`,
+      )
     }
   }
 
   const onLinkClick = (from: CityId, to: CityId) => {
-    const conn = connections.find(
-      (c) =>
-        (c.from === from && c.to === to) || (c.from === to && c.to === from),
+    const event = pickingSecondLink
+      ? ({ type: 'SELECT_SECOND_LINK', from, to } as const)
+      : ({ type: 'SELECT_LINK', from, to } as const)
+    if (state.can(event)) {
+      send(event)
+      return
+    }
+    toast.error(
+      explainRefusal(state, event) ??
+        (pickingSecondLink
+          ? 'That route cannot be your second rail.'
+          : 'That route cannot be claimed right now.'),
     )
-    if (conn && !(conn.types as readonly string[]).includes(ctx.era)) {
-      toast.error(
-        ctx.era === 'canal'
-          ? 'That corridor only carries rail — not available in the Canal Era.'
-          : 'That corridor was canal-only — not available in the Rail Era.',
-      )
-      return
-    }
-    if (pickingSecondLink) {
-      if (state.can({ type: 'SELECT_SECOND_LINK', from, to })) {
-        send({ type: 'SELECT_SECOND_LINK', from, to })
-      } else {
-        toast.error('That route cannot be your second rail.')
-      }
-      return
-    }
-    if (state.can({ type: 'SELECT_LINK', from, to })) {
-      send({ type: 'SELECT_LINK', from, to })
-    } else {
-      toast.error('That route cannot be claimed right now.')
-    }
   }
 
   // Selection highlights only belong to a live flow — after an aborted or

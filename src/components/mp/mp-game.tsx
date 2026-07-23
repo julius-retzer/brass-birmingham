@@ -1596,10 +1596,16 @@ function MpTable({
                       const body = (await res.json()) as {
                         ok: boolean
                         view?: GameViewWire
+                        error?: string
                       }
                       // Apply the sender's fresh view (with the new message) at once,
                       // same version-guarded path as an SSE frame.
                       if (body.ok && body.view) applyView(body.view)
+                      // A refusal (rate limit, bad seat) must never look like a
+                      // silent drop — name it, the same way join does.
+                      else if (!body.ok) {
+                        toast.error(body.error ?? 'Could not send the message')
+                      }
                     } catch {
                       toast.error('Could not send the message')
                     }

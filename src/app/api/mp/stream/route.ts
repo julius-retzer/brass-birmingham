@@ -31,6 +31,7 @@ import {
 } from '~/server/mp/game'
 import { acquireStreamSlot, clientIpFrom } from '~/server/mp/rate-limit'
 import { loadGame, loadVersionAndSeq } from '~/server/mp/store'
+import { captureMpError } from '~/server/observability'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -55,7 +56,13 @@ export async function GET(req: NextRequest) {
   const seatId = seatParam === null ? null : Number(seatParam)
   const secret = params.get('secret')
 
-  const game = await loadGame(token).catch(() => null)
+  const game = await loadGame(token).catch((err: unknown) => {
+    // Distinguishable from "no such token": a DB fault here 404s every viewer
+    // of a live game, which is precisely the silent prod break we had no way
+    // of seeing. The client still gets the same 404.
+    captureMpError(err, { route: 'api/mp/stream', token })
+    return null
+  })
   if (!game) return new Response('Game not found', { status: 404 })
 
   // Abuse bound: each stream holds a serverless slot for up to 290s and polls
@@ -97,6 +104,21 @@ export async function GET(req: NextRequest) {
       let lastVersion = -1
       let lastSeq = 0
       let pollTimer: ReturnType<typeof setTimeout> | undefined
+      // The loop ticks every ~1.2s for up to 290s: a sustained DB outage would
+      // otherwise mint ~240 identical events per stream per IP. Report the
+      // FIRST failure of each stream and stay quiet after that.
+      let reportedFailure = false
+      const reportOnce = (err: unknown, where: string) => {
+        if (reportedFailure) return
+        reportedFailure = true
+        captureMpError(err, {
+          route: `api/mp/stream:${where}`,
+          token,
+          seatId,
+          phase: game.phase,
+          extra: { lastVersion, lastSeq },
+        })
+      }
 
       const write = (chunk: string) => {
         if (!open) return
@@ -160,8 +182,11 @@ export async function GET(req: NextRequest) {
               }
             }
           })
-          .catch(() => {
-            // a transient load/filter error must not break the pipe
+          .catch((err: unknown) => {
+            // a transient load/filter error must not break the pipe, but a
+            // persistent one means this viewer has silently stopped receiving
+            // state — report the first occurrence per stream.
+            reportOnce(err, 'sync')
           })
         return syncing
       }
@@ -180,8 +205,9 @@ export async function GET(req: NextRequest) {
         try {
           void kickAiTurns(token)
           await syncNow()
-        } catch {
+        } catch (err) {
           // a transient DB blip must not kill the stream; next tick retries
+          reportOnce(err, 'poll')
         }
         if (open) pollTimer = setTimeout(() => void poll(), POLL_INTERVAL_MS)
       }

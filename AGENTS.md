@@ -815,6 +815,53 @@ What this means in practice:
   action's built-in default `claude-sonnet-4-20250514` 404s (id no longer
   served). Bump this when the model id changes.
 
+## Error tracking — Sentry (added 2026-07-23)
+
+- `@sentry/nextjs` is PINNED EXACT at 10.67.0. Next 16 support landed in
+  **10.20.0** (that release widened `peerDependencies.next` to include
+  `^16.0.0-0`); verify with `npm view @sentry/nextjs@<v> peerDependencies.next`
+  before bumping, and never force-install past a peer error.
+- Wiring is the standard Next 15+/16 layout, all at the repo ROOT:
+  `instrumentation.ts` (`register()` + `onRequestError`), `sentry.server.config.ts`,
+  `sentry.edge.config.ts`, `instrumentation-client.ts` (+
+  `onRouterTransitionStart`). `next.config.js` is wrapped in `withSentryConfig`
+  (tunnel `/monitoring-tunnel`, source-map upload, `silent` unless a token).
+  The tunnel is a REWRITE, not a route — it never shows in the `next build`
+  route table; check `.next/routes-manifest.json` `rewrites.afterFiles`.
+- ALL init options live in ONE place, `src/lib/sentry-options.ts` — the three
+  runtimes only spread it, so scrubbing/sampling cannot drift between them.
+  Its callbacks are typed as identity generics (`<T>(e: T): T`) on purpose:
+  that is what makes one implementation satisfy the SDK's three different
+  callback signatures without this module importing a Sentry type.
+- SECURITY: `src/lib/sentry-scrub.ts` is the `beforeSend` body and the ONLY
+  gate. It drops request headers/cookies/bodies wholesale and deep-scrubs
+  URLs, query strings, messages, exceptions, tags, extra, contexts and
+  breadcrumbs. The GAME TOKEN is deliberately kept (it is the identifier, not a
+  credential); seat/host secrets, `CRON_SECRET` and auth tokens are redacted —
+  note the SSE stream takes `?seat=&secret=` so URLs leak if unscrubbed. NO
+  Session Replay, no profiling, `sendDefaultPii:false`, 1% traces. Pinned by
+  `sentry-scrub.test.ts` (unit) AND `sentry-wire.test.ts`, which boots a real
+  `NodeClient` against a localhost ingest server and asserts the RAW ENVELOPE
+  BYTES. Any new context field must be proven there in the same commit.
+- CAPTURE SITES all go through `captureMpError` (`src/server/observability.ts`),
+  which always writes a structured `[mp] <route> failed` console line (works
+  with no DSN — the local/CI/preview default) and reports with tags
+  `route`/`mp.token`/`mp.phase`/`mp.seat`/`mp.event`. Wired into the act, join,
+  create, start and stream routes, `broadcast`/`kickAiTurns`/`runAiTurns`,
+  `store.saveGame`, and the deploy migration (`scripts/vercel-migrate.mjs`).
+  A route captures only when `isExpectedMpError` (`src/server/mp/expected-errors.ts`)
+  says no — user-facing refusals ('No open seats', 'Game not found') are the
+  product working and must not burn the free tier. Add a NEW refusal string to
+  that list in the same commit that throws it.
+- The SDK is imported LAZILY inside `captureMpError` and only when a DSN is
+  set, so DSN-less runs (every test) never load it.
+- Env: `NEXT_PUBLIC_SENTRY_DSN` (build + runtime; missing ⇒ no-op, everything
+  still builds and runs) and the BUILD-ONLY `SENTRY_AUTH_TOKEN`/`SENTRY_ORG`/
+  `SENTRY_PROJECT` for source maps. All optional in `src/env.js`, documented in
+  `.env.example`.
+- GOTCHA: `pnpm test`'s glob now includes `src/lib/*.test.ts` — it did not
+  before, so a test placed there used to be silently skipped by CI.
+
 ## Analytics (added 2026-07-17)
 
 - TRAFFIC = Vercel Web Analytics: `<Analytics/>` from `@vercel/analytics/next`

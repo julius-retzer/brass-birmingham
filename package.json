@@ -23,8 +23,8 @@
     "typecheck": "tsc --noEmit",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
-    "test": "vitest run src/store/gameStore.*.test.ts src/data/*.test.ts src/components/*.test.ts src/components/mp/*.test.ts src/server/ai/*.test.ts src/server/db/*.test.ts src/server/mp/*.test.ts scripts/*.test.ts",
-    "test:watch": "vitest src/store/gameStore.*.test.ts src/data/*.test.ts src/components/*.test.ts src/components/mp/*.test.ts src/server/ai/*.test.ts src/server/db/*.test.ts src/server/mp/*.test.ts scripts/*.test.ts",
+    "test": "vitest run src/store/gameStore.*.test.ts src/data/*.test.ts src/lib/*.test.ts src/components/*.test.ts src/components/mp/*.test.ts src/server/ai/*.test.ts src/server/db/*.test.ts src/server/mp/*.test.ts scripts/*.test.ts",
+    "test:watch": "vitest src/store/gameStore.*.test.ts src/data/*.test.ts src/lib/*.test.ts src/components/*.test.ts src/components/mp/*.test.ts src/server/ai/*.test.ts src/server/db/*.test.ts src/server/mp/*.test.ts scripts/*.test.ts",
     "test:all": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
@@ -32,6 +32,7 @@
     "@anthropic-ai/sdk": "^0.113.0",
     "@libsql/client": "^0.9.0",
     "@neondatabase/serverless": "^1.1.0",
+    "@sentry/nextjs": "10.67.0",
     "@t3-oss/env-nextjs": "^0.13.11",
     "@vercel/analytics": "^2.0.1",
     "@vercel/functions": "^3.7.5",
@@ -72,6 +73,9 @@
   },
   "ct3aMetadata": {
     "initVersion": "7.38.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@sentry/cli"]
   },
   "packageManager": "pnpm@10.4.1"
 }

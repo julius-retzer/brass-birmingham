@@ -92,6 +92,8 @@ interface GameViewWire {
   phase: 'lobby' | 'playing' | 'over'
   version: number
   you: number | null
+  /** seat currently holding host powers (usually 0; transfers if 0 is vacated) */
+  hostSeatId: number | null
   seats: SeatView[]
   snapshot: unknown | null
   messages?: ChatMessageWire[]
@@ -480,7 +482,8 @@ function LobbyScreen({
   creds: Creds | null
 }) {
   const [busy, setBusy] = useState(false)
-  const isHost = view.you === 0
+  const isHost = view.you !== null && view.you === view.hostSeatId
+  const isSeated = view.you !== null
   const mySeat =
     view.you !== null
       ? view.seats.find((s) => s.seatId === view.you)
@@ -658,7 +661,7 @@ function LobbyScreen({
         </div>
       )}
 
-      {isHost && creds && (
+      {isSeated && creds && (
         <SeatsButton token={token} creds={creds} seats={view.seats} />
       )}
 
@@ -672,8 +675,10 @@ function LobbyScreen({
   )
 }
 
-/** Host-only: release a seat whose owner lost their secret so it can be
- *  re-claimed from the join screen. */
+/** Any seated player: release a seat whose owner lost their secret (including
+ *  the host seat) so it can be re-claimed from the join screen. This is the
+ *  recovery path for a host who cleared their browser storage — a peer frees
+ *  seat 0 and the host claims it again. */
 function SeatsButton({
   token,
   creds,
@@ -726,7 +731,7 @@ function SeatsButton({
               <span className="truncate">
                 {s.claimed ? (s.name ?? '—') : 'open'}
               </span>
-              {s.seatId !== 0 && s.claimed && (
+              {s.claimed && s.kind !== 'ai' && s.seatId !== creds.seatId && (
                 <button
                   type="button"
                   className="bb2-ghost-btn ml-auto !px-2 !py-1 text-[10px]"
@@ -742,8 +747,8 @@ function SeatsButton({
             className="text-[10.5px]"
             style={{ color: 'rgba(231,215,177,.45)' }}
           >
-            Release a seat if its player lost their link or browser — they can
-            then claim it again from the invite link.
+            Release a seat if its player lost their link or browser — even the
+            host's — so they can claim it again from the invite link.
           </p>
         </div>
       )}
@@ -1342,7 +1347,7 @@ function MpTable({
                 🔔 Turn alerts
               </button>
             )}
-            {you === 0 && (
+            {you !== null && (
               <SeatsButton token={token} creds={creds} seats={view.seats} />
             )}
             <ShareLink className="max-w-[52vw] sm:max-w-[240px] lg:max-w-none" />

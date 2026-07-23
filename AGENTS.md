@@ -1229,11 +1229,23 @@ When updating this file, preserve this bar for all agents and keep entries conci
   secrets, full lobbies excluded). Pinned: lobby lifecycle + race/capacity
   guards in `gameStore.multiplayer.test.ts`; e2e `lobby-browser.spec.ts` +
   the ready/start steps in `multiplayer.spec.ts`/`mp-playthrough.spec.ts`.
-- Seat reclaim: refresh re-authenticates from localStorage; a LOST secret
-  is recovered via the host-only "Seats" → Release, then re-claim from the
-  invite link. GOTCHA: only the credentialed SSE stream may clear creds on
-  `you: null` — a late frame from the previous unauthenticated stream must
-  not wipe freshly-claimed credentials (race fixed 2026-07-13).
+- Seat reclaim + host-lockout recovery (model c+d, 2026-07-23): refresh
+  re-authenticates from localStorage; a LOST secret is recovered via "Seats"
+  → Release, then re-claim from the invite link. `releaseSeat` is authorized
+  by the ACTOR's OWN seat secret (ANY genuinely seated human — `seatBySecret`
+  in `server/mp/game.ts`), NOT the host secret, and may free ANY seat
+  INCLUDING seat 0 — so a host who cleared their storage no longer bricks the
+  table: a peer releases seat 0, the host re-claims it fresh. `effectiveHostSeat`
+  transfers host powers (only `startGame` remains host-gated) to the next
+  seated human while seat 0 is VACATED (the server can't detect a lost secret
+  on a still-`claimed` seat, so recovery is release-then-transfer). Exposed on
+  the wire as `GameView.hostSeatId`; both shells gate the Seats button on
+  "seated" and the lobby Start/host UI on `you === hostSeatId`. A stranger with
+  no valid seat secret is refused (negative test). Pinned by the recovery +
+  stranger + host-transfer tests in `gameStore.multiplayer.test.ts`. GOTCHA:
+  only the credentialed SSE stream may clear creds on `you: null` — a late
+  frame from the previous unauthenticated stream must not wipe freshly-claimed
+  credentials (race fixed 2026-07-13).
 - In-flight "syncing" indicator (2026-07-15): because there is NO optimistic
   UI, `mp/use-in-flight.ts` tracks each intent from `send()`'s POST until its
   settling SSE frame. An intent is settled when a frame arrives with a

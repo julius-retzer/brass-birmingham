@@ -55,6 +55,37 @@ function secretMatches(secret: string, secretHash: string | null): boolean {
   return a.length === b.length && timingSafeEqual(a, b)
 }
 
+/**
+ * The human seat whose OWN secret the caller presents, or undefined if the
+ * secret matches no seat. This authorizes an actor as a genuinely seated
+ * player WITHOUT requiring the host secret — the recovery primitive: a
+ * locked-out host has lost the host secret, so any seated peer must be able to
+ * act on their own credential instead.
+ */
+function seatBySecret(
+  game: GameRecord,
+  secret: string,
+): SeatRecord | undefined {
+  return game.seats.find(
+    (s) => s.kind !== 'ai' && secretMatches(secret, s.secretHash),
+  )
+}
+
+/**
+ * The seat that holds host powers (start the game, and — before recovery
+ * landed — release seats). Normally seat 0. If seat 0 is VACATED (never
+ * claimed, or released by a peer after its owner lost their browser storage),
+ * the powers pass to the next seated human so a table is never left without a
+ * host. NOTE the server cannot detect a *lost* secret on a still-claimed seat,
+ * so recovering a bricked host is two steps: a seated peer releases seat 0
+ * (any seated player may, see releaseSeat), THEN host powers transfer here.
+ */
+export function effectiveHostSeat(game: GameRecord): SeatRecord | undefined {
+  const host = game.seats[0]
+  if (host?.claimed && host.kind !== 'ai') return host
+  return game.seats.find((s) => s.kind !== 'ai' && s.claimed)
+}
+
 /* ---------------- HMR-safe singletons ---------------- */
 
 type Listener = () => void
@@ -165,6 +196,10 @@ export interface GameView {
   phase: GameRecord['phase']
   version: number
   you: number | null
+  /** the seat that currently holds host powers (start the game, release seats).
+   *  Normally seat 0; passes to the next seated human if seat 0 is vacated so
+   *  host powers never die with a lost seat-0 secret (see effectiveHostSeat). */
+  hostSeatId: number | null
   seats: SeatView[]
   /** per-seat filtered engine snapshot; null until seated & playing */
   snapshot: unknown | null
@@ -311,6 +346,7 @@ export function viewFor(
     phase: game.phase,
     version: game.version,
     you: authed ? seatId : null,
+    hostSeatId: effectiveHostSeat(game)?.seatId ?? null,
     seats: seatViews(game),
     snapshot:
       authed && game.snapshot !== null
@@ -532,7 +568,10 @@ export async function startGame(
   return withGameLock(token, async () => {
     const game = await loadGame(token)
     if (!game) return { ok: false, error: 'Game not found' }
-    const host = game.seats[0]
+    // Host powers transfer: the effective host is seat 0, or the next seated
+    // human if seat 0 was vacated. A lobby whose host walked away is still
+    // startable by the inherited host.
+    const host = effectiveHostSeat(game)
     if (!host || !secretMatches(hostSecret, host.secretHash)) {
       return { ok: false, error: 'Only the host can start the game' }
     }
@@ -559,30 +598,39 @@ export async function startGame(
     void kickAiTurns(token)
     return {
       ok: true,
-      view: viewFor(game, 0, hostSecret),
+      view: viewFor(game, host.seatId, hostSecret),
       version: game.version,
     }
   })
 }
 
+/**
+ * Free a seat so it can be re-claimed from the invite link. Recovery model
+ * (c): authorized by the ACTOR's OWN seat secret (any genuinely seated human),
+ * NOT the host secret — which is exactly what a locked-out host has lost. Any
+ * seated player may release ANY seat, INCLUDING the host seat 0: that is the
+ * only path by which a table whose host cleared their browser storage can be
+ * un-bricked (a peer releases seat 0, the host re-claims it with a fresh
+ * secret, and — until they do — host powers transfer to the peer, see
+ * effectiveHostSeat). A stranger with no valid seat secret is refused.
+ */
 export async function releaseSeat(
   token: string,
-  hostSecret: string,
+  actorSecret: string,
   targetSeatId: number,
 ): Promise<void> {
   return withGameLock(token, async () => {
     const game = await loadGame(token)
     if (!game) throw new Error('Game not found')
-    const host = game.seats[0]
-    if (!host || !secretMatches(hostSecret, host.secretHash)) {
-      throw new Error('Only the host can release a seat')
-    }
-    if (targetSeatId === 0) throw new Error('The host seat cannot be released')
+    const actor = seatBySecret(game, actorSecret)
+    if (!actor) throw new Error('You are not seated at this table')
     const seat = game.seats[targetSeatId]
     if (!seat) throw new Error('No such seat')
     if (seat.kind === 'ai') throw new Error('AI seats cannot be released')
+    if (!seat.claimed) throw new Error('That seat is already open')
     seat.claimed = false
     seat.secretHash = null
+    seat.ready = false
     // the engine player's name is fixed after START_GAME; the seat is
     // simply re-claimable by a new secret
     game.version++

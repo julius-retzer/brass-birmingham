@@ -317,17 +317,95 @@ describe('multiplayer: lifecycle and authority', () => {
     expect(res.view.messages.at(-1)?.text).toBe('well played')
   })
 
-  test('host can release a seat; a new player reclaims it', async () => {
+  test('a seated player can release a seat; a new player reclaims it', async () => {
     const { host } = await freshGame()
+    // A stranger with no valid seat secret is refused (negative guard).
     await expect(
       releaseSeat(host.token, 'wrong-secret-aaaaaaaa', 1),
-    ).rejects.toThrow(/host/)
+    ).rejects.toThrow(/not seated/i)
     await releaseSeat(host.token, host.seatSecret, 1)
     const rejoined = await joinGame(host.token, 'Watt')
     expect(rejoined.seatId).toBe(1)
     const view = await getGameView(host.token, 1, rejoined.seatSecret)
     expect(view?.you).toBe(1)
     expect(view?.snapshot).toBeTruthy()
+  })
+
+  // Recovery model (c)+(d): a host who loses their browser storage no longer
+  // bricks the table. This is the exact repro from the multiplayer-gaps report
+  // (host runs `localStorage.clear()` mid-game) turned into a regression test —
+  // seat 0's secret is unrecoverable, but a seated peer frees the seat and the
+  // host re-claims it fresh, host powers transferring in the meantime.
+  test('a locked-out host is recovered by a seated peer (release seat 0 + reclaim)', async () => {
+    const { host, guest } = await freshGame()
+
+    // The game is live and it is seat 0's turn.
+    const before = await getGameView(host.token, 0, host.seatSecret)
+    expect(before?.phase).toBe('playing')
+    expect(before?.hostSeatId).toBe(0)
+
+    // Host clears storage: the seat-0 secret is GONE. `host.seatSecret` is now
+    // a value nobody holds. The seat is still `claimed` server-side (the server
+    // can't detect a lost secret), so seat 0 cannot act and — before this fix —
+    // could never be released. The peer (guest, seat 1) recovers it with THEIR
+    // OWN secret, not the lost host secret.
+    await releaseSeat(host.token, guest.seatSecret, 0)
+
+    // Host powers transfer to the next seated human while seat 0 sits open.
+    const afterRelease = await getGameView(host.token, 1, guest.seatSecret)
+    expect(afterRelease?.hostSeatId).toBe(1)
+    expect(afterRelease?.seats[0]!.claimed).toBe(false)
+
+    // The locked-out host re-claims seat 0 from the invite link with a FRESH
+    // secret; the game is playable again and host powers return to seat 0.
+    const reclaimed = await joinGame(host.token, 'Ada')
+    expect(reclaimed.seatId).toBe(0)
+    const recovered = await getGameView(host.token, 0, reclaimed.seatSecret)
+    expect(recovered?.you).toBe(0)
+    expect(recovered?.hostSeatId).toBe(0)
+    expect(recovered?.snapshot).toBeTruthy()
+    // The old (lost) secret is dead; the fresh one authenticates.
+    const stale = await getGameView(host.token, 0, host.seatSecret)
+    expect(stale?.you).toBeNull()
+  })
+
+  // Negative: a non-seated actor (no valid secret at ANY seat) can neither
+  // release a seat nor seize host powers. Only genuinely seated players recover.
+  test('a stranger cannot release seats or seize host powers', async () => {
+    const { host } = await freshGame()
+    await expect(
+      releaseSeat(host.token, 'not-a-real-secret-xx', 0),
+    ).rejects.toThrow(/not seated/i)
+    // seat 0 stays claimed and the host keeps host powers
+    const view = await getGameView(host.token, 0, host.seatSecret)
+    expect(view?.seats[0]!.claimed).toBe(true)
+    expect(view?.hostSeatId).toBe(0)
+  })
+
+  // (d) in the lobby: if the host vacates before start, the inherited host can
+  // still start the game — host power does not die with a vacated seat 0.
+  test('host transfer lets the next seated player start when seat 0 is vacated', async () => {
+    const host = await createGame('Ada', 2)
+    const guest = await joinGame(host.token, 'Brunel')
+    await setSeatReady(host.token, 0, host.seatSecret, true)
+    await setSeatReady(host.token, guest.seatId, guest.seatSecret, true)
+
+    // The host leaves the lobby: the guest (seat 1) frees seat 0.
+    await releaseSeat(host.token, guest.seatSecret, 0)
+
+    // The old host secret can no longer start; guests aren't blocked as before.
+    const staleStart = await startGame(host.token, host.seatSecret)
+    expect(staleStart.ok).toBe(false)
+
+    // Not everyone is ready/claimed after the release, so start still refuses —
+    // but with the readiness reason, proving the guest is AUTHORIZED as host.
+    const guestStart = await startGame(host.token, guest.seatSecret)
+    expect(guestStart.ok).toBe(false)
+    if (!guestStart.ok) {
+      expect(guestStart.error).not.toMatch(/host/i)
+    }
+    const lobby = await getGameView(host.token, 1, guest.seatSecret)
+    expect(lobby?.hostSeatId).toBe(1)
   })
 })
 

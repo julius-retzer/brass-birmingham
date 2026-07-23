@@ -478,11 +478,20 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   the tint, the glyph keeps surface ink. Board tile faces use the SAME base
   hexes (`INDUSTRY_FILL`/`INDUSTRY_INK`, `board-map.tsx`). On-tile resource
   markers share one 1px parchment keyline `#f2e6c8` (cubes + merchant beer
-  barrel); a tier holding >5 cubes (only Iron Works IV) collapses to a count
-  numeral. DELIBERATE interim split: iron's on-tile CUBE fill stays orange
+  barrel). Cube LAYOUT deliberately differs by surface: the board (`BuiltTile`)
+  keeps a single column and collapses >5 cubes (only Iron Works IV) to a count
+  numeral; the player MAT (`player-ledger.tsx` `MatTileArt`) draws EVERY cube in
+  a two-wide grid (captain's call, 2026-07-23) so six fit the face. Do not
+  re-unify them. DELIBERATE interim split: iron's on-tile CUBE fill stays orange
   `#d07135` while the tile FACE is steel `#8a939b` — the market-vs-tile iron
   hue reconcile is a separate follow-up, so do NOT "fix" the cube to match the
   face.
+- MAT QUANTITY IS A STACK, NEVER A NUMERAL (captain's call, 2026-07-23, after
+  rejecting a `×N` badge twice): `MatTileArt`'s `depth` prop draws each buried
+  tile as a darkened cardboard edge below the face (catch-lit so it survives
+  coal's near-black fill), slots bottom-align so piles rest on the mat surface.
+  Do not reintroduce any count numeral on a mat tile; counts may appear only in
+  the docked readout text / aria-label.
 - The board is a custom SVG (`board/board-map.tsx`, geometry hand-tuned in
   `board-data.ts`) — NOT React Flow. Legal targets come from `state.can(...)`
   sets computed in `game.tsx`; the map dims illegal plates/routes and

@@ -26,7 +26,9 @@ import {
 
 /* ---------------- palette (mirrors theme.css) ---------------- */
 
-const INDUSTRY_FILL: Record<IndustryType, string> = {
+// Board-tile face colours — shared with the player mat (player-ledger.tsx)
+// so the mat's tiles match what sits on the map.
+export const INDUSTRY_FILL: Record<IndustryType, string> = {
   cotton: '#ddd2b6',
   coal: '#4a463f',
   iron: '#8a939b',
@@ -34,7 +36,7 @@ const INDUSTRY_FILL: Record<IndustryType, string> = {
   pottery: '#d29a72',
   brewery: '#7c3b47',
 }
-const INDUSTRY_INK: Record<IndustryType, string> = {
+export const INDUSTRY_INK: Record<IndustryType, string> = {
   cotton: '#2a2014',
   coal: '#e7d7b1',
   iron: '#16130f',

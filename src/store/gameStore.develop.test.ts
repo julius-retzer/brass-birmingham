@@ -1,7 +1,9 @@
 // Develop Actions Tests - Industry development and resource consumption
 import { afterEach, describe, expect, test } from 'vitest'
 import { createActor } from 'xstate'
+import type { IndustryType } from '~/data/cards'
 import { gameStore } from './gameStore'
+import { explainRefusal } from './refusal'
 
 // Track actors for cleanup
 let activeActors: ReturnType<typeof createActor>[] = []
@@ -390,10 +392,14 @@ describe('Game Store - Develop Actions', () => {
     // Test skipped - needs proper tile management implementation
   })
 
-  test('develop action - pottery with lightbulb icon cannot be developed', () => {
+  test('develop action - pottery whose lowest tile is a lightbulb cannot be developed at all', () => {
     // A fresh game already seeds every player with the full pottery set
-    // (pottery_1..5, with levels 1 and 3 flagged hasLightbulbIcon), so no
-    // special TEST_SET_PLAYER_STATE plumbing is needed.
+    // (pottery_1..5, with levels 1 and 3 flagged hasLightbulbIcon), so
+    // pottery_1 (lightbulb) is the LOWEST tile on the mat. Develop always
+    // removes the lowest tile, and a lightbulb Pottery may never be developed
+    // (rulebook p.7) — so the whole pottery track is off-limits until
+    // pottery_1 is BUILT away. The engine must NOT skip past it to the next
+    // non-lightbulb tile (that would be a free Develop — the captain's bug).
     const { actor } = setupGame()
 
     const potteryQuantity = (level: number) =>
@@ -406,30 +412,89 @@ describe('Game Store - Develop Actions', () => {
     expect(potteryQuantity(1)).toBe(1)
     expect(potteryQuantity(3)).toBe(1)
 
-    // Perform develop action
     actor.send({ type: 'DEVELOP' })
-
-    // Select a card to pay for the develop action
     const card = actor.getSnapshot().context.players[0]!.hand[0]!
     actor.send({ type: 'SELECT_CARD', cardId: card.id })
 
-    // Deliberately try to develop two pottery tiles - if unguarded, this
-    // would hit the lowest-level tile (pottery_1) first.
+    // The guard refuses a pottery develop, naming the lightbulb reason, and
+    // never offers levels II/IV while level I sits on the mat.
+    const one = {
+      type: 'SELECT_TILES_FOR_DEVELOP' as const,
+      industryTypes: ['pottery'] as IndustryType[],
+    }
+    const two = {
+      type: 'SELECT_TILES_FOR_DEVELOP' as const,
+      industryTypes: ['pottery', 'pottery'] as IndustryType[],
+    }
+    expect(actor.getSnapshot().can(one)).toBe(false)
+    expect(actor.getSnapshot().can(two)).toBe(false)
+    expect(explainRefusal(actor.getSnapshot() as never, one as never)).toMatch(
+      /lightbulb/i,
+    )
+
+    // Even if the (illegal) event is forced through, no pottery tile moves.
+    actor.send(two)
+    actor.send({ type: 'CONFIRM' })
+
+    expect(potteryQuantity(1)).toBe(1)
+    expect(potteryQuantity(2)).toBe(1)
+    expect(potteryQuantity(3)).toBe(1)
+    expect(potteryQuantity(4)).toBe(1)
+  })
+
+  test('develop action - after pottery I is gone, only II is developable; III (lightbulb) blocks a second pick', () => {
+    // Simulate pottery_1 having been built off the mat: level II becomes the
+    // lowest tile (developable), but level III is a lightbulb, so a two-tile
+    // pottery develop is refused — lowest-first still holds for the 2nd tile.
+    const { actor } = setupGame()
+    const idx = actor.getSnapshot().context.currentPlayerIndex
+    const mat = actor.getSnapshot().context.players[idx]!.industryTilesOnMat
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: idx,
+      industryTilesOnMat: {
+        ...mat,
+        pottery: (mat.pottery ?? []).map((t) =>
+          t.tile.level === 1 ? { ...t, quantityAvailable: 0 } : t,
+        ),
+      },
+    } as never)
+
+    const potteryQuantity = (level: number) =>
+      actor
+        .getSnapshot()
+        .context.players[idx]!.industryTilesOnMat.pottery.find(
+          (t) => t.tile.level === level,
+        )!.quantityAvailable
+
+    actor.send({ type: 'DEVELOP' })
+    const card = actor.getSnapshot().context.players[idx]!.hand[0]!
+    actor.send({ type: 'SELECT_CARD', cardId: card.id })
+
+    expect(
+      actor.getSnapshot().can({
+        type: 'SELECT_TILES_FOR_DEVELOP',
+        industryTypes: ['pottery'],
+      }),
+    ).toBe(true)
+    expect(
+      actor.getSnapshot().can({
+        type: 'SELECT_TILES_FOR_DEVELOP',
+        industryTypes: ['pottery', 'pottery'],
+      }),
+    ).toBe(false)
+
     actor.send({
       type: 'SELECT_TILES_FOR_DEVELOP',
-      industryTypes: ['pottery', 'pottery'],
+      industryTypes: ['pottery'],
     })
     actor.send({ type: 'CONFIRM' })
 
-    const snapshot = actor.getSnapshot()
-    expect(snapshot.context.lastError).toBeNull()
-
-    // Lightbulb tiles (levels 1 and 3) must remain untouched; the engine
-    // must skip past them to the next non-lightbulb tiles instead.
-    expect(potteryQuantity(1)).toBe(1)
-    expect(potteryQuantity(3)).toBe(1)
+    expect(actor.getSnapshot().context.lastError).toBeNull()
+    // Level II (the true lowest developable) was removed; III stays.
     expect(potteryQuantity(2)).toBe(0)
-    expect(potteryQuantity(4)).toBe(0)
+    expect(potteryQuantity(3)).toBe(1)
+    expect(potteryQuantity(4)).toBe(1)
   })
 
   test('develop action - can develop 1 or 2 tiles consuming 1 iron each', () => {

@@ -131,16 +131,15 @@ export function stagedRemovals(
     level: number
   }> = []
   for (const type of staged) {
-    const next = [...(mat[type] ?? [])]
+    // The TRUE lowest tile still on the mat is the only removal target — a
+    // lightbulb-lowest track scraps nothing (never skip up to a higher tile).
+    // Mirrors the executor's getDevelopableTileOnMat exactly.
+    const lowest = [...(mat[type] ?? [])]
       .sort((a, b) => a.tile.level - b.tile.level)
-      .find(
-        (t) =>
-          isDevelopable(t.tile) &&
-          t.quantityAvailable - (taken.get(t.tile.id) ?? 0) > 0,
-      )
-    if (!next) continue
-    taken.set(next.tile.id, (taken.get(next.tile.id) ?? 0) + 1)
-    removals.push({ type, tileId: next.tile.id, level: next.tile.level })
+      .find((t) => t.quantityAvailable - (taken.get(t.tile.id) ?? 0) > 0)
+    if (!lowest || !isDevelopable(lowest.tile)) continue
+    taken.set(lowest.tile.id, (taken.get(lowest.tile.id) ?? 0) + 1)
+    removals.push({ type, tileId: lowest.tile.id, level: lowest.tile.level })
   }
   return removals
 }

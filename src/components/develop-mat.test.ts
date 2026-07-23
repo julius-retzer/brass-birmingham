@@ -188,14 +188,19 @@ describe('stagedRemovals — the preview of which tiles peel off', () => {
     ])
   })
 
-  test('lightbulb pottery is skipped — the pick lands on the level 2', () => {
-    expect(stagedRemovals(mat, ['pottery'])).toEqual([
-      { type: 'pottery', tileId: 'pottery_2', level: 2 },
-    ])
+  test('a lightbulb-lowest pottery track previews NO removal (never skips up)', () => {
+    // pottery_1 (lightbulb) is the lowest tile → the whole track is off-limits
+    // to Develop until it is built away. Peeling pottery_2 past it was the bug.
+    expect(stagedRemovals(mat, ['pottery'])).toEqual([])
   })
 
-  test('quantity is respected: a second pick of the same tile id needs stock', () => {
-    expect(stagedRemovals(mat, ['pottery', 'pottery'])).toEqual([
+  test('once the lightbulb bottom is gone, the pick lands on the new lowest', () => {
+    const built = {
+      pottery: mat.pottery.map((t) =>
+        t.tile.id === 'pottery_1' ? { ...t, quantityAvailable: 0 } : t,
+      ),
+    }
+    expect(stagedRemovals(built, ['pottery'])).toEqual([
       { type: 'pottery', tileId: 'pottery_2', level: 2 },
     ])
   })

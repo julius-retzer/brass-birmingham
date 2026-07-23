@@ -98,14 +98,41 @@ describe('canSelectTilesForDevelop — the per-tile legality guard', () => {
     expect(s.can(pickEvent(['coal', 'iron', 'cotton']))).toBe(false)
   })
 
-  test('pottery with non-lightbulb tiles remaining is developable — twice', () => {
+  test('fresh-mat pottery is NOT developable — its lowest tile is a lightbulb', () => {
     const { actor } = setupGame()
     enterTileStep(actor)
-    // The fresh mat holds pottery 1 (lightbulb), 2, 3 (lightbulb), 4, 5 —
-    // three developable tiles, so one or two pottery picks are legal.
+    // The fresh mat holds pottery 1 (lightbulb), 2, 3 (lightbulb), 4, 5.
+    // Develop always removes the LOWEST tile, and pottery 1 is a lightbulb
+    // that may only be BUILT away (rulebook p.7) — so the whole track is
+    // off-limits to Develop and levels II/IV are never offered while I is
+    // still on the mat (the captain's reported bug).
+    const s = snap(actor)
+    expect(s.can(pickEvent(['pottery']))).toBe(false)
+    expect(s.can(pickEvent(['pottery', 'pottery']))).toBe(false)
+    expect(explainRefusal(s as never, pickEvent(['pottery']) as never)).toMatch(
+      /lightbulb/i,
+    )
+  })
+
+  test('once pottery I is built away, II is developable but III (lightbulb) caps it at one', () => {
+    const { actor } = setupGame()
+    const idx0 = snap(actor).context.currentPlayerIndex
+    const mat = snap(actor).context.players[idx0]!.industryTilesOnMat
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: idx0,
+      industryTilesOnMat: {
+        ...mat,
+        pottery: (mat.pottery ?? []).map(
+          (t: { tile: { level: number }; quantityAvailable: number }) =>
+            t.tile.level === 1 ? { ...t, quantityAvailable: 0 } : t,
+        ),
+      },
+    } as never)
+    enterTileStep(actor)
     const s = snap(actor)
     expect(s.can(pickEvent(['pottery']))).toBe(true)
-    expect(s.can(pickEvent(['pottery', 'pottery']))).toBe(true)
+    expect(s.can(pickEvent(['pottery', 'pottery']))).toBe(false)
   })
 
   test('an industry whose only remaining tiles are lightbulb pottery is refused, with the rulebook reason', () => {

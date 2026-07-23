@@ -10,12 +10,20 @@
 // in practice these counters do bite.
 //
 // Two primitives, both pure and unit-tested:
-//   • fixed-window counter  — bounds game CREATION per IP
+//   • fixed-window counter  — bounds game CREATION, seat JOINs and CHAT per IP
 //   • concurrent-slot gauge — bounds simultaneously OPEN SSE streams per IP
 //
 // Neither identifies anyone beyond an IP bucket, and both defaults are picked
 // generously so no legitimate table (≤4 players, a handful of lobbies) ever
 // hits them.
+//
+// COVERAGE IS DELIBERATE. Only the endpoints an UNAUTHENTICATED stranger can
+// reach are limited: create, stream, join and chat. `act`/`ready`/`start`/
+// `release` all demand a valid per-seat secret (128-bit, handed out only by a
+// successful join), so they are not a stranger-reachable surface — and join,
+// which is the gate to getting such a secret, IS limited here. Chat needs a
+// seat too, but it is the one authenticated endpoint whose cost is per-MESSAGE
+// spam rather than per-seat, so it gets its own bucket.
 
 /* ---------------- tunable thresholds ---------------- */
 
@@ -34,6 +42,36 @@ export const CREATE_LIMIT_WINDOW_MS = 60 * 60 * 1000
  * + ~88 Neon queries/min each from one address. Tune here.
  */
 export const STREAM_CAP_PER_IP = 24
+
+/**
+ * Seat JOINs allowed per IP per window. This is the lobby-SQUATTING brake:
+ * public lobby tokens are handed out by `GET /api/mp/lobbies`, so a stranger
+ * can harvest every token and claim every open seat at one HTTP request each.
+ *
+ * Sized so a real household never notices. A whole 4-player table filling up
+ * from behind ONE NAT is 4 joins; add re-joins after a refresh, a dropped
+ * connection or a release-and-reclaim and a heavy games night is still well
+ * inside 40 per 10 minutes. An abuser gets 40 seats per 10 min per instance
+ * instead of unbounded. Tune here.
+ */
+export const JOIN_LIMIT_MAX = 40
+export const JOIN_LIMIT_WINDOW_MS = 10 * 60 * 1000
+
+/**
+ * Chat messages allowed per SEAT per window. A seat secret is required to
+ * chat, so this bounds spam from a legitimately seated player (or a leaked
+ * secret) rather than a stranger. 30 messages/minute is far past conversation
+ * pace — roughly one every two seconds, sustained. Tune here.
+ */
+export const CHAT_SEAT_LIMIT_MAX = 30
+export const CHAT_LIMIT_WINDOW_MS = 60 * 1000
+
+/**
+ * Chat messages allowed per IP per window, over the same window. Four players
+ * behind one NAT each chatting at the per-seat ceiling would be 120, so this
+ * only bites when a single address is driving many seats at once. Tune here.
+ */
+export const CHAT_IP_LIMIT_MAX = 120
 
 /** Hard bound on tracked keys so a scan of many IPs can't grow memory forever. */
 export const MAX_TRACKED_KEYS = 10_000
@@ -129,9 +167,14 @@ export function clientIpFrom(req: Request): string {
 const g = globalThis as unknown as {
   __bbCreateWindow?: Map<string, WindowEntry>
   __bbStreamSlots?: Map<string, number>
+  __bbJoinWindow?: Map<string, WindowEntry>
+  __bbChatWindow?: Map<string, WindowEntry>
 }
 const createWindow = (g.__bbCreateWindow ??= new Map())
 const streamSlots = (g.__bbStreamSlots ??= new Map())
+const joinWindow = (g.__bbJoinWindow ??= new Map())
+// One map for both chat buckets — the keys are prefixed and so cannot collide.
+const chatWindow = (g.__bbChatWindow ??= new Map())
 
 /** May this IP create another game right now? */
 export function allowCreate(ip: string, now: number = Date.now()): boolean {
@@ -140,6 +183,48 @@ export function allowCreate(ip: string, now: number = Date.now()): boolean {
     ip,
     CREATE_LIMIT_MAX,
     CREATE_LIMIT_WINDOW_MS,
+    now,
+  )
+}
+
+/** May this IP claim another seat right now? */
+export function allowJoin(ip: string, now: number = Date.now()): boolean {
+  return takeFromWindow(
+    joinWindow,
+    ip,
+    JOIN_LIMIT_MAX,
+    JOIN_LIMIT_WINDOW_MS,
+    now,
+  )
+}
+
+/**
+ * May this seat send another chat message right now? Both buckets are
+ * consumed, per-SEAT first so a single noisy seat is stopped before it can
+ * spend its housemates' shared per-IP allowance.
+ *
+ * `seatKey` MUST include the caller's IP (see the chat route): the check runs
+ * before the seat secret is verified, so a key of token+seat alone would let a
+ * stranger POST forged seat ids to exhaust a real player's chat allowance.
+ */
+export function allowChat(
+  ip: string,
+  seatKey: string,
+  now: number = Date.now(),
+): boolean {
+  const seatOk = takeFromWindow(
+    chatWindow,
+    `seat:${seatKey}`,
+    CHAT_SEAT_LIMIT_MAX,
+    CHAT_LIMIT_WINDOW_MS,
+    now,
+  )
+  if (!seatOk) return false
+  return takeFromWindow(
+    chatWindow,
+    `ip:${ip}`,
+    CHAT_IP_LIMIT_MAX,
+    CHAT_LIMIT_WINDOW_MS,
     now,
   )
 }

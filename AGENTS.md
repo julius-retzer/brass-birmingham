@@ -1257,10 +1257,18 @@ When updating this file, preserve this bar for all agents and keep entries conci
   (`.bb2-busy`, `aria-busy`), and gates board-click / hand-select handlers so
   a move can't be double-fired. Do NOT drive any game state off this signal.
 - ABUSE GUARDRAILS (2026-07-23): `src/server/mp/rate-limit.ts` holds the
-  per-IP in-memory limits on the two unauthenticated hot endpoints — game
-  create (`CREATE_LIMIT_MAX`/hour, 429 in `create/route.ts`) and concurrent
+  per-IP in-memory limits on the stranger-reachable hot endpoints — game
+  create (`CREATE_LIMIT_MAX`/hour, 429 in `create/route.ts`), concurrent
   SSE streams (`STREAM_CAP_PER_IP`, 429 in `stream/route.ts`; the release is
-  idempotent and wired into cleanup AND cancel). Deliberately in-process/per-
+  idempotent and wired into cleanup AND cancel), seat JOIN
+  (`JOIN_LIMIT_MAX`/10min — the lobby-SQUATTING brake, since public lobby
+  tokens are published by `/api/mp/lobbies` and a join needs only a token) and
+  CHAT (`CHAT_SEAT_LIMIT_MAX` per seat + `CHAT_IP_LIMIT_MAX` per IP per
+  minute; the seat key MUST include the IP, the check runs pre-auth). Every
+  429 is `{error}` + a `Retry-After` derived from its window constant.
+  `act`/`ready`/`start`/`release` are deliberately UNLIMITED: all require a
+  valid per-seat secret, only obtainable via the (now limited) join, so they
+  are not a stranger-reachable surface. Deliberately in-process/per-
   instance — the 2026-07-23 arch verdict forbids new vendors (no Upstash);
   do not "upgrade" it without that decision reopening. Streams keep
   `seat`/`secret` OPTIONAL — requiring auth to stream is a reserved

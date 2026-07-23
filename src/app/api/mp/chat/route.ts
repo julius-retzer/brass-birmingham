@@ -1,6 +1,11 @@
 import { waitUntil } from '@vercel/functions'
 import { NextResponse } from 'next/server'
 import { kickAiTurns, sendChat } from '~/server/mp/game'
+import {
+  allowChat,
+  CHAT_LIMIT_WINDOW_MS,
+  clientIpFrom,
+} from '~/server/mp/rate-limit'
 
 export const runtime = 'nodejs'
 // Symmetric with the act route: a chat never advances the turn, but keeping
@@ -23,9 +28,26 @@ export async function POST(req: Request) {
       )
     }
     const token = String(body.token ?? '')
+    const seatId = Number(body.seatId ?? -1)
+    // Chat is the one seat-authenticated endpoint whose cost is per-MESSAGE
+    // spam rather than per-seat, so it carries its own window. The seat bucket
+    // is keyed by IP too — this runs before the secret is checked, and a bare
+    // token+seat key would let a stranger burn a real player's allowance.
+    const ip = clientIpFrom(req)
+    if (!allowChat(ip, `${ip}|${token}|${seatId}`)) {
+      return NextResponse.json(
+        { ok: false, error: 'Sending messages too quickly — slow down.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(Math.ceil(CHAT_LIMIT_WINDOW_MS / 1000)),
+          },
+        },
+      )
+    }
     const result = await sendChat(
       token,
-      Number(body.seatId ?? -1),
+      seatId,
       String(body.seatSecret ?? ''),
       body.text,
     )

@@ -398,7 +398,13 @@ export async function createGame(
       : undefined,
   )
   // All-human game: remember it now so no poll tick ever pays the AI peek.
-  if (!hasAi) {
+  // Eligibility is read off the MATERIALIZED seats, not `opponents`: only
+  // seats 1..playerCount-1 are seated, so an `opponents` entry past the seat
+  // count (e.g. createGame('Ada', 2, ['human', 'apprentice'])) leaves an
+  // all-human game that `opponents.some(...)` would wrongly treat as AI and
+  // never cache — paying `loadAiPeek` on every poll tick forever.
+  const seatsHaveAi = game.seats.some((seat) => seat.kind === 'ai')
+  if (!seatsHaveAi) {
     if (noAiSeats.size >= NO_AI_CACHE_MAX) noAiSeats.clear()
     noAiSeats.add(token)
   }

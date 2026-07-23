@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   acquireSlot,
   clientIpFrom,
+  MAX_TRACKED_KEYS,
   takeFromWindow,
   type WindowEntry,
 } from './rate-limit'
@@ -27,6 +28,22 @@ describe('takeFromWindow — fixed-window create limiter', () => {
     expect(takeFromWindow(map, 'a', 1, 1000, 0)).toBe(true)
     expect(takeFromWindow(map, 'a', 1, 1000, 1)).toBe(false)
     expect(takeFromWindow(map, 'b', 1, 1000, 1)).toBe(true)
+  })
+
+  test('fails closed when the map is full of still-active keys (overflow)', () => {
+    const map = new Map<string, WindowEntry>()
+    // Fill the tracker with distinct keys whose windows are all still active.
+    for (let i = 0; i < MAX_TRACKED_KEYS; i++) {
+      expect(takeFromWindow(map, `ip-${i}`, 1, 1000, 0)).toBe(true)
+    }
+    expect(map.size).toBe(MAX_TRACKED_KEYS)
+    // A brand-new key while every window is active: prune frees nothing, so we
+    // must refuse rather than grow the map past the bound.
+    expect(takeFromWindow(map, 'overflow', 1, 1000, 500)).toBe(false)
+    expect(map.size).toBe(MAX_TRACKED_KEYS)
+    // Once some windows expire, prune reclaims room and a new key is admitted.
+    expect(takeFromWindow(map, 'overflow', 1, 1000, 1000)).toBe(true)
+    expect(map.size).toBeLessThanOrEqual(MAX_TRACKED_KEYS)
   })
 })
 

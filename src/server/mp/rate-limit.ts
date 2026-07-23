@@ -35,8 +35,8 @@ export const CREATE_LIMIT_WINDOW_MS = 60 * 60 * 1000
  */
 export const STREAM_CAP_PER_IP = 24
 
-/** Soft bound on tracked keys so a scan of many IPs can't grow memory forever. */
-const MAX_TRACKED_KEYS = 10_000
+/** Hard bound on tracked keys so a scan of many IPs can't grow memory forever. */
+export const MAX_TRACKED_KEYS = 10_000
 
 /* ---------------- pure primitives ---------------- */
 
@@ -59,7 +59,16 @@ export function takeFromWindow(
 ): boolean {
   const entry = map.get(key)
   if (!entry || now - entry.windowStart >= windowMs) {
-    if (map.size >= MAX_TRACKED_KEYS) pruneExpired(map, windowMs, now)
+    if (map.size >= MAX_TRACKED_KEYS) {
+      pruneExpired(map, windowMs, now)
+      // Prune only drops EXPIRED windows; under a distributed unique-IP scan
+      // every window is still active, so it frees nothing and the map would
+      // grow unbounded. Fail closed: refuse the new key (treated as
+      // rate-limited) rather than defeat the very bound this guardrail exists
+      // to hold. The generous CREATE_LIMIT_MAX means a real IP is never the
+      // 10,000th distinct active key.
+      if (map.size >= MAX_TRACKED_KEYS) return false
+    }
     map.set(key, { count: 1, windowStart: now })
     return true
   }

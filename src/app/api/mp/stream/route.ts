@@ -80,6 +80,14 @@ export async function GET(req: NextRequest) {
   let unsub = () => {
     // replaced by the real unsubscribe once the stream starts
   }
+  // Full teardown (stop timers, mark closed, release slot, unsubscribe, close
+  // the controller). Assigned once the stream starts so BOTH the abort/close
+  // paths inside `start` and the `cancel()` callback can run it — a cancelled
+  // stream must stop polling Neon, not keep the slot free while the pollTimer
+  // and closeTimer run to the 290s cap.
+  let cleanup = () => {
+    // replaced by the real cleanup once the stream starts
+  }
 
   const stream = new ReadableStream({
     start(controller) {
@@ -99,7 +107,7 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      const cleanup = () => {
+      cleanup = () => {
         open = false
         releaseStreamSlot() // idempotent — cancel/abort/close can all fire
         unsub()
@@ -187,8 +195,11 @@ export async function GET(req: NextRequest) {
       req.signal.addEventListener('abort', cleanup)
     },
     cancel() {
-      releaseStreamSlot()
-      unsub()
+      // The reader went away: run the SAME full teardown as abort/close so the
+      // pollTimer, closeTimer and ping stop and we don't keep polling Neon (and
+      // holding the slot free) until the 290s cap. Falls back to the stub if the
+      // stream never started.
+      cleanup()
     },
   })
 

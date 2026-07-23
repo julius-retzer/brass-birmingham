@@ -47,8 +47,12 @@ test('found a company against an AI rival and watch it take its turn', async ({
   await expect(page.getByText(/Ada took a loan/)).toBeVisible()
 
   /* ---- the AI turn runs server-side without any input ---- */
-  // The mock rival also prefers a loan — its move lands in the journal…
-  await expect(page.getByText(/The Apprentice took a loan/)).toBeVisible()
+  // The mock rival also prefers a loan — its move lands in the journal. It
+  // may well have taken a second one by the time this resolves (round 2 gives
+  // two actions), so match the first line rather than demanding exactly one.
+  await expect(
+    page.getByText(/The Apprentice took a loan/).first(),
+  ).toBeVisible()
   // …its one-line rationale (and the spend meter) in the rival's journal…
   await expect(page.getByTestId('ai-rationale').first()).toContainText(
     'Mock rationale.',

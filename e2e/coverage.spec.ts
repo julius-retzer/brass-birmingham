@@ -251,11 +251,12 @@ test('Develop: scrap the lowest tile, consuming iron', async ({ page }) => {
   await page.getByTestId('action-develop').click()
   await page.locator('button.bb2-card:not([disabled])').first().click()
 
-  // "Develop lowest available" auto-picks the cheapest developable tile,
-  // then the confirm step spells out the cost before executing.
-  await page.getByRole('button', { name: 'Develop lowest available' }).click()
+  // The develop steps open the player mat, which owns the whole flow:
+  // "Develop lowest available" auto-picks the cheapest developable tile, then
+  // the confirm step names what is about to be scrapped.
+  await page.getByTestId('develop-lowest').click()
   await expect(
-    page.getByText(/Scrapping: .*lowest available tile.* — consumes iron/),
+    page.getByText('Scrapping the lowest available tile.'),
   ).toBeVisible()
   await page.getByTestId('confirm-action').click()
 

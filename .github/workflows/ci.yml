@@ -125,3 +125,85 @@ jobs:
           project_id: ${{ secrets.NEON_PROJECT_ID }}
           branch: ci-run-${{ github.run_id }}-${{ github.run_attempt }}
           api_key: ${{ secrets.NEON_API_KEY }}
+
+  e2e:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.4.1'
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Resolve Playwright version
+        id: playwright
+        run: |
+          echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      # A cold browser download is the single biggest cost of this job, and the
+      # binaries only change when Playwright does — so the cache is keyed on its
+      # version, not the lockfile.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright.outputs.version }}
+
+      # Chromium only: playwright.config.ts declares one project, so firefox and
+      # webkit would be pure download time.
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # The suite's DB-backed journeys (multiplayer, versus-AI) talk to Postgres
+      # through the Neon HTTP proxy, so compose.yaml's stack is what they need —
+      # not a bare postgres service container. It is also faster and secret-free
+      # compared with the Neon branch the unit job uses, which matters here
+      # because every assertion is a round trip. Isolation still holds twice
+      # over: the container is this runner's alone, and playwright.config.ts
+      # mints a fresh database inside it per run.
+      - name: Start local Postgres + Neon proxy
+        run: pnpm db:local
+
+      - name: Run end-to-end tests
+        run: pnpm exec playwright test
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Stop local database
+        if: always()
+        run: docker compose down -v

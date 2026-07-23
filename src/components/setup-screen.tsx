@@ -138,12 +138,6 @@ export function SetupScreen({
         >
           BRASS
         </h1>
-        <p
-          className="bb2-display text-lg italic"
-          style={{ color: 'rgba(231,215,177,.65)' }}
-        >
-          The Ironmaster&rsquo;s Atlas — pass one device between players
-        </p>
       </div>
 
       <div
@@ -160,23 +154,23 @@ export function SetupScreen({
           <button
             type="button"
             className="bb2-option justify-center py-2"
-            data-selected={mode === 'local'}
-            data-testid="mode-local"
-            onClick={() => setMode('local')}
-          >
-            <span className="text-[11.5px] font-bold uppercase tracking-[0.14em]">
-              One device
-            </span>
-          </button>
-          <button
-            type="button"
-            className="bb2-option justify-center py-2"
             data-selected={mode === 'online'}
             data-testid="mode-online"
             onClick={() => setMode('online')}
           >
             <span className="text-[11.5px] font-bold uppercase tracking-[0.14em]">
               Play online
+            </span>
+          </button>
+          <button
+            type="button"
+            className="bb2-option justify-center py-2"
+            data-selected={mode === 'local'}
+            data-testid="mode-local"
+            onClick={() => setMode('local')}
+          >
+            <span className="text-[11.5px] font-bold uppercase tracking-[0.14em]">
+              One device
             </span>
           </button>
           {aiEnabled && (

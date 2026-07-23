@@ -546,6 +546,18 @@ What this means in practice:
   manual path:
   `axi eval 'document.querySelector("[data-conn=\"belper|leek\"]").focus()'`
   then `axi press Enter`.
+- SVG Z-ORDER IS DOCUMENT ORDER (2026-07-23). Routes run city-centre to
+  city-centre, so 10 of the 39 route midpoints sit inside a plate or its name
+  ribbon — a built link's boat/locomotive marker painted there vanishes under
+  the plate (the Stoke-on-Trent playtest bug). Both halves of the fix live in
+  `board/marker-anchor.ts`: it owns plate sizing (`SLOT`/`PLATE_GRIDS`/
+  `plateRect` — moved off `board-map.tsx` so plates and markers measure the
+  SAME boxes) and `linkMarkerAnchor`, which slides a marker along its own
+  curve to the nearest point clearing every plate + ribbon. `board-map.tsx`
+  then paints the built-link marker layer AFTER all plates, because two hops
+  (stoke—stone, birmingham—redditch) have no clear point at all. Both are
+  needed; dropping either re-hides a marker. Any new on-board decoration near
+  a route midpoint has the same exposure — pin it in `marker-anchor.test.ts`.
 - Board candidates come from ONE shared module, `components/legal-targets.ts`
   (`legalCityTargets` / `legalLinkTargets`), used by both `game.tsx` and
   `mp/mp-game.tsx`. It enumerates and asks `can()`; it re-derives no rule. See

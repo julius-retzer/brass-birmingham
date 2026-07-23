@@ -16,7 +16,16 @@ import { type IndustryType } from '~/data/cards'
 import { type Merchant, type Player } from '~/store/gameStore'
 import { GAME_ICONS } from '../gameicons-data'
 import { IndustryFragment } from '../icons'
-import { VIEW_H, VIEW_W, cityPos, linkKey, routeBow } from './board-data'
+import { VIEW_H, VIEW_W, cityPos, linkKey } from './board-data'
+import {
+  PLATE_PAD,
+  SLOT,
+  SLOT_GAP,
+  linkMarkerAnchor,
+  plateGrid,
+  pointAt,
+  routeCurve,
+} from './marker-anchor'
 import {
   FOCUS_PAN_ANIMATION_MS,
   FOCUS_PAN_DEBOUNCE_MS,
@@ -72,38 +81,6 @@ export function playerNetworkCities(player: Player): Set<CityId> {
     }
   }
   return network
-}
-
-const SLOT = 52
-const SLOT_GAP = 4
-const PLATE_PAD = 6
-
-/* ---------------- geometry helpers ---------------- */
-
-interface Pt {
-  x: number
-  y: number
-}
-
-function routePath(from: CityId, to: CityId): { d: string; mid: Pt } {
-  const a = cityPos[from]
-  const b = cityPos[to]
-  const bow = routeBow[linkKey(from, to)] ?? 0
-  const mx = (a.x + b.x) / 2
-  const my = (a.y + b.y) / 2
-  const dx = b.x - a.x
-  const dy = b.y - a.y
-  const len = Math.hypot(dx, dy) || 1
-  const cx = mx + (-dy / len) * bow
-  const cy = my + (dx / len) * bow
-  return {
-    d: `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`,
-    // quadratic bezier midpoint (t = 0.5)
-    mid: {
-      x: 0.25 * a.x + 0.5 * cx + 0.25 * b.x,
-      y: 0.25 * a.y + 0.5 * cy + 0.25 * b.y,
-    },
-  }
 }
 
 interface BuiltIndustry {
@@ -528,6 +505,48 @@ export function BoardMap({
     ]),
   )
 
+  // Every route is derived once and rendered in two passes: the corridors
+  // under the plates, the built-link markers over them (see marker-anchor.ts).
+  const linkStates = connections.map((conn) => {
+    const key = linkKey(conn.from, conn.to)
+    const types = conn.types as readonly string[]
+    const activeThisEra = types.includes(era)
+    const built = builtLinks.get(key)
+    const linkVp =
+      vpAnnotations?.links.get(key) ??
+      vpAnnotations?.links.get(linkKey(conn.to, conn.from))
+    const isHighlighted =
+      highlight !== null && built?.player.id === highlightPlayerId
+    const isLegal =
+      legalLinks?.has(key) ??
+      legalLinks?.has(linkKey(conn.to, conn.from)) ??
+      false
+    const isSelected = selectedLinkKeys.has(key)
+    return {
+      conn,
+      key,
+      d: routeCurve(conn.from, conn.to).d,
+      anchor: linkMarkerAnchor(conn.from, conn.to),
+      activeThisEra,
+      built,
+      linkVp,
+      isLegal,
+      isSelected,
+      isHighlighted,
+      renderType: (built
+        ? built.type
+        : activeThisEra
+          ? era
+          : types.includes('canal')
+            ? 'canal'
+            : 'rail') as 'canal' | 'rail',
+      dimmed:
+        (pickingLink && !isLegal && !isSelected) ||
+        (vpAnnotations !== null && linkVp === undefined) ||
+        (highlight !== null && !isHighlighted),
+    }
+  })
+
   /* ---------------- render ---------------- */
 
   return (
@@ -696,33 +715,19 @@ export function BoardMap({
 
         {/* ------------ routes ------------ */}
         <g>
-          {connections.map((conn) => {
-            const key = linkKey(conn.from, conn.to)
-            const types = conn.types as readonly string[]
-            const activeThisEra = types.includes(era)
-            const built = builtLinks.get(key)
-            const { d, mid } = routePath(conn.from, conn.to)
-            const isLegal =
-              legalLinks?.has(key) ??
-              legalLinks?.has(linkKey(conn.to, conn.from)) ??
-              false
-            const isSelected = selectedLinkKeys.has(key)
-            const linkVp =
-              vpAnnotations?.links.get(key) ??
-              vpAnnotations?.links.get(linkKey(conn.to, conn.from))
-            const renderType: 'canal' | 'rail' = built
-              ? built.type
-              : activeThisEra
-                ? (era as 'canal' | 'rail')
-                : types.includes('canal')
-                  ? 'canal'
-                  : 'rail'
-            const isHighlighted =
-              highlight !== null && built?.player.id === highlightPlayerId
-            const dimmed =
-              (pickingLink && !isLegal && !isSelected) ||
-              (vpAnnotations !== null && linkVp === undefined) ||
-              (highlight !== null && !isHighlighted)
+          {linkStates.map((state) => {
+            const {
+              conn,
+              key,
+              d,
+              activeThisEra,
+              built,
+              isLegal,
+              isSelected,
+              isHighlighted,
+              renderType,
+              dimmed,
+            } = state
 
             return (
               <g key={key} opacity={dimmed ? 0.3 : 1}>
@@ -816,50 +821,6 @@ export function BoardMap({
                   />
                 )}
 
-                {/* built link marker — the player's tile on the route,
-                    stamped with the physical game's glyphs: a narrowboat
-                    for canals, a locomotive for rails */}
-                {built && (
-                  <g
-                    transform={`translate(${mid.x}, ${mid.y})`}
-                    pointerEvents="none"
-                  >
-                    <rect
-                      x="-16"
-                      y="-10"
-                      width="32"
-                      height="20"
-                      rx="3.5"
-                      fill={PLAYER_FILL[built.player.color]}
-                      stroke="#16130f"
-                      strokeWidth="1.4"
-                      filter="url(#bb2-plate-shadow)"
-                    />
-                    <g fill="#f2e6c8" stroke="none">
-                      {built.type === 'canal' ? (
-                        // bespoke narrowboat silhouette (no such icon exists
-                        // in any library — see bb-icon-research-f12)
-                        <path d="M-10.6 -5.2 h2.4 v3 h6.6 v-3.4 h1.8 v3.4 h1.4 v2 h-12.2 z M-13 1 h26 c-0.7 2.9 -3.2 4.6 -6.4 4.6 h-13.2 c-3.2 0 -5.7 -1.7 -6.4 -4.6 z" />
-                      ) : (
-                        // delapouite/steam-locomotive (game-icons.net CC BY 3.0)
-                        <g transform="translate(-12.5, -12.5) scale(0.04883)">
-                          <path d={GAME_ICONS.steamLocomotive.d} />
-                        </g>
-                      )}
-                    </g>
-                  </g>
-                )}
-
-                {/* game-end: what this route scored for the shown player */}
-                {linkVp !== undefined && (
-                  <g
-                    transform={`translate(${mid.x}, ${mid.y})`}
-                    data-vp-link={key}
-                  >
-                    <VpRoundel vp={linkVp} color={vpColor ?? '#e6bd63'} />
-                  </g>
-                )}
-
                 {/* fat invisible hit area */}
                 {(pickingLink || onLinkClick) && (
                   <path
@@ -905,7 +866,7 @@ export function BoardMap({
             kidderminster—worcester corridor (rules p.5 — one tile connects
             all three; no second tile may be placed, so no hit area) */}
         {(() => {
-          const { mid } = routePath('kidderminster', 'worcester')
+          const mid = pointAt('kidderminster', 'worcester', 0.5)
           const fb = cityPos.farmBrewery2
           const linked = builtLinks.has(linkKey('kidderminster', 'worcester'))
           return (
@@ -975,6 +936,59 @@ export function BoardMap({
               />
             )
           })}
+
+        {/* ------------ built-link markers ------------
+            Painted last on purpose: a route's marker can sit close enough to
+            a plate that the plate would swallow it (SVG z-order is document
+            order). `linkMarkerAnchor` already slides it into the gap between
+            plates where one exists; this pass keeps it visible where none
+            does — Stoke-on-Trent—Stone being the tightest hop on the board. */}
+        {linkStates.map(({ key, built, linkVp, anchor, dimmed }) =>
+          built || linkVp !== undefined ? (
+            <g key={key} opacity={dimmed ? 0.3 : 1}>
+              {built && (
+                <g
+                  transform={`translate(${anchor.x}, ${anchor.y})`}
+                  pointerEvents="none"
+                >
+                  <rect
+                    x="-16"
+                    y="-10"
+                    width="32"
+                    height="20"
+                    rx="3.5"
+                    fill={PLAYER_FILL[built.player.color]}
+                    stroke="#16130f"
+                    strokeWidth="1.4"
+                    filter="url(#bb2-plate-shadow)"
+                  />
+                  <g fill="#f2e6c8" stroke="none">
+                    {built.type === 'canal' ? (
+                      // bespoke narrowboat silhouette (no such icon exists
+                      // in any library — see bb-icon-research-f12)
+                      <path d="M-10.6 -5.2 h2.4 v3 h6.6 v-3.4 h1.8 v3.4 h1.4 v2 h-12.2 z M-13 1 h26 c-0.7 2.9 -3.2 4.6 -6.4 4.6 h-13.2 c-3.2 0 -5.7 -1.7 -6.4 -4.6 z" />
+                    ) : (
+                      // delapouite/steam-locomotive (game-icons.net CC BY 3.0)
+                      <g transform="translate(-12.5, -12.5) scale(0.04883)">
+                        <path d={GAME_ICONS.steamLocomotive.d} />
+                      </g>
+                    )}
+                  </g>
+                </g>
+              )}
+
+              {/* game-end: what this route scored for the shown player */}
+              {linkVp !== undefined && (
+                <g
+                  transform={`translate(${anchor.x}, ${anchor.y})`}
+                  data-vp-link={key}
+                >
+                  <VpRoundel vp={linkVp} color={vpColor ?? '#e6bd63'} />
+                </g>
+              )}
+            </g>
+          ) : null,
+        )}
       </svg>
 
       {/* prompt banner — the board's own instruction, high contrast */}
@@ -1126,41 +1140,8 @@ export function BoardMap({
 
 /* ================= city plate ================= */
 
-// Slot arrangement per city, matching the physical board's blocky cities:
-// Birmingham is THE big 2x2 square; Coventry, Stoke and Coalbrookdale are
-// compact 2+1 blocks. Everything else stays a horizontal strip (default).
-// Index order remains reading order (left→right, top→bottom) so slot
-// assignment and cityIndustrySlots stay untouched.
-const PLATE_GRIDS: Partial<Record<CityId, Array<[number, number]>>> = {
-  birmingham: [
-    [0, 0],
-    [1, 0],
-    [0, 1],
-    [1, 1],
-  ],
-  coventry: [
-    [0, 0],
-    [1, 0],
-    [0, 1],
-  ],
-  stoke: [
-    [0, 0],
-    [1, 0],
-    [0, 1],
-  ],
-  coalbrookdale: [
-    [0, 0],
-    [1, 0],
-    [0, 1],
-  ],
-}
-
-function plateGrid(cityId: CityId, slotCount: number): Array<[number, number]> {
-  return (
-    PLATE_GRIDS[cityId] ??
-    Array.from({ length: Math.max(slotCount, 1) }, (_, i) => [i, 0])
-  )
-}
+// Slot arrangement per city and plate sizing live in marker-anchor.ts, so
+// the link markers can be placed against the same boxes the plates occupy.
 
 /**
  * Hover-to-locate spotlight: a teal double ring with an outward ping,

@@ -33,6 +33,7 @@ import {
   planPanToCity,
 } from './pan-into-view'
 import { farmBrewerySpurStyle } from './route-style'
+import { CUBE, cubeCells } from './tile-cubes'
 
 /* ---------------- palette (mirrors theme.css) ---------------- */
 
@@ -1520,58 +1521,26 @@ function BuiltTile({ occ }: { occ: BuiltIndustry }) {
       >
         {ROMAN[occ.level] ?? occ.level}
       </text>
-      {/* resource cubes riding on the tile — up to five in a column that
-          clears the owner ribbon; six or more (only Iron Works IV reaches
-          six) collapses to a count numeral so no cube goes silently missing. */}
+      {/* resource cubes riding on the tile — a left-aligned two-column block
+          in the right gutter, sized by `tile-cubes.ts` so it always clears the
+          level numeral above and the owner ribbon below (a single column
+          could not hold the biggest stacks without touching either). */}
       {cubes && cubes.n > 0 && (
         <g>
-          {cubes.n <= 5 ? (
-            Array.from({ length: cubes.n }, (_, i) => (
-              <rect
-                key={i}
-                x={SLOT - 11}
-                y={13 + i * 6.6}
-                width="6.2"
-                height="6.2"
-                rx="1"
-                fill={cubes.c}
-                stroke="#f2e6c8"
-                strokeWidth="1"
-              >
-                <title>resource cube on tile</title>
-              </rect>
-            ))
-          ) : (
-            <g>
-              <rect
-                x={SLOT - 11}
-                y="13"
-                width="6.2"
-                height="6.2"
-                rx="1"
-                fill={cubes.c}
-                stroke="#f2e6c8"
-                strokeWidth="1"
-              />
-              <text
-                x={SLOT - 7.9}
-                y="27"
-                textAnchor="middle"
-                fill="#f2e6c8"
-                stroke="#16130f"
-                strokeWidth="0.5"
-                paintOrder="stroke"
-                style={{
-                  fontFamily: 'var(--bb-display)',
-                  fontWeight: 700,
-                  fontSize: 11,
-                }}
-              >
-                {`×${cubes.n}`}
-                <title>{`${cubes.n} resource cubes on tile`}</title>
-              </text>
-            </g>
-          )}
+          <title>{`${cubes.n} resource cube${cubes.n === 1 ? '' : 's'} on tile`}</title>
+          {cubeCells(cubes.n).map((cell) => (
+            <rect
+              key={`${cell.x}:${cell.y}`}
+              x={cell.x}
+              y={cell.y}
+              width={CUBE}
+              height={CUBE}
+              rx="1"
+              fill={cubes.c}
+              stroke="#f2e6c8"
+              strokeWidth="1"
+            />
+          ))}
         </g>
       )}
       {/* printed stats: VP roundel · link icons · income advance.

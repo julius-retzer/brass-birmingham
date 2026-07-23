@@ -554,11 +554,19 @@ What this means in practice:
   the tint, the glyph keeps surface ink. Board tile faces use the SAME base
   hexes (`INDUSTRY_FILL`/`INDUSTRY_INK`, `board-map.tsx`). On-tile resource
   markers share one 1px parchment keyline `#f2e6c8` (cubes + merchant beer
-  barrel). Cube LAYOUT deliberately differs by surface: the board (`BuiltTile`)
-  keeps a single column and collapses >5 cubes (only Iron Works IV) to a count
-  numeral; the player MAT (`player-ledger.tsx` `MatTileArt`) draws EVERY cube in
-  a two-wide grid (captain's call, 2026-07-23) so six fit the face. Do not
-  re-unify them. DELIBERATE interim split: iron's on-tile CUBE fill stays orange
+  barrel). Cube LAYOUT: BOTH surfaces now draw EVERY cube in a two-wide grid —
+  the player MAT (`player-ledger.tsx` `MatTileArt`) and, since 2026-07-23, the
+  board (`BuiltTile`), whose geometry lives in the pure `board/tile-cubes.ts`
+  (`cubeCells`). The board's old single column TOUCHED the roman level numeral
+  (cube top y = numeral baseline 13) and physically could not hold the biggest
+  stacks — 5 cubes need 31px, the clear band between numeral and ribbon is
+  ~28.5px — which is why >5 used to collapse to a `×6` numeral. The grid is
+  LEFT-ALIGNED (odd cube in the left column, spare space right) with its right
+  edge on the numeral's, and `tile-cubes.test.ts` pins the clearances (numeral,
+  ribbon, glyph, tile face) for every count the tile data can produce. Change a
+  tile-face constant and re-run that test rather than eyeballing a nudge. The
+  two surfaces still differ in placement and in the mat's `depth` stacks —
+  don't collapse them into one component. DELIBERATE interim split: iron's on-tile CUBE fill stays orange
   `#d07135` while the tile FACE is steel `#8a939b` — the market-vs-tile iron
   hue reconcile is a separate follow-up, so do NOT "fix" the cube to match the
   face.

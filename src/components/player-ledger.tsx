@@ -70,6 +70,14 @@ const CUBE_COL_X = [33.4, 40.6] as const
 const CUBE_LONE_X = 37
 const CUBE_TOP_Y = 17
 
+// Physical stack geometry, still on the 52-unit tile grid. Each tile under
+// the top one shows as a cardboard edge STACK_PITCH tall; a small alternating
+// x jitter keeps the pile looking hand-stacked rather than die-cut. The
+// jitter never exceeds STACK_PAD_X, so layers stay inside the viewBox.
+const STACK_PITCH = 4.6
+const STACK_JITTER = [0, 1.3, -0.9, 0.7, -0.5, 1] as const
+const STACK_PAD_X = 1.6
+
 // The one resource a tile YIELDS when built (only one is ever non-zero).
 function producedOf(tile: IndustryTile) {
   if (tile.coalProduced > 0)
@@ -82,17 +90,22 @@ function producedOf(tile: IndustryTile) {
 }
 
 // The board tile face rendered on a 52-unit grid (mirrors BuiltTile's
-// unflipped working side), scaled to `size`. Brass ring marks the next tile
-// out of the mat.
+// unflipped working side), scaled so the FACE is always `size` px. Brass
+// ring marks the next tile out of the mat. `depth` is the number of physical
+// tiles in the pile: every tile under the top one is drawn as a darkened
+// cardboard edge peeking out below the face — remaining quantity reads as
+// stack thickness, exactly like the real player board. No numerals.
 function MatTileArt({
   type,
   tile,
+  depth = 1,
   size = 48,
   next = false,
   barred = false,
 }: {
   type: IndustryType
   tile: IndustryTile
+  depth?: number
   size?: number
   next?: boolean
   barred?: boolean
@@ -100,79 +113,123 @@ function MatTileArt({
   const prod = producedOf(tile)
   const fill = INDUSTRY_FILL[type]
   const ink = INDUSTRY_INK[type]
+  const layers = Math.max(1, depth)
+  const vbWidth = 52 + STACK_PAD_X * 2
+  const vbHeight = 52 + (layers - 1) * STACK_PITCH
+  const scale = size / 52
+  // The pile sits on the mat: a soft contact shadow under the whole shape,
+  // deepening with the stack, plus the brass "next out" glow when earned.
+  const shadow = `drop-shadow(0 ${0.8 + layers * 0.5}px ${1 + layers}px rgba(0,0,0,.4))`
   return (
     <svg
-      width={size}
-      height={size}
-      viewBox="0 0 52 52"
+      width={vbWidth * scale}
+      height={vbHeight * scale}
+      viewBox={`0 0 ${vbWidth} ${vbHeight}`}
       role="img"
-      aria-label={`${LABEL[type]} ${ROMAN[tile.level] ?? tile.level}`}
+      aria-label={`${LABEL[type]} ${ROMAN[tile.level] ?? tile.level}${
+        layers > 1 ? `, stack of ${layers}` : ''
+      }`}
       style={{
         display: 'block',
         opacity: barred ? 0.9 : 1,
-        filter: next ? 'drop-shadow(0 0 5px rgba(230,189,99,.55))' : undefined,
+        filter: next
+          ? `${shadow} drop-shadow(0 0 5px rgba(230,189,99,.55))`
+          : shadow,
       }}
     >
-      <rect
-        width="52"
-        height="52"
-        rx="5"
-        fill={fill}
-        stroke="#16130f"
-        strokeWidth="1.2"
-      />
-      <g transform="translate(5, 4)" style={{ color: ink }}>
-        <IndustryFragment type={type} />
-      </g>
-      <text
-        x="47"
-        y="13"
-        textAnchor="end"
-        fill={ink}
-        style={{
-          fontFamily: 'var(--bb-display)',
-          fontWeight: 700,
-          fontSize: 11.5,
-        }}
-      >
-        {ROMAN[tile.level] ?? tile.level}
-      </text>
-      {/* Resource cubes ride the right edge in a two-wide grid, starting
-          BELOW the level numeral (baseline y=13) so the two never overlap.
-          Every cube is drawn — no count-numeral shortcut on the mat. */}
-      {prod && prod.n > 0 && (
-        <g>
-          {Array.from({ length: prod.n }, (_, i) => {
-            const column = i % 2
-            const lone = column === 0 && i === prod.n - 1
-            return (
-              <rect
-                key={i}
-                x={lone ? CUBE_LONE_X : CUBE_COL_X[column]}
-                y={CUBE_TOP_Y + Math.floor(i / 2) * CUBE_PITCH}
-                width={CUBE_SIZE}
-                height={CUBE_SIZE}
-                rx="1"
-                fill={PRODUCED_CUBE_FILL[prod.kind]}
-                stroke="#f2e6c8"
-                strokeWidth="1"
-              />
-            )
-          })}
-        </g>
-      )}
-      {next && (
+      {/* Buried tiles, deepest first so each shallower edge overlaps the
+          one below it. Deeper edges get progressively darker — the pile
+          reads as separate boards, not a striped border. */}
+      {Array.from({ length: layers - 1 }, (_, j) => {
+        const i = layers - 1 - j
+        const x = STACK_PAD_X + (STACK_JITTER[i % STACK_JITTER.length] ?? 0)
+        const y = i * STACK_PITCH
+        return (
+          <g key={i}>
+            <rect
+              x={x}
+              y={y}
+              width="52"
+              height="52"
+              rx="5"
+              fill={fill}
+              stroke="#16130f"
+              strokeWidth="1.2"
+            />
+            <rect
+              x={x}
+              y={y}
+              width="52"
+              height="52"
+              rx="5"
+              fill="#16130f"
+              opacity={0.3 + i * 0.12}
+            />
+          </g>
+        )
+      })}
+      <g transform={`translate(${STACK_PAD_X}, 0)`}>
         <rect
-          x="0.9"
-          y="0.9"
-          width="50.2"
-          height="50.2"
+          width="52"
+          height="52"
           rx="5"
-          fill="none"
-          stroke="#e6bd63"
-          strokeWidth="2"
+          fill={fill}
+          stroke="#16130f"
+          strokeWidth="1.2"
         />
-      )}
+        <g transform="translate(5, 4)" style={{ color: ink }}>
+          <IndustryFragment type={type} />
+        </g>
+        <text
+          x="47"
+          y="13"
+          textAnchor="end"
+          fill={ink}
+          style={{
+            fontFamily: 'var(--bb-display)',
+            fontWeight: 700,
+            fontSize: 11.5,
+          }}
+        >
+          {ROMAN[tile.level] ?? tile.level}
+        </text>
+        {/* Resource cubes ride the right edge in a two-wide grid, starting
+            BELOW the level numeral (baseline y=13) so the two never overlap.
+            Every cube is drawn — no count-numeral shortcut on the mat. */}
+        {prod && prod.n > 0 && (
+          <g>
+            {Array.from({ length: prod.n }, (_, i) => {
+              const column = i % 2
+              const lone = column === 0 && i === prod.n - 1
+              return (
+                <rect
+                  key={i}
+                  x={lone ? CUBE_LONE_X : CUBE_COL_X[column]}
+                  y={CUBE_TOP_Y + Math.floor(i / 2) * CUBE_PITCH}
+                  width={CUBE_SIZE}
+                  height={CUBE_SIZE}
+                  rx="1"
+                  fill={PRODUCED_CUBE_FILL[prod.kind]}
+                  stroke="#f2e6c8"
+                  strokeWidth="1"
+                />
+              )
+            })}
+          </g>
+        )}
+        {next && (
+          <rect
+            x="0.9"
+            y="0.9"
+            width="50.2"
+            height="50.2"
+            rx="5"
+            fill="none"
+            stroke="#e6bd63"
+            strokeWidth="2"
+          />
+        )}
+      </g>
     </svg>
   )
 }
@@ -242,6 +299,7 @@ function TrackSlot({
     <button
       type="button"
       data-testid={`mat-slot-${tile.id}`}
+      data-depth={count}
       aria-pressed={selected}
       onClick={onSelect}
       onMouseEnter={onSelect}
@@ -249,29 +307,16 @@ function TrackSlot({
       className="relative shrink-0 rounded-md transition-transform hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus:outline-none"
       style={{ opacity: barred ? 0.42 : 1 }}
     >
+      {/* Remaining quantity is the STACK itself — layered tile edges under
+          the face, never a numeral (captain's call, 2026-07-23). */}
       <MatTileArt
         type={tile.type}
         tile={tile}
+        depth={count}
         size={48}
         next={next}
         barred={barred}
       />
-      {/* The count sits INSIDE the tile's bottom-left — the glyph stops
-          well above it and the cubes hug the right edge, so it collides
-          with neither, and the selection ring (drawn outside the tile)
-          can never run through it. */}
-      {count > 1 && (
-        <span
-          className="pointer-events-none absolute bottom-1 left-1 grid h-[15px] min-w-[15px] place-items-center rounded-full px-1 text-[9.5px] font-bold leading-none"
-          style={{
-            background: 'rgba(22,19,15,.88)',
-            border: '1px solid var(--bb-brass-dim)',
-            color: 'var(--bb-brass-bright)',
-          }}
-        >
-          ×{count}
-        </span>
-      )}
       {selected && (
         <span
           aria-hidden
@@ -436,8 +481,9 @@ export function PlayerLedger({
               style={{ color: 'rgba(231,215,177,.5)' }}
             >
               Tiles build lowest level first — the brass-ringed tile is the next
-              one out. Hover or tap any tile to read its full stats below.
-              Greyed tiles cannot be built in the {era} era.
+              one out, and a thicker pile means more copies remain. Hover or tap
+              any tile to read its full stats below. Greyed tiles cannot be
+              built in the {era} era.
             </p>
 
             {/* industry tracks — one row each, tiles left→right by level.
@@ -467,7 +513,10 @@ export function PlayerLedger({
                       padding box counts as scrollable overflow, and since
                       overflow-y computes to `auto` beside overflow-x, that
                       showed up as a phantom vertical scrollbar per track. */}
-                  <div className="-mx-2.5 flex items-center gap-1.5 overflow-x-auto overflow-y-hidden px-2.5 py-2.5">
+                  {/* Bottom-aligned so every pile rests on the same mat
+                      surface — taller stacks rise higher, like the real
+                      board. */}
+                  <div className="-mx-2.5 flex items-end gap-2 overflow-x-auto overflow-y-hidden px-2.5 py-2.5">
                     {tr.slots.length === 0 ? (
                       <span
                         className="text-[12px] italic"
@@ -609,6 +658,7 @@ function TileReadout({
         <MatTileArt
           type={tile.type}
           tile={tile}
+          depth={count}
           size={52}
           next={next}
           barred={barred}

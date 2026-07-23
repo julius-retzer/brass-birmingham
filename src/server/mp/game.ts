@@ -4,8 +4,9 @@
 // (token + per-seat secret), checks the event against the machine's own
 // guards, executes it on the proven gameStore engine, persists, and
 // broadcasts per-seat FILTERED views. A client never receives another
-// player's hand, the draw pile contents, or an opponent's in-flight card
-// selections — only shapes (counts) that the machine's public guards need.
+// player's hand, the draw pile contents, or an opponent's in-flight
+// selections (held card, site, route, staged sale, resource picks) — only
+// shapes (counts) that the machine's public guards need.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { createActor } from 'xstate'
 import { gameStore } from '../../store/gameStore'
@@ -183,6 +184,17 @@ export function filterSnapshotForSeat(
       currentPlayerIndex?: number
       selectedCard?: unknown
       selectedCardsForScout?: unknown[]
+      selectedLink?: unknown
+      selectedSecondLink?: unknown
+      selectedLocation?: unknown
+      selectedIndustryTile?: unknown
+      selectedTilesForDevelop?: unknown[]
+      pendingSale?: unknown
+      chosenBeerSources?: unknown[]
+      chosenIronSources?: unknown[]
+      chosenCoalSources?: unknown[]
+      pendingIronStep?: unknown
+      pendingCoalStep?: unknown
       lastError?: string | null
       errorContext?: string | null
     }
@@ -209,6 +221,27 @@ export function filterSnapshotForSeat(
     ctx.selectedCardsForScout = (ctx.selectedCardsForScout ?? []).map((_, k) =>
       hiddenCard('scout', k),
     )
+    // Every step of an action is a persisted intent that bumps `version` and
+    // broadcasts, so an unredacted in-progress selection let opponents WATCH
+    // the acting player pick their route/site/sources live (the board renders
+    // `selectedLocation`/`selectedLink`). None of these is public until the
+    // action is confirmed and logged, so they are emptied wholesale rather
+    // than shape-preserved: unlike hand/deck sizes, nothing a bystander
+    // renders or any guard they evaluate reads them, and a placeholder value
+    // would light a FALSE plate on their board. Restoring a snapshot never
+    // re-runs the `always` chains (`StateMachine.start` only starts children),
+    // so the read-only client actor stays parked in its step regardless.
+    ctx.selectedLink = null
+    ctx.selectedSecondLink = null
+    ctx.selectedLocation = null
+    ctx.selectedIndustryTile = null
+    ctx.selectedTilesForDevelop = []
+    ctx.pendingSale = null
+    ctx.chosenBeerSources = []
+    ctx.chosenIronSources = []
+    ctx.chosenCoalSources = []
+    ctx.pendingIronStep = null
+    ctx.pendingCoalStep = null
   }
   return clone
 }

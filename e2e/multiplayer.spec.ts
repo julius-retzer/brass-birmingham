@@ -15,13 +15,28 @@ const expect = baseExpect.configure({ timeout: 15_000 })
  *  - actions round-trip live in both directions (loan → pass → round 2)
  *  - a mid-game refresh reclaims the seat from the localStorage secret
  *  - WIRE-LEVEL hidden-information check: the guest's own SSE stream bytes
- *    contain no real card of the host's hand and no real draw-pile card
+ *    contain no real card of the host's hand, no real draw-pile card, and
+ *    none of the host's in-progress selection (the route she is mid-way
+ *    through picking)
  */
 
 test.skip(!hasDatabaseUrl, `multiplayer e2e ${NEEDS_DB_MESSAGE}`)
 // One long journey over a REAL network database: ~15 round-trips at ~1s each
 // plus the ~8s chat-wire window blow the 30s default on a slow/contended DB.
 test.setTimeout(150_000)
+
+// Map routes are CURVED: a bbox-centre click misses the fat hit-stroke, so
+// aim at the path's own midpoint (same helper as coverage.spec.ts).
+async function clickRoute(page: Page, conn: string) {
+  const path = page.locator(`path[data-conn="${conn}"]`)
+  const pt = await path.evaluate((el) => {
+    const p = el as unknown as SVGPathElement
+    const mid = p.getPointAtLength(p.getTotalLength() / 2)
+    const sp = new DOMPoint(mid.x, mid.y).matrixTransform(p.getScreenCTM()!)
+    return { x: sp.x, y: sp.y }
+  })
+  await page.mouse.click(pt.x, pt.y)
+}
 
 function treasuryOf(page: Page, name: string) {
   return page
@@ -117,6 +132,24 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
   await guest.reload()
   await expect(guest.getByTestId('round-chip')).toHaveText('Round 2/11')
 
+  /* ---- the host opens a Network action and picks a route, but does NOT
+     confirm: every step is a persisted intent that broadcasts, so this is
+     exactly the moment an opponent could watch the pick live ---- */
+  await expect(host.getByTestId('action-network')).toBeVisible()
+  await host.getByTestId('action-network').click()
+  await expect(
+    host.locator('button.bb2-card:not([disabled])').first(),
+  ).toBeVisible()
+  await host.locator('button.bb2-card:not([disabled])').first().click()
+  await expect(
+    host.getByText(/Choose a canal route — \d+ available/),
+  ).toBeVisible()
+  const legalRoute = host.locator('path[data-conn][data-legal="true"]')
+  await expect(legalRoute).not.toHaveCount(0)
+  const pickedConn = (await legalRoute.first().getAttribute('data-conn'))!
+  await clickRoute(host, pickedConn)
+  await expect(host.getByTestId('confirm-action')).toBeEnabled()
+
   /* ---- wire hygiene: read the guest's OWN stream bytes and inspect ---- */
   const rawEvent = await guest.evaluate(
     async ({ token }) => {
@@ -156,6 +189,16 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
       context: {
         players: Array<{ hand: Array<{ id: string }> }>
         drawPile: Array<{ id: string }>
+        selectedCard: { id: string } | null
+        selectedLink: unknown
+        selectedSecondLink: unknown
+        selectedLocation: unknown
+        selectedIndustryTile: unknown
+        selectedTilesForDevelop: unknown[]
+        pendingSale: unknown
+        chosenBeerSources: unknown[]
+        chosenIronSources: unknown[]
+        chosenCoalSources: unknown[]
       }
     }
   }
@@ -172,6 +215,33 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
     true,
   )
   expect(ctx.drawPile.every((c) => c.id.startsWith('hidden-'))).toBe(true)
+  // …and the host's IN-PROGRESS selection is redacted: the route she just
+  // picked is nowhere in the guest's frame, so it cannot light up their map.
+  expect(ctx.selectedLink).toBeNull()
+  expect(ctx.selectedSecondLink).toBeNull()
+  expect(ctx.selectedLocation).toBeNull()
+  expect(ctx.selectedIndustryTile).toBeNull()
+  expect(ctx.selectedTilesForDevelop).toEqual([])
+  expect(ctx.pendingSale).toBeNull()
+  expect(ctx.chosenBeerSources).toEqual([])
+  expect(ctx.chosenIronSources).toEqual([])
+  expect(ctx.chosenCoalSources).toEqual([])
+  expect(ctx.selectedCard?.id).toMatch(/^hidden-/)
+  // Belt-and-braces at the byte level: neither endpoint of the picked route
+  // appears in the selection payload the guest received.
+  // (selectedCard is excluded: its placeholder is a legit-shaped Birmingham
+  // location card, which would false-positive a raw city-id search.)
+  const selectionWire = JSON.stringify({
+    selectedLink: ctx.selectedLink,
+    selectedSecondLink: ctx.selectedSecondLink,
+    selectedLocation: ctx.selectedLocation,
+    selectedIndustryTile: ctx.selectedIndustryTile,
+    selectedTilesForDevelop: ctx.selectedTilesForDevelop,
+    pendingSale: ctx.pendingSale,
+  })
+  for (const city of pickedConn.split('|')) {
+    expect(selectionWire).not.toContain(city)
+  }
 
   /* ---- chat delta on the wire: a NEW chat line arrives as an `event: chat`
      increment (NOT a full-state `data:` view frame), proving a message never

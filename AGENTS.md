@@ -866,11 +866,21 @@ When updating this file, preserve this bar for all agents and keep entries conci
   DOM, like `turnNotify.ts`). If a guard starts refusing something new, teach
   `explainRefusal` about it in the same commit.
 - HIDDEN INFO IS FILTERED SERVER-SIDE in `filterSnapshotForSeat`: foreign
-  hands, the draw pile, and foreign in-flight selections become `hidden-*`
-  placeholders (lengths preserved — guards need counts). Wire-level tests:
-  `gameStore.multiplayer.test.ts` + `e2e/multiplayer.spec.ts` (reads raw
-  SSE bytes). NEVER add a field to the snapshot without deciding its
-  filtering here.
+  hands and the draw pile become `hidden-*` placeholders (lengths preserved —
+  guards need counts), and the CURRENT player's whole in-progress selection is
+  emptied for every other seat (2026-07-23: `selectedLink`/`selectedSecondLink`
+  /`selectedLocation`/`selectedIndustryTile`/`selectedTilesForDevelop`/
+  `pendingSale`/`chosen{Beer,Iron,Coal}Sources`/`pending{Iron,Coal}Step`, on
+  top of the card fields). Every wizard step is a persisted intent that bumps
+  `version` and broadcasts, so leaving them in let opponents WATCH the acting
+  player's route/site picks light up on their own board. They are emptied, not
+  shape-preserved: nothing a bystander renders or any guard they evaluate reads
+  them, and a placeholder city would light a FALSE plate. Safe because
+  restoring a snapshot never re-runs the `always` chains (`StateMachine.start`
+  only starts children), so the read-only client actor stays parked in its
+  step. Wire-level tests: `gameStore.multiplayer.test.ts` +
+  `e2e/multiplayer.spec.ts` (reads raw SSE bytes). NEVER add a field to the
+  snapshot without deciding its filtering here.
 - Transport = SSE (`/api/mp/stream`) + POST intents: first-class in Next
   route handlers, EventSource auto-reconnects across dev restarts.
   WebSockets would need a custom server. Store = the `games` table (Drizzle,

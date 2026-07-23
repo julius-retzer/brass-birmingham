@@ -56,9 +56,37 @@ type Ctx = {
   players: Array<{ hand: Array<{ id: string }>; name: string }>
   drawPile: Array<{ id: string }>
   currentPlayerIndex: number
+  selectedCard: { id: string } | null
+  selectedLink: unknown
+  selectedSecondLink: unknown
+  selectedLocation: unknown
+  selectedIndustryTile: unknown
+  selectedTilesForDevelop: unknown[]
+  pendingSale: unknown
+  chosenBeerSources: unknown[]
+  chosenIronSources: unknown[]
+  chosenCoalSources: unknown[]
+  pendingIronStep: unknown
+  pendingCoalStep: unknown
 }
 const ctxOf = (view: { snapshot: unknown }) =>
   (view.snapshot as { context: Ctx }).context
+
+/** Every field holding an action's in-progress picks — the hidden zone. */
+const selectionFieldsOf = (ctx: Ctx) => ({
+  selectedCard: ctx.selectedCard,
+  selectedLink: ctx.selectedLink,
+  selectedSecondLink: ctx.selectedSecondLink,
+  selectedLocation: ctx.selectedLocation,
+  selectedIndustryTile: ctx.selectedIndustryTile,
+  selectedTilesForDevelop: ctx.selectedTilesForDevelop,
+  pendingSale: ctx.pendingSale,
+  chosenBeerSources: ctx.chosenBeerSources,
+  chosenIronSources: ctx.chosenIronSources,
+  chosenCoalSources: ctx.chosenCoalSources,
+  pendingIronStep: ctx.pendingIronStep,
+  pendingCoalStep: ctx.pendingCoalStep,
+})
 
 describe('multiplayer: lifecycle and authority', () => {
   test('create → join fills seats and starts the engine', async () => {
@@ -360,6 +388,61 @@ describe('multiplayer: hidden information never crosses the wire', () => {
     for (const card of hostCtx.players[0]!.hand) {
       expect(allCardZones.filter((id) => id === card.id)).toHaveLength(0)
     }
+  })
+
+  test("an opponent's in-progress selection never reaches the other seats", async () => {
+    const { host, guest } = await freshGame()
+    const start = await getGameView(host.token, 0, host.seatSecret)
+    const current = ctxOf(start!).currentPlayerIndex
+    const other = current === 0 ? 1 : 0
+    const creds = current === 0 ? host : guest
+    const otherCreds = other === 0 ? host : guest
+
+    // Take a Network action as far as a chosen route: every step here is a
+    // persisted intent that bumps `version` and broadcasts to BOTH seats.
+    const act = (event: Record<string, unknown> & { type: string }) =>
+      actInGame(host.token, current, creds.seatSecret, event)
+    expect((await act({ type: 'NETWORK' })).ok).toBe(true)
+    const own = ctxOf(
+      (await getGameView(host.token, current, creds.seatSecret))!,
+    )
+    const card = own.players[current]!.hand[0]!
+    expect((await act({ type: 'SELECT_CARD', cardId: card.id })).ok).toBe(true)
+    const link = { from: 'birmingham', to: 'coventry' }
+    expect((await act({ type: 'SELECT_LINK', ...link })).ok).toBe(true)
+
+    // The acting seat still sees its own picks.
+    const mine = ctxOf(
+      (await getGameView(host.token, current, creds.seatSecret))!,
+    )
+    expect(mine.selectedLink).toEqual(link)
+    expect(mine.selectedCard?.id).toBe(card.id)
+
+    // The opponent gets the same state node, with the selection redacted —
+    // no route to light up on their board, no card identity.
+    const theirs = ctxOf(
+      (await getGameView(host.token, other, otherCreds.seatSecret))!,
+    )
+    expect(theirs.selectedLink).toBeNull()
+    expect(theirs.selectedSecondLink).toBeNull()
+    expect(theirs.selectedLocation).toBeNull()
+    expect(theirs.selectedIndustryTile).toBeNull()
+    expect(theirs.selectedTilesForDevelop).toEqual([])
+    expect(theirs.pendingSale).toBeNull()
+    expect(theirs.chosenBeerSources).toEqual([])
+    expect(theirs.chosenIronSources).toEqual([])
+    expect(theirs.chosenCoalSources).toEqual([])
+    expect(theirs.pendingIronStep).toBeNull()
+    expect(theirs.pendingCoalStep).toBeNull()
+    expect(theirs.selectedCard?.id).toMatch(/^hidden-/)
+
+    // Wire-level: neither endpoint's id appears anywhere in the opponent's
+    // in-flight selection payload.
+    const wire = JSON.stringify(
+      (await getGameView(host.token, other, otherCreds.seatSecret))!.snapshot,
+    )
+    const wireCtx = (JSON.parse(wire) as { context: Ctx }).context
+    expect(JSON.stringify(selectionFieldsOf(wireCtx))).not.toContain('coventry')
   })
 
   test('unauthenticated view exposes lobby facts only — never a snapshot', async () => {

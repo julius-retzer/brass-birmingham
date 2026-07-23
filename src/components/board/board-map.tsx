@@ -32,6 +32,7 @@ import {
   easeInOutCubic,
   planPanToCity,
 } from './pan-into-view'
+import { farmBrewerySpurStyle } from './route-style'
 
 /* ---------------- palette (mirrors theme.css) ---------------- */
 
@@ -869,15 +870,19 @@ export function BoardMap({
         {(() => {
           const mid = pointAt('kidderminster', 'worcester', 0.5)
           const fb = cityPos.farmBrewery2
-          const linked = builtLinks.has(linkKey('kidderminster', 'worcester'))
+          // Mirror the corridor's built type so a rail link reads rail (orange),
+          // a canal link canal (teal), and an unbuilt corridor the neutral
+          // potential hint — never a canal default in the rail era.
+          const kwBuilt = builtLinks.get(linkKey('kidderminster', 'worcester'))
+          const spur = farmBrewerySpurStyle(kwBuilt?.type ?? null)
           return (
             <path
               d={`M ${mid.x} ${mid.y} L ${fb.x} ${fb.y}`}
               fill="none"
-              stroke={linked ? '#4e9c96' : '#7a8b3d'}
-              strokeOpacity={linked ? 0.8 : 0.35}
-              strokeWidth={linked ? 3.5 : 2}
-              strokeDasharray={linked ? undefined : '4 5'}
+              stroke={spur.stroke}
+              strokeOpacity={spur.strokeOpacity}
+              strokeWidth={spur.strokeWidth}
+              strokeDasharray={spur.strokeDasharray}
               pointerEvents="none"
             />
           )

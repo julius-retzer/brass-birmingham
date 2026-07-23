@@ -63,7 +63,9 @@ export default defineConfig({
     // GOTCHA: an already-running `pnpm dev` on :3199 is reused as-is, and it
     // reads DATABASE_URL from `.env` — so this run's database is NOT what it
     // talks to. Stop your dev server for a faithful DB-backed e2e run.
-    reuseExistingServer: true,
+    // Never reuse on CI: nothing should be listening there, and a stray server
+    // would be serving a different database than this run created.
+    reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     // Next only fills gaps from `.env*`, so an explicit value wins: this is what
     // points the dev server at this run's database.

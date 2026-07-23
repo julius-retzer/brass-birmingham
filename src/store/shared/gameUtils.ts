@@ -29,6 +29,33 @@ export function isDevelopable(
 }
 
 /**
+ * The sentence shown wherever a lightbulb-Pottery develop is refused — the
+ * dock's blocked list, the mat picker and `explainRefusal` all share it so
+ * the wording cannot drift between surfaces.
+ */
+export const POTTERY_LIGHTBULB_REASON =
+  'Pottery cannot be developed — the lightbulb tiles are removed only by building over them, which then unlocks the higher Pottery levels (rulebook p.7).'
+
+/**
+ * How many tiles of this industry a Develop may still remove — the sum of
+ * remaining quantity over developable tiles. The Develop executor skips
+ * lightbulb tiles and scraps the lowest developable one per pick
+ * (executeDevelopAction), so a pick of the same industry N times is legal
+ * exactly when this count is ≥ N. Shared by the SELECT_TILES_FOR_DEVELOP
+ * guard and its refusal explainer.
+ */
+export function developableTileQuantity(
+  tiles: Array<{
+    tile: Pick<IndustryTile, 'type' | 'hasLightbulbIcon'>
+    quantityAvailable: number
+  }>,
+): number {
+  return tiles
+    .filter((t) => isDevelopable(t.tile))
+    .reduce((n, t) => n + t.quantityAvailable, 0)
+}
+
+/**
  * Marker movement for a FLIPPED tile: advance by the tile's printed
  * SPACES; the level is the coin beside the landing space (audited
  * 2026-07-15). The single source for every flip path — round-end checks,

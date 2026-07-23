@@ -8,15 +8,22 @@
 // tile art. The per-tile facts (cost, resources, VP, income, links, beer,
 // develop) live in a docked readout that follows the highlighted tile —
 // progressive disclosure keeps the mat a clean, board-faithful overview.
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { type IndustryType } from '~/data/cards'
 import {
   canBuildTileInEra,
   getBuildableTileInEra,
   type IndustryTile,
 } from '~/data/industryTiles'
-import { type Player } from '~/store/gameStore'
+import { type GameEvent, type Player } from '~/store/gameStore'
+import {
+  POTTERY_LIGHTBULB_REASON,
+  isDevelopable,
+} from '~/store/shared/gameUtils'
+import { IronSourcePicker } from './action-dock'
 import { INDUSTRY_FILL, INDUSTRY_INK, PLAYER_FILL } from './board/board-map'
+import { type DevelopMatView, stagedRemovals } from './develop-mat'
 import {
   BeerSteinIcon,
   CanalIcon,
@@ -282,15 +289,23 @@ function LinkIcons({ n }: { n: number }) {
 }
 
 // One slot in an industry track: a tile, or an empty placeholder for a
-// depleted level. Tapping/hovering a tile drives the docked readout.
+// depleted level. Tapping/hovering a tile drives the docked readout. In
+// develop mode the ARMED tile (the one a pick would scrap) smoulders brass
+// and a tap peels it off; tapping any other tile explains why not.
 function TrackSlot({
   entry,
   selected,
   onSelect,
+  develop,
 }: {
   entry: SlotEntry
   selected: boolean
   onSelect: () => void
+  develop?: {
+    armed: boolean
+    onPick: (el: HTMLButtonElement) => void
+    onBlocked: () => void
+  } | null
 }) {
   if (entry.kind === 'empty') {
     return (
@@ -311,11 +326,25 @@ function TrackSlot({
       type="button"
       data-testid={`mat-slot-${tile.id}`}
       data-depth={count}
+      data-develop-armed={develop?.armed || undefined}
       aria-pressed={selected}
-      onClick={onSelect}
+      aria-label={
+        develop?.armed
+          ? `Scrap ${LABEL[tile.type]} ${ROMAN[tile.level] ?? tile.level}`
+          : undefined
+      }
+      onClick={(e) => {
+        onSelect()
+        if (develop) {
+          if (develop.armed) develop.onPick(e.currentTarget)
+          else develop.onBlocked()
+        }
+      }}
       onMouseEnter={onSelect}
       onFocus={onSelect}
-      className="relative shrink-0 rounded-md transition-transform hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus:outline-none"
+      className={`relative shrink-0 rounded-md transition-transform hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus:outline-none ${
+        develop?.armed ? 'bb2-develop-armed hover:-translate-y-1' : ''
+      }`}
       style={{ opacity: barred ? 0.42 : 1 }}
     >
       {/* Remaining quantity is the STACK itself — layered tile edges under
@@ -354,16 +383,55 @@ interface TileSlot {
 }
 type SlotEntry = TileSlot | { kind: 'empty'; level: number }
 
+/** What the surfaces hand the ledger to turn it into the Develop surface. */
+export interface DevelopMatProps {
+  view: DevelopMatView
+  send: (event: GameEvent) => void
+  /** An intent is on the wire (multiplayer) — swallow clicks meanwhile. */
+  busy?: boolean
+}
+
+/** A scrapped tile mid-flight from its pile to the tray (rects at click). */
+interface TileFlight {
+  key: number
+  type: IndustryType
+  tile: IndustryTile
+  from: { x: number; y: number; width: number }
+  to: { x: number; y: number }
+  /** The tray index this tile will occupy once the machine confirms it. */
+  targetIndex: number
+}
+
+let flightKey = 0
+
+/** The full tile a pick of this industry would scrap — the flyer's face. */
+function removalTile(
+  player: Player,
+  type: IndustryType,
+  staged: IndustryType[],
+): IndustryTile {
+  const next = stagedRemovals(player.industryTilesOnMat, [...staged, type])
+  const id = next[next.length - 1]?.tileId
+  const rows = player.industryTilesOnMat[type] ?? []
+  return (rows.find((r) => r.tile.id === id) ?? rows[0])!.tile
+}
+
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false)
+
 export function PlayerLedger({
   player,
   era,
   isCurrent,
   onClose,
+  develop = null,
 }: {
   player: Player
   era: 'canal' | 'rail'
   isCurrent: boolean
   onClose: () => void
+  develop?: DevelopMatProps | null
 }) {
   // Escape closes the ledger — promised by the a11y note on the backdrop.
   useEffect(() => {
@@ -374,15 +442,127 @@ export function PlayerLedger({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onClose])
 
+  /* ----- develop mode: staged preview, armed tiles, flights, notices ----- */
+
+  const view = develop?.view ?? null
+  // Which exact tiles the staged picks peel off — drives BOTH the thinner
+  // piles (preview mat) and the scrap tray. Presentation preview only; every
+  // legality answer comes from the machine via the view.
+  const removals = useMemo(
+    () =>
+      view
+        ? stagedRemovals(player.industryTilesOnMat, view.staged).map((r) => ({
+            ...r,
+            tile: (player.industryTilesOnMat[r.type] ?? []).find(
+              (row) => row.tile.id === r.tileId,
+            )?.tile,
+          }))
+        : [],
+    [view, player.industryTilesOnMat],
+  )
+  const removedByTileId = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const r of removals) m.set(r.tileId, (m.get(r.tileId) ?? 0) + 1)
+    return m
+  }, [removals])
+  // The tile a pick of each industry would scrap NEXT (null = not pickable).
+  const armedTileIds = useMemo(() => {
+    if (!view) return new Map<IndustryType, string>()
+    const m = new Map<IndustryType, string>()
+    for (const type of INDUSTRY_TYPES) {
+      if (!view.canPick(type)) continue
+      const next = stagedRemovals(player.industryTilesOnMat, [
+        ...view.staged,
+        type,
+      ])
+      if (next.length === view.staged.length + 1) {
+        m.set(type, next[next.length - 1]!.tileId)
+      }
+    }
+    return m
+  }, [view, player.industryTilesOnMat])
+
+  const trayRef = useRef<HTMLDivElement | null>(null)
+  const [flights, setFlights] = useState<TileFlight[]>([])
+  const [landedTray, setLandedTray] = useState<ReadonlySet<number>>(new Set())
+  const [notice, setNotice] = useState<string | null>(null)
+  // A rejected tap's reason lingers briefly, then clears itself.
+  useEffect(() => {
+    if (notice === null) return
+    const t = setTimeout(() => setNotice(null), 5000)
+    return () => clearTimeout(t)
+  }, [notice])
+  // Leaving develop mode (confirm, cancel, close) drops any leftover motion.
+  useEffect(() => {
+    if (!view) {
+      setFlights([])
+      setLandedTray(new Set())
+      setNotice(null)
+    }
+  }, [view])
+
+  const pickTile = (type: IndustryType, el: HTMLButtonElement) => {
+    if (!develop || !view) return
+    if (develop.busy) return
+    if (!view.canPick(type)) {
+      setNotice(view.pickReason(type))
+      return
+    }
+    setNotice(null)
+    develop.send(view.pickEvent(type))
+    // The peel-off flight — decorative, skipped for reduced motion. Rects
+    // are measured now (viewport coords) and the clone rides a portal so no
+    // ancestor transform can re-anchor its fixed positioning.
+    const tray = trayRef.current
+    if (!prefersReducedMotion() && tray) {
+      const from = el.getBoundingClientRect()
+      const trayRect = tray.getBoundingClientRect()
+      const targetIndex = view.staged.length
+      setFlights((f) => [
+        ...f,
+        {
+          key: ++flightKey,
+          type,
+          tile: removalTile(player, type, view.staged),
+          from: { x: from.left, y: from.top, width: from.width },
+          to: {
+            x: trayRect.left + 10 + targetIndex * 52,
+            y: trayRect.top + (trayRect.height - 44) / 2,
+          },
+          targetIndex,
+        },
+      ])
+    }
+  }
+
+  const blockedTap = (type: IndustryType, tile: IndustryTile) => {
+    if (!develop || !view) return
+    // A lightbulb Pottery tile gets the rulebook's own sentence even while
+    // the rest of its track is developable — the player asked about THIS tile.
+    setNotice(
+      !isDevelopable(tile)
+        ? POTTERY_LIGHTBULB_REASON
+        : view.canPick(type)
+          ? 'Develop scraps the lowest tile of a pile first — tap the glowing tile.'
+          : view.pickReason(type),
+    )
+  }
+
   // Each industry as a track: a slot per level (empty when depleted), the
   // lowest remaining marked `next` (buildable this era) or `blocking` (the
   // lowest is barred, so it must be Developed away first).
   const tracks = useMemo(
     () =>
       INDUSTRY_TYPES.map((type) => {
-        const rows = [...(player.industryTilesOnMat[type] ?? [])].sort(
-          (a, b) => a.tile.level - b.tile.level,
-        )
+        const rows = [...(player.industryTilesOnMat[type] ?? [])]
+          .sort((a, b) => a.tile.level - b.tile.level)
+          .map((r) => ({
+            ...r,
+            // Staged develop picks preview as already gone: the pile thins
+            // the moment the tile flies to the tray.
+            quantityAvailable:
+              r.quantityAvailable - (removedByTileId.get(r.tile.id) ?? 0),
+          }))
         // The one tile in play, via the shared helper so this highlight
         // can't drift from the build/develop guards (null when barred).
         const buildableNext = getBuildableTileInEra(rows, era)
@@ -405,7 +585,7 @@ export function PlayerLedger({
         const remaining = rows.reduce((a, r) => a + r.quantityAvailable, 0)
         return { type, slots, remaining }
       }),
-    [player.industryTilesOnMat, era],
+    [player.industryTilesOnMat, era, removedByTileId],
   )
 
   // All selectable tiles, flat, in track/level order — the readout reads
@@ -486,15 +666,30 @@ export function PlayerLedger({
         <div className="-mr-2 flex-1 overflow-y-auto pr-2">
           {/* tile mat */}
           <div className="pt-4">
-            <span className="bb2-panel-title">Tiles on the mat</span>
+            <span className="bb2-panel-title">
+              {view ? 'Develop — scrap tiles off the mat' : 'Tiles on the mat'}
+            </span>
             <p
               className="pt-1.5 text-[12.5px]"
               style={{ color: 'rgba(231,215,177,.5)' }}
             >
-              Tiles build lowest level first — the brass-ringed tile is the next
-              one out, and a thicker pile means more copies remain. Hover or tap
-              any tile to read its full stats below. Greyed tiles cannot be
-              built in the {era} era.
+              {view ? (
+                <>
+                  Tap a{' '}
+                  <b style={{ color: 'var(--bb-brass-bright)' }}>
+                    glowing tile
+                  </b>{' '}
+                  to pull it off its pile — one or two per action, 1 iron each.
+                  Tap a scrapped tile below to put it back.
+                </>
+              ) : (
+                <>
+                  Tiles build lowest level first — the brass-ringed tile is the
+                  next one out, and a thicker pile means more copies remain.
+                  Hover or tap any tile to read its full stats below. Greyed
+                  tiles cannot be built in the {era} era.
+                </>
+              )}
             </p>
 
             {/* industry tracks — one row each, tiles left→right by level.
@@ -548,6 +743,18 @@ export function PlayerLedger({
                             if (slot.kind === 'tile')
                               setSelectedId(slot.tile.id)
                           }}
+                          develop={
+                            view && slot.kind === 'tile'
+                              ? {
+                                  armed:
+                                    armedTileIds.get(tr.type) === slot.tile.id,
+                                  onPick: (el) => pickTile(tr.type, el),
+                                  onBlocked: () =>
+                                    slot.kind === 'tile' &&
+                                    blockedTap(tr.type, slot.tile),
+                                }
+                              : null
+                          }
                         />
                       ))
                     )}
@@ -627,7 +834,281 @@ export function PlayerLedger({
             </div>
           </div>
         </div>
+
+        {/* Develop dock — pinned under the scroll so the scrap tray, the iron
+            question and confirm/cancel are always in reach (phones included). */}
+        {develop && view && (
+          <DevelopDock
+            view={view}
+            removals={removals}
+            trayRef={trayRef}
+            flights={flights}
+            landedTray={landedTray}
+            notice={notice}
+            busy={develop.busy ?? false}
+            send={develop.send}
+          />
+        )}
       </div>
+
+      {/* Scrap flights ride a body portal: fixed coords stay viewport-true
+          regardless of any transformed/animated ancestor. */}
+      {flights.length > 0 &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          flights.map((f) => (
+            <ScrapFlight
+              key={f.key}
+              flight={f}
+              onDone={() => {
+                setFlights((rest) => rest.filter((x) => x.key !== f.key))
+                setLandedTray((prev) => new Set(prev).add(f.targetIndex))
+              }}
+            />
+          )),
+          document.body,
+        )}
+    </div>
+  )
+}
+
+/* ----- develop dock: scrap tray, iron question, confirm ----- */
+
+function DevelopDock({
+  view,
+  removals,
+  trayRef,
+  flights,
+  landedTray,
+  notice,
+  busy,
+  send,
+}: {
+  view: DevelopMatView
+  removals: Array<{
+    type: IndustryType
+    tileId: string
+    level: number
+    tile: IndustryTile | undefined
+  }>
+  trayRef: React.MutableRefObject<HTMLDivElement | null>
+  flights: TileFlight[]
+  landedTray: ReadonlySet<number>
+  notice: string | null
+  busy: boolean
+  send: (event: GameEvent) => void
+}) {
+  const staged = view.staged
+  return (
+    <div
+      data-testid="develop-mat-bar"
+      className="mt-3 flex flex-col gap-2.5 rounded-md p-3"
+      aria-busy={busy}
+      style={{
+        border: '1px solid var(--bb-brass-hairline)',
+        background: 'linear-gradient(170deg,#2c2417,var(--bb-iron-panel))',
+        boxShadow: 'inset 0 1px 0 rgba(255,230,170,.08)',
+        opacity: busy ? 0.7 : 1,
+      }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className="text-[11px] font-bold uppercase tracking-[0.16em]"
+          style={{ color: 'var(--bb-brass-bright)' }}
+        >
+          <DevelopIcon size={13} /> Scrapping{' '}
+          {staged.length === 0
+            ? view.step === 'tiles'
+              ? '— pick a tile'
+              : 'the lowest tile'
+            : staged.length === 1
+              ? 'one tile'
+              : 'two tiles'}
+        </span>
+        <button
+          type="button"
+          className="bb2-ghost-btn"
+          data-testid="cancel-action"
+          disabled={busy}
+          onClick={() => send({ type: 'CANCEL' })}
+        >
+          Cancel
+        </button>
+      </div>
+
+      {/* the scrap tray — where picked tiles land */}
+      <div
+        ref={trayRef}
+        data-testid="develop-tray"
+        className="flex min-h-[64px] items-center gap-3 rounded px-2.5 py-2"
+        aria-live="polite"
+        style={{
+          border: '1px dashed rgba(231,215,177,.22)',
+          background: 'rgba(0,0,0,.25)',
+        }}
+      >
+        {removals.length === 0 &&
+          (view.step === 'tiles' ? (
+            <span
+              className="text-[12.5px] italic"
+              style={{ color: 'rgba(231,215,177,.4)' }}
+            >
+              Nothing scrapped yet — tap a glowing tile above.
+            </span>
+          ) : (
+            // The "develop lowest" shortcut names no tile — the executor
+            // scraps the lowest available one at confirm.
+            <span
+              className="text-[12.5px] italic"
+              style={{ color: 'rgba(231,215,177,.55)' }}
+            >
+              Scrapping the lowest available tile.
+            </span>
+          ))}
+        {removals.map((r, i) => {
+          const inFlight = flights.some((f) => f.targetIndex === i)
+          const tile = r.tile
+          return (
+            <button
+              key={`${r.tileId}-${i}`}
+              type="button"
+              data-testid={`develop-staged-${r.type}`}
+              title="Put this tile back"
+              disabled={busy}
+              onClick={() => send(view.unstageEvent(i))}
+              className={`relative flex shrink-0 flex-col items-center gap-0.5 focus:outline-none focus-visible:-translate-y-0.5 ${
+                landedTray.has(i) ? 'bb2-tray-drop' : ''
+              }`}
+              style={{ visibility: inFlight ? 'hidden' : 'visible' }}
+            >
+              {tile ? (
+                <MatTileArt type={r.type} tile={tile} depth={1} size={40} />
+              ) : (
+                <IndustryChip type={r.type} size={22} />
+              )}
+              <span
+                className="text-[9px] font-bold uppercase tracking-[0.1em]"
+                style={{ color: 'rgba(231,215,177,.6)' }}
+              >
+                {r.type === 'manufacturer' ? 'goods' : r.type}{' '}
+                {ROMAN[r.level] ?? r.level} ✕
+              </span>
+            </button>
+          )
+        })}
+        {removals.length === 1 && (
+          <span
+            className="text-[12px] italic"
+            style={{ color: 'rgba(231,215,177,.35)' }}
+          >
+            …one more, or confirm.
+          </span>
+        )}
+      </div>
+
+      {notice && (
+        <p
+          data-testid="develop-pick-blocked"
+          role="status"
+          className="text-[12.5px] leading-snug"
+          style={{ color: '#d68d80' }}
+        >
+          {notice}
+        </p>
+      )}
+
+      {/* the iron question, asked right here when the machine stops on it */}
+      {view.step === 'iron' && view.ironChoice?.hasChoice && (
+        <IronSourcePicker
+          options={view.ironChoice.options}
+          required={view.ironChoice.required}
+          picks={view.ironPicks}
+          onPick={(source) => {
+            if (!busy) send({ type: 'SELECT_IRON_SOURCE', source })
+          }}
+        />
+      )}
+
+      {/* The closing control follows the STEP: on the tile step CONFIRM is
+          the "just scrap the lowest" shortcut; on the confirm step it seals
+          the develop; while the iron question is open there is nothing to
+          press — answering it advances the flow. */}
+      {view.step === 'confirm' && (
+        <div className="flex flex-col gap-1.5">
+          <button
+            type="button"
+            className="bb2-confirm"
+            data-testid="confirm-action"
+            disabled={busy || !view.canConfirm}
+            onClick={() => send({ type: 'CONFIRM' })}
+          >
+            Scrap{' '}
+            {staged.length === 2
+              ? 'two tiles'
+              : staged.length === 1
+                ? 'one tile'
+                : 'the tile'}
+          </button>
+          {!view.canConfirm && (
+            <p
+              className="text-[12.5px] leading-snug"
+              style={{ color: '#d68d80' }}
+            >
+              {view.confirmReason}
+            </p>
+          )}
+        </div>
+      )}
+      {view.step === 'tiles' && (
+        <button
+          type="button"
+          className="bb2-ghost-btn"
+          data-testid="develop-lowest"
+          disabled={busy}
+          onClick={() => send({ type: 'CONFIRM' })}
+        >
+          Develop lowest available
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** A scrapped tile sailing from its pile to the tray — pure decoration. */
+function ScrapFlight({
+  flight,
+  onDone,
+}: {
+  flight: TileFlight
+  onDone: () => void
+}) {
+  const [airborne, setAirborne] = useState(false)
+  useEffect(() => {
+    // Double rAF: mount at the source rect first, then transition.
+    const raf = requestAnimationFrame(() =>
+      requestAnimationFrame(() => setAirborne(true)),
+    )
+    const timer = setTimeout(onDone, 640)
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(timer)
+    }
+  }, [])
+  const dx = flight.to.x - flight.from.x
+  const dy = flight.to.y - flight.from.y
+  return (
+    <div
+      aria-hidden
+      className="bb2-dev-flyer"
+      style={{
+        left: flight.from.x,
+        top: flight.from.y,
+        transform: airborne
+          ? `translate(${dx}px, ${dy}px) rotate(7deg) scale(0.8)`
+          : 'translate(0, 0) rotate(0) scale(1)',
+      }}
+    >
+      <MatTileArt type={flight.type} tile={flight.tile} depth={1} size={48} />
     </div>
   )
 }

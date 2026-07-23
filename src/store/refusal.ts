@@ -26,7 +26,11 @@
 // CONTRACT: only call this when `can(event)` is already false. It answers "why
 // would this be refused", not "is this legal" — the machine owns legality.
 import { type CityId, connections, linkConnectedLocations } from '../data/board'
-import type { LocationCard } from '../data/cards'
+import {
+  type IndustryType,
+  type LocationCard,
+  industryDisplayName,
+} from '../data/cards'
 import { getBuildableTileInEra } from '../data/industryTiles'
 import {
   buildCompletionAt,
@@ -47,7 +51,11 @@ import {
   railNetworkCostView,
 } from './market/marketActions'
 import { getDevelopBonusOptions } from './shared/developBonus'
-import { getCurrentPlayer } from './shared/gameUtils'
+import {
+  POTTERY_LIGHTBULB_REASON,
+  developableTileQuantity,
+  getCurrentPlayer,
+} from './shared/gameUtils'
 import {
   beerSourceKey,
   canChooseBeerSource,
@@ -267,6 +275,40 @@ const explainSelectIndustryType = (
   return null
 }
 
+/**
+ * SELECT_TILES_FOR_DEVELOP — mirrors canSelectTilesForDevelop: tile legality
+ * only (money and iron are judged on CONFIRM). Calls the guard's own counter,
+ * `developableTileQuantity`, per named industry.
+ */
+const explainDevelopTilePick = (
+  context: GameState,
+  event: Extract<GameEvent, { type: 'SELECT_TILES_FOR_DEVELOP' }>,
+): string | null => {
+  const picks = event.industryTypes
+  if (picks.length === 0) return 'Pick at least one tile to develop.'
+  if (picks.length > 2) return 'A Develop removes at most two tiles.'
+  const mat = getCurrentPlayer(context).industryTilesOnMat
+  const counts = new Map<IndustryType, number>()
+  for (const type of picks) counts.set(type, (counts.get(type) ?? 0) + 1)
+  for (const [type, n] of counts) {
+    const tiles = mat[type] ?? []
+    const held = tiles.filter((t) => t.quantityAvailable > 0)
+    if (held.length === 0) {
+      return `You have no ${industryDisplayName(type)} tiles left on your mat.`
+    }
+    const developable = developableTileQuantity(tiles)
+    if (developable === 0) {
+      return type === 'pottery'
+        ? POTTERY_LIGHTBULB_REASON
+        : `No ${industryDisplayName(type)} tile on your mat can be developed.`
+    }
+    if (developable < n) {
+      return `Only ${developable === 1 ? 'one' : developable} ${industryDisplayName(type)} tile${developable === 1 ? '' : 's'} can still be developed.`
+    }
+  }
+  return null
+}
+
 /** CONFIRM on a develop — mirrors hasSelectedTilesForDevelop (iron sourceable
  * AND affordable; no tile named ⇒ the single lowest, count 1). */
 const explainDevelopConfirm = (context: GameState): string | null => {
@@ -455,6 +497,9 @@ export function explainRefusal(
       // offered (rules L119-121).
       return 'That coal mine is not one of the closest connected mines you may choose from.'
     }
+
+    case 'SELECT_TILES_FOR_DEVELOP':
+      return explainDevelopTilePick(context, event)
 
     case 'SELECT_DEVELOP_TILE': {
       const pending = context.pendingDevelopChoice

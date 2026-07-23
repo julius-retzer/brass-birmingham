@@ -17,7 +17,6 @@ import {
   railNetworkCostView,
 } from '~/store/market/marketActions'
 import { pendingDevelopBonusChoice } from '~/store/shared/developBonus'
-import { isDevelopable } from '~/store/shared/gameUtils'
 import {
   type BeerSource,
   type BeerSourceOption,
@@ -33,7 +32,6 @@ import {
 } from '~/store/shared/resourceSources'
 import { disabledActionReason } from './action-reason'
 import { CardChip, cardTitle } from './cards'
-import { blockedIndustries, developableIndustries } from './develop-block'
 import {
   doubleLinkDisabledReason,
   showsDoubleLinkOption,
@@ -228,6 +226,12 @@ interface ActionDockProps {
   legalSiteCount?: number | null
   /** Undo the first action of this turn (null = not available). */
   onUndo?: (() => void) | null
+  /**
+   * Develop picks tiles ON THE PLAYER MAT (the ledger modal). While the modal
+   * is open it owns the whole develop UI — the dock steps down to a pointer so
+   * the modal's confirm/cancel/iron controls stay the only ones on screen.
+   */
+  developMat?: { open: boolean; onOpen: () => void } | null
 }
 
 /* ----- hand-selection contract for the shell / HandTray ----- */
@@ -290,130 +294,6 @@ export function getHandSelection(
       return { hint: `Holding ${cardTitle(held)}`, selectedIds: [held.id] }
   }
   return null
-}
-
-/* ----- develop tile picker ----- */
-
-/**
- * Rules: a Develop action removes ONE or TWO tiles (1 iron each). Clicking
- * an industry cycles its count 0 → 1 → 2 → 0, capped at two tiles total
- * (the same industry may be picked twice — successive levels).
- */
-function DevelopTilePicker({
-  currentPlayer,
-  onCancel,
-  onPick,
-  onLowest,
-  held,
-}: {
-  currentPlayer: Player
-  onCancel: () => void
-  onPick: (types: IndustryType[]) => void
-  onLowest: () => void
-  held?: Card | null
-}) {
-  const [counts, setCounts] = useState<Partial<Record<IndustryType, number>>>(
-    {},
-  )
-  const developable = developableIndustries(currentPlayer.industryTilesOnMat)
-  const blocked = blockedIndustries(currentPlayer.industryTilesOnMat)
-  const available = (t: IndustryType) =>
-    (currentPlayer.industryTilesOnMat[t] || [])
-      .filter((tw) => isDevelopable(tw.tile))
-      .reduce((n, tw) => n + tw.quantityAvailable, 0)
-  const total = Object.values(counts).reduce((a, b) => a + (b ?? 0), 0)
-  const selection = developable.flatMap((t) =>
-    Array.from({ length: counts[t] ?? 0 }, () => t),
-  )
-
-  const cycle = (t: IndustryType) =>
-    setCounts((prev) => {
-      const current = prev[t] ?? 0
-      const others = total - current
-      const max = Math.min(2 - others, available(t))
-      const next = current >= max ? 0 : current + 1
-      return { ...prev, [t]: next }
-    })
-
-  return (
-    <Flow
-      action="Develop"
-      steps={['Card', 'Tiles', 'Confirm']}
-      active={1}
-      onCancel={onCancel}
-      held={held}
-    >
-      <Note>
-        Scrap one or <b>two</b> tiles from your mat — each consumes 1 iron. Tap
-        an industry again for a second tile of the same kind.
-      </Note>
-      <div className="grid grid-cols-3 gap-2">
-        {developable.map((t) => {
-          const n = counts[t] ?? 0
-          return (
-            <button
-              key={t}
-              type="button"
-              className="bb2-option relative flex-col !items-center gap-1.5 py-2.5"
-              data-selected={n > 0}
-              data-testid={`develop-${t}`}
-              onClick={() => cycle(t)}
-            >
-              <IndustryChip type={t} size={20} />
-              <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em]">
-                {t === 'manufacturer' ? 'Goods' : t}
-              </span>
-              {n > 0 && (
-                <span
-                  className="absolute right-1.5 top-1.5 rounded-full px-1.5 text-[10px] font-bold"
-                  style={{
-                    background: 'var(--bb-brass)',
-                    color: '#241a08',
-                  }}
-                >
-                  ×{n}
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
-      {blocked.map(({ type, reason }) => (
-        <div key={type} className="flex flex-col gap-1">
-          <button
-            type="button"
-            className="bb2-option relative flex-col !items-center gap-1.5 py-2.5"
-            data-testid={`develop-blocked-${type}`}
-            disabled
-            title={reason}
-          >
-            <IndustryChip type={type} size={20} />
-            <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em]">
-              {type === 'manufacturer' ? 'Goods' : type}
-            </span>
-          </button>
-          <p
-            className="text-[12.5px] leading-snug"
-            data-testid={`develop-blocked-reason-${type}`}
-            style={{ color: '#d68d80' }}
-          >
-            {reason}
-          </p>
-        </div>
-      ))}
-      <Confirm disabled={total === 0} onClick={() => onPick(selection)}>
-        Scrap {total === 2 ? 'two tiles' : total === 1 ? 'one tile' : 'tiles'}
-      </Confirm>
-      <button
-        type="button"
-        className="bb2-ghost-btn"
-        data-testid="develop-lowest"
-        onClick={onLowest}
-      >
-        Develop lowest available
-      </button>
-    </Flow>
-  )
 }
 
 /* ----- beer source picker ----- */
@@ -580,7 +460,7 @@ function ironSourceCaption(option: IronSourceOption): string {
  * not bookkeeping. Left untouched, the engine picks as it always has (works
  * in turn, then the market).
  */
-function IronSourcePicker({
+export function IronSourcePicker({
   options,
   required,
   picks,
@@ -820,6 +700,30 @@ function Flow({
   )
 }
 
+/**
+ * Shown while the develop-mode mat modal is open: the modal owns every
+ * control (confirm, cancel, iron picker), so the dock must not render its own
+ * — duplicate testids/controls behind an overlay would be unreachable anyway.
+ */
+function DevelopOnMatAside() {
+  return (
+    <div className="flex flex-col gap-2" data-testid="develop-on-mat">
+      <span
+        className="bb2-display text-[22px] font-bold leading-none"
+        style={{ color: 'var(--bb-brass-bright)' }}
+      >
+        Develop
+      </span>
+      <p
+        className="text-[14px] leading-relaxed"
+        style={{ color: 'rgba(231,215,177,.7)' }}
+      >
+        Picking tiles on your player mat…
+      </p>
+    </div>
+  )
+}
+
 function Note({ children }: { children: React.ReactNode }) {
   return (
     <p
@@ -988,6 +892,7 @@ export function ActionDock({
   actionsLeft = null,
   legalSiteCount = null,
   onUndo = null,
+  developMat = null,
 }: ActionDockProps) {
   const is = (path: string) => snapshot.matches(path as never)
   const can = (event: GameEvent) => snapshot.can(event)
@@ -1324,6 +1229,9 @@ export function ActionDock({
     is('playing.action.building.choosingIronSource') ||
     is('playing.action.developing.choosingIronSource')
   ) {
+    // A develop's iron question is asked INSIDE the open mat modal.
+    if (is('playing.action.developing.choosingIronSource') && developMat?.open)
+      return <DevelopOnMatAside />
     const choice = pendingIronChoice(c)
     const building = is('playing.action.building.choosingIronSource')
     return (
@@ -1579,19 +1487,45 @@ export function ActionDock({
     )
   }
   if (is('playing.action.developing.selectingTiles')) {
+    // The player mat IS the tile picker. While the modal is open the dock
+    // only points at it; when the player closed the modal mid-flow, the dock
+    // offers the way back in (plus the one-tap lowest shortcut and cancel).
+    if (developMat?.open) return <DevelopOnMatAside />
     return (
-      <DevelopTilePicker
-        currentPlayer={currentPlayer}
+      <Flow
+        action="Develop"
+        steps={devSteps}
+        active={1}
         onCancel={cancel}
-        onPick={(types) =>
-          send({ type: 'SELECT_TILES_FOR_DEVELOP', industryTypes: types })
-        }
-        onLowest={() => send({ type: 'CONFIRM' })}
         held={c.selectedCard}
-      />
+      >
+        <Note>
+          Scrap one or <b>two</b> tiles straight off your player mat — each
+          consumes 1 iron.
+        </Note>
+        {developMat && (
+          <button
+            type="button"
+            className="bb2-confirm"
+            data-testid="open-develop-mat"
+            onClick={developMat.onOpen}
+          >
+            Open your mat
+          </button>
+        )}
+        <button
+          type="button"
+          className="bb2-ghost-btn"
+          data-testid="develop-lowest"
+          onClick={() => send({ type: 'CONFIRM' })}
+        >
+          Develop lowest available
+        </button>
+      </Flow>
     )
   }
   if (is('playing.action.developing.confirmingDevelop')) {
+    if (developMat?.open) return <DevelopOnMatAside />
     return (
       <Flow
         action="Develop"
@@ -1607,6 +1541,16 @@ export function ActionDock({
           </b>{' '}
           — consumes iron.
         </Note>
+        {developMat && (
+          <button
+            type="button"
+            className="bb2-ghost-btn"
+            data-testid="open-develop-mat"
+            onClick={developMat.onOpen}
+          >
+            Back to the mat
+          </button>
+        )}
         <Confirm
           disabled={!can({ type: 'CONFIRM' })}
           onClick={() => send({ type: 'CONFIRM' })}

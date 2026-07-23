@@ -64,6 +64,7 @@ import {
   checkAndFlipIndustryTilesLogic,
   createLogEntry,
   debugLog,
+  developableTileQuantity,
   drawCards,
   findAvailableBreweries,
   findCardInHand,
@@ -3275,6 +3276,28 @@ export const gameStore = setup({
 
     hasSelectedSecondLink: ({ context }) => context.selectedSecondLink !== null,
 
+    /**
+     * A Develop pick names one or two industries (repeats allowed —
+     * successive tiles of the same track); each must still have that many
+     * developable tiles on the mat. Tile legality ONLY: iron and money are
+     * judged on CONFIRM (hasSelectedTilesForDevelop), the seam
+     * gameStore.money.test.ts pins. Also accepted mid-flow from the iron and
+     * confirm steps, so a mat click can grow or shrink the staged develop
+     * without cancelling.
+     */
+    canSelectTilesForDevelop: ({ context, event }) => {
+      if (event.type !== 'SELECT_TILES_FOR_DEVELOP') return false
+      const picks = event.industryTypes
+      if (picks.length < 1 || picks.length > 2) return false
+      const mat = getCurrentPlayer(context).industryTilesOnMat
+      const counts = new Map<IndustryType, number>()
+      for (const type of picks) counts.set(type, (counts.get(type) ?? 0) + 1)
+      for (const [type, n] of counts) {
+        if (developableTileQuantity(mat[type] ?? []) < n) return false
+      }
+      return true
+    },
+
     hasSelectedTilesForDevelop: ({ context }) => {
       const canAffordIron = (tileCount: number) => {
         const iron = consumeIronFromSources(
@@ -3721,6 +3744,7 @@ export const gameStore = setup({
                     SELECT_TILES_FOR_DEVELOP: {
                       target: 'choosingIronSource',
                       actions: 'selectTilesForDevelop',
+                      guard: 'canSelectTilesForDevelop',
                     },
                     CONFIRM: {
                       target: 'choosingIronSource',
@@ -3752,6 +3776,16 @@ export const gameStore = setup({
                         params: { resource: 'iron' },
                       },
                     },
+                    // A mat click while the iron question is open replaces the
+                    // staged pick and re-asks from scratch (reenter runs
+                    // enterDevelopIronStep, which drops any stale source pick
+                    // made against the old iron requirement).
+                    SELECT_TILES_FOR_DEVELOP: {
+                      target: 'choosingIronSource',
+                      reenter: true,
+                      actions: 'selectTilesForDevelop',
+                      guard: 'canSelectTilesForDevelop',
+                    },
                     CANCEL: {
                       target: 'selectingTiles',
                       actions: 'clearTilesForDevelop',
@@ -3764,6 +3798,15 @@ export const gameStore = setup({
                       target: '#brassGame.playing.actionComplete',
                       actions: 'executeDevelopAction',
                       guard: 'hasSelectedTilesForDevelop',
+                    },
+                    // The mat surface grows a one-tile develop into a two-tile
+                    // one (or shrinks it back) without cancelling: replace the
+                    // staged tiles and re-run the iron question for the new
+                    // count.
+                    SELECT_TILES_FOR_DEVELOP: {
+                      target: 'choosingIronSource',
+                      actions: 'selectTilesForDevelop',
+                      guard: 'canSelectTilesForDevelop',
                     },
                     CANCEL: {
                       target: 'selectingTiles',

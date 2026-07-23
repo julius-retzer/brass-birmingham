@@ -530,6 +530,27 @@ What this means in practice:
   coal's near-black fill), slots bottom-align so piles rest on the mat surface.
   Do not reintroduce any count numeral on a mat tile; counts may appear only in
   the docked readout text / aria-label.
+- DEVELOP PICKS TILES ON THE MAT (2026-07-23): entering any develop tile step
+  (`developing.selectingTiles|choosingIronSource|confirmingDevelop`) auto-opens
+  `PlayerLedger` in develop mode on BOTH surfaces; `components/develop-mat.ts`
+  (`developMatView`) is the only machine seam — it asks `can()`/`explainRefusal`
+  and re-derives nothing. Staged picks live in MACHINE context
+  (`selectedTilesForDevelop`): `SELECT_TILES_FOR_DEVELOP` is guarded
+  (`canSelectTilesForDevelop`, tile legality ONLY — money/iron stay on CONFIRM,
+  the seam `gameStore.money.test.ts` pins) and is re-sendable from the iron and
+  confirm steps as a full-array replacement (reenter resets
+  `chosenIronSources`), so a mat click grows/shrinks the develop without cancel
+  and everything survives the MP round-trip. While the modal is open the DOCK
+  renders a pointer aside ONLY — the modal owns `cancel-action`/
+  `confirm-action`/`develop-lowest`/`iron-source`; rendering them in both
+  places would duplicate testids (Playwright strict mode) and leave the dock's
+  unreachable under the overlay. The armed (glowing) tile per track comes from
+  `stagedRemovals` — a preview-only mirror of `executeDevelopAction` (lowest
+  developable, lightbulbs skipped); the scrap-flight animation is decorative
+  and skipped under `prefers-reduced-motion`. Pinned by
+  `gameStore.developmat.test.ts` + `develop-mat.test.ts` +
+  `e2e/develop-mat.spec.ts`; `iron-source.spec` / `locate-city.spec` /
+  `mp-playthrough.spec` now drive develop THROUGH the modal.
 - The board is a custom SVG (`board/board-map.tsx`, geometry hand-tuned in
   `board-data.ts`) — NOT React Flow. Legal targets come from `state.can(...)`
   sets computed in `game.tsx`; the map dims illegal plates/routes and

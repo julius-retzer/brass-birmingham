@@ -95,6 +95,8 @@ test('the iron-source picker locates rival works; the market locates nothing', a
     page.locator(`g[data-city="${cityId}"][data-located="true"]`),
   ).toBeVisible()
 
-  await page.getByTestId('era-plate').hover()
+  // Moving the pointer off the source (onto the mat modal's cancel button —
+  // the picker now lives inside the develop-mode mat overlay) clears the mark.
+  await page.getByTestId('cancel-action').hover()
   await expect(page.locator('g[data-located="true"]')).toHaveCount(0)
 })

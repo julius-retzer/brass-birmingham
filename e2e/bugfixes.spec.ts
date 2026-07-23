@@ -87,14 +87,17 @@ test('develop removes TWO tiles in one action through the UI', async ({
   await page.getByTestId('action-develop').click()
   await page.locator('button.bb2-card:not([disabled])').first().click()
 
-  // Pick two different industries (iron + coal), then confirm both steps.
-  await page.getByTestId('develop-iron').click()
-  await page.getByTestId('develop-coal').click()
+  // The player mat opens as the picking surface: tap the ARMED (glowing)
+  // tile of two different industries, then confirm once.
+  await page
+    .locator('[data-develop-armed][data-testid^="mat-slot-iron"]')
+    .click()
+  await expect(page.getByTestId('develop-staged-iron')).toBeVisible()
+  await page
+    .locator('[data-develop-armed][data-testid^="mat-slot-coal"]')
+    .click()
+  await expect(page.getByTestId('develop-staged-coal')).toBeVisible()
   await page.getByTestId('confirm-action').click() // "Scrap two tiles"
-  await expect(page.getByText(/Scrapping: .*coal, iron/)).toBeVisible()
-  await page.getByTestId('confirm-action').click() // confirm step
 
-  await expect(
-    page.getByText(/Eliza developed removed 2 tiles/),
-  ).toBeVisible()
+  await expect(page.getByText(/Eliza developed removed 2 tiles/)).toBeVisible()
 })

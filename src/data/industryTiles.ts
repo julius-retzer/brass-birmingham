@@ -749,3 +749,19 @@ export function getBuildableTileInEra(
 export function canDevelopTile(tile: IndustryTile): boolean {
   return !tile.hasLightbulbIcon
 }
+
+/**
+ * The one tile a Develop can currently remove from this mat track, or null if
+ * none. Mirrors getBuildableTileInEra: Develop always takes the LOWEST-level
+ * tile still on the mat (rulebook p.7), and a lightbulb Pottery tile at the
+ * bottom blocks the whole track — the engine must NOT skip it to a higher
+ * developable tile (that would hand out a free Develop; it was the captain's
+ * reported bug). The lightbulb tile must be BUILT off the mat first.
+ */
+export function getDevelopableTileOnMat(
+  tilesWithQuantity: IndustryTileWithQuantity[],
+): IndustryTile | null {
+  const lowest = getLowestAvailableTile(tilesWithQuantity)
+  if (!lowest) return null
+  return canDevelopTile(lowest) ? lowest : null
+}

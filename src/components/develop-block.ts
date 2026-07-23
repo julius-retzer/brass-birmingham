@@ -9,20 +9,17 @@
 // EXPLAINS the block.
 import { type IndustryType, industryDisplayName } from '~/data/cards'
 import type { IndustryTileWithQuantity } from '~/data/industryTiles'
-import { isDevelopable } from '~/store/shared/gameUtils'
+import {
+  POTTERY_LIGHTBULB_REASON,
+  isDevelopable,
+} from '~/store/shared/gameUtils'
+
+export { POTTERY_LIGHTBULB_REASON }
 
 /** The player's mat, keyed by industry — the shape `Player.industryTilesOnMat`. */
 export type IndustryMat = Partial<
   Record<IndustryType, IndustryTileWithQuantity[]>
 >
-
-/**
- * Rulebook p.7, "Potteries and the Lightbulb Icon": the lightbulb Pottery
- * tiles (levels 1 and 3) may never be developed — they leave the mat only when
- * built over, and block the higher Pottery levels until they do.
- */
-export const POTTERY_LIGHTBULB_REASON =
-  'Pottery cannot be developed — the lightbulb tiles are removed only by building over them, which then unlocks the higher Pottery levels (rulebook p.7).'
 
 /** Tiles of this industry still on the mat (quantity remaining). */
 function heldTiles(

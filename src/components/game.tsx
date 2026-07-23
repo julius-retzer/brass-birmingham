@@ -42,6 +42,7 @@ import {
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from './board/board-map'
 import { CommandPalette } from './command-palette'
 import { demoSnapshot } from './demo/demo-snapshot'
+import { developMatView } from './develop-mat'
 import { demoSnapshotBeerChoice } from './demo/demo-snapshot-beer-choice'
 import { demoSnapshotDoubleBeer } from './demo/demo-snapshot-double-beer'
 import { demoSnapshotEraEnd } from './demo/demo-snapshot-era-end'
@@ -435,6 +436,10 @@ function GameInner({
   )
   const [ledgerFor, setLedgerFor] = useState<string | null>(null)
   const [incomeTrackOpen, setIncomeTrackOpen] = useState(false)
+  // Develop picks its tiles ON the player mat: entering the develop tile
+  // steps opens the ledger in develop mode (closable — the dock then offers
+  // the way back in), leaving them closes it.
+  const [developMatOpen, setDevelopMatOpen] = useState(false)
   const [panelCollapsed, togglePanel] = usePanelCollapsed()
   const [hoveredCard, setHoveredCard] = useState<Card | null>(null)
   // Hover-a-name spotlight: the player whose rail mat is hovered/focused right
@@ -496,17 +501,38 @@ function GameInner({
 
   const is = (path: string) => state.matches(path as never)
 
+  // The machine-facing develop-mode view (null outside the tile steps).
+  const devView = developMatView(state as GameStoreSnapshot)
+  const inDevelopTileSteps = devView !== null
+  useEffect(() => {
+    setDevelopMatOpen(inDevelopTileSteps)
+  }, [inDevelopTileSteps])
+
   // Escape unwinds the in-flight action exactly like the Cancel button.
-  // An open ledger swallows the keypress — PlayerLedger closes itself.
+  // An open ledger swallows the keypress — PlayerLedger closes itself
+  // (in develop mode too: Escape shuts the mat, the flow stays put).
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || ledgerFor || incomeTrackOpen) return
+      if (
+        e.key !== 'Escape' ||
+        ledgerFor ||
+        incomeTrackOpen ||
+        (inDevelopTileSteps && developMatOpen)
+      )
+        return
       const snap = actorRef.getSnapshot()
       if (snap.can({ type: 'CANCEL' })) send({ type: 'CANCEL' })
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [ledgerFor, incomeTrackOpen, actorRef, send])
+  }, [
+    ledgerFor,
+    incomeTrackOpen,
+    inDevelopTileSteps,
+    developMatOpen,
+    actorRef,
+    send,
+  ])
 
   // ---------- undo (first action of the turn, hotseat) ----------
   // Snapshot the machine when a player's turn begins; while they still
@@ -979,11 +1005,23 @@ function GameInner({
                       pickingSite ? (legalCities?.size ?? 0) : null
                     }
                     onUndo={canUndo ? onUndo : null}
+                    developMat={
+                      devView
+                        ? {
+                            open: developMatOpen,
+                            onOpen: () => setDevelopMatOpen(true),
+                          }
+                        : null
+                    }
                   />
                 )}
                 {!needsReveal && (
                   <OpenMatButton
-                    onClick={() => setLedgerFor(currentPlayer.id)}
+                    onClick={() =>
+                      devView
+                        ? setDevelopMatOpen(true)
+                        : setLedgerFor(currentPlayer.id)
+                    }
                   />
                 )}
               </div>
@@ -1014,7 +1052,18 @@ function GameInner({
         )}
 
         {/* ---------- overlays ---------- */}
-        {ledgerPlayer && (
+        {/* Develop mode: the mat IS the tile picker. Takes the modal slot —
+            a plain ledger view never stacks on top of it. */}
+        {devView && developMatOpen && !needsReveal && (
+          <PlayerLedger
+            player={currentPlayer}
+            era={ctx.era}
+            isCurrent
+            onClose={() => setDevelopMatOpen(false)}
+            develop={{ view: devView, send }}
+          />
+        )}
+        {ledgerPlayer && !(devView && developMatOpen) && (
           <PlayerLedger
             player={ledgerPlayer}
             era={ctx.era}

@@ -465,6 +465,18 @@ What this means in practice:
   data (`canBuildInCanalEra`/`canBuildInRailEra`, incl. the L1-Pottery
   rail exception), never a level check. Pinned by
   `gameStore.railera.test.ts`.
+  DEVELOP HAS THE SAME LOWEST-TILE RULE (fixed 2026-07-23): Develop removes the
+  TRUE lowest tile of the chosen industry, and a lightbulb Pottery may never be
+  developed (rules p.7) — a lightbulb-lowest track blocks ALL of Develop until
+  it is BUILT away; never skip up to the next developable tile. Ask
+  `getDevelopableTileOnMat` (mirror of `getBuildableTileInEra`) and
+  `developableTileQuantity` (walks lowest-first, stops at the first lightbulb),
+  NOT "filter to developable then lowest of the remainder" — that inversion was
+  the captain's bug (Pottery II/IV offered while lightbulb I sat on the mat).
+  The guard/`refusal.ts`/executor/`stagedRemovals` preview all read those
+  helpers. The Gloucester develop-bonus (`developBonus.ts`) already did this.
+  Pinned by `gameStore.develop.test.ts`, `gameStore.developmat.test.ts`,
+  `develop-mat.test.ts`, `shared/developableTiles.test.ts`.
   Wild cards route through the full build flow: wild location picks
   industry then ANY city; wild industry picks industry then a network
   city. Regression tests: `gameStore.bugfixes.test.ts`, `e2e/bugfixes.spec.ts`.
@@ -556,6 +568,27 @@ What this means in practice:
   coal's near-black fill), slots bottom-align so piles rest on the mat surface.
   Do not reintroduce any count numeral on a mat tile; counts may appear only in
   the docked readout text / aria-label.
+- DEVELOP PICKS TILES ON THE MAT (2026-07-23): entering any develop tile step
+  (`developing.selectingTiles|choosingIronSource|confirmingDevelop`) auto-opens
+  `PlayerLedger` in develop mode on BOTH surfaces; `components/develop-mat.ts`
+  (`developMatView`) is the only machine seam — it asks `can()`/`explainRefusal`
+  and re-derives nothing. Staged picks live in MACHINE context
+  (`selectedTilesForDevelop`): `SELECT_TILES_FOR_DEVELOP` is guarded
+  (`canSelectTilesForDevelop`, tile legality ONLY — money/iron stay on CONFIRM,
+  the seam `gameStore.money.test.ts` pins) and is re-sendable from the iron and
+  confirm steps as a full-array replacement (reenter resets
+  `chosenIronSources`), so a mat click grows/shrinks the develop without cancel
+  and everything survives the MP round-trip. While the modal is open the DOCK
+  renders a pointer aside ONLY — the modal owns `cancel-action`/
+  `confirm-action`/`develop-lowest`/`iron-source`; rendering them in both
+  places would duplicate testids (Playwright strict mode) and leave the dock's
+  unreachable under the overlay. The armed (glowing) tile per track comes from
+  `stagedRemovals` — a preview-only mirror of `executeDevelopAction` (lowest
+  developable, lightbulbs skipped); the scrap-flight animation is decorative
+  and skipped under `prefers-reduced-motion`. Pinned by
+  `gameStore.developmat.test.ts` + `develop-mat.test.ts` +
+  `e2e/develop-mat.spec.ts`; `iron-source.spec` / `locate-city.spec` /
+  `mp-playthrough.spec` now drive develop THROUGH the modal.
 - The board is a custom SVG (`board/board-map.tsx`, geometry hand-tuned in
   `board-data.ts`) — NOT React Flow. Legal targets come from `state.can(...)`
   sets computed in `game.tsx`; the map dims illegal plates/routes and

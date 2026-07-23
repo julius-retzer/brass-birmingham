@@ -22,6 +22,7 @@ import {
 import { explainRefusal } from '~/store/refusal'
 import { refreshEmbeddedTileStats } from '~/store/saveMigration'
 import { ActionDock, SELLABLE, getHandSelection } from '../action-dock'
+import { developMatView } from '../develop-mat'
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from '../board/board-map'
 import { CommandPalette } from '../command-palette'
 import { HandTray } from '../hand-tray'
@@ -911,6 +912,9 @@ function MpTable({
   applyView: (view: GameViewWire) => void
 }) {
   const [ledgerFor, setLedgerFor] = useState<string | null>(null)
+  // Develop-mode mat modal (see devView below) — open while the machine sits
+  // on a develop tile step of MY turn; closable, the dock reopens it.
+  const [developMatOpen, setDevelopMatOpen] = useState(false)
   const [panelCollapsed, togglePanel] = usePanelCollapsed()
   const [hoveredCard, setHoveredCard] = useState<Card | null>(null)
   // Hover-a-name spotlight: the player whose rail mat is hovered/focused right
@@ -990,6 +994,15 @@ function MpTable({
   const myTurn = !!ctx && ctx.currentPlayerIndex === you
   const currentPlayer: Player | undefined = ctx?.players[ctx.currentPlayerIndex]
   const me: Player | undefined = ctx?.players[you]
+
+  // Develop picks its tiles ON the player mat. The machine's state value is
+  // shared with every seat, so gate HARD on it being MY turn — a rival's
+  // develop must never open my mat.
+  const devView = state && myTurn ? developMatView(state) : null
+  const inDevelopTileSteps = devView !== null
+  useEffect(() => {
+    setDevelopMatOpen(inDevelopTileSteps)
+  }, [inDevelopTileSteps])
 
   // Surface engine errors from my own confirmed actions, then clear them.
   useEffect(() => {
@@ -1390,6 +1403,14 @@ function MpTable({
                       remaining: ctx.actionsRemaining,
                       max: maxActions,
                     }}
+                    developMat={
+                      devView
+                        ? {
+                            open: developMatOpen,
+                            onOpen: () => setDevelopMatOpen(true),
+                          }
+                        : null
+                    }
                   />
                 ) : aiTurn ? (
                   <div className="flex flex-col gap-2" data-testid="ai-panel">
@@ -1453,7 +1474,13 @@ function MpTable({
                   </div>
                 )}
                 {/* Always yours, never the seat that happens to be acting. */}
-                {me && <OpenMatButton onClick={() => setLedgerFor(me.id)} />}
+                {me && (
+                  <OpenMatButton
+                    onClick={() =>
+                      devView ? setDevelopMatOpen(true) : setLedgerFor(me.id)
+                    }
+                  />
+                )}
               </div>
               {view.ai && <AiMindPanel ai={view.ai} seats={view.seats} />}
               <MarketsPanel
@@ -1510,7 +1537,17 @@ function MpTable({
           panelCollapsed={panelCollapsed}
         />
 
-        {ledgerPlayer && (
+        {/* Develop mode: my mat as the tile picker (my turn only). */}
+        {devView && developMatOpen && me && (
+          <PlayerLedger
+            player={me}
+            era={ctx.era}
+            isCurrent
+            onClose={() => setDevelopMatOpen(false)}
+            develop={{ view: devView, send: send as never, busy: inFlight }}
+          />
+        )}
+        {ledgerPlayer && !(devView && developMatOpen) && (
           <PlayerLedger
             player={ledgerPlayer}
             era={ctx.era}

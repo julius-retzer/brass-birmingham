@@ -478,9 +478,7 @@ button.bb2-mat:hover {
 /* A stat value that doubles as a control (opens the income track). */
 .bb2-stat-tap {
   cursor: pointer;
-  transition:
-    background 0.12s ease,
-    box-shadow 0.12s ease;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
 }
 .bb2-stat-tap:hover,
 .bb2-stat-tap:focus-visible {
@@ -1020,6 +1018,78 @@ button:focus-visible .bb2-locate-name {
   .bb2-order-row,
   .bb2-spend-bar {
     transition: none;
+    animation: none;
+  }
+}
+
+/* ---------------- develop on the mat ---------------- */
+
+/* The armed tile — the one a Develop click would scrap. A tight brass ring
+   that pulses in OPACITY only, deliberately calmer than the board's legal
+   pulse: this is "you may pull this one off", not a map target. No large blur
+   bloom — the soft halo washed over the stacked cardboard edges below the face
+   and made the pile depth hard to count while developing. */
+@keyframes bb2-develop-arm {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgba(230, 189, 99, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(230, 189, 99, 0.95);
+  }
+}
+.bb2-develop-armed {
+  animation: bb2-develop-arm 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+.bb2-develop-armed:hover,
+.bb2-develop-armed:focus-visible {
+  animation-duration: 0.8s;
+}
+
+/* A scrapped tile mid-flight from its pile to the scrap tray: one long arc
+   with a tumble, like cardboard tossed onto a discard pile. The transform is
+   set inline per flight (the two rects are only known at click time); this
+   class owns the easing and the lift shadow. */
+.bb2-dev-flyer {
+  position: fixed;
+  z-index: 80;
+  pointer-events: none;
+  transition: transform 0.52s cubic-bezier(0.3, 0.72, 0.3, 1.04), opacity 0.52s
+    ease;
+  will-change: transform;
+  filter: drop-shadow(0 14px 20px rgba(0, 0, 0, 0.55));
+}
+
+/* The tray tile settling where the flyer lands. */
+@keyframes bb2-tray-drop {
+  0% {
+    transform: scale(1.22) rotate(5deg);
+    opacity: 0.7;
+  }
+  70% {
+    transform: scale(0.95) rotate(-1.5deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+.bb2-tray-drop {
+  animation: bb2-tray-drop 0.34s ease-out both;
+}
+
+/* The flight is decorative; motion-sensitive players get the end state. */
+@media (prefers-reduced-motion: reduce) {
+  .bb2-develop-armed {
+    animation: none;
+    box-shadow: 0 0 0 2px rgba(230, 189, 99, 0.85);
+  }
+  .bb2-dev-flyer {
+    transition: none;
+  }
+  .bb2-tray-drop {
     animation: none;
   }
 }

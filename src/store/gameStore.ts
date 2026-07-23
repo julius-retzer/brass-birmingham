@@ -26,10 +26,10 @@ import {
   canBuildTileInEra,
   decrementTileQuantity,
   getBuildableTileInEra,
+  getDevelopableTileOnMat,
   getInitialPlayerIndustryTiles,
   getInitialPlayerIndustryTilesWithQuantities,
   getLowestAvailableTile,
-  getLowestLevelTile,
 } from '../data/industryTiles'
 import {
   type ValidationResult,
@@ -64,13 +64,13 @@ import {
   checkAndFlipIndustryTilesLogic,
   createLogEntry,
   debugLog,
+  developableTileQuantity,
   drawCards,
   findAvailableBreweries,
   findCardInHand,
   getCardDescription,
   getCurrentPlayer,
   incomeAfterFlip,
-  isDevelopable,
   isFirstRound,
   isLocationInPlayerNetwork,
   removeCardFromHand,
@@ -1557,11 +1557,9 @@ export const gameStore = setup({
         ] as IndustryType[]) {
           const tilesWithQuantity =
             currentPlayer.industryTilesOnMat[industryType] || []
-          const developableTiles = tilesWithQuantity
-            .filter((t) => t.quantityAvailable > 0)
-            .map((t) => t.tile)
-            .filter(isDevelopable)
-          if (developableTiles.length > 0) {
+          // The lowest tile is the only develop target; a lightbulb-lowest
+          // track is not developable (rulebook p.7).
+          if (getDevelopableTileOnMat(tilesWithQuantity)) {
             availableTypes.push(industryType)
           }
         }
@@ -1611,21 +1609,16 @@ export const gameStore = setup({
       for (const industryType of selectedIndustryTypes) {
         const tilesWithQuantity = updatedIndustryTilesOnMat[industryType] || []
 
-        // Filter out pottery tiles with lightbulb and tiles with no quantity
-        const developableTiles = tilesWithQuantity
-          .filter((t) => t.quantityAvailable > 0)
-          .map((t) => t.tile)
-          .filter(isDevelopable)
-
-        if (developableTiles.length > 0) {
-          // Decrement quantity of the lowest level tile
-          const lowestTile = getLowestLevelTile(developableTiles)
-          if (lowestTile) {
-            updatedIndustryTilesOnMat[industryType] = decrementTileQuantity(
-              tilesWithQuantity,
-              lowestTile,
-            )
-          }
+        // Develop removes the TRUE lowest tile — never a higher one skipped
+        // past a lightbulb (rulebook p.7). For a two-tile pick of the same
+        // industry the loop recomputes the lowest of what remains, so the
+        // second tile is still lowest-first and still blocked by a lightbulb.
+        const lowestTile = getDevelopableTileOnMat(tilesWithQuantity)
+        if (lowestTile) {
+          updatedIndustryTilesOnMat[industryType] = decrementTileQuantity(
+            tilesWithQuantity,
+            lowestTile,
+          )
         }
       }
 
@@ -2516,18 +2509,13 @@ export const gameStore = setup({
       const currentPlayer = getCurrentPlayer(context)
       const validTiles: IndustryType[] = []
 
-      // Validate each selected industry type
+      // Validate each selected industry type. Only the lowest tile is a
+      // develop target, and a lightbulb-lowest track is off-limits (rulebook
+      // p.7); the guard owns full legality, this is the staging filter.
       for (const industryType of event.industryTypes) {
         const tilesWithQuantity =
           currentPlayer.industryTilesOnMat[industryType] || []
-
-        // Filter out pottery tiles with lightbulb icon and tiles with no quantity
-        const developableTiles = tilesWithQuantity
-          .filter((t) => t.quantityAvailable > 0)
-          .map((t) => t.tile)
-          .filter(isDevelopable)
-
-        if (developableTiles.length > 0) {
+        if (getDevelopableTileOnMat(tilesWithQuantity)) {
           validTiles.push(industryType)
         }
       }
@@ -3275,6 +3263,28 @@ export const gameStore = setup({
 
     hasSelectedSecondLink: ({ context }) => context.selectedSecondLink !== null,
 
+    /**
+     * A Develop pick names one or two industries (repeats allowed —
+     * successive tiles of the same track); each must still have that many
+     * developable tiles on the mat. Tile legality ONLY: iron and money are
+     * judged on CONFIRM (hasSelectedTilesForDevelop), the seam
+     * gameStore.money.test.ts pins. Also accepted mid-flow from the iron and
+     * confirm steps, so a mat click can grow or shrink the staged develop
+     * without cancelling.
+     */
+    canSelectTilesForDevelop: ({ context, event }) => {
+      if (event.type !== 'SELECT_TILES_FOR_DEVELOP') return false
+      const picks = event.industryTypes
+      if (picks.length < 1 || picks.length > 2) return false
+      const mat = getCurrentPlayer(context).industryTilesOnMat
+      const counts = new Map<IndustryType, number>()
+      for (const type of picks) counts.set(type, (counts.get(type) ?? 0) + 1)
+      for (const [type, n] of counts) {
+        if (developableTileQuantity(mat[type] ?? []) < n) return false
+      }
+      return true
+    },
+
     hasSelectedTilesForDevelop: ({ context }) => {
       const canAffordIron = (tileCount: number) => {
         const iron = consumeIronFromSources(
@@ -3304,11 +3314,8 @@ export const gameStore = setup({
       ] as IndustryType[]) {
         const tilesWithQuantity =
           currentPlayer.industryTilesOnMat[industryType] || []
-        const developableTiles = tilesWithQuantity
-          .filter((t) => t.quantityAvailable > 0)
-          .map((t) => t.tile)
-          .filter(isDevelopable)
-        if (developableTiles.length > 0) {
+        // Only a developable-lowest track counts (rulebook p.7).
+        if (getDevelopableTileOnMat(tilesWithQuantity)) {
           // The auto-select fallback develops exactly one tile
           return canAffordIron(1)
         }
@@ -3721,6 +3728,7 @@ export const gameStore = setup({
                     SELECT_TILES_FOR_DEVELOP: {
                       target: 'choosingIronSource',
                       actions: 'selectTilesForDevelop',
+                      guard: 'canSelectTilesForDevelop',
                     },
                     CONFIRM: {
                       target: 'choosingIronSource',
@@ -3752,6 +3760,16 @@ export const gameStore = setup({
                         params: { resource: 'iron' },
                       },
                     },
+                    // A mat click while the iron question is open replaces the
+                    // staged pick and re-asks from scratch (reenter runs
+                    // enterDevelopIronStep, which drops any stale source pick
+                    // made against the old iron requirement).
+                    SELECT_TILES_FOR_DEVELOP: {
+                      target: 'choosingIronSource',
+                      reenter: true,
+                      actions: 'selectTilesForDevelop',
+                      guard: 'canSelectTilesForDevelop',
+                    },
                     CANCEL: {
                       target: 'selectingTiles',
                       actions: 'clearTilesForDevelop',
@@ -3764,6 +3782,15 @@ export const gameStore = setup({
                       target: '#brassGame.playing.actionComplete',
                       actions: 'executeDevelopAction',
                       guard: 'hasSelectedTilesForDevelop',
+                    },
+                    // The mat surface grows a one-tile develop into a two-tile
+                    // one (or shrinks it back) without cancelling: replace the
+                    // staged tiles and re-run the iron question for the new
+                    // count.
+                    SELECT_TILES_FOR_DEVELOP: {
+                      target: 'choosingIronSource',
+                      actions: 'selectTilesForDevelop',
+                      guard: 'canSelectTilesForDevelop',
                     },
                     CANCEL: {
                       target: 'selectingTiles',

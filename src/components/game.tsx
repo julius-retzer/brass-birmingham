@@ -40,6 +40,7 @@ import {
   getHandSelection,
 } from './action-dock'
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from './board/board-map'
+import { CommandPalette } from './command-palette'
 import { demoSnapshot } from './demo/demo-snapshot'
 import { demoSnapshotBeerChoice } from './demo/demo-snapshot-beer-choice'
 import { demoSnapshotDoubleBeer } from './demo/demo-snapshot-double-beer'
@@ -895,6 +896,7 @@ function GameInner({
           )}
 
           <div className="ml-auto flex items-center gap-3">
+            <CommandPalette />
             <NewGameButton onConfirm={onNewGame} />
           </div>
         </header>
@@ -936,8 +938,11 @@ function GameInner({
                       coalCandidateCities ??
                       hoverCities)
                 }
-                locatedCity={locateState.locatedCity}
-                focusCity={needsReveal ? null : focusCityFor(hoveredCard)}
+                locatedCities={locateState.locatedCities}
+                focusCity={
+                  locateState.spotlightFocus ??
+                  (needsReveal ? null : focusCityFor(hoveredCard))
+                }
                 highlightPlayerId={needsReveal ? null : hoveredPlayerId}
               />
             </div>

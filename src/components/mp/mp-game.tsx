@@ -23,6 +23,7 @@ import { explainRefusal } from '~/store/refusal'
 import { refreshEmbeddedTileStats } from '~/store/saveMigration'
 import { ActionDock, SELLABLE, getHandSelection } from '../action-dock'
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from '../board/board-map'
+import { CommandPalette } from '../command-palette'
 import { HandTray } from '../hand-tray'
 import { computeHoverCities, focusCityFor } from '../hover-highlight'
 import { legalCityTargets, legalLinkTargets } from '../legal-targets'
@@ -1297,6 +1298,7 @@ function MpTable({
             </span>
           </span>
           <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 lg:flex-nowrap lg:gap-3">
+            <CommandPalette />
             {inFlight && (
               <span className="bb2-sync-pill" data-testid="mp-syncing">
                 <span className="bb2-sync-dot" />
@@ -1351,8 +1353,10 @@ function MpTable({
                 networkCities={me ? playerNetworkCities(me) : null}
                 networkColor={me ? PLAYER_FILL[me.color] : null}
                 hoverCities={hoverCities}
-                locatedCity={locateState.locatedCity}
-                focusCity={focusCityFor(hoveredCard)}
+                locatedCities={locateState.locatedCities}
+                focusCity={
+                  locateState.spotlightFocus ?? focusCityFor(hoveredCard)
+                }
                 highlightPlayerId={hoveredPlayerId}
               />
             </div>

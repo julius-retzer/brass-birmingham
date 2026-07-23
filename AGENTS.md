@@ -628,16 +628,34 @@ What this means in practice:
   `theme.css`: dotted underline + `cursor:pointer`). Shared plumbing is
   `src/components/locate.tsx` (context +
   `CityName` + `useLocateCity`); each surface owns the state and feeds
-  BoardMap's `locatedCity` prop (`data-located` on the `g[data-city]`, teal
+  BoardMap's `locatedCities` prop (`data-located` on the `g[data-city]`, teal
   `LocateMark`, deliberately distinct from the brass legal pulse;
   reduced-motion drops the ping). Journal names resolve via `segmentPlaces`
-  (journal-model.ts) — by raw city ID, never display-name matching. The state
-  is ONE `cityId|null` on purpose.
+  (journal-model.ts) — by raw city ID, never display-name matching. HOVER is
+  still ONE `cityId|null`; the map-facing value is a SET because the command
+  palette shares the same spotlight (below).
+- COMMAND PALETTE (Cmd/Ctrl+K, 2026-07-23): `command-palette.tsx`, rendered in
+  both mastheads (`game.tsx` + `mp/mp-game.tsx`) — find a city or an industry;
+  picking one spotlights it (an industry lights EVERY location whose PRINTED
+  slots take it, `cityIndustrySlots`) for `SPOTLIGHT_MS` (5s, self-clearing)
+  and pans via the existing `focusCity` prop. It is a navigation aid ONLY: it
+  reads board data, never game state, sends no event and asks no guard, so it
+  behaves identically on both surfaces and on anyone's turn. Two pure halves,
+  both unit-tested: `palette-search.ts` (index + matcher, `shouldFilter`-free
+  by design — we own the ranking) and `locate-model.ts`
+  (`spotlightFor`/`mergeLocated`, the hover ∪ spotlight union feeding
+  `locatedCities`). Hand-rolled, NOT shadcn `command`: that is cmdk +
+  radix-dialog and this repo carries neither (only `ui/sonner.tsx`); it uses
+  the same `.bb2-curtain`/`.bb2-panel` shell as IncomeTrackModal. The hotkey
+  ignores keystrokes aimed at an input/textarea/contenteditable (mp chat), and
+  Cmd+K is RESERVED for this palette — other shortcut work must not claim it.
+  Pinned by `palette-search.test.ts`, `locate-model.test.ts` and
+  `e2e/command-palette.spec.ts`.
 - CARD-MAP-SYNC (2026-07-21): hovering a LOCATION card in the hand tray
   auto-pans the map (slight zoom-out, animated, debounced) when its city is
   off-viewport — BoardMap's `focusCity` prop, fed by `focusCityFor`
   (`hover-highlight.ts`) on both surfaces. DELIBERATE: separate from
-  `locatedCity` (name hover must never move the map); industry/wild cards
+  `locatedCities` (name hover must never move the map); industry/wild cards
   never pan; no snap-back on hover end; user gestures + board pick steps
   suppress it. Decision logic is pure in `board/pan-into-view.ts`
   (trigger/settle hysteresis — pinned by `pan-into-view.test.ts`); the

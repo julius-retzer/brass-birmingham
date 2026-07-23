@@ -7,15 +7,22 @@
 // owns the `locatedCity` state (so it can feed the map directly) and provides
 // it through this context; name-bearing UI reads only the setter.
 //
-// The state is deliberately a plain "one city id or null" value. Note:
-// card-map-sync (auto-pan to a hovered card's city) landed as a SEPARATE
+// HOVER is still a plain "one city id or null" value. The map-facing value is
+// a SET (`locatedCities`) because a SECOND source shares this spotlight: the
+// command palette, which can light up many locations at once ("every location
+// with a coal slot") and clears itself after SPOTLIGHT_MS. The union and the
+// pick→spotlight transition are pure in `locate-model.ts`.
+//
+// Note: card-map-sync (auto-pan to a hovered card's city) landed as a SEPARATE
 // BoardMap prop (`focusCity`, fed from the hovered card) on purpose —
-// name-hover highlights must never move the map, card hover may.
+// name-hover highlights must never move the map. A palette pick DOES pan, and
+// does it through that same prop (`spotlightFocus`).
 import {
   type Dispatch,
   type ReactNode,
   type SetStateAction,
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -23,19 +30,37 @@ import {
   useState,
 } from 'react'
 import { type CityId, cities } from '~/data/board'
+import {
+  NO_SPOTLIGHT,
+  SPOTLIGHT_MS,
+  type SpotlightState,
+  mergeLocated,
+  spotlightFor,
+} from './locate-model'
 
 export interface LocateCityState {
-  locatedCity: string | null
+  /** Every city the map should mark: the hovered name plus any spotlight. */
+  locatedCities: ReadonlySet<string>
   setLocatedCity: Dispatch<SetStateAction<string | null>>
+  /** Palette: spotlight these cities for ~5s (first one is the pan anchor). */
+  spotlightCities: (cityIds: readonly string[]) => void
+  /** Pan target owned by the live spotlight; null while idle. */
+  spotlightFocus: string | null
 }
+
+const NO_CITIES: ReadonlySet<string> = new Set<string>()
 
 // Default is a no-op so name components render fine outside a provider
 // (setup screen, unit renders) — they just locate nothing.
 const LocateCityContext = createContext<LocateCityState>({
-  locatedCity: null,
+  locatedCities: NO_CITIES,
   setLocatedCity: () => {
     // no provider mounted — locating is a no-op
   },
+  spotlightCities: () => {
+    // no provider mounted — spotlighting is a no-op
+  },
+  spotlightFocus: null,
 })
 
 export const LocateCityProvider = LocateCityContext.Provider
@@ -43,7 +68,39 @@ export const LocateCityProvider = LocateCityContext.Provider
 /** Surface-side state holder — call in game.tsx / mp-game.tsx, feed the map. */
 export function useLocateCityState(): LocateCityState {
   const [locatedCity, setLocatedCity] = useState<string | null>(null)
-  return useMemo(() => ({ locatedCity, setLocatedCity }), [locatedCity])
+  const [spotlight, setSpotlight] = useState<SpotlightState>(NO_SPOTLIGHT)
+  const expiry = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (expiry.current) clearTimeout(expiry.current)
+    }
+  }, [])
+
+  // Re-picking restarts the countdown rather than stacking timers.
+  const spotlightCities = useCallback((cityIds: readonly string[]) => {
+    if (expiry.current) clearTimeout(expiry.current)
+    setSpotlight(spotlightFor(cityIds))
+    expiry.current = setTimeout(() => {
+      expiry.current = null
+      setSpotlight(NO_SPOTLIGHT)
+    }, SPOTLIGHT_MS)
+  }, [])
+
+  const locatedCities = useMemo(
+    () => mergeLocated(locatedCity, spotlight.cities),
+    [locatedCity, spotlight],
+  )
+
+  return useMemo(
+    () => ({
+      locatedCities,
+      setLocatedCity,
+      spotlightCities,
+      spotlightFocus: spotlight.focus,
+    }),
+    [locatedCities, spotlightCities, spotlight.focus],
+  )
 }
 
 export interface LocateHandlers {
@@ -59,7 +116,7 @@ export interface LocateHandlers {
  * own city, so interleaved hovers never wipe a fresher highlight.
  */
 export function useLocateCity() {
-  const { setLocatedCity } = useContext(LocateCityContext)
+  const { setLocatedCity, spotlightCities } = useContext(LocateCityContext)
   return useMemo(() => {
     const locate = (cityId: string) => setLocatedCity(cityId)
     const unlocate = (cityId: string) =>
@@ -77,8 +134,8 @@ export function useLocateCity() {
         onBlur: leave,
       }
     }
-    return { locate, unlocate, handlersFor }
-  }, [setLocatedCity])
+    return { locate, unlocate, handlersFor, spotlightCities }
+  }, [setLocatedCity, spotlightCities])
 }
 
 /**

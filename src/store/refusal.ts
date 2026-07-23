@@ -15,11 +15,13 @@
 //
 // DRIFT WARNING: the link explainers below are the one place that re-states a
 // guard's structure rather than calling it (`canBuildLink` is a boolean
-// cascade with no shared helper to borrow). They mirror its rejection ORDER so
-// the named cause is the one that actually blocks. If `canBuildLink` grows a
-// check, update `explainLink` in the same commit, or it will silently answer
-// with a stale reason. (Build completability is NOT restated: SELECT_LOCATION
-// and the build CONFIRM both call the guard's own `buildCompletionAt`.)
+// cascade with mostly no shared helper to borrow). They mirror its rejection
+// ORDER so the named cause is the one that actually blocks. If `canBuildLink`
+// grows a check, update `explainLink` in the same commit, or it will silently
+// answer with a stale reason. (Where the guard DOES have a helper it is
+// called, not restated: the rail coal/full-cost clause goes through
+// `railNetworkCostView` — the same preview `railNetworkPayable` uses — and
+// build completability through the guard's own `buildCompletionAt`.)
 //
 // CONTRACT: only call this when `can(event)` is already false. It answers "why
 // would this be refused", not "is this legal" — the machine owns legality.
@@ -42,6 +44,7 @@ import {
   consumeBeerFromSources,
   consumeCoalFromSources,
   consumeIronFromSources,
+  railNetworkCostView,
 } from './market/marketActions'
 import { getDevelopBonusOptions } from './shared/developBonus'
 import { getCurrentPlayer } from './shared/gameUtils'
@@ -128,6 +131,30 @@ const explainLink = (
   const reachable = networkLocations(context)
   if (!reachable.has(event.from) && !reachable.has(event.to)) {
     return `No ${era} connection to ${event.to}: neither ${event.from} nor ${event.to} is in your network.`
+  }
+
+  // canBuildLink's last clause: a rail link must reach coal once placed AND be
+  // affordable in FULL (base + market coal). Re-derived by calling the guard's
+  // own preview — `railNetworkPayable` is `railNetworkCostView` plus a money
+  // comparison, so this cannot disagree about which link or what it costs.
+  if (context.era === 'rail') {
+    const candidate = { from: event.from, to: event.to }
+    const view = railNetworkCostView(
+      event.type === 'SELECT_SECOND_LINK'
+        ? { ...context, selectedSecondLink: candidate }
+        : { ...context, selectedLink: candidate },
+    )
+    if (view === null) return null
+    if (!view.ok) {
+      const dead = view.links.find((l) => l.coal === null) ?? view.links[0]
+      return dead
+        ? `No coal reachable from ${dead.from}/${dead.to} — a rail link needs 1 coal.`
+        : null
+    }
+    if (player.money < view.total) {
+      const what = view.double ? 'two rail links cost' : 'this rail link costs'
+      return `Not enough money: you have ${money(player.money)}, ${what} ${money(view.total)} (${money(view.baseCost)} + ${money(view.coalTotal)} coal).`
+    }
   }
 
   return null

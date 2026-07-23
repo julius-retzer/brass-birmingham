@@ -217,6 +217,10 @@ describe('statechart shape: what the chart itself guarantees', () => {
     // The era and board-graph checks moved OUT of the UI/AI filters and into
     // `canBuildLink`. The alphabet now offers every connection in both eras, so
     // this sweep is what proves the guard — not a caller — does the rejecting.
+    // SCOPE: `candidateMoves` only enumerates real `connections`, so what this
+    // sweep actually proves is the ERA half; the not-an-edge branch below is a
+    // cheap tripwire on the alphabet, not coverage. A fabricated edge is pinned
+    // directly by `gameStore.legality.test.ts` (birmingham–wolverhampton).
     const paths = sweep(started)
     const violations: string[] = []
     for (const p of paths) {

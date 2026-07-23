@@ -66,6 +66,19 @@ const openNetwork = (actor: ReturnType<typeof createActor>) => {
   actor.send({ type: 'SELECT_CARD', cardId })
 }
 
+/** A plain built tile, used only to anchor a player's network at a city. */
+const potteryAt = (location: string) =>
+  ({
+    type: 'pottery',
+    location,
+    flipped: false,
+    level: 1,
+    coalCubesOnTile: 0,
+    ironCubesOnTile: 0,
+    beerBarrelsOnTile: 0,
+    tile: { incomeAdvancement: 1 },
+  }) as unknown as Player['industries'][number]
+
 describe('F1 — canBuildLink owns era + board-graph', () => {
   it('rejects a non-existent connection with a reason', () => {
     const actor = start()
@@ -115,6 +128,35 @@ describe('F1 — canBuildLink owns era + board-graph', () => {
         to: 'coventry',
       }),
     ).toBe(true)
+  })
+
+  it('refuses a coal-dead rail corridor by name, not generically', () => {
+    // canBuildLink's last clause (railNetworkPayable) rejects a rail link that
+    // cannot reach coal once placed. explainLink used to fall off its end here
+    // and answer null, so the player got the generic refusal.
+    const actor = start()
+    actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
+    const seat = actor.getSnapshot().context.currentPlayerIndex
+    // Anchor the network at Leek so the adjacency clause passes and the player
+    // is no longer virgin (the virgin exception short-circuits before coal).
+    actor.send({
+      type: 'TEST_SET_PLAYER_STATE',
+      playerId: seat,
+      money: 100,
+      industries: [potteryAt('leek')],
+      links: [] as never,
+    })
+    openNetwork(actor)
+    const snap = actor.getSnapshot()
+    // belper–leek is a real rail corridor touching the network; no coal mine
+    // exists anywhere and Leek reaches no merchant, so the rail link is dead.
+    const ev = { type: 'SELECT_LINK', from: 'belper', to: 'leek' } as const
+    expect(snap.can(ev)).toBe(false)
+    // The exact string can only come from explainLink's railNetworkCostView
+    // branch — pinning it proves the reason is the coal one, not a fallback.
+    expect(explainRefusal(snap, ev)).toBe(
+      'No coal reachable from belper/leek — a rail link needs 1 coal.',
+    )
   })
 
   it('only offers canal-era corridors while in the Canal Era', () => {

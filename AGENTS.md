@@ -180,9 +180,13 @@ What this means in practice:
   and affordability. An offered candidate is always confirmable; a doomed one is
   never offered.
 - Teach `explainRefusal` about any check a guard grows, in the SAME commit. The
-  build explainers CALL the guards' own helpers rather than restating them; only
-  `explainLink` mirrors a guard's rejection order by hand (see its DRIFT
+  explainers CALL the guards' own helpers wherever one exists (`buildCompletionAt`
+  for builds, `railNetworkCostView` for a rail link's coal + full cost); only the
+  cheap boolean steps of `explainLink` are mirrored by hand (see its DRIFT
   WARNING).
+- This applies to the SERVER surfaces too, not just the UI: `server/ai/driver.ts`
+  (`flowDeadEnd`) and `server/ai/legal-moves.ts` enumerate and ask `can()` with no
+  era/graph filter of their own.
 - Board candidates are shared: `components/legal-targets.ts`. Add to it rather
   than writing a second per-surface filter.
 - Pinned by `gameStore.legality.test.ts`, `legal-targets.test.ts`, and two

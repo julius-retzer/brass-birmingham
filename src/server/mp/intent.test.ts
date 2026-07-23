@@ -314,6 +314,57 @@ describe('applyIntent — a refusal names what is missing', () => {
     expect(moneyBefore).toBe(2)
   })
 
+  // Path 2 proper: the guard ACCEPTS and execution still refuses. No organic
+  // route reaches it any more (the build guards now mirror the executor's own
+  // cost/slot checks), so it is driven synthetically — a persisted record whose
+  // selected tile claims an era the executor rejects. The branch stays as the
+  // safety net for future guard/executor drift, and this is its only pin.
+  test('an execution failure is reported verbatim and consumes nothing', () => {
+    const actor = game()
+    const idx = actor.getSnapshot().context.currentPlayerIndex
+    actor.send({ type: 'TEST_SET_PLAYER_STATE', playerId: idx, money: 40 })
+    actor.send({
+      type: 'TEST_SET_PLAYER_HAND',
+      playerId: idx,
+      hand: [
+        {
+          id: 'loc_birmingham_1',
+          type: 'location',
+          location: 'birmingham',
+          color: 'other',
+        },
+      ],
+    })
+    actor.send({ type: 'BUILD' })
+    actor.send({ type: 'SELECT_CARD', cardId: 'loc_birmingham_1' })
+    actor.send({ type: 'SELECT_INDUSTRY_TYPE', industryType: 'cotton' })
+    actor.send({ type: 'SELECT_LOCATION', cityId: 'birmingham' })
+    expect(actor.getSnapshot().can({ type: 'CONFIRM' })).toBe(true)
+
+    const persisted = actor.getPersistedSnapshot() as unknown as {
+      context: {
+        selectedIndustryTile: { canBuildInCanalEra: boolean } | null
+        lastError: string | null
+      }
+    }
+    // Corrupt the settled tile the way no legal flow ever could: the guards
+    // price the tile (cost/slot/resources), only the executor asks the era
+    // flag — so `can(CONFIRM)` stays true while execution refuses.
+    persisted.context.selectedIndustryTile!.canBuildInCanalEra = false
+    const moneyBefore = actor.getSnapshot().context.players[idx]!.money
+
+    const res = applyIntent(persisted, idx, { type: 'CONFIRM' })
+    actor.stop()
+
+    expect(res.ok).toBe(false)
+    // The engine's own lastError, passed through untouched.
+    expect((res as { error: string }).error).toMatch(/canal/i)
+    // Nothing persisted: no snapshot to write, so the action is not consumed
+    // and the error never becomes shared state.
+    expect(res).not.toHaveProperty('next')
+    expect(moneyBefore).toBe(40)
+  })
+
   // A record written by the PRE-FIX server can already carry a lastError.
   // Only a NEWLY set one may refuse the move, or the next legal action would
   // be rejected with a stale, wrong reason.

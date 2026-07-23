@@ -10,6 +10,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { createActor } from 'xstate'
 import { gameStore } from '../../store/gameStore'
+import { captureMpError } from '../observability'
 import { STEP_SAFETY_BUDGET, aiDecideAndApply } from '../ai/driver'
 import {
   gatewayBaseUrl,
@@ -138,8 +139,10 @@ function broadcast(token: string) {
   for (const fn of bus.get(token) ?? []) {
     try {
       fn()
-    } catch {
-      // a dead SSE writer must not break the others
+    } catch (err) {
+      // a dead SSE writer must not break the others — but a listener that
+      // throws is a bug in the stream, so it gets reported rather than eaten.
+      captureMpError(err, { route: 'mp/game.broadcast', token })
     }
   }
 }
@@ -896,8 +899,11 @@ export function kickAiTurns(token: string): Promise<void> {
   if (aiRunning.has(token)) return Promise.resolve()
   aiRunning.add(token)
   const p = maybeRunAiTurns(token)
-    .catch(() => {
-      // the runner never propagates — a failed decision is logged in-game
+    .catch((err) => {
+      // the runner never propagates (a failed decision is logged in-game), but
+      // it must not be invisible either: this is the gate + full-row read, so a
+      // throw here is a DB/serialization fault, not a bad model answer.
+      captureMpError(err, { route: 'mp/game.kickAiTurns', token })
     })
     .finally(() => {
       aiRunning.delete(token)
@@ -982,9 +988,20 @@ async function runAiTurns(token: string): Promise<void> {
       )
       if (turnNotes.length > 16) turnNotes = turnNotes.slice(-16)
     } catch (err) {
-      // Surface driver failures in the server log — the game itself stays
-      // consistent (nothing was applied) and a reconnect re-kicks the turn.
-      console.error('[ai] turn runner stopped:', err)
+      // Surface driver failures — the game itself stays consistent (nothing
+      // was applied) and a reconnect re-kicks the turn, but an AI that quietly
+      // stops deciding is exactly the kind of prod break nobody used to see.
+      captureMpError(err, {
+        route: 'mp/game.runAiTurns',
+        token,
+        phase: peek.phase,
+        seatId: seat.seatId,
+        extra: {
+          aiTier: seat.aiTier,
+          stepsThisTurn,
+          modelCallsThisTurn,
+        },
+      })
       aiThinking.delete(token)
       broadcast(token)
       return

@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { aiOpponentsEnabled } from '~/lib/features'
 import { isAiTierId } from '~/server/ai/types'
+import { captureMpError } from '~/server/observability'
 import { createGame } from '~/server/mp/game'
+import { isExpectedMpError } from '~/server/mp/expected-errors'
 import { allowCreate, clientIpFrom } from '~/server/mp/rate-limit'
 
 export const runtime = 'nodejs'
@@ -47,6 +49,11 @@ export async function POST(req: Request) {
     )
     return NextResponse.json(result)
   } catch (e) {
+    // Create touches the DB (and the TTL sweep) before any game exists, so
+    // there is no token yet — the route tag is the whole diagnosis here.
+    if (!isExpectedMpError(e)) {
+      captureMpError(e, { route: 'api/mp/create', phase: 'lobby' })
+    }
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Could not create the game' },
       { status: 400 },

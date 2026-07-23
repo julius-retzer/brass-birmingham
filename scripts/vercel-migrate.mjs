@@ -125,11 +125,48 @@ async function main() {
   console.log('[vercel-migrate] migrations up to date.')
 }
 
+/**
+ * Best-effort Sentry report for a failed deploy migration. A broken migration
+ * fails the build loudly in the Vercel log, but nobody watches those — and the
+ * migration is the one step that can leave prod on a schema the code does not
+ * expect. Fully guarded: no DSN (local, CI, a fork) ⇒ nothing happens, and a
+ * reporting failure can never mask the migration failure itself.
+ *
+ * @param {unknown} err
+ * @returns {Promise<void>}
+ */
+async function reportMigrationFailure(err) {
+  const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN
+  if (!dsn) return
+  try {
+    const Sentry = await import('@sentry/nextjs')
+    Sentry.init({
+      dsn,
+      enabled: true,
+      tracesSampleRate: 0,
+      sendDefaultPii: false,
+    })
+    Sentry.captureException(err, {
+      tags: { route: 'scripts/vercel-migrate', 'mp.phase': 'migration' },
+      contexts: {
+        migration: {
+          vercelEnv: process.env.VERCEL_ENV ?? null,
+          commit: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
+        },
+      },
+    })
+    await Sentry.flush(2000)
+  } catch {
+    // reporting must never mask the real failure below
+  }
+}
+
 // Only run the side-effecting migrate when invoked as the build entrypoint,
 // so the test can import `decideMigration` without hitting the network.
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((err) => {
+  main().catch(async (err) => {
     console.error('[vercel-migrate] migration failed:', err)
+    await reportMigrationFailure(err)
     process.exit(1)
   })
 }

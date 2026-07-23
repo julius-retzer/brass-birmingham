@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
+import { captureMpError } from '~/server/observability'
 import { joinGame } from '~/server/mp/game'
+import { isExpectedMpError } from '~/server/mp/expected-errors'
 import {
   allowJoin,
   clientIpFrom,
@@ -24,14 +26,18 @@ export async function POST(req: Request) {
       },
     )
   }
+  let token: string | undefined
   try {
     const body = (await req.json()) as { token?: string; name?: string }
-    const result = await joinGame(
-      String(body.token ?? ''),
-      String(body.name ?? ''),
-    )
+    token = String(body.token ?? '')
+    const result = await joinGame(token, String(body.name ?? ''))
     return NextResponse.json(result)
   } catch (e) {
+    // 'No open seats' / 'Game not found' are the product working; anything
+    // else is a fault worth an event.
+    if (!isExpectedMpError(e)) {
+      captureMpError(e, { route: 'api/mp/join', token })
+    }
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Could not join the game' },
       { status: 400 },

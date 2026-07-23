@@ -25,6 +25,8 @@ import {
 import { type AiLogEntry, type AiTierId, type AiUsageTotals } from '../ai/types'
 import { db } from '../db'
 import { chatMessages, gameIntents, games } from '../db/schema'
+import { captureMpError } from '../observability'
+import { isExpectedMpError } from './expected-errors'
 
 export interface SeatRecord {
   seatId: number
@@ -486,6 +488,28 @@ export async function loadIntentLog(token: string): Promise<IntentLogRow[]> {
 export async function saveGame(
   game: GameRecord,
   /** append this to the intent log ATOMICALLY with the snapshot write */
+  intentLog?: IntentLogEntry,
+): Promise<void> {
+  try {
+    await writeGame(game, intentLog)
+  } catch (err) {
+    // The store is the one place a fault means LOST PLAY, so it reports even
+    // though the caller rethrows to the route. 'Concurrent write' is the
+    // optimistic-concurrency guard doing its job and is not an incident.
+    if (!isExpectedMpError(err)) {
+      captureMpError(err, {
+        route: 'mp/store.saveGame',
+        token: game.token,
+        phase: game.phase,
+        extra: { version: game.version, intentKind: intentLog?.kind ?? null },
+      })
+    }
+    throw err
+  }
+}
+
+async function writeGame(
+  game: GameRecord,
   intentLog?: IntentLogEntry,
 ): Promise<void> {
   if (!TOKEN_RE.test(game.token)) throw new Error('Malformed game token')

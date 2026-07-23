@@ -41,7 +41,9 @@ import {
   usePanelCollapsed,
 } from '../side-panels'
 import { sourceCandidateCities } from '../source-spotlight'
+import { consumeRecoveryLink, credsKey } from './recovery-link'
 import { UNREACHABLE, refusalToShow } from './refusal'
+import { SeatKeyButton, SeatKeyModal, SeatKeyNotice } from './seat-key'
 import { didBecomeMyTurn, playTurnChime, titleForTurn } from './turnNotify'
 import { useInFlight } from './use-in-flight'
 
@@ -116,8 +118,6 @@ interface Creds {
   seatId: number
   seatSecret: string
 }
-
-const credsKey = (token: string) => `bb-mp-${token}`
 
 /** Keep the client's chat memory bounded; the recent tail on a full frame is
  *  smaller than this, so a reconnect never loses already-seen lines. */
@@ -194,6 +194,21 @@ function rehydrate(snapshot: unknown): unknown {
 export function MpGame({ token }: { token: string }) {
   const [creds, setCreds] = useState<Creds | null>(null)
   const [credsLoaded, setCredsLoaded] = useState(false)
+  // Set while a seat restored from a recovery link is still unverified, so the
+  // stream's ordinary accept/reject can be reported to the player who pasted
+  // it (otherwise a bad link silently shows the join screen). Verification is
+  // the EXISTING seat-secret check on the server — nothing new authenticates
+  // here, and the refusal never says which half of the link was wrong.
+  const recoveryPending = useRef(false)
+  /** A consumed recovery link the server would not authenticate. Rendered as
+   *  ONE message on the join screen for every failure mode (wrong seat,
+   *  tampered secret, seat since released) — it must not narrow down which. */
+  const [recoveryRejected, setRecoveryRejected] = useState(false)
+  // Set ONLY for a seat claimed mid-game (a released seat re-taken), which
+  // skips the lobby and therefore the inline SeatKeyNotice. A lobby joiner
+  // must NOT set this: the flag would survive into the started game and put a
+  // full-screen modal over the board on the first turn.
+  const [seatKeyAtClaim, setSeatKeyAtClaim] = useState(false)
   const [view, setView] = useState<GameViewWire | null>(null)
   const [streamFailing, setStreamFailing] = useState(false)
   // The SSE stream drives a ~1.2s server-side DB poll for its whole lifetime.
@@ -203,8 +218,15 @@ export function MpGame({ token }: { token: string }) {
   // frame on reopen is the full current view, so nothing is missed.
   const [streamPaused, setStreamPaused] = useState(false)
 
+  // FIRST effect on purpose: a recovery link must be consumed — credentials
+  // persisted, secret stripped out of the address bar — before the stream
+  // effect below opens an EventSource, so the secret can never ride a request
+  // or a Referer header. Both halves are synchronous inside
+  // `consumeRecoveryLink`; the fragment never reached the server to begin with.
   useEffect(() => {
-    setCreds(loadCreds(token))
+    const recovered = consumeRecoveryLink(token, window)
+    if (recovered) recoveryPending.current = true
+    setCreds(recovered ?? loadCreds(token))
     setCredsLoaded(true)
   }, [token])
 
@@ -284,8 +306,15 @@ export function MpGame({ token }: { token: string }) {
         // this credentialed stream was rejected: the seat was released or
         // the secret is stale → back to claiming
         localStorage.removeItem(credsKey(token))
+        if (recoveryPending.current) {
+          recoveryPending.current = false
+          setRecoveryRejected(true)
+        }
         setCreds(null)
         return
+      }
+      if (recoveryPending.current && parsed.you !== null) {
+        recoveryPending.current = false
       }
       applyView(parsed)
     }
@@ -354,20 +383,39 @@ export function MpGame({ token }: { token: string }) {
       <JoinScreen
         token={token}
         view={view}
+        recoveryRejected={recoveryRejected}
         onJoined={(c) => {
           localStorage.setItem(credsKey(token), JSON.stringify(c))
           setCreds(c)
+          setRecoveryRejected(false)
+          setSeatKeyAtClaim(view.phase !== 'lobby')
         }}
       />
     )
   }
 
   if (view.phase === 'lobby') {
+    // The lobby carries the claim-time nudge inline (SeatKeyNotice) for every
+    // seated player, host included — no modal needed, and nothing on top of
+    // the ready/start controls.
     return <LobbyScreen token={token} view={view} creds={creds} />
   }
 
   return (
-    <MpTable token={token} view={view} creds={creds!} applyView={applyView} />
+    <>
+      <MpTable token={token} view={view} creds={creds!} applyView={applyView} />
+      {/* Claiming a seat MID-GAME (a released seat re-taken) skips the lobby
+          entirely, so that one path gets the modal instead. Dismissible, and
+          the Seat key button in the masthead brings it back. */}
+      {seatKeyAtClaim && creds && (
+        <SeatKeyModal
+          token={token}
+          creds={creds}
+          atClaim
+          onClose={() => setSeatKeyAtClaim(false)}
+        />
+      )}
+    </>
   )
 }
 
@@ -408,10 +456,12 @@ function GoneScreen() {
 function JoinScreen({
   token,
   view,
+  recoveryRejected,
   onJoined,
 }: {
   token: string
   view: GameViewWire
+  recoveryRejected: boolean
   onJoined: (creds: Creds) => void
 }) {
   const [name, setName] = useState('')
@@ -451,6 +501,20 @@ function JoinScreen({
       </h1>
       <div className="bb2-panel mt-4 flex w-full max-w-sm flex-col gap-4 p-6">
         <span className="bb2-panel-title">Claim a seat</span>
+        {recoveryRejected && (
+          <p
+            className="rounded border px-3 py-2 text-[12.5px]"
+            data-testid="recovery-rejected"
+            style={{
+              borderColor: 'rgba(214, 92, 62, .55)',
+              background: 'rgba(214, 92, 62, .12)',
+              color: 'var(--bb-parchment-bright)',
+            }}
+          >
+            That seat key did not work for this table. Take an open seat below,
+            or ask a player at the table to release yours first.
+          </p>
+        )}
         <div className="flex flex-col gap-1.5">
           {view.seats.map((s) => (
             <div
@@ -738,7 +802,13 @@ function LobbyScreen({
       )}
 
       {isSeated && creds && (
-        <SeatsButton token={token} creds={creds} seats={view.seats} />
+        <>
+          <SeatKeyNotice token={token} creds={creds} />
+          <div className="flex items-start gap-2">
+            <SeatsButton token={token} creds={creds} seats={view.seats} />
+            <SeatKeyButton token={token} creds={creds} />
+          </div>
+        </>
       )}
 
       {!isHost && (
@@ -823,8 +893,9 @@ function SeatsButton({
             className="text-[10.5px]"
             style={{ color: 'rgba(231,215,177,.45)' }}
           >
-            Release a seat if its player lost their link or browser — even the
-            host's — so they can claim it again from the invite link.
+            A player who still has their seat key can just open it to get back
+            in. Release a seat only when that is gone too — even the host's — so
+            it can be claimed again from the invite link.
           </p>
         </div>
       )}
@@ -845,14 +916,24 @@ function ShareLink({ className }: { className?: string }) {
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       }}
-      title="Copy the invite link"
+      title="Copy the invite link — safe to share, it only offers an open seat"
     >
+      {/* The ONLY bare URL on screen is this public one, so "the link you can
+          grab" is always the safe one; the private seat key lives behind a
+          button and a reveal (see seat-key.tsx). The label makes the pair
+          textually distinct rather than two lookalike URLs side by side. */}
+      <span
+        className="flex-none text-[9px] font-bold uppercase tracking-[0.16em]"
+        style={{ color: 'var(--bb-brass-bright)' }}
+      >
+        Invite
+      </span>
       {/* The invite URL can be long (token + a deploy-preview host). Let it
           ellipsis-truncate on phones so it can never force the masthead wider
           than the viewport; the full URL still shows from lg up (unchanged)
           and is always copied in full. */}
       <span className="min-w-0 truncate">
-        {copied ? 'Link copied!' : window.location.href}
+        {copied ? 'Invite link copied!' : window.location.href}
       </span>
     </button>
   )
@@ -1432,7 +1513,10 @@ function MpTable({
               </button>
             )}
             {you !== null && (
-              <SeatsButton token={token} creds={creds} seats={view.seats} />
+              <>
+                <SeatsButton token={token} creds={creds} seats={view.seats} />
+                <SeatKeyButton token={token} creds={creds} />
+              </>
             )}
             <ShareLink className="max-w-[52vw] sm:max-w-[240px] lg:max-w-none" />
           </div>

@@ -1025,11 +1025,19 @@ export function BoardMap({
         )}
       </svg>
 
-      {/* prompt banner — the board's own instruction, high contrast */}
+      {/* Prompt banner — the board's own instruction, high contrast.
+          Pinned to the VIEWPORT, not the board frame: below `lg` the page
+          itself scrolls, and an instruction anchored to the board scrolls
+          away the moment the player reaches down to the hand or the dock.
+          `fixed` escapes the frame's `overflow: hidden` because nothing
+          between here and the root carries a transform. */}
       {prompt && (
-        <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2">
+        <div
+          className="pointer-events-none fixed left-1/2 z-40 flex max-w-[min(100vw-1.5rem,32rem)] -translate-x-1/2 justify-center"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}
+        >
           <div
-            className="bb2-rise flex items-center gap-2 rounded border px-4 py-2 text-[13px] font-semibold tracking-wide"
+            className="bb2-rise flex items-center gap-2 rounded border px-4 py-2 text-center text-[13px] font-semibold tracking-wide"
             style={{
               background: 'rgba(20, 16, 11, 0.92)',
               borderColor: 'var(--bb-brass)',
@@ -1039,7 +1047,7 @@ export function BoardMap({
             }}
           >
             <span
-              className="inline-block h-2 w-2 rounded-full"
+              className="inline-block h-2 w-2 shrink-0 rounded-full"
               style={{ background: 'var(--bb-brass-bright)' }}
             />
             {prompt}

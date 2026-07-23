@@ -29,6 +29,7 @@ import {
   kickAiTurns,
   subscribe,
 } from '~/server/mp/game'
+import { acquireStreamSlot, clientIpFrom } from '~/server/mp/rate-limit'
 import { loadGame, loadVersionAndSeq } from '~/server/mp/store'
 
 export const runtime = 'nodejs'
@@ -57,6 +58,20 @@ export async function GET(req: NextRequest) {
   const game = await loadGame(token).catch(() => null)
   if (!game) return new Response('Game not found', { status: 404 })
 
+  // Abuse bound: each stream holds a serverless slot for up to 290s and polls
+  // Neon every ~1.2s, and `seat`/`secret` stay OPTIONAL (spectating is an open
+  // product question — auth is deliberately NOT required here). So the bound
+  // is a per-IP concurrent-stream cap: legitimate tables (≤4 players, a tab
+  // or two each) never come near it, while one address can no longer hold
+  // unbounded streams. Cap + rationale in rate-limit.ts.
+  const releaseStreamSlot = acquireStreamSlot(clientIpFrom(req))
+  if (!releaseStreamSlot) {
+    return new Response('Too many open streams from this address', {
+      status: 429,
+      headers: { 'Retry-After': '30' },
+    })
+  }
+
   // Recovery: if the server restarted mid-AI-turn, the first client to
   // reconnect restarts the turn-runner (no-op when it's a human's turn).
   void kickAiTurns(token)
@@ -64,6 +79,14 @@ export async function GET(req: NextRequest) {
   const encoder = new TextEncoder()
   let unsub = () => {
     // replaced by the real unsubscribe once the stream starts
+  }
+  // Full teardown (stop timers, mark closed, release slot, unsubscribe, close
+  // the controller). Assigned once the stream starts so BOTH the abort/close
+  // paths inside `start` and the `cancel()` callback can run it — a cancelled
+  // stream must stop polling Neon, not keep the slot free while the pollTimer
+  // and closeTimer run to the 290s cap.
+  let cleanup = () => {
+    // replaced by the real cleanup once the stream starts
   }
 
   const stream = new ReadableStream({
@@ -84,8 +107,9 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      const cleanup = () => {
+      cleanup = () => {
         open = false
+        releaseStreamSlot() // idempotent — cancel/abort/close can all fire
         unsub()
         if (pollTimer) clearTimeout(pollTimer)
         if (closeTimer) clearTimeout(closeTimer)
@@ -171,7 +195,11 @@ export async function GET(req: NextRequest) {
       req.signal.addEventListener('abort', cleanup)
     },
     cancel() {
-      unsub()
+      // The reader went away: run the SAME full teardown as abort/close so the
+      // pollTimer, closeTimer and ping stop and we don't keep polling Neon (and
+      // holding the slot free) until the 290s cap. Falls back to the stub if the
+      // stream never started.
+      cleanup()
     },
   })
 

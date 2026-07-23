@@ -64,6 +64,7 @@ const g = globalThis as unknown as {
   __bbAiRunning?: Set<string>
   __bbAiThinking?: Map<string, number>
   __bbAiPromise?: Map<string, Promise<void>>
+  __bbNoAiSeats?: Set<string>
 }
 const bus = (g.__bbMpBus ??= new Map())
 const locks = (g.__bbMpLocks ??= new Map())
@@ -73,6 +74,17 @@ const aiRunning = (g.__bbAiRunning ??= new Set())
 const aiPromise = (g.__bbAiPromise ??= new Map())
 /** token → seatId currently waiting on a model decision */
 const aiThinking = (g.__bbAiThinking ??= new Map())
+/** Tokens known to have NO AI seat. Seat kinds are immutable for a game's
+ *  lifetime (AI seats exist only from creation; joins claim human seats), so
+ *  once a game is known all-human, every later `kickAiTurns` — the SSE poll
+ *  re-kicks every ~1.2s per open tab — skips its `loadAiPeek` DB query
+ *  entirely. That peek was ~HALF of all idle DB load (2026-07-23 abuse/cost
+ *  report). Seeded at creation; also derived from the first peek so games
+ *  created before an instance (re)start still benefit. */
+const noAiSeats = (g.__bbNoAiSeats ??= new Set())
+/** Memory backstop for a very long-lived instance scanning many tokens; a
+ *  clear only costs re-peeks, never correctness. */
+const NO_AI_CACHE_MAX = 10_000
 
 // The change bus is per-process and therefore only a FAST PATH: it fans out
 // writes made by THIS instance to SSE streams living on the same instance
@@ -385,6 +397,17 @@ export async function createGame(
       ? { kind: 'setup', seatId: null, payload: game.snapshot }
       : undefined,
   )
+  // All-human game: remember it now so no poll tick ever pays the AI peek.
+  // Eligibility is read off the MATERIALIZED seats, not `opponents`: only
+  // seats 1..playerCount-1 are seated, so an `opponents` entry past the seat
+  // count (e.g. createGame('Ada', 2, ['human', 'apprentice'])) leaves an
+  // all-human game that `opponents.some(...)` would wrongly treat as AI and
+  // never cache — paying `loadAiPeek` on every poll tick forever.
+  const seatsHaveAi = game.seats.some((seat) => seat.kind === 'ai')
+  if (!seatsHaveAi) {
+    if (noAiSeats.size >= NO_AI_CACHE_MAX) noAiSeats.clear()
+    noAiSeats.add(token)
+  }
   void kickAiTurns(token)
   return { token, seatId: 0, seatSecret: secret }
 }
@@ -759,9 +782,16 @@ export function kickAiTurns(token: string): Promise<void> {
   return p
 }
 
-/** Cheap gate → full runner. Reads only the peek unless it's an AI's turn. */
+/** Cheap gate → full runner. All-human games skip even the peek (cached);
+ *  otherwise reads only the peek unless it's genuinely an AI's turn. */
 async function maybeRunAiTurns(token: string): Promise<void> {
+  if (noAiSeats.has(token)) return
   const peek = await loadAiPeek(token)
+  if (peek && !peek.seats.some((s) => s.kind === 'ai')) {
+    if (noAiSeats.size >= NO_AI_CACHE_MAX) noAiSeats.clear()
+    noAiSeats.add(token)
+    return
+  }
   if (!isAiSeatTurn(peek)) return
   await runAiTurns(token)
 }

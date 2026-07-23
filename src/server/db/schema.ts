@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import {
   index,
   integer,
@@ -31,23 +32,39 @@ import type { ChatMessage, GameRecord, SeatRecord } from '../mp/store'
  * game state — including chat — now survives an ephemeral-box redeploy, which
  * the old `.bb-games/*.json` files (and any local SQLite file) never could.
  */
-export const games = pgTable('games', {
-  token: text('token').primaryKey(),
-  phase: text('phase', { enum: ['lobby', 'playing', 'over'] })
-    .notNull()
-    .default('lobby'),
-  version: integer('version').notNull().default(1),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
-  seats: jsonb('seats').notNull().$type<SeatRecord[]>(),
-  /** persisted XState snapshot of the authoritative engine (null in lobby) */
-  snapshot: jsonb('snapshot').$type<unknown>(),
-  /** DEPRECATED — chat now lives in `chatMessages`. Retained only for
-   *  backfilling pre-migration rows; never read/written by the live path. */
-  messages: jsonb('messages').$type<ChatMessage[]>(),
-  /** present when the table has AI seats: their move log + spend counter */
-  ai: jsonb('ai').$type<GameRecord['ai']>(),
-})
+export const games = pgTable(
+  'games',
+  {
+    token: text('token').primaryKey(),
+    phase: text('phase', { enum: ['lobby', 'playing', 'over'] })
+      .notNull()
+      .default('lobby'),
+    version: integer('version').notNull().default(1),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+    seats: jsonb('seats').notNull().$type<SeatRecord[]>(),
+    /** persisted XState snapshot of the authoritative engine (null in lobby) */
+    snapshot: jsonb('snapshot').$type<unknown>(),
+    /** DEPRECATED — chat now lives in `chatMessages`. Retained only for
+     *  backfilling pre-migration rows; never read/written by the live path. */
+    messages: jsonb('messages').$type<ChatMessage[]>(),
+    /** present when the table has AI seats: their move log + spend counter */
+    ai: jsonb('ai').$type<GameRecord['ai']>(),
+  },
+  (t) => [
+    // Two PUBLIC, unauthenticated endpoints scan this table, and rows are
+    // never swept (kept for analytics) — without these indexes both queries
+    // degrade permanently as rows accumulate (attacker-controllable via
+    // create spam; see the 2026-07-23 abuse/cost report).
+    // `loadOpenLobbies`: WHERE phase = 'lobby' ORDER BY created_at DESC LIMIT n.
+    index('games_phase_created_idx').on(t.phase, t.createdAt.desc()),
+    // `loadActivityStats`: WHERE updated_at >= cutoff AND phase <> 'over' —
+    // a partial index matching its exact predicate.
+    index('games_updated_active_idx')
+      .on(t.updatedAt)
+      .where(sql`${t.phase} <> 'over'`),
+  ],
+)
 
 /**
  * Table talk, normalized OUT of the game row: one row per chat line, keyed by

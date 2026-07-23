@@ -637,53 +637,43 @@ button.bb2-card {
   top: calc(-1 * var(--bb-lens-reach, 134px));
 }
 
-/* Reorder handles on the raised card. They float just ABOVE the seat box,
- * over the magnified visual, and are counter-rotated inline out of the fan's
- * tilt. Above and not below for two reasons: the tray is pinned to the
- * viewport bottom (a card's lower edge hangs off screen), and the strip must
- * never cover the card's own tap point — the second tap on a peeked card is
- * how touch selects it. The strip is wider than the 108px seat on coarse
- * pointers so both targets stay thumb sized; the seat lets it overflow. */
+/* Reorder handles on the raised card: one at each end of a strip that spans
+ * the magnified visual, so they FLANK the card instead of covering it (see
+ * moveHandleLayout — geometry is inline, this is only the chrome). The strip
+ * itself is click-transparent; only the two buttons take pointer events, so
+ * the card's own tap point is untouched — the second tap on a peeked card is
+ * how touch selects it. It is wider than the 108px seat; the seat overflows. */
 .bb2-card-move {
   position: absolute;
   left: 50%;
-  bottom: calc(100% + 6px);
   z-index: 3;
   display: flex;
-  gap: 6px;
-  padding: 3px;
-  border-radius: 999px;
-  background: rgba(20, 16, 11, 0.92);
-  border: 1px solid var(--bb-brass);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
-  white-space: nowrap;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
 }
 .bb2-card-movebtn {
+  pointer-events: auto;
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: var(--bb-move-size, 30px);
+  height: var(--bb-move-size, 30px);
   border-radius: 999px;
-  border: 0;
-  background: rgba(195, 149, 56, 0.16);
+  border: 1px solid var(--bb-brass);
+  background: rgba(20, 16, 11, 0.92);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
   color: var(--bb-brass-bright);
-  font-size: 13px;
+  font-size: calc(var(--bb-move-size, 30px) * 0.42);
   line-height: 1;
   cursor: pointer;
 }
 .bb2-card-movebtn:hover:not(:disabled) {
-  background: rgba(195, 149, 56, 0.34);
+  background: rgba(60, 46, 24, 0.95);
+  color: #fff2cf;
 }
 .bb2-card-movebtn:disabled {
-  opacity: 0.3;
+  opacity: 0.28;
   cursor: default;
-}
-@media (pointer: coarse) {
-  .bb2-card-movebtn {
-    width: 52px;
-    height: 52px;
-    font-size: 18px;
-  }
 }
 
 /* Magnification is decorative; motion-sensitive players get the end state. */

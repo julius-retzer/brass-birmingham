@@ -110,6 +110,68 @@ export function lensShiftX(
   return 0
 }
 
+/** Reorder-handle diameter, layout px — thumb sized on a coarse pointer. */
+const MOVE_HANDLE_FINE = 30
+const MOVE_HANDLE_COARSE = 52
+/** Gap between a handle and the edge of the magnified card. */
+const MOVE_HANDLE_GAP = 10
+
+export interface MoveHandleLayout {
+  /** Button diameter. */
+  size: number
+  /** Width of the strip that carries both buttons, one at each end. */
+  width: number
+  /** Offset of the strip above the seat's bottom edge. */
+  bottom: number
+}
+
+/**
+ * Where the ◀ ▶ reorder handles sit: FLANKING the magnified card, vertically
+ * centred on it, never over it. Two reasons they hang outside rather than on
+ * top: the card's own tap point must stay clear (the second tap on a peeked
+ * card is how touch selects it), and a control over the face buries the card
+ * the player is trying to read.
+ */
+export function moveHandleLayout(
+  lens: LensPreset,
+  coarse: boolean,
+): MoveHandleLayout {
+  const size = coarse ? MOVE_HANDLE_COARSE : MOVE_HANDLE_FINE
+  return {
+    size,
+    width: CARD_W * lens.scale + 2 * (size + MOVE_HANDLE_GAP),
+    bottom: lens.rise + (CARD_H * lens.scale) / 2 - size / 2,
+  }
+}
+
+/**
+ * Horizontal correction that keeps the handle strip inside the tray. Same job
+ * as lensShiftX, but it cannot reuse it: the strip is far wider than a card
+ * AND it rides high above the seat, where the fan's rotation about the
+ * 50% 120% pivot has swung it sideways by a visible amount (the lens is low
+ * and narrow enough that lensShiftX can ignore that term; the strip is not).
+ */
+export function moveHandleShiftX(
+  index: number,
+  count: number,
+  spacing: number,
+  width: number | null,
+  handles: MoveHandleLayout,
+): number {
+  if (width === null) return 0
+  const pad = 8
+  const theta = (fanAngle(index, count) * Math.PI) / 180
+  // Height of the strip's centre above the rotation pivot (which sits
+  // PIVOT_Y below the seat's TOP, i.e. PIVOT_Y − CARD_H below its bottom).
+  const above = handles.bottom + handles.size / 2 + PIVOT_Y - CARD_H
+  const centerX =
+    width / 2 + (index - (count - 1) / 2) * spacing + above * Math.sin(theta)
+  const half = handles.width / 2
+  if (centerX - half < pad) return pad + half - centerX
+  if (centerX + half > width - pad) return width - pad - half - centerX
+  return 0
+}
+
 /** How far above its seat the magnified visual reaches, layout px. */
 export function lensReach(lens: LensPreset): number {
   return lens.rise + CARD_H * (lens.scale - 1)

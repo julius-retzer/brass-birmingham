@@ -13,8 +13,8 @@
 // The fan is also REORDERABLE (display only — see hand-order.ts; the engine's
 // hand is never touched). Three ways in, because the tray's pointer budget is
 // already spent: a mouse drag (fine pointers only — touch's long-press is the
-// browse gesture and stays that), the ◀ ▶ handles that appear under a raised
-// card, and Shift+Arrow on a focused card. A drag is only ever read as a drag
+// browse gesture and stays that), the ◀ ▶ handles that flank a raised card,
+// and Shift+Arrow on a focused card. A drag is only ever read as a drag
 // once the pointer travels DRAG_SLOP_PX, and it swallows the click it would
 // otherwise synthesize, so dragging can never be mistaken for selecting.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
@@ -32,6 +32,8 @@ import {
   hintClearance,
   lensReach,
   lensShiftX,
+  moveHandleLayout,
+  moveHandleShiftX,
 } from './hand-tray-layout'
 
 /** Hold this long (without sliding) to start browsing the fan. */
@@ -186,6 +188,7 @@ export function HandTray({
   }, [onHoverCard, raisedCard])
   const lens = coarse ? LENS_COARSE : LENS_FINE
   const { spacing, marginX } = fanLayout(n, fanWidth)
+  const handles = moveHandleLayout(lens, coarse)
 
   // Long-press browse: once the hold fires, sliding moves the raised
   // highlight to the card whose resting seat is under the finger; releasing
@@ -475,20 +478,26 @@ export function HandTray({
               </button>
               {/* Reorder handles: the touch (and plain-click) route, since
                 the long-press already belongs to the browse gesture. They
-                ride the raised card so the fan stays clean at rest, sit over
-                its lower edge (the tray is pinned to the viewport bottom —
-                there is no room beneath a card) and counter-rotate out of
-                the fan's tilt so the arrows read straight. They must not
-                bubble: a pointerdown here would arm a browse/drag, and a
-                pointerup would toggle the peek back off. */}
+                ride the raised card so the fan stays clean at rest, FLANK the
+                magnified visual rather than covering it (moveHandleLayout),
+                and counter-rotate out of the fan's tilt so the arrows read
+                straight. They must not bubble: a pointerdown here would arm a
+                browse/drag, and a pointerup would toggle the peek back off. */}
               {reorderable && raised && !draggingId && (
                 <span
                   className="bb2-card-move"
-                  style={{
-                    // Centred on the magnified visual (which is clamped away
-                    // from the tray edges), not on the seat.
-                    transform: `translateX(calc(-50% + ${lensShiftX(i, n, spacing, fanWidth, lens.scale)}px)) rotate(${-angle}deg)`,
-                  }}
+                  style={
+                    {
+                      // Centred on the magnified visual, with its own edge
+                      // clamp — the strip is far wider than the card, so the
+                      // lens's clamp would still let an edge card's outer
+                      // handle run off screen.
+                      bottom: `${handles.bottom}px`,
+                      width: `${handles.width}px`,
+                      '--bb-move-size': `${handles.size}px`,
+                      transform: `translateX(calc(-50% + ${moveHandleShiftX(i, n, spacing, fanWidth, handles)}px)) rotate(${-angle}deg)`,
+                    } as React.CSSProperties
+                  }
                   onPointerDown={(e) => e.stopPropagation()}
                   onPointerUp={(e) => e.stopPropagation()}
                 >

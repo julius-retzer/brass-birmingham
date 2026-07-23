@@ -22,24 +22,25 @@ import {
 import { explainRefusal } from '~/store/refusal'
 import { refreshEmbeddedTileStats } from '~/store/saveMigration'
 import { ActionDock, SELLABLE, getHandSelection } from '../action-dock'
-import { developMatView } from '../develop-mat'
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from '../board/board-map'
 import { CommandPalette } from '../command-palette'
+import { developMatView } from '../develop-mat'
 import { useHandOrder } from '../hand-order'
 import { HandTray } from '../hand-tray'
 import { computeHoverCities, focusCityFor } from '../hover-highlight'
+import { JournalPanel } from '../journal'
 import { legalCityTargets, legalLinkTargets } from '../legal-targets'
 import { LocateCityProvider, useLocateCityState } from '../locate'
 import { GameOverScreen, RoundCurtain } from '../overlays'
 import { OpenMatButton, PlayerLedger } from '../player-ledger'
 import { PlayerRail } from '../player-rail'
-import { JournalPanel } from '../journal'
 import {
   CollapsiblePanel,
   MarketsPanel,
   SidePanelRail,
   usePanelCollapsed,
 } from '../side-panels'
+import { sourceCandidateCities } from '../source-spotlight'
 import { UNREACHABLE, refusalToShow } from './refusal'
 import { didBecomeMyTurn, playTurnChime, titleForTurn } from './turnNotify'
 import { useInFlight } from './use-in-flight'
@@ -1204,6 +1205,14 @@ function MpTable({
     [pickingLink, pickingSecondLink, state],
   )
 
+  // While the engine is asking WHERE a resource comes from, the answers are
+  // places — so the map lights them, exactly as on the hotseat surface. A
+  // bystander's view carries no staged selection, so nothing lights for them.
+  const sourceCities = useMemo(
+    () => (state ? sourceCandidateCities(state) : null),
+    [state],
+  )
+
   const boardPrompt = useMemo(() => {
     if (!ctx) return null
     if (pickingSite) {
@@ -1454,7 +1463,7 @@ function MpTable({
                 onLinkClick={onLinkClick}
                 networkCities={me ? playerNetworkCities(me) : null}
                 networkColor={me ? PLAYER_FILL[me.color] : null}
-                hoverCities={hoverCities}
+                hoverCities={sourceCities ?? hoverCities}
                 locatedCities={locateState.locatedCities}
                 focusCity={
                   locateState.spotlightFocus ?? focusCityFor(hoveredCard)

@@ -30,7 +30,7 @@ describe('isBenignSchemaRace', () => {
   })
 
   it('accepts duplicate_column (42701) — an additive ADD COLUMN re-run/raced', () => {
-    // Re-running `ALTER TABLE games ADD COLUMN name …` over a branch that
+    // Re-running `ALTER TABLE games ADD COLUMN archived …` over a branch that
     // already has the column, or a parallel worker adding it a hair earlier.
     expect(isBenignSchemaRace(pgError({ code: '42701' }))).toBe(true)
   })

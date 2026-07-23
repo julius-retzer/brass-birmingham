@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -51,6 +52,12 @@ export const games = pgTable(
       .notNull()
       .default('public'),
     version: integer('version').notNull().default(1),
+    /** A game hidden from discovery but KEPT for analytics: the weekly archive
+     *  sweep flips never-started lobbies here, and a host can archive their own
+     *  lobby on demand. Additive, default false → every existing row stays
+     *  visible. This is an archive, NOT a delete — the row (and its chat +
+     *  intent log) survives. `loadOpenLobbies` filters archived rows out. */
+    archived: boolean('archived').notNull().default(false),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
     seats: jsonb('seats').notNull().$type<SeatRecord[]>(),

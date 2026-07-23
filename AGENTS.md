@@ -10,7 +10,7 @@ Always apply TDD for the gameStore.ts First write test and then the implementati
 
 ## Project Overview
 
-Digital implementation of the Brass Birmingham board game using Next.js 15, TypeScript, XState for game state management, and Tailwind CSS with Shadcn UI components.
+Digital implementation of the Brass Birmingham board game using Next.js 16, TypeScript, XState for game state management, and Tailwind CSS with Shadcn UI components.
 
 ## Development Commands
 
@@ -134,6 +134,32 @@ formatter complaints in files nobody touched (demo snapshots, `gameUtils.ts`,
 `mp/game.ts`). CI runs `pnpm lint` + `pnpm typecheck`, which are green; don't
 chase `check` failures you didn't cause, and don't `pnpm format:write` (see
 the Formatting gotcha above).
+
+### Next.js 16 + the TS shim (upgraded 2026-07-23, from 15.5)
+
+Next 16.2.x still drives its TS integration through the `typescript6@6.0.2`
+compiler-API shim — the deliberate two-package split above survives the bump
+untouched (`next build`'s "Running TypeScript …" and `next dev` both go through
+it; `pnpm exec tsc --version` must still say 7.x). The upgrade was a plain
+`next`/`eslint-config-next` version bump + `pnpm install`; React stays on 18.3.x
+(Next 16 peers `react ^18.2.0 || ^19` — do NOT jump to React 19). Node pin
+unchanged (Next 16 needs ≥20.9; repo is on 24.18.0). What bit / to know:
+- **`jsx` is now `react-jsx`, MANDATORY.** Next 16 rewrites `tsconfig.json`
+  (`jsx: preserve` → `react-jsx`, the React automatic runtime) on EVERY build if
+  you set it back — so it is pinned to `react-jsx` here. Typecheck stays green
+  under TS7 with it. Next also appends `.next/dev/types/**/*.ts` to `include`
+  (kept). If Next reformats the file ugly (expands arrays), restore the compact
+  style by hand — Biome does not format tsconfig.json.
+- **Async request APIs were already migrated** (`params` is `Promise<…>` in
+  `g/[token]/page.tsx`; route handlers read `req.nextUrl.searchParams`), so no
+  codemod was needed. No `cookies()`/`headers()` usage.
+- **Local `pnpm build` needs a `DATABASE_URL`** (any valid postgres URL string —
+  it never connects; routes are dynamic). Next collects page data by importing
+  route modules, and `src/server/db/index.ts` calls `neon(env.DATABASE_URL)` at
+  import. This is not new to 16, just surfaces if you build without `.env`.
+- `eslint-config-next@16` peers `eslint>=9` (we're on 8) — an unmet-peer WARN
+  only; eslint is unwired here (Biome lints), so it is inert. `next dev`/`build`
+  and the SSE stream route (`api/mp/stream`) verified working under 16.
 
 ### Shadcn MCP Server
 When a task requires building or modifying a user interface, you must use the tools available in the shadcn-ui MCP server.

@@ -77,35 +77,52 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
   // the game starts for BOTH, live
   await expect(host.getByTestId('era-plate')).toHaveText('canal era')
   await expect(guest.getByTestId('era-plate')).toHaveText('canal era')
-  // Ada opens; the guest is spectating her turn behind the waiting panel
-  await expect(guest.getByTestId('waiting-panel')).toBeVisible()
-  await expect(guest.getByText('Waiting for Ada to act…')).toBeVisible()
 
-  /* ---- host acts; the guest's screen converges without any input ---- */
-  await host.getByTestId('action-loan').click()
-  await host.locator('button.bb2-card:not([disabled])').first().click()
-  await host.getByTestId('confirm-action').click()
-  await expect(guest.getByText(/Ada took a loan/)).toBeVisible()
-  await expect(treasuryOf(guest, 'Ada')).toHaveText('£47')
+  // The service picks the starting seat at random, so bind the roles to
+  // whoever actually opens instead of assuming the host leads. Both spends
+  // stay at £0 this round, so the tie keeps this order for round 2 as well.
+  await expect(
+    host.getByTestId('waiting-panel').or(host.getByTestId('action-loan')),
+  ).toBeVisible()
+  const hostOpens = await host.getByTestId('action-loan').isVisible()
+  const opener = hostOpens ? host : guest
+  const watcher = hostOpens ? guest : host
+  const openerName = hostOpens ? 'Ada' : 'Brunel'
+  const watcherSeat = hostOpens ? 1 : 0
 
-  /* ---- turn passes to the guest; both converge on round 2 ---- */
-  await expect(guest.getByTestId('action-pass')).toBeVisible()
-  await expect(host.getByTestId('waiting-panel')).toBeVisible()
-  // turn notification cues: the guest's tab title flags the turn, the
-  // host's does not; the unobtrusive permission bell is available
-  await expect(guest).toHaveTitle(/● Your turn — Brass/)
-  await expect(host).toHaveTitle(/^Brass: Birmingham$/)
+  // the idle player spectates the opener's turn behind the waiting panel
+  await expect(watcher.getByTestId('waiting-panel')).toBeVisible()
+  await expect(
+    watcher.getByText(`Waiting for ${openerName} to act…`),
+  ).toBeVisible()
+
+  /* ---- the opener acts; the other screen converges without any input ---- */
+  await opener.getByTestId('action-loan').click()
+  await opener.locator('button.bb2-card:not([disabled])').first().click()
+  await opener.getByTestId('confirm-action').click()
+  await expect(
+    watcher.getByText(new RegExp(`${openerName} took a loan`)),
+  ).toBeVisible()
+  await expect(treasuryOf(watcher, openerName)).toHaveText('£47')
+
+  /* ---- turn passes to the other player; both converge on round 2 ---- */
+  await expect(watcher.getByTestId('action-pass')).toBeVisible()
+  await expect(opener.getByTestId('waiting-panel')).toBeVisible()
+  // turn notification cues: the tab whose turn it is flags it in the title,
+  // the other does not; the unobtrusive permission bell is available
+  await expect(watcher).toHaveTitle(/● Your turn — Brass/)
+  await expect(opener).toHaveTitle(/^Brass: Birmingham$/)
   // the permission bell shows only while permission is undecided — the
   // test browser may auto-grant/deny, so gate the assertion on it
-  const notifyPermission = await guest.evaluate(() => Notification.permission)
+  const notifyPermission = await watcher.evaluate(() => Notification.permission)
   if (notifyPermission === 'default') {
-    await expect(guest.getByTestId('notify-enable')).toBeVisible()
+    await expect(watcher.getByTestId('notify-enable')).toBeVisible()
   } else {
-    await expect(guest.getByTestId('notify-enable')).toHaveCount(0)
+    await expect(watcher.getByTestId('notify-enable')).toHaveCount(0)
   }
   // Two-tap pass: arm, then confirm.
-  await guest.getByTestId('action-pass').click()
-  await guest.getByTestId('action-pass').click()
+  await watcher.getByTestId('action-pass').click()
+  await watcher.getByTestId('action-pass').click()
   await expect(host.getByTestId('round-chip')).toHaveText('Round 2/11')
   await expect(guest.getByTestId('round-chip')).toHaveText('Round 2/11')
 
@@ -132,26 +149,26 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
   await guest.reload()
   await expect(guest.getByTestId('round-chip')).toHaveText('Round 2/11')
 
-  /* ---- the host opens a Network action and picks a route, but does NOT
-     confirm: every step is a persisted intent that broadcasts, so this is
+  /* ---- the player to act opens a Network action and picks a route, but does
+     NOT confirm: every step is a persisted intent that broadcasts, so this is
      exactly the moment an opponent could watch the pick live ---- */
-  await expect(host.getByTestId('action-network')).toBeVisible()
-  await host.getByTestId('action-network').click()
+  await expect(opener.getByTestId('action-network')).toBeVisible()
+  await opener.getByTestId('action-network').click()
   await expect(
-    host.locator('button.bb2-card:not([disabled])').first(),
+    opener.locator('button.bb2-card:not([disabled])').first(),
   ).toBeVisible()
-  await host.locator('button.bb2-card:not([disabled])').first().click()
+  await opener.locator('button.bb2-card:not([disabled])').first().click()
   await expect(
-    host.getByText(/Choose a canal route — \d+ available/),
+    opener.getByText(/Choose a canal route — \d+ available/),
   ).toBeVisible()
-  const legalRoute = host.locator('path[data-conn][data-legal="true"]')
+  const legalRoute = opener.locator('path[data-conn][data-legal="true"]')
   await expect(legalRoute).not.toHaveCount(0)
   const pickedConn = (await legalRoute.first().getAttribute('data-conn'))!
-  await clickRoute(host, pickedConn)
-  await expect(host.getByTestId('confirm-action')).toBeEnabled()
+  await clickRoute(opener, pickedConn)
+  await expect(opener.getByTestId('confirm-action')).toBeEnabled()
 
-  /* ---- wire hygiene: read the guest's OWN stream bytes and inspect ---- */
-  const rawEvent = await guest.evaluate(
+  /* ---- wire hygiene: read the watching seat's OWN stream bytes ---- */
+  const rawEvent = await watcher.evaluate(
     async ({ token }) => {
       const creds = JSON.parse(localStorage.getItem(`bb-mp-${token}`)!) as {
         seatId: number
@@ -202,21 +219,22 @@ test('two browsers: create → join → live convergence → seat reclaim → wi
       }
     }
   }
-  expect(payload.you).toBe(1)
+  expect(payload.you).toBe(watcherSeat)
   const ctx = payload.snapshot.context
-  // the guest's own hand is real…
-  expect(ctx.players[1]!.hand.length).toBeGreaterThan(0)
-  expect(ctx.players[1]!.hand.every((c) => !c.id.startsWith('hidden-'))).toBe(
-    true,
-  )
-  // …the host's hand and the deck are placeholders, counts only
-  expect(ctx.players[0]!.hand.length).toBeGreaterThan(0)
-  expect(ctx.players[0]!.hand.every((c) => c.id.startsWith('hidden-'))).toBe(
-    true,
-  )
+  const openerSeat = watcherSeat === 1 ? 0 : 1
+  // the watching seat's own hand is real…
+  expect(ctx.players[watcherSeat]!.hand.length).toBeGreaterThan(0)
+  expect(
+    ctx.players[watcherSeat]!.hand.every((c) => !c.id.startsWith('hidden-')),
+  ).toBe(true)
+  // …the acting seat's hand and the deck are placeholders, counts only
+  expect(ctx.players[openerSeat]!.hand.length).toBeGreaterThan(0)
+  expect(
+    ctx.players[openerSeat]!.hand.every((c) => c.id.startsWith('hidden-')),
+  ).toBe(true)
   expect(ctx.drawPile.every((c) => c.id.startsWith('hidden-'))).toBe(true)
-  // …and the host's IN-PROGRESS selection is redacted: the route she just
-  // picked is nowhere in the guest's frame, so it cannot light up their map.
+  // …and the acting seat's IN-PROGRESS selection is redacted: the route just
+  // picked is nowhere in this frame, so it cannot light up their map.
   expect(ctx.selectedLink).toBeNull()
   expect(ctx.selectedSecondLink).toBeNull()
   expect(ctx.selectedLocation).toBeNull()

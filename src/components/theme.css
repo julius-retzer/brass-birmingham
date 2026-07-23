@@ -478,9 +478,7 @@ button.bb2-mat:hover {
 /* A stat value that doubles as a control (opens the income track). */
 .bb2-stat-tap {
   cursor: pointer;
-  transition:
-    background 0.12s ease,
-    box-shadow 0.12s ease;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
 }
 .bb2-stat-tap:hover,
 .bb2-stat-tap:focus-visible {
@@ -1026,18 +1024,18 @@ button:focus-visible .bb2-locate-name {
 
 /* ---------------- develop on the mat ---------------- */
 
-/* The armed tile — the one a Develop click would scrap. A slow brass smoulder
-   around the whole pile, deliberately calmer than the board's legal pulse:
-   this is "you may pull this one off", not a map target. */
+/* The armed tile — the one a Develop click would scrap. A tight brass ring
+   that pulses in OPACITY only, deliberately calmer than the board's legal
+   pulse: this is "you may pull this one off", not a map target. No large blur
+   bloom — the soft halo washed over the stacked cardboard edges below the face
+   and made the pile depth hard to count while developing. */
 @keyframes bb2-develop-arm {
   0%,
   100% {
-    box-shadow: 0 0 0 2px rgba(230, 189, 99, 0.65), 0 0 10px 2px
-      rgba(230, 189, 99, 0.22);
+    box-shadow: 0 0 0 2px rgba(230, 189, 99, 0.55);
   }
   50% {
-    box-shadow: 0 0 0 3px rgba(230, 189, 99, 0.95), 0 0 18px 6px
-      rgba(230, 189, 99, 0.42);
+    box-shadow: 0 0 0 2px rgba(230, 189, 99, 0.95);
   }
 }
 .bb2-develop-armed {
@@ -1086,8 +1084,7 @@ button:focus-visible .bb2-locate-name {
 @media (prefers-reduced-motion: reduce) {
   .bb2-develop-armed {
     animation: none;
-    box-shadow: 0 0 0 2px rgba(230, 189, 99, 0.85), 0 0 10px 2px
-      rgba(230, 189, 99, 0.3);
+    box-shadow: 0 0 0 2px rgba(230, 189, 99, 0.85);
   }
   .bb2-dev-flyer {
     transition: none;

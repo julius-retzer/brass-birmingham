@@ -85,6 +85,15 @@ const STACK_PITCH = 5.2
 const STACK_JITTER = [0, 1.3, -0.9, 0.7, -0.5, 1] as const
 const STACK_PAD_X = 1.6
 
+// Deepest pile the mat can ever show — the largest per-level tile quantity in
+// `src/data/industryTiles.ts` (pinned by its test). The docked readout reserves
+// the tile-art footprint for THIS depth so switching the highlighted tile
+// (1 vs 2 vs 3 left) never reflows the box vertically. Rendered at size 52
+// (scale 1), so the art measures on the raw 52-unit grid.
+const MAX_MAT_STACK = 3
+const READOUT_ART_H = Math.ceil(52 + (MAX_MAT_STACK - 1) * STACK_PITCH) // 63
+const READOUT_ART_W = Math.ceil(52 + STACK_PAD_X * 2) // 56
+
 // The one resource a tile YIELDS when built (only one is ever non-zero).
 function producedOf(tile: IndustryTile) {
   if (tile.coalProduced > 0)
@@ -1147,14 +1156,23 @@ function TileReadout({
       }}
     >
       <div className="flex items-center gap-3">
-        <MatTileArt
-          type={tile.type}
-          tile={tile}
-          depth={count}
-          size={52}
-          next={next}
-          barred={barred}
-        />
+        {/* Fixed footprint for the pile art — the stack grows UPWARD off the
+            bottom edge (items-end) inside a box sized to the deepest possible
+            pile, so a shallow tile leaves whitespace above rather than shrinking
+            the header and jumping the whole readout. */}
+        <div
+          className="flex shrink-0 items-end justify-center"
+          style={{ height: READOUT_ART_H, width: READOUT_ART_W }}
+        >
+          <MatTileArt
+            type={tile.type}
+            tile={tile}
+            depth={count}
+            size={52}
+            next={next}
+            barred={barred}
+          />
+        </div>
         <div>
           <div
             className="bb2-display text-[18px] font-bold"
@@ -1249,10 +1267,13 @@ function TileReadout({
             )
           }
         />
-        {prod && (
-          <ReadoutCell
-            k="Produces"
-            v={
+        {/* Always rendered (like "To build"/"Beer to sell" above) so the grid
+            holds a constant 8 cells — a non-producing tile can't drop a cell
+            and re-wrap the rows, which would change the box height. */}
+        <ReadoutCell
+          k="Produces"
+          v={
+            prod ? (
               <span className="flex items-center gap-1">
                 {prod.kind === 'coal' ? (
                   <CoalIcon size={14} />
@@ -1263,9 +1284,11 @@ function TileReadout({
                 )}
                 ×{prod.n}
               </span>
-            }
-          />
-        )}
+            ) : (
+              <span style={{ color: 'rgba(231,215,177,.55)' }}>none</span>
+            )
+          }
+        />
       </div>
     </div>
   )

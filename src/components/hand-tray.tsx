@@ -9,9 +9,17 @@
 // then browses the fan Hearthstone-style (slide left/right, release keeps
 // the card under the finger peeked). A selected card keeps a smaller
 // persistent lens. Pure geometry lives in hand-tray-layout.ts.
+//
+// The fan is also REORDERABLE (display only — see hand-order.ts; the engine's
+// hand is never touched). Three ways in, because the tray's pointer budget is
+// already spent: a mouse drag (fine pointers only — touch's long-press is the
+// browse gesture and stays that), the ◀ ▶ handles that appear under a raised
+// card, and Shift+Arrow on a focused card. A drag is only ever read as a drag
+// once the pointer travels DRAG_SLOP_PX, and it swallows the click it would
+// otherwise synthesize, so dragging can never be mistaken for selecting.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { type Card as GameCard } from '~/data/cards'
-import { CardFaceContent } from './cards'
+import { CardFaceContent, cardTitle } from './cards'
 import {
   LENS_COARSE,
   LENS_FINE,
@@ -30,6 +38,8 @@ import {
 const LONG_PRESS_MS = 350
 /** Finger drift allowed before the hold is read as a slide and cancelled. */
 const BROWSE_SLOP_PX = 12
+/** Pointer travel before a press on a card is read as a reorder drag. */
+const DRAG_SLOP_PX = 8
 
 interface BrowseGesture {
   pointerId: number
@@ -37,6 +47,15 @@ interface BrowseGesture {
   startY: number
   timer: number
   /** Set when the long-press fires; from then on sliding browses the fan. */
+  active: boolean
+}
+
+interface DragGesture {
+  pointerId: number
+  startX: number
+  startY: number
+  cardId: string
+  /** Set once the pointer clears DRAG_SLOP_PX; before that it's still a click. */
   active: boolean
 }
 
@@ -51,6 +70,11 @@ export interface HandTrayProps {
   onHoverCard?: (card: GameCard | null) => void
   /** Right dock collapsed — the tray extends toward the reclaimed edge. */
   panelCollapsed?: boolean
+  /**
+   * Display-order change: move `cardId` to display index `toIndex`. Omit to
+   * make the fan unreorderable. NEVER an engine event — see hand-order.ts.
+   */
+  onReorder?: (cardId: string, toIndex: number) => void
 }
 
 export function HandTray({
@@ -61,6 +85,7 @@ export function HandTray({
   hint,
   onHoverCard,
   panelCollapsed = false,
+  onReorder,
 }: HandTrayProps) {
   const n = hand.length
   const selecting = canSelect !== null
@@ -82,6 +107,26 @@ export function HandTray({
   // A browse release still synthesizes a click on the pressed card — that
   // click must neither act nor re-toggle the peek the browse just set.
   const suppressClickRef = useRef(false)
+  // In-progress reorder drag (fine pointers only). Same document-level
+  // listeners as the browse gesture, for the same reason: the cursor leaves
+  // the pressed seat the moment the cards swap under it.
+  const dragRef = useRef<DragGesture | null>(null)
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  // Reorders are invisible to a screen reader without this.
+  const [announcement, setAnnouncement] = useState('')
+
+  const reorderable = !!onReorder && hand.length > 1
+
+  /** Move a card and say so; `toIndex` is clamped by the caller's own bounds. */
+  const moveCardTo = (card: GameCard, toIndex: number) => {
+    if (!onReorder) return
+    const to = Math.max(0, Math.min(hand.length - 1, toIndex))
+    if (to === hand.findIndex((c) => c.id === card.id)) return
+    onReorder(card.id, to)
+    setAnnouncement(
+      `${cardTitle(card)} moved to position ${to + 1} of ${hand.length}`,
+    )
+  }
 
   useLayoutEffect(() => {
     const el = fanRef.current
@@ -149,7 +194,33 @@ export function HandTray({
   // implicit-captures pointer events to the pressed element, so per-seat
   // handlers would never see the finger crossing the fan.
   useEffect(() => {
+    /** Layout-x of a client-x inside the fan (the fan is scaled on phones). */
+    const layoutXOf = (clientX: number): number | null => {
+      const el = fanRef.current
+      if (!el || fanWidth === null || hand.length === 0) return null
+      const rect = el.getBoundingClientRect()
+      if (rect.width === 0) return null
+      return ((clientX - rect.left) / rect.width) * fanWidth
+    }
     const onMove = (e: PointerEvent) => {
+      const d = dragRef.current
+      if (d && e.pointerId === d.pointerId) {
+        if (!d.active) {
+          if (Math.abs(e.clientX - d.startX) <= DRAG_SLOP_PX) return
+          d.active = true
+          // The pointerup after a drag still synthesizes a click on the
+          // pressed card — swallow it so a drag can never select.
+          suppressClickRef.current = true
+          setDraggingId(d.cardId)
+          setHoveredId(d.cardId)
+        }
+        const layoutX = layoutXOf(e.clientX)
+        if (layoutX === null || fanWidth === null) return
+        const from = hand.findIndex((c) => c.id === d.cardId)
+        const to = cardIndexAtX(layoutX, hand.length, spacing, fanWidth)
+        if (from !== -1 && to !== from) onReorder?.(d.cardId, to)
+        return
+      }
       const g = browseRef.current
       if (!g || e.pointerId !== g.pointerId) return
       if (!g.active) {
@@ -163,16 +234,26 @@ export function HandTray({
         }
         return
       }
-      const el = fanRef.current
-      if (!el || fanWidth === null || hand.length === 0) return
-      const rect = el.getBoundingClientRect()
-      if (rect.width === 0) return
-      // Client → layout px (the fan is scaled down on phones).
-      const layoutX = ((e.clientX - rect.left) / rect.width) * fanWidth
+      const layoutX = layoutXOf(e.clientX)
+      if (layoutX === null || fanWidth === null) return
       const under = hand[cardIndexAtX(layoutX, hand.length, spacing, fanWidth)]
       if (under && under.id !== peekedId) setPeek(under)
     }
     const onEnd = (e: PointerEvent) => {
+      const d = dragRef.current
+      if (d && e.pointerId === d.pointerId) {
+        dragRef.current = null
+        if (d.active) {
+          setDraggingId(null)
+          const card = hand.find((c) => c.id === d.cardId)
+          const at = hand.findIndex((c) => c.id === d.cardId)
+          if (card && at !== -1)
+            setAnnouncement(
+              `${cardTitle(card)} moved to position ${at + 1} of ${hand.length}`,
+            )
+        }
+        return
+      }
       const g = browseRef.current
       if (!g || e.pointerId !== g.pointerId) return
       clearTimeout(g.timer)
@@ -235,6 +316,7 @@ export function HandTray({
             : false
           const disabled = selecting ? !enabled : true
           const raised = i === raisedIndex
+          const dragging = draggingId === card.id
           const shift = dockShift(
             i,
             raisedIndex === -1 ? null : raisedIndex,
@@ -243,7 +325,15 @@ export function HandTray({
           // Transient hover/peek beats the persistent selected lens; the
           // selected state deliberately shifts no neighbours (rise carries
           // the signal without churning the fan for a whole flow).
-          const lensPreset = raised ? lens : selected ? LENS_SELECTED : null
+          // A dragged card keeps the modest lens: the full hover magnification
+          // swinging around the fan while its neighbours swap is pure noise.
+          const lensPreset = dragging
+            ? LENS_SELECTED
+            : raised
+              ? lens
+              : selected
+                ? LENS_SELECTED
+                : null
           return (
             // The fan transform and hover events live on a wrapper: mouse
             // events don't fire on disabled buttons, but the hover preview
@@ -251,20 +341,33 @@ export function HandTray({
             <span
               key={card.id}
               className="bb2-card-seat"
+              data-dragging={dragging || undefined}
               style={{
                 transform: `translateX(${shift}px) rotate(${angle}deg) translateY(${lift}px)`,
-                zIndex: raised ? 60 : selected ? 40 : i,
+                zIndex: dragging ? 70 : raised ? 60 : selected ? 40 : i,
               }}
               onPointerEnter={(e) => {
+                // Mid-drag the cards swap under the cursor; the raise must
+                // stay on the card being dragged, not follow the swap.
+                if (dragRef.current?.active) return
                 if (e.pointerType !== 'touch') setHoveredId(card.id)
               }}
               onPointerLeave={(e) => {
+                if (dragRef.current?.active) return
                 if (e.pointerType !== 'touch')
                   setHoveredId((h) => (h === card.id ? null : h))
               }}
               onPointerDown={(e) => {
                 lastPointerType.current = e.pointerType
                 suppressClickRef.current = false
+                if (reorderable && e.pointerType !== 'touch' && e.button === 0)
+                  dragRef.current = {
+                    pointerId: e.pointerId,
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    cardId: card.id,
+                    active: false,
+                  }
                 if (e.pointerType === 'touch') {
                   // A second finger replaces the pending gesture outright.
                   if (browseRef.current) clearTimeout(browseRef.current.timer)
@@ -327,6 +430,18 @@ export function HandTray({
                     onSelect?.(card.id)
                   }
                 }}
+                onKeyDown={(e) => {
+                  // Shift+Arrow, not a bare arrow: bare arrows are how a
+                  // keyboard user expects to move BETWEEN things, and the
+                  // modifier keeps browser back/forward (Alt+Arrow) clear.
+                  if (!reorderable || !e.shiftKey) return
+                  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+                  e.preventDefault()
+                  moveCardTo(card, i + (e.key === 'ArrowLeft' ? -1 : 1))
+                }}
+                aria-keyshortcuts={
+                  reorderable ? 'Shift+ArrowLeft Shift+ArrowRight' : undefined
+                }
                 onFocus={(e) => {
                   // Keyboard focus reads like hover; mouse clicks (not
                   // :focus-visible) must not pin the card raised.
@@ -358,6 +473,49 @@ export function HandTray({
                   <CardFaceContent card={card} />
                 </span>
               </button>
+              {/* Reorder handles: the touch (and plain-click) route, since
+                the long-press already belongs to the browse gesture. They
+                ride the raised card so the fan stays clean at rest, sit over
+                its lower edge (the tray is pinned to the viewport bottom —
+                there is no room beneath a card) and counter-rotate out of
+                the fan's tilt so the arrows read straight. They must not
+                bubble: a pointerdown here would arm a browse/drag, and a
+                pointerup would toggle the peek back off. */}
+              {reorderable && raised && !draggingId && (
+                <span
+                  className="bb2-card-move"
+                  style={{
+                    // Centred on the magnified visual (which is clamped away
+                    // from the tray edges), not on the seat.
+                    transform: `translateX(calc(-50% + ${lensShiftX(i, n, spacing, fanWidth, lens.scale)}px)) rotate(${-angle}deg)`,
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerUp={(e) => e.stopPropagation()}
+                >
+                  {(
+                    [
+                      ['left', -1, '◀'],
+                      ['right', 1, '▶'],
+                    ] as const
+                  ).map(([dir, step, glyph]) => (
+                    <button
+                      key={dir}
+                      type="button"
+                      className="bb2-card-movebtn"
+                      data-testid={`move-${dir}-${card.id}`}
+                      disabled={step < 0 ? i === 0 : i === n - 1}
+                      aria-label={`Move ${cardTitle(card)} ${dir}`}
+                      title={`Move ${dir} (Shift+Arrow)`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        moveCardTo(card, i + step)
+                      }}
+                    >
+                      <span aria-hidden>{glyph}</span>
+                    </button>
+                  ))}
+                </span>
+              )}
             </span>
           )
         })}
@@ -373,6 +531,10 @@ export function HandTray({
             No cards in hand
           </div>
         )}
+      </div>
+      {/* Reordering is silent otherwise — the fan is the only feedback. */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {announcement}
       </div>
     </div>
   )

@@ -51,6 +51,7 @@ import { demoSnapshotIronChoice } from './demo/demo-snapshot-iron-choice'
 import { demoSnapshotRail } from './demo/demo-snapshot-rail'
 import { demoSnapshotSell } from './demo/demo-snapshot-sell'
 import { demoSnapshotWilds } from './demo/demo-snapshot-wilds'
+import { useHandOrder } from './hand-order'
 import { HandTray } from './hand-tray'
 import { computeHoverCities, focusCityFor } from './hover-highlight'
 import { IncomeTrackModal } from './income-track'
@@ -457,6 +458,14 @@ function GameInner({
 
   const ctx = state.context
   const currentPlayer: Player | undefined = ctx.players[ctx.currentPlayerIndex]
+
+  // The fan's order is the player's own arrangement — a view permutation over
+  // the engine's hand, never a write to it (hand-order.ts).
+  const handOrder = useHandOrder(currentPlayer?.id ?? '')
+  const arrangedHand = useMemo(
+    () => handOrder.arrange(currentPlayer?.hand ?? []),
+    [handOrder.arrange, currentPlayer?.hand],
+  )
 
   // Surface recoverable engine errors, then clear them.
   useEffect(() => {
@@ -1037,7 +1046,7 @@ function GameInner({
         {/* ---------- hand tray ---------- */}
         {!needsReveal && (
           <HandTray
-            hand={currentPlayer.hand}
+            hand={arrangedHand}
             canSelect={
               handSel
                 ? (cardId) => state.can({ type: 'SELECT_CARD', cardId })
@@ -1048,6 +1057,9 @@ function GameInner({
             hint={handSel?.hint ?? null}
             onHoverCard={setHoveredCard}
             panelCollapsed={panelCollapsed}
+            onReorder={(cardId, toIndex) =>
+              handOrder.reorder(currentPlayer.hand, cardId, toIndex)
+            }
           />
         )}
 

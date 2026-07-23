@@ -548,6 +548,7 @@ button.bb2-card {
 }
 .bb2-card-seat {
   display: block;
+  position: relative;
   flex: none;
   transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2);
   /* The long-press browse gesture owns touches that start on a card: no
@@ -634,6 +635,55 @@ button.bb2-card {
   right: 0;
   bottom: 0;
   top: calc(-1 * var(--bb-lens-reach, 134px));
+}
+
+/* Reorder handles on the raised card. They float just ABOVE the seat box,
+ * over the magnified visual, and are counter-rotated inline out of the fan's
+ * tilt. Above and not below for two reasons: the tray is pinned to the
+ * viewport bottom (a card's lower edge hangs off screen), and the strip must
+ * never cover the card's own tap point — the second tap on a peeked card is
+ * how touch selects it. The strip is wider than the 108px seat on coarse
+ * pointers so both targets stay thumb sized; the seat lets it overflow. */
+.bb2-card-move {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(20, 16, 11, 0.92);
+  border: 1px solid var(--bb-brass);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+}
+.bb2-card-movebtn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(195, 149, 56, 0.16);
+  color: var(--bb-brass-bright);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+.bb2-card-movebtn:hover:not(:disabled) {
+  background: rgba(195, 149, 56, 0.34);
+}
+.bb2-card-movebtn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+@media (pointer: coarse) {
+  .bb2-card-movebtn {
+    width: 52px;
+    height: 52px;
+    font-size: 18px;
+  }
 }
 
 /* Magnification is decorative; motion-sensitive players get the end state. */

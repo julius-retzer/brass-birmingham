@@ -25,6 +25,7 @@ import { ActionDock, SELLABLE, getHandSelection } from '../action-dock'
 import { developMatView } from '../develop-mat'
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from '../board/board-map'
 import { CommandPalette } from '../command-palette'
+import { useHandOrder } from '../hand-order'
 import { HandTray } from '../hand-tray'
 import { computeHoverCities, focusCityFor } from '../hover-highlight'
 import { legalCityTargets, legalLinkTargets } from '../legal-targets'
@@ -1004,6 +1005,14 @@ function MpTable({
     setDevelopMatOpen(inDevelopTileSteps)
   }, [inDevelopTileSteps])
 
+  // My fan's order is my own arrangement — a view permutation over the hand
+  // the server sent me, never a write to it (hand-order.ts).
+  const handOrder = useHandOrder(me?.id ?? '')
+  const arrangedHand = useMemo(
+    () => handOrder.arrange(me?.hand ?? []),
+    [handOrder.arrange, me?.hand],
+  )
+
   // Surface engine errors from my own confirmed actions, then clear them.
   useEffect(() => {
     if (ctx?.lastError && myTurn) {
@@ -1524,7 +1533,7 @@ function MpTable({
 
         {/* my hand — always mine, never anyone else's */}
         <HandTray
-          hand={me.hand}
+          hand={arrangedHand}
           canSelect={
             handSel && !inFlight
               ? (cardId) => state.can({ type: 'SELECT_CARD', cardId })
@@ -1535,6 +1544,9 @@ function MpTable({
           hint={handSel?.hint ?? null}
           onHoverCard={setHoveredCard}
           panelCollapsed={panelCollapsed}
+          onReorder={(cardId, toIndex) =>
+            handOrder.reorder(me.hand, cardId, toIndex)
+          }
         />
 
         {/* Develop mode: my mat as the tile picker (my turn only). */}

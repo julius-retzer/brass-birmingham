@@ -160,23 +160,23 @@ export function SetupScreen({
           <button
             type="button"
             className="bb2-option justify-center py-2"
-            data-selected={mode === 'local'}
-            data-testid="mode-local"
-            onClick={() => setMode('local')}
-          >
-            <span className="text-[11.5px] font-bold uppercase tracking-[0.14em]">
-              One device
-            </span>
-          </button>
-          <button
-            type="button"
-            className="bb2-option justify-center py-2"
             data-selected={mode === 'online'}
             data-testid="mode-online"
             onClick={() => setMode('online')}
           >
             <span className="text-[11.5px] font-bold uppercase tracking-[0.14em]">
               Play online
+            </span>
+          </button>
+          <button
+            type="button"
+            className="bb2-option justify-center py-2"
+            data-selected={mode === 'local'}
+            data-testid="mode-local"
+            onClick={() => setMode('local')}
+          >
+            <span className="text-[11.5px] font-bold uppercase tracking-[0.14em]">
+              One device
             </span>
           </button>
           {aiEnabled && (
@@ -328,7 +328,7 @@ export function SetupScreen({
               >
                 You&rsquo;ll get a link to share — the other{' '}
                 {count - 1 === 1 ? 'player claims' : 'players claim'} their
-                seats by opening it. No accounts, ever.{' '}
+                seats by opening it.{' '}
                 {visibility === 'public'
                   ? 'This table is listed on the open-tables page.'
                   : 'Private tables are reachable by link only — not listed publicly.'}

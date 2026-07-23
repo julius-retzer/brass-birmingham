@@ -7,7 +7,7 @@ import { allowCreate, clientIpFrom } from '~/server/mp/rate-limit'
 export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
-  // Unauthenticated by design ("no accounts, ever"), so the only brake on
+  // Unauthenticated by design (no accounts today), so the only brake on
   // mass creation is this per-IP window — see rate-limit.ts for thresholds.
   if (!allowCreate(clientIpFrom(req))) {
     return NextResponse.json(

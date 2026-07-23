@@ -439,6 +439,18 @@ What this means in practice:
   data (`canBuildInCanalEra`/`canBuildInRailEra`, incl. the L1-Pottery
   rail exception), never a level check. Pinned by
   `gameStore.railera.test.ts`.
+  DEVELOP HAS THE SAME LOWEST-TILE RULE (fixed 2026-07-23): Develop removes the
+  TRUE lowest tile of the chosen industry, and a lightbulb Pottery may never be
+  developed (rules p.7) — a lightbulb-lowest track blocks ALL of Develop until
+  it is BUILT away; never skip up to the next developable tile. Ask
+  `getDevelopableTileOnMat` (mirror of `getBuildableTileInEra`) and
+  `developableTileQuantity` (walks lowest-first, stops at the first lightbulb),
+  NOT "filter to developable then lowest of the remainder" — that inversion was
+  the captain's bug (Pottery II/IV offered while lightbulb I sat on the mat).
+  The guard/`refusal.ts`/executor/`stagedRemovals` preview all read those
+  helpers. The Gloucester develop-bonus (`developBonus.ts`) already did this.
+  Pinned by `gameStore.develop.test.ts`, `gameStore.developmat.test.ts`,
+  `develop-mat.test.ts`, `shared/developableTiles.test.ts`.
   Wild cards route through the full build flow: wild location picks
   industry then ANY city; wild industry picks industry then a network
   city. Regression tests: `gameStore.bugfixes.test.ts`, `e2e/bugfixes.spec.ts`.

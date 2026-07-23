@@ -384,12 +384,21 @@ What this means in practice:
     public board state, so `filterSnapshotForSeat` needs nothing; a forged MP
     pick is refused by the same guard/`explainRefusal`. Pinned by
     `gameStore.coaltiechoice.test.ts` + `intent.test.ts`; UI picker in
-    `action-dock.tsx` (`CoalSourcePicker`) + board spotlight in `game.tsx`.
+    `action-dock.tsx` (`CoalSourcePicker`).
   - Beer/iron are a free "any source" pick. The staged sale/picks reference
     only public board state, so `filterSnapshotForSeat` needs nothing; a forged
     MP pick is refused by the same guard. Pinned by
     `gameStore.sourcechoice.test.ts`, `legal-moves.test.ts`, `intent.test.ts`,
     `e2e/beer-source.spec.ts` + `?demo=beerchoice`.
+  - THE MAP LIGHTS THE ANSWERS, from ONE shared seam:
+    `components/source-spotlight.ts` (`sourceCandidateCities`) reads the
+    `pending{Beer,Iron,Coal}Choice` selectors and feeds BoardMap's
+    `hoverCities` on BOTH `game.tsx` and `mp/mp-game.tsx` — same reason as
+    `legal-targets.ts`, and it re-derives no rule. Off-board sources (market
+    iron) light nothing; a bystander's filtered view carries no staged
+    selection, so the engine reports no choice and nothing lights for them.
+    Plates carry `data-hinted`. Pinned by `source-spotlight.test.ts` +
+    `e2e/iron-source.spec.ts`.
 - COAL "NEAREST MINE" CONSUMPTION (`consumeCoalFromSources` +
   `findConnectedCoalMines`, `market/marketActions.ts` + `shared/gameUtils.ts`):
   `findConnectedCoalMines` returns EVERY connected stocked mine ordered

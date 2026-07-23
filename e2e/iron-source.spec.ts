@@ -30,6 +30,11 @@ test('the iron picker offers every works but never the market, and the develop c
   // unflipped works holds iron it must never be on offer.
   await expect(sources.filter({ hasText: /market/i })).toHaveCount(0)
 
+  // The answers are places, so the map spotlights them — one plate per works
+  // on offer, and the off-board market lights nothing.
+  const hinted = page.locator('g[data-city][data-hinted]')
+  expect(await hinted.count()).toBeGreaterThanOrEqual(2)
+
   // Answering the question moves the flow on to the confirm step.
   await sources.first().click()
   const confirm = page.getByTestId('confirm-action')

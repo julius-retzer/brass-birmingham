@@ -1245,6 +1245,7 @@ function CityPlate({
       data-city={cityId}
       data-legal={isLegal || undefined}
       data-located={located || undefined}
+      data-hinted={hoverHint || undefined}
       opacity={dimmed && !located ? 0.45 : 1}
       onClick={onClick}
       role={clickable ? 'button' : undefined}

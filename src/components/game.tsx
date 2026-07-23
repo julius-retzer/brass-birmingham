@@ -29,10 +29,6 @@ import {
 import { explainRefusal } from '~/store/refusal'
 import { refreshEmbeddedTileStats } from '~/store/saveMigration'
 import {
-  pendingBeerChoice,
-  pendingCoalChoice,
-} from '~/store/shared/resourceSources'
-import {
   ActionDock,
   type ConfirmOutcome,
   INDUSTRY_TYPES,
@@ -42,7 +38,6 @@ import {
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from './board/board-map'
 import { CommandPalette } from './command-palette'
 import { demoSnapshot } from './demo/demo-snapshot'
-import { developMatView } from './develop-mat'
 import { demoSnapshotBeerChoice } from './demo/demo-snapshot-beer-choice'
 import { demoSnapshotDoubleBeer } from './demo/demo-snapshot-double-beer'
 import { demoSnapshotEraEnd } from './demo/demo-snapshot-era-end'
@@ -51,18 +46,20 @@ import { demoSnapshotIronChoice } from './demo/demo-snapshot-iron-choice'
 import { demoSnapshotRail } from './demo/demo-snapshot-rail'
 import { demoSnapshotSell } from './demo/demo-snapshot-sell'
 import { demoSnapshotWilds } from './demo/demo-snapshot-wilds'
+import { developMatView } from './develop-mat'
 import { useHandOrder } from './hand-order'
 import { HandTray } from './hand-tray'
 import { computeHoverCities, focusCityFor } from './hover-highlight'
 import { IncomeTrackModal } from './income-track'
-import { legalCityTargets, legalLinkTargets } from './legal-targets'
 import { JournalPanel } from './journal'
+import { legalCityTargets, legalLinkTargets } from './legal-targets'
 import { LocateCityProvider, useLocateCityState } from './locate'
 import { GameOverScreen, PassGate, RoundCurtain } from './overlays'
 import { OpenMatButton, PlayerLedger } from './player-ledger'
 import { PlayerRail } from './player-rail'
 import { SetupScreen } from './setup-screen'
 import { MarketsPanel, SidePanelRail, usePanelCollapsed } from './side-panels'
+import { sourceCandidateCities } from './source-spotlight'
 
 const SAVE_KEY = 'bb2-save-v1'
 
@@ -732,46 +729,10 @@ function GameInner({
     setHoveredCard(null)
   }, [currentPlayer?.id])
 
-  // While the machine is asking WHERE beer comes from — a staged sale's
-  // barrels or the double rail's one — spotlight the places it could come
-  // from; the choice is about the board, so it belongs on it. Gated on the
-  // machine STATE (not on pendingSale) so the double-link beer step lights
-  // up too. Both the question and the answers are the engine's.
-  const beerCandidateCities = useMemo(() => {
-    if (
-      !state.matches('playing.action.selling.choosingBeerSource' as never) &&
-      !state.matches(
-        'playing.action.networking.choosingDoubleLinkBeer' as never,
-      )
-    ) {
-      return null
-    }
-    const choice = pendingBeerChoice(ctx)
-    if (!choice?.hasChoice) return null
-    return new Set<string>(
-      choice.options.map((option) => option.source.location),
-    )
-  }, [state, ctx])
-
-  // Same idea for a coal tie: while the machine is asking WHICH equally-close
-  // mine to drain (a build, a single or a double rail), spotlight the tied
-  // mines on the board. The choice is the engine's; we only render it.
-  const coalCandidateCities = useMemo(() => {
-    if (
-      !state.matches('playing.action.building.choosingCoalSource' as never) &&
-      !state.matches('playing.action.networking.choosingLinkCoal' as never) &&
-      !state.matches(
-        'playing.action.networking.choosingDoubleLinkCoal' as never,
-      )
-    ) {
-      return null
-    }
-    const choice = pendingCoalChoice(ctx)
-    if (!choice?.hasChoice) return null
-    return new Set<string>(
-      choice.options.map((option) => option.source.location),
-    )
-  }, [state, ctx])
+  // While the machine is asking WHERE a resource comes from, the answers are
+  // places — so the map lights them. Question and answers are both the
+  // engine's; the shared seam keeps this identical to the online surface.
+  const sourceCities = useMemo(() => sourceCandidateCities(state), [state])
 
   const boardPrompt = useMemo(() => {
     if (pickingSite) {
@@ -966,13 +927,7 @@ function GameInner({
                 networkColor={
                   needsReveal ? null : PLAYER_FILL[currentPlayer.color]
                 }
-                hoverCities={
-                  needsReveal
-                    ? null
-                    : (beerCandidateCities ??
-                      coalCandidateCities ??
-                      hoverCities)
-                }
+                hoverCities={needsReveal ? null : (sourceCities ?? hoverCities)}
                 locatedCities={locateState.locatedCities}
                 focusCity={
                   locateState.spotlightFocus ??

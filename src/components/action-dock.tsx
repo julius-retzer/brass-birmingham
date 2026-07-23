@@ -564,16 +564,25 @@ function coalSourceCaption(option: CoalSourceOption): string {
  */
 function CoalSourcePicker({
   options,
+  required,
+  picks,
   onPick,
 }: {
   options: CoalSourceOption[]
+  /** Cubes the whole action spends — a double rail asks twice. */
+  required: number
+  /** Cubes already assigned — the machine's own record, not UI staging. */
+  picks: CoalSourceOption['source'][]
   onPick: (source: CoalSourceOption['source']) => void
 }) {
   const { handlersFor } = useLocateCity()
+  const tied = `${options.length} mines are equally close`
   return (
     <div className="flex flex-col gap-1.5">
       <Note>
-        {options.length} mines are equally close — choose which to drain.
+        {required > 1
+          ? `Coal ${Math.min(picks.length + 1, required)} of ${required} — ${tied}.`
+          : `${tied} — choose which to drain.`}
       </Note>
       {options.map((option) => (
         <button
@@ -1276,6 +1285,8 @@ export function ActionDock({
         {choice && (
           <CoalSourcePicker
             options={choice.options}
+            required={choice.required}
+            picks={c.chosenCoalSources ?? []}
             onPick={(source) => send({ type: 'SELECT_COAL_SOURCE', source })}
           />
         )}
@@ -1377,6 +1388,8 @@ export function ActionDock({
         {choice && (
           <CoalSourcePicker
             options={choice.options}
+            required={choice.required}
+            picks={c.chosenCoalSources ?? []}
             onPick={(source) => send({ type: 'SELECT_COAL_SOURCE', source })}
           />
         )}
@@ -1409,6 +1422,8 @@ export function ActionDock({
         {choice && (
           <CoalSourcePicker
             options={choice.options}
+            required={choice.required}
+            picks={c.chosenCoalSources ?? []}
             onPick={(source) => send({ type: 'SELECT_COAL_SOURCE', source })}
           />
         )}

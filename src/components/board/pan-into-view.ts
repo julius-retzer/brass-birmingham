@@ -10,6 +10,8 @@
 // SETTLE margin — so the destination never sits on the trigger boundary and
 // a re-hover of the same card is a no-op.
 
+import { clampAxis } from './viewport'
+
 export interface ViewBox {
   x: number
   y: number
@@ -100,11 +102,4 @@ export function planPanToCity(
   }
 
   return { x, y, w, h }
-}
-
-/** Clamp a viewBox origin so the view stays over the board. */
-function clampAxis(v: number, size: number, boundSize: number): number {
-  const lo = Math.min(0, boundSize - size)
-  const hi = Math.max(0, boundSize - size)
-  return Math.min(Math.max(v, lo), hi)
 }

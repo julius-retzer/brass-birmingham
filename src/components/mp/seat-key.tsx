@@ -257,20 +257,34 @@ export function SeatKeyNotice({
 
   if (dismissed) return null
   return (
+    // DELIBERATELY QUIET (2026-07-24 review): no panel chrome, no brass rule,
+    // no `bb2-confirm`. In the lobby the call to action is the INVITE, and
+    // prominence must track shareability — a credential that outshouts the
+    // shareable link teaches players to send the wrong one. Keep this
+    // secondary to InviteCallout; it stays discoverable, and the permanent
+    // Seat key button is right below it either way.
     <div
-      className="bb2-panel flex w-full max-w-sm flex-col gap-2 p-4"
+      className="flex w-full max-w-sm flex-col gap-1.5 rounded border px-3 py-2.5"
       data-testid="seat-key-notice"
-      style={{ borderColor: 'var(--bb-brass-dim)' }}
+      style={{
+        borderColor: 'rgba(231,215,177,.16)',
+        background: 'rgba(0,0,0,.18)',
+      }}
     >
-      <span className="bb2-panel-title">🔑 Save your seat key</span>
-      <p className="text-[12.5px]" style={{ color: 'var(--bb-parchment)' }}>
-        It is the only way back into your seat from another device, or if this
-        browser forgets you. Private — anyone with it can play as you.
+      <span
+        className="text-[10px] font-bold uppercase tracking-[0.18em]"
+        style={{ color: 'rgba(231,215,177,.6)' }}
+      >
+        🔑 Your seat key
+      </span>
+      <p className="text-[11.5px]" style={{ color: 'rgba(231,215,177,.6)' }}>
+        Keep it to get back into this seat from another device. Private — never
+        share it.
       </p>
       <div className="flex gap-2">
         <button
           type="button"
-          className="bb2-confirm flex-1"
+          className="bb2-ghost-btn !px-2.5 !py-1 text-[10px]"
           data-testid="seat-key-notice-open"
           onClick={() => setOpen(true)}
         >
@@ -278,7 +292,7 @@ export function SeatKeyNotice({
         </button>
         <button
           type="button"
-          className="bb2-ghost-btn"
+          className="bb2-ghost-btn !px-2.5 !py-1 text-[10px]"
           data-testid="seat-key-notice-dismiss"
           onClick={dismiss}
         >

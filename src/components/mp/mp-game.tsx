@@ -313,6 +313,9 @@ export function MpGame({ token }: { token: string }) {
         setCreds(null)
         return
       }
+      // The link was accepted. Disarm, so that a LATER rejection on this same
+      // session — a peer releasing the seat mid-game — reports itself the
+      // ordinary way instead of blaming a recovery link that in fact worked.
       if (recoveryPending.current && parsed.you !== null) {
         recoveryPending.current = false
       }
@@ -590,6 +593,7 @@ function LobbyScreen({
     view.you !== null
       ? view.seats.find((s) => s.seatId === view.you)
       : undefined
+  const openSeats = view.seats.filter((s) => !s.claimed).length
   const allClaimed = view.seats.every((s) => s.claimed)
   const allReady = view.seats.every((s) => s.ready)
   const canStart = allClaimed && allReady
@@ -692,7 +696,11 @@ function LobbyScreen({
       >
         {view.name?.trim() ? view.name : 'Waiting to begin'}
       </h1>
-      <ShareLink />
+      {/* While seats are open, filling them IS the task — so the invite is the
+          lobby's primary affordance, outranking the seat key below it. Once
+          the table is full there is nobody left to invite and it drops back to
+          the compact chip. See the note on InviteCallout. */}
+      {openSeats > 0 ? <InviteCallout openSeats={openSeats} /> : <ShareLink />}
       <div
         className="text-[12px]"
         style={{ color: 'rgba(231,215,177,.55)' }}
@@ -936,6 +944,70 @@ function ShareLink({ className }: { className?: string }) {
         {copied ? 'Invite link copied!' : window.location.href}
       </span>
     </button>
+  )
+}
+
+/**
+ * The lobby's PRIMARY affordance while seats are still open: a real card with
+ * the invite URL and an obvious copy button.
+ *
+ * WHY IT OUTRANKS THE SEAT KEY (2026-07-24 review). Prominence has to track
+ * SHAREABILITY. When the seat key was the biggest gold panel on the lobby and
+ * the invite was a thin pill, the layout taught the wrong safety lesson — the
+ * credential looked like the thing to send and the genuinely shareable link
+ * looked like a footnote. That is the same invite-vs-recovery confusion this
+ * feature guards against in its copy, showing up as styling. So: the invite
+ * looks shareable, the seat key looks guarded (SeatKeyNotice is deliberately
+ * calm — do not re-promote it here).
+ *
+ * Scoped to the lobby. In the live game the invite is no longer the call to
+ * action and the compact masthead `ShareLink` chip is right.
+ */
+function InviteCallout({ openSeats }: { openSeats: number }) {
+  const [copied, setCopied] = useState(false)
+  const url = typeof window === 'undefined' ? '' : window.location.href
+  return (
+    <div
+      className="bb2-panel bb2-panel-active mt-1 flex w-full max-w-sm flex-col gap-2.5 p-5"
+      data-testid="invite-callout"
+    >
+      <span className="bb2-panel-title">
+        Invite {openSeats === 1 ? 'a player' : 'players'}
+      </span>
+      <p className="text-[12.5px]" style={{ color: 'var(--bb-parchment)' }}>
+        {openSeats === 1
+          ? 'One seat is still open.'
+          : `${openSeats} seats are still open.`}{' '}
+        Send this link — whoever opens it claims a seat.
+      </p>
+      <code
+        className="block break-all rounded border px-3 py-2 text-[11.5px] leading-snug"
+        data-testid="invite-link-text"
+        style={{
+          borderColor: 'rgba(231,215,177,.18)',
+          background: 'rgba(0,0,0,.25)',
+          color: 'var(--bb-parchment)',
+        }}
+      >
+        {url}
+      </code>
+      <button
+        type="button"
+        className="bb2-confirm w-full"
+        data-testid="share-link"
+        onClick={() => {
+          void navigator.clipboard?.writeText(url)
+          setCopied(true)
+          setTimeout(() => setCopied(false), 2000)
+        }}
+      >
+        {copied ? 'Invite link copied!' : 'Copy invite link'}
+      </button>
+      <p className="text-[11.5px]" style={{ color: 'rgba(231,215,177,.5)' }}>
+        Safe to share anywhere — it only offers an open seat, never anyone
+        else's.
+      </p>
+    </div>
   )
 }
 

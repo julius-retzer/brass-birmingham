@@ -64,6 +64,19 @@ test('a seat is restored in a clean browser from its recovery link, and the secr
   // screen, and is nudged all the same.
   await expect(host.getByTestId('seat-key-notice')).toBeVisible()
 
+  /* ---- lobby hierarchy: the INVITE outranks the seat key ---- */
+  // Prominence must track shareability. While a seat is open, filling it is
+  // the task, so the invite is the primary card and carries the only bright
+  // button of the pair; the seat key stays a quiet secondary row. Inverting
+  // these teaches players to send the credential — pinned here so it cannot
+  // regress silently.
+  await expect(host.getByTestId('invite-callout')).toBeVisible()
+  await expect(host.getByTestId('invite-link-text')).toContainText(gameUrl)
+  await expect(host.getByTestId('share-link')).toHaveClass(/bb2-confirm/)
+  await expect(host.getByTestId('seat-key-notice-open')).not.toHaveClass(
+    /bb2-confirm/,
+  )
+
   /* ---- guest joins; the seat key is offered at claim time, unprompted ---- */
   const guestCtx = await browser.newContext()
   const guest = await guestCtx.newPage()
@@ -87,6 +100,11 @@ test('a seat is restored in a clean browser from its recovery link, and the secr
   // Acknowledged: the nudge is gone, but the key is not.
   await expect(guest.getByTestId('seat-key-notice')).toHaveCount(0)
   await expect(guest.getByTestId('seat-key-button')).toBeVisible()
+
+  // …and once the table is full there is nobody left to invite, so the callout
+  // stands down to the compact chip rather than shouting at a closed lobby.
+  await expect(host.getByTestId('invite-callout')).toHaveCount(0)
+  await expect(host.getByTestId('share-link')).toBeVisible()
 
   /* ---- and it is retrievable LATER, which is the whole point ---- */
   const guestKey = await readSeatKey(guestCtx, gameUrl)

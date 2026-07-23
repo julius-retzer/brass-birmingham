@@ -178,11 +178,12 @@ export interface BoardMapProps {
   /** Cities spotlit while a hand card is hovered (soft preview hint). */
   hoverCities?: ReadonlySet<string> | null
   /**
-   * Hover-to-locate: the city whose NAME is hovered/focused somewhere in the
-   * UI right now (journal, pickers, ledger) — its plate gets the teal
-   * surveyor's mark so the player can find it on the map.
+   * The spotlit locations: the city whose NAME is hovered/focused somewhere in
+   * the UI right now (journal, pickers, ledger) plus anything the command
+   * palette is spotlighting — each plate gets the teal surveyor's mark so the
+   * player can find it on the map. Built by `mergeLocated` (`locate-model.ts`).
    */
-  locatedCity?: string | null
+  locatedCities?: ReadonlySet<string> | null
   /**
    * Card-hover map sync: the city a hovered hand card names (location cards
    * only). When it sits outside the current viewport the map pans — with a
@@ -228,7 +229,7 @@ export function BoardMap({
   networkCities = null,
   networkColor = null,
   hoverCities = null,
-  locatedCity = null,
+  locatedCities = null,
   focusCity = null,
   highlightPlayerId = null,
   vpAnnotations = null,
@@ -897,7 +898,7 @@ export function BoardMap({
               }
               inNetwork={networkCities?.has(id) ?? false}
               networkColor={networkColor}
-              located={locatedCity === id}
+              located={locatedCities?.has(id) ?? false}
               vp={vpAnnotations?.cities.get(id)}
               vpColor={vpColor}
             />
@@ -926,7 +927,7 @@ export function BoardMap({
                 highlighted={highlight?.cities.has(id) ?? false}
                 highlightColor={highlight?.color ?? null}
                 hoverHint={hoverCities?.has(id) ?? false}
-                located={locatedCity === id}
+                located={locatedCities?.has(id) ?? false}
                 vp={vpAnnotations?.cities.get(id)}
                 vpColor={vpColor}
                 onClick={() => {

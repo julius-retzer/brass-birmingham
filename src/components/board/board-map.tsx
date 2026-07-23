@@ -248,10 +248,17 @@ export function BoardMap({
 }: BoardMapProps) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const [vb, setVb] = useState<ViewBox>(FULL_VIEW)
-  // Latest vb for the gesture handlers and the focus effect, without
-  // retriggering either on every user pan.
+  // Latest COMMITTED vb for the gesture handlers and the focus effect, without
+  // retriggering either on every user pan. Written from an effect, NEVER in the
+  // render body: React may discard or replay a render, which would otherwise
+  // leave this ref describing a view the DOM never adopted. Safe at passive
+  // timing because every read is at a gesture BOUNDARY (pointerdown, the
+  // one-finger handoff, an animation start) — a pinch or pan in flight works
+  // off the view it captured when the gesture began, never off this ref.
   const vbRef = useRef(vb)
-  vbRef.current = vb
+  useEffect(() => {
+    vbRef.current = vb
+  }, [vb])
   const drag = useRef<{
     px: number
     py: number

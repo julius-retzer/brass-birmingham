@@ -1166,6 +1166,13 @@ When updating this file, preserve this bar for all agents and keep entries conci
   only a placeholder URL (no prod creds); prod unpooled URL lives only in
   Vercel/CI. All gates pure + pinned by `scripts/vercel-migrate.test.ts` +
   `scripts/guarded-push.test.ts` (now in the `pnpm test` glob).
+- CHILD ROWS CASCADE (migration 0006, 2026-07-23): `chat_messages.token` and
+  `game_intents.token` are real FKs onto `games.token` with `ON DELETE
+  CASCADE`, so deleting a game — sweep or a hand-run DELETE in the Neon console
+  — takes its chat + intent log with it, and an orphan can no longer be created.
+  The migration deletes any residual orphans FIRST (adding an FK validates
+  existing rows, so one orphan would fail the ALTER and kill the deploy) — do
+  the same for any future child table. Pinned by `store.cascade.test.ts`.
 - INTENT LOG (2026-07-17): every ACCEPTED state-mutating engine write appends
   one row to the append-only `game_intents` table (PK token+seq, chat pattern;
   swept with the game) — the machine-replayable record for bug reproduction,

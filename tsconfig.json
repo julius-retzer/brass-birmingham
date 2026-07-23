@@ -23,7 +23,7 @@
     "moduleResolution": "Bundler",
     /* Next 16 mandates the React automatic runtime — it rewrites this to
        'react-jsx' on every build if set to 'preserve', so keep it here. */
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "plugins": [
       {
         "name": "next"

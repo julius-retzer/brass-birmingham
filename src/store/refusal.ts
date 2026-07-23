@@ -17,12 +17,20 @@
 // guard's structure rather than calling it (`canBuildLink` is a boolean
 // cascade with no shared helper to borrow). They mirror its rejection ORDER so
 // the named cause is the one that actually blocks. If `canBuildLink` grows a
-// check — the documented era/board-graph gap, say — update `explainLink` in
-// the same commit, or it will silently answer with a stale reason.
+// check, update `explainLink` in the same commit, or it will silently answer
+// with a stale reason. (Build completability is NOT restated: SELECT_LOCATION
+// and the build CONFIRM both call the guard's own `buildCompletionAt`.)
 //
 // CONTRACT: only call this when `can(event)` is already false. It answers "why
 // would this be refused", not "is this legal" — the machine owns legality.
 import { type CityId, connections, linkConnectedLocations } from '../data/board'
+import type { LocationCard } from '../data/cards'
+import { getBuildableTileInEra } from '../data/industryTiles'
+import {
+  buildCompletionAt,
+  canBuildIndustryAt,
+  hasBuildableSite,
+} from './build/buildActions'
 import { GAME_CONSTANTS } from './constants'
 import {
   type GameEvent,
@@ -80,12 +88,19 @@ const explainLink = (
   const player = getCurrentPlayer(context)
   const era = context.era === 'canal' ? 'canal' : 'rail'
 
-  const exists = connections.some(
+  const connection = connections.find(
     (c) =>
       (c.from === event.from && c.to === event.to) ||
       (c.from === event.to && c.to === event.from),
   )
-  if (!exists) return `There is no route between ${event.from} and ${event.to}.`
+  if (!connection) {
+    return `There is no route between ${event.from} and ${event.to}.`
+  }
+  if (!(connection.types as readonly string[]).includes(context.era)) {
+    return context.era === 'canal'
+      ? `The ${event.from}–${event.to} corridor only carries rail — not available in the Canal Era.`
+      : `The ${event.from}–${event.to} corridor was canal-only — not available in the Rail Era.`
+  }
 
   const taken = context.players.some((p) =>
     p.links.some(
@@ -152,16 +167,75 @@ const explainSelectedLink = (context: GameState): string | null => {
   return null
 }
 
-/** CONFIRM on a build — canCompleteBuild's coal-reachability check. */
+const asSentence = (reason: string) =>
+  `${reason.charAt(0).toUpperCase()}${reason.slice(1)}.`
+
+/**
+ * CONFIRM on a build — canCompleteBuild's slot + coal/iron reach + funds check.
+ * Delegates to the SAME buildCompletionAt the guard uses, so the reason names
+ * the exact requirement the guard rejected on.
+ */
 const explainBuildConfirm = (context: GameState): string | null => {
   const tile = context.selectedIndustryTile
   const location = context.selectedLocation
   if (!tile || !location) return null
-  if (tile.coalRequired > 0) {
-    const coal = consumeCoalFromSources(context, location, tile.coalRequired)
-    if (!coal.success) {
-      return `No coal reachable from ${location} — this ${tile.type} needs ${tile.coalRequired} coal.`
+  const completion = buildCompletionAt(context, location as CityId, tile)
+  return completion.ok
+    ? null
+    : asSentence(completion.reason ?? 'Build cannot be completed here')
+}
+
+/**
+ * SELECT_LOCATION — a site the build cannot be completed at (audit F2). Same
+ * canBuildIndustryAt as the guard; only reached with the industry tile settled.
+ */
+const explainSelectLocation = (
+  context: GameState,
+  event: Extract<GameEvent, { type: 'SELECT_LOCATION' }>,
+): string | null => {
+  const tile = context.selectedIndustryTile
+  const card = context.selectedCard
+  if (!tile || !card) return null
+  const completion = canBuildIndustryAt(context, card, tile, event.cityId)
+  return completion.ok
+    ? null
+    : asSentence(completion.reason ?? 'Build cannot be completed here')
+}
+
+/**
+ * SELECT_INDUSTRY_TYPE — an industry with no buildable site left (audit F3).
+ * A location card fixes the city, so its exact blocker can be named; otherwise
+ * every city failed and the honest answer is that none is left.
+ */
+const explainSelectIndustryType = (
+  context: GameState,
+  event: Extract<GameEvent, { type: 'SELECT_INDUSTRY_TYPE' }>,
+): string | null => {
+  const card = context.selectedCard
+  if (!card) return 'No card selected for the build.'
+  const tile = getBuildableTileInEra(
+    getCurrentPlayer(context).industryTilesOnMat[event.industryType] || [],
+    context.era,
+  )
+  if (!tile) {
+    return `No ${event.industryType} tile on your mat can be built in the ${context.era} era.`
+  }
+  if (card.type === 'location') {
+    const completion = canBuildIndustryAt(
+      context,
+      card,
+      tile,
+      (card as LocationCard).location as CityId,
+    )
+    if (!completion.ok) {
+      return asSentence(
+        completion.reason ?? 'That industry cannot be built there',
+      )
     }
+    return null
+  }
+  if (!hasBuildableSite(context, card, tile)) {
+    return `No city can take a ${event.industryType} right now — no free slot within reach that you can supply and pay for.`
   }
   return null
 }
@@ -302,6 +376,12 @@ export function explainRefusal(
     case 'SELECT_LINK':
     case 'SELECT_SECOND_LINK':
       return explainLink(context, event)
+
+    case 'SELECT_LOCATION':
+      return explainSelectLocation(context, event)
+
+    case 'SELECT_INDUSTRY_TYPE':
+      return explainSelectIndustryType(context, event)
 
     case 'SELECT_SALE':
       // validateSale already produces the exact reason (missing beer, no

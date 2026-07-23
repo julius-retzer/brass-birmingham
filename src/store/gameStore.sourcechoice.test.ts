@@ -102,6 +102,16 @@ const ironTile = {
   incomeSpaces: 3,
 }
 
+const coalTile = {
+  ...cottonTile,
+  id: 'coal_1',
+  type: 'coal' as const,
+  beerRequired: 0,
+  coalProduced: 4,
+  incomeAdvancement: 4,
+  incomeSpaces: 4,
+}
+
 const makeIndustry = (location: string, tile: any, extra: object = {}) => ({
   location: location as any,
   type: tile.type,
@@ -512,7 +522,7 @@ describe('Resource source choice - beer on the double rail link', () => {
       // At the second link's endpoint, so it is connected to where the beer is
       // needed (distance 0) even before the link is placed
       industries: [
-        makeIndustry('wolverhampton', breweryTile, { beerBarrelsOnTile: 1 }),
+        makeIndustry('dudley', breweryTile, { beerBarrelsOnTile: 1 }),
       ],
     })
 
@@ -533,7 +543,7 @@ describe('Resource source choice - beer on the double rail link', () => {
     actor.send({
       type: 'SELECT_SECOND_LINK',
       from: 'birmingham',
-      to: 'wolverhampton',
+      to: 'dudley',
     })
 
     return { actor, builderIndex, opponentIndex }
@@ -554,7 +564,7 @@ describe('Resource source choice - beer on the double rail link', () => {
       source: {
         kind: 'brewery',
         ownerId: opponentId,
-        location: 'wolverhampton',
+        location: 'dudley',
       },
     })
     actor.send({ type: 'EXECUTE_DOUBLE_NETWORK_ACTION' })
@@ -594,9 +604,9 @@ describe('Resource source choice - beer on the double rail link', () => {
 
   test('beer reachability is judged after both rails are placed (provisional network)', () => {
     // Opponent brewery sits at nuneaton. The builder's second link ends at
-    // wolverhampton, which only reaches nuneaton THROUGH the two rails being
-    // built (wolverhampton–birmingham–coventry–nuneaton). Before placement
-    // wolverhampton is isolated, so the brewery is only reachable — and only
+    // dudley, which only reaches nuneaton THROUGH the two rails being
+    // built (dudley–birmingham–coventry–nuneaton). Before placement
+    // dudley is isolated, so the brewery is only reachable — and only
     // consumable — once both rails are down, exactly as execution sees it.
     const { actor } = setupGame()
     actor.send({ type: 'TRIGGER_CANAL_ERA_END' })
@@ -628,7 +638,7 @@ describe('Resource source choice - beer on the double rail link', () => {
     const opponentId = actor.getSnapshot().context.players[opponentIndex]!.id
 
     // Network: birmingham–coventry, then the double coventry–nuneaton +
-    // birmingham–wolverhampton (second link ends at wolverhampton).
+    // birmingham–dudley (second link ends at dudley).
     const hand = actor.getSnapshot().context.players[builderIndex]!.hand
     actor.send({ type: 'NETWORK' })
     actor.send({ type: 'SELECT_CARD', cardId: hand[0]!.id })
@@ -644,7 +654,7 @@ describe('Resource source choice - beer on the double rail link', () => {
     actor.send({
       type: 'SELECT_SECOND_LINK',
       from: 'birmingham',
-      to: 'wolverhampton',
+      to: 'dudley',
     })
 
     // Own beer (birmingham) plus the opponent's nuneaton brewery — reachable
@@ -687,7 +697,7 @@ describe('Resource source choice - beer on the double rail link', () => {
       source: {
         kind: 'brewery',
         ownerId: opponentId,
-        location: 'wolverhampton',
+        location: 'dudley',
       },
     })
     expect(
@@ -703,7 +713,7 @@ describe('Resource source choice - beer on the double rail link', () => {
     actor.send({
       type: 'SELECT_SECOND_LINK',
       from: 'birmingham',
-      to: 'wolverhampton',
+      to: 'dudley',
     })
     expect(inBeerStep()).toBe(true)
     expect(actor.getSnapshot().context.chosenBeerSources).toEqual([])
@@ -731,10 +741,15 @@ describe('Resource source choice - iron on build', () => {
         },
       ],
     })
+    // Manufacturer L1 burns 1 coal, and the industry guard now refuses an
+    // industry with no completable site — so give the builder coal reach at
+    // Birmingham (own mine at Dudley, linked).
     actor.send({
       type: 'TEST_SET_PLAYER_STATE',
       playerId: builderIndex,
       money: 50,
+      industries: [makeIndustry('dudley', coalTile, { coalCubesOnTile: 4 })],
+      links: [{ from: 'dudley', to: 'birmingham', type: 'canal' }] as never,
     })
 
     actor.send({ type: 'BUILD' })

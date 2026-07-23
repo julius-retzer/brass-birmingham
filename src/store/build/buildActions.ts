@@ -5,7 +5,7 @@ import {
   canBuildTileInEra,
   decrementTileQuantity,
 } from '../../data/industryTiles'
-import type { CityId } from '../../data/board'
+import { type CityId, FARM_BREWERIES, cities } from '../../data/board'
 import {
   advanceIncomeSpaces,
   incomeLevelForSpace,
@@ -26,6 +26,7 @@ import {
   getCurrentPlayer,
   isLocationInPlayerNetwork,
   performOverbuild,
+  validateIndustryBuildLocation,
 } from '../shared/gameUtils'
 
 // Validation result types for recoverable error handling
@@ -467,4 +468,130 @@ export function buildIndustryTile(
     logMessage,
     totalCost,
   }
+}
+
+export interface BuildCompletion {
+  ok: boolean
+  /** Present only when !ok — the FIRST requirement that blocks the build. */
+  reason?: string
+  /** Present only when ok — tile + coal + iron, priced with the cheapest
+   * (engine auto-pick) sources. */
+  totalCost?: number
+}
+
+/**
+ * Can the current player COMPLETE a build of `tile` at `location` right now?
+ *
+ * Mirrors `buildIndustryTile`'s coal/iron/funds path without mutating, so a
+ * SELECT_LOCATION guard can reject a slot-legal-but-uncompletable city up front
+ * instead of letting it walk into a dead CONFIRM. Sources are the engine's
+ * default auto-pick (nearest coal, works-before-market iron) — the cheapest way
+ * to complete, i.e. "does ANY way to build here exist". The later
+ * choosingCoalSource/choosingIronSource steps only re-tie equal-cost picks, so
+ * the price computed here is the one CONFIRM will settle.
+ */
+export function buildCompletionAt(
+  context: GameState,
+  location: CityId,
+  tile: IndustryTile,
+): BuildCompletion {
+  if (!canPlaceOrOverbuildIndustry(context, location, tile.type, tile.level)) {
+    return { ok: false, reason: `${location} has no compatible slot for a ${tile.type}` }
+  }
+
+  const withLocation = { ...context, selectedLocation: location }
+  const player = getCurrentPlayer(context)
+
+  let coalCost = 0
+  if (tile.coalRequired > 0) {
+    const coal = consumeCoalFromSources(withLocation, location, tile.coalRequired)
+    if (!coal.success) {
+      return {
+        ok: false,
+        reason: `no coal reachable from ${location} — a ${tile.type} needs ${tile.coalRequired} coal`,
+      }
+    }
+    coalCost = coal.coalCost
+  }
+
+  let ironCost = 0
+  if (tile.ironRequired > 0) {
+    const iron = consumeIronFromSources(withLocation, tile.ironRequired)
+    if (!iron.success) {
+      return {
+        ok: false,
+        reason:
+          iron.errorMessage ??
+          `no iron available — a ${tile.type} needs ${tile.ironRequired} iron`,
+      }
+    }
+    ironCost = iron.ironCost
+  }
+
+  const totalCost = tile.cost + coalCost + ironCost
+  if (player.money < totalCost) {
+    return {
+      ok: false,
+      reason: `not enough money at ${location}: this ${tile.type} costs £${totalCost}, you have £${player.money}`,
+    }
+  }
+
+  return { ok: true, totalCost }
+}
+
+/**
+ * The complete "may this card build this tile at this city?" answer: card/city
+ * agreement, the farm-brewery card restriction, network reach, and then full
+ * completability. The single owner shared by `canSelectLocation` (which city may
+ * be picked) and `canSelectIndustryType` (is any city left for this industry) —
+ * so the two guards can never disagree.
+ */
+export function canBuildIndustryAt(
+  context: GameState,
+  card: Card,
+  tile: IndustryTile,
+  cityId: CityId,
+): BuildCompletion {
+  // Farm Breweries may only be reached with a Brewery Industry or a Wild
+  // Industry card — never location/wild-location cards (rules p.5).
+  if (
+    FARM_BREWERIES.has(cityId) &&
+    (card.type === 'location' || card.type === 'wild_location')
+  ) {
+    return {
+      ok: false,
+      reason: `${cityId} can only be built with an industry card`,
+    }
+  }
+
+  if (card.type === 'location' && (card as LocationCard).location !== cityId) {
+    return {
+      ok: false,
+      reason: `this card names ${(card as LocationCard).location}`,
+    }
+  }
+
+  if (
+    !validateIndustryBuildLocation(
+      context,
+      getCurrentPlayer(context),
+      card,
+      cityId,
+    )
+  ) {
+    return { ok: false, reason: `${cityId} is not in your network` }
+  }
+
+  return buildCompletionAt(context, cityId, tile)
+}
+
+/** Is there ANY city where this card could complete a build of this tile? */
+export function hasBuildableSite(
+  context: GameState,
+  card: Card,
+  tile: IndustryTile,
+): boolean {
+  return (Object.keys(cities) as CityId[]).some(
+    (cityId) => canBuildIndustryAt(context, card, tile, cityId).ok,
+  )
 }

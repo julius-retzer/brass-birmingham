@@ -159,6 +159,40 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
 
 ## Important Notes
 - You have ai-docs/brass-birmingham-rules.mdc the rules, but you can search the web for clarifications, if needed
+
+## Legality is engine-owned (2026-07-23)
+
+Every "is this move legal / which options are available" decision lives in a
+`gameStore` guard, and every rejection has a reason in `store/refusal.ts`
+(`explainRefusal`). The UI — BOTH `components/game.tsx` (hotseat) and
+`components/mp/mp-game.tsx` (multiplayer) — MUST NOT re-derive rules: it
+enumerates candidates (board links, cities, industries, sales…), gates each with
+`can({type, …})`, and shows `explainRefusal` for a rejected one. No shadow-actor
+CONFIRM dry-runs, no per-surface rule filters. One source of truth, no
+hotseat/mp drift, and the model-based harness (`gameStore.graph.test.ts`) covers
+legality for free.
+
+What this means in practice:
+- A guard must answer COMPLETELY. `canBuildLink` owns the board graph, the era,
+  cost and (rail) coal; `canSelectLocation` and `canSelectIndustryType` own build
+  completability via `build/buildActions.ts` (`buildCompletionAt` →
+  `canBuildIndustryAt` → `hasBuildableSite`) — slot/overbuild, coal + iron reach
+  and affordability. An offered candidate is always confirmable; a doomed one is
+  never offered.
+- Teach `explainRefusal` about any check a guard grows, in the SAME commit. The
+  build explainers CALL the guards' own helpers rather than restating them; only
+  `explainLink` mirrors a guard's rejection order by hand (see its DRIFT
+  WARNING).
+- Board candidates are shared: `components/legal-targets.ts`. Add to it rather
+  than writing a second per-surface filter.
+- Pinned by `gameStore.legality.test.ts`, `legal-targets.test.ts`, and two
+  `gameStore.graph.test.ts` sweeps (no off-era/off-graph route is ever accepted;
+  every accepted build site is confirmable).
+- GOTCHA for engine tests: the guards now reject fake or wrong-era routes, so a
+  scripted test must use REAL `connections` edges that carry the era. Several
+  suites had been laying `birmingham–wolverhampton`, which does not exist on the
+  board; the honest replacement is `birmingham–dudley`.
+
 ## Engine Notes (game loop, added 2026-07-08)
 
 - XSTATE IS PINNED AT 5.32.x (upgraded 2026-07-17). Graph traversal lives in
@@ -370,8 +404,8 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   track is VISIBLE via `IncomeTrackModal` (`src/components/income-track.tsx`),
   opened from the rail's Income stat; it renders every level from the pure
   `incomeTrackLevels()` helper (never hand-guessed) with each player's marker.
-  Known remaining data gap: link building does not validate against the board
-  graph `connections` (the UI enforces era + graph).
+  (Link building validates against the board graph and era inside
+  `canBuildLink` since 2026-07-23 — see "Legality is engine-owned" below.)
 - Build slot semantics are FREE-SLOT-FIRST (2026-07-13 bug hunt): a build
   goes into a free compatible slot when one exists — overbuild (replace,
   via `performOverbuild`) happens ONLY when no compatible slot is free.
@@ -499,9 +533,10 @@ Implement Correctly: Integrate the retrieved code into the application, customiz
   manual path:
   `axi eval 'document.querySelector("[data-conn=\"belper|leek\"]").focus()'`
   then `axi press Enter`.
-- The engine's `canBuildLink` guard does NOT check era or the board graph
-  (documented rules gap) — the UI enforces era in `legalLinks`/`onLinkClick`
-  (`game.tsx`), so keep that filter if the guard ever changes.
+- Board candidates come from ONE shared module, `components/legal-targets.ts`
+  (`legalCityTargets` / `legalLinkTargets`), used by both `game.tsx` and
+  `mp/mp-game.tsx`. It enumerates and asks `can()`; it re-derives no rule. See
+  "Legality is engine-owned" below.
 - Boot order in `game.tsx` (client-side, behind a mount gate):
   `/?preview=gameover` → `/?era=rail` (rail fixture) → `/?demo` (canal
   fixture) → `/?fresh=1` → localStorage save (`bb2-save-v1`) → setup

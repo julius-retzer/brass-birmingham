@@ -191,8 +191,9 @@ test('illegal clicks toast and CANCEL unwinds every flow', async ({ page }) => {
   await page
     .locator('g[data-city="birmingham"]:not([data-legal])')
     .click({ force: true })
+  // The engine names WHY, not a generic "not legal" — the guards own the reason.
   await expect(
-    page.getByText(/Birmingham is not a legal site for this build/),
+    page.getByText(/Birmingham is not in your network/),
   ).toBeVisible()
   // Unwind from deep inside the flow.
   await cancel.click()
@@ -204,7 +205,7 @@ test('illegal clicks toast and CANCEL unwinds every flow', async ({ page }) => {
   await page.locator('button.bb2-card:not([disabled])').first().click()
   await expect(page.getByText('Choose a canal route on the map.')).toBeVisible()
   await clickRoute(page, 'belper|leek') // rail-only corridor
-  await expect(page.getByText(/That corridor only carries rail/)).toBeVisible()
+  await expect(page.getByText(/corridor only carries rail/)).toBeVisible()
   await cancel.click()
   await cancel.click()
   await expect(chooseAnAction).toBeVisible()

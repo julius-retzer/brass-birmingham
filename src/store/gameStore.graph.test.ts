@@ -14,12 +14,9 @@
 import { createActor, initialTransition, transition } from 'xstate'
 import { getShortestPaths } from 'xstate/graph'
 import { describe, expect, it } from 'vitest'
+import { connections } from '../data/board'
 import { candidateMoves } from '../server/ai/legal-moves'
-import {
-  type GameEvent,
-  type GameStoreSnapshot,
-  gameStore,
-} from './gameStore'
+import { type GameEvent, type GameStoreSnapshot, gameStore } from './gameStore'
 
 /** A 2-player table, dealt and started by the machine itself. */
 function startedGame(): GameStoreSnapshot {
@@ -123,11 +120,18 @@ describe('statechart shape: what the chart itself guarantees', () => {
       // Unwind: CANCEL repeatedly until we are back at the chooser.
       let s = state
       let hops = 0
-      while (hops < 6 && !s.matches({ playing: { action: 'selectingAction' } } as never)) {
+      while (
+        hops < 6 &&
+        !s.matches({ playing: { action: 'selectingAction' } } as never)
+      ) {
         if (!s.can({ type: 'CANCEL' } as never)) break
-        s = transition(gameStore, s as never, {
-          type: 'CANCEL',
-        } as never)[0] as GameStoreSnapshot
+        s = transition(
+          gameStore,
+          s as never,
+          {
+            type: 'CANCEL',
+          } as never,
+        )[0] as GameStoreSnapshot
         hops++
       }
       if (!s.matches({ playing: { action: 'selectingAction' } } as never)) {
@@ -209,6 +213,74 @@ describe('statechart shape: what the chart itself guarantees', () => {
     expect([...new Set(stalled)]).toEqual([])
   })
 
+  it('never accepts a route that is not a real edge carrying the current era', () => {
+    // The era and board-graph checks moved OUT of the UI/AI filters and into
+    // `canBuildLink`. The alphabet now offers every connection in both eras, so
+    // this sweep is what proves the guard — not a caller — does the rejecting.
+    const paths = sweep(started)
+    const violations: string[] = []
+    for (const p of paths) {
+      const s = p.state as GameStoreSnapshot
+      if (s.status === 'done') continue
+      for (const move of candidateMoves(s)) {
+        const event = move.event as GameEvent
+        if (
+          event.type !== 'SELECT_LINK' &&
+          event.type !== 'SELECT_SECOND_LINK'
+        ) {
+          continue
+        }
+        if (!s.can(event as never)) continue
+        const conn = connections.find(
+          (c) =>
+            (c.from === event.from && c.to === event.to) ||
+            (c.from === event.to && c.to === event.from),
+        )
+        if (!conn) {
+          violations.push(`${event.from}-${event.to} is not a board edge`)
+        } else if (!(conn.types as readonly string[]).includes(s.context.era)) {
+          violations.push(
+            `${event.from}-${event.to} accepted in the ${s.context.era} era`,
+          )
+        }
+      }
+    }
+    expect([...new Set(violations)]).toEqual([])
+  })
+
+  it('every accepted build site is confirmable (no dead confirm)', () => {
+    // canSelectLocation owns completability, so a site the machine offers must
+    // survive through to a CONFIRM the machine also accepts.
+    const paths = sweep(started)
+    const violations: string[] = []
+    let checked = 0
+    for (const p of paths) {
+      const s = p.state as GameStoreSnapshot
+      if (
+        s.status === 'done' ||
+        !s.matches({
+          playing: { action: { building: 'selectingLocation' } },
+        } as never)
+      ) {
+        continue
+      }
+      for (const move of candidateMoves(s)) {
+        const event = move.event as GameEvent
+        if (event.type !== 'SELECT_LOCATION') continue
+        if (!s.can(event as never)) continue
+        checked += 1
+        const after = transition(gameStore, s as never, event as never)[0] as
+          | GameStoreSnapshot
+          | undefined
+        if (!after?.can({ type: 'CONFIRM' } as never)) {
+          violations.push(`${event.cityId} offered but CONFIRM refused`)
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(0)
+    expect([...new Set(violations)]).toEqual([])
+  })
+
   it('the alphabet stays honest: every candidate event is one the machine declares', () => {
     // candidateMoves is hand-maintained; if an event type is renamed in the
     // machine the generator would silently stop reaching that branch. Compare
@@ -255,7 +327,11 @@ describe('the chart boots and ends where it says it does', () => {
       status: 'done',
     })
     expect(done.status).toBe('done')
-    for (const e of [{ type: 'BUILD' }, { type: 'PASS' }, { type: 'CONFIRM' }]) {
+    for (const e of [
+      { type: 'BUILD' },
+      { type: 'PASS' },
+      { type: 'CONFIRM' },
+    ]) {
       expect(
         done.can(e as never),
         `${e.type} must not revive a finished game`,

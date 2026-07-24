@@ -580,594 +580,602 @@ export function BoardMap({
   /* ---------------- render ---------------- */
 
   return (
-    <div className="relative h-full w-full">
-      <svg
-        ref={svgRef}
-        viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
-        className="h-full w-full touch-none select-none"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-        // NOT role="img": that would flatten the tree and hide the city /
-        // route buttons from assistive tech and accessibility tooling.
-        role="group"
-        aria-label="Game board map"
-      >
-        <defs>
-          <linearGradient id="bb2-plate" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#efe2c0" />
-            <stop offset="0.7" stopColor="#e0cea2" />
-            <stop offset="1" stopColor="#d0ba89" />
-          </linearGradient>
-          <linearGradient id="bb2-merchant-plate" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#3a3428" />
-            <stop offset="1" stopColor="#2a251b" />
-          </linearGradient>
-          <filter
-            id="bb2-plate-shadow"
-            x="-30%"
-            y="-30%"
-            width="160%"
-            height="170%"
-          >
-            <feDropShadow
-              dx="0"
-              dy="5"
-              stdDeviation="7"
-              floodColor="#000000"
-              floodOpacity="0.55"
-            />
-          </filter>
-        </defs>
-
-        {/* survey grid */}
-        <g stroke="#e7d7b1" strokeOpacity="0.035" strokeWidth="1">
-          {Array.from({ length: 11 }, (_, i) => (
-            <line
-              key={`v${i}`}
-              x1={i * 160}
-              y1={-40}
-              x2={i * 160}
-              y2={VIEW_H + 40}
-            />
-          ))}
-          {Array.from({ length: 8 }, (_, i) => (
-            <line
-              key={`h${i}`}
-              x1={-40}
-              y1={i * 160}
-              x2={VIEW_W + 40}
-              y2={i * 160}
-            />
-          ))}
-        </g>
-
-        {/* cartouche */}
-        <g transform="translate(105, 60)" opacity="0.9" pointerEvents="none">
-          <rect
-            x="0"
-            y="0"
-            width="255"
-            height="118"
-            fill="none"
-            stroke="#c39538"
-            strokeOpacity="0.55"
-            strokeWidth="1.5"
-          />
-          <rect
-            x="6"
-            y="6"
-            width="243"
-            height="106"
-            fill="none"
-            stroke="#c39538"
-            strokeOpacity="0.3"
-            strokeWidth="0.8"
-          />
-          <text
-            x="127"
-            y="52"
-            textAnchor="middle"
-            fill="#e6bd63"
-            style={{
-              fontFamily: 'var(--bb-display)',
-              fontWeight: 900,
-              fontSize: 34,
-              letterSpacing: '0.24em',
-            }}
-          >
-            BRASS
-          </text>
-          <text
-            x="127"
-            y="76"
-            textAnchor="middle"
-            fill="#e7d7b1"
-            fillOpacity="0.8"
-            style={{
-              fontFamily: 'var(--bb-display)',
-              fontStyle: 'italic',
-              fontSize: 13.5,
-            }}
-          >
-            Birmingham &amp; the West Midlands
-          </text>
-          <text
-            x="127"
-            y="96"
-            textAnchor="middle"
-            fill="#e7d7b1"
-            fillOpacity="0.5"
-            style={{
-              fontFamily: 'var(--bb-body)',
-              fontSize: 10,
-              letterSpacing: '0.3em',
-            }}
-          >
-            ANNO 1770 — 1870
-          </text>
-        </g>
-
-        {/* compass rose */}
-        <g
-          transform="translate(1480, 980)"
-          stroke="#c39538"
-          strokeOpacity="0.5"
-          fill="none"
-          pointerEvents="none"
+    <div className="flex h-full w-full flex-col">
+      {/* Caption bar — the board's own one-line instruction, part of the
+          frame chrome. In normal flow: it pushes the map down and can never
+          cover it. Rendered only while the next tap is on the board. */}
+      {prompt && (
+        <div
+          data-testid="board-caption"
+          className="flex flex-none items-center gap-2 truncate border-b px-3 py-1.5 text-[12px] font-semibold tracking-wide"
+          style={{
+            background: 'rgba(20, 16, 11, 0.92)',
+            borderColor: 'var(--bb-brass-hairline)',
+            color: 'var(--bb-parchment-bright)',
+          }}
         >
-          <circle r="46" strokeWidth="1" />
-          <circle r="34" strokeWidth="0.6" strokeOpacity="0.35" />
-          <path
-            d="M0 -58 L9 -9 L0 0 L-9 -9 Z"
-            fill="#c39538"
-            fillOpacity="0.55"
-            stroke="none"
+          <span
+            className="inline-block h-2 w-2 flex-none rounded-full"
+            style={{ background: 'var(--bb-brass-bright)' }}
           />
-          <path
-            d="M0 58 L9 9 L0 0 L-9 9 Z M-58 0 L-9 -9 L0 0 L-9 9 Z M58 0 L9 -9 L0 0 L9 9 Z"
-            fill="#c39538"
-            fillOpacity="0.25"
-            stroke="none"
-          />
-          <text
-            y="-66"
-            textAnchor="middle"
-            fill="#c39538"
-            fillOpacity="0.7"
-            stroke="none"
-            style={{ fontFamily: 'var(--bb-display)', fontSize: 18 }}
+          <span className="truncate">{prompt}</span>
+        </div>
+      )}
+      <div className="relative min-h-0 w-full flex-1">
+        <svg
+          ref={svgRef}
+          viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
+          className="h-full w-full touch-none select-none"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          // NOT role="img": that would flatten the tree and hide the city /
+          // route buttons from assistive tech and accessibility tooling.
+          role="group"
+          aria-label="Game board map"
+        >
+          <defs>
+            <linearGradient id="bb2-plate" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#efe2c0" />
+              <stop offset="0.7" stopColor="#e0cea2" />
+              <stop offset="1" stopColor="#d0ba89" />
+            </linearGradient>
+            <linearGradient id="bb2-merchant-plate" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#3a3428" />
+              <stop offset="1" stopColor="#2a251b" />
+            </linearGradient>
+            <filter
+              id="bb2-plate-shadow"
+              x="-30%"
+              y="-30%"
+              width="160%"
+              height="170%"
+            >
+              <feDropShadow
+                dx="0"
+                dy="5"
+                stdDeviation="7"
+                floodColor="#000000"
+                floodOpacity="0.55"
+              />
+            </filter>
+          </defs>
+
+          {/* survey grid */}
+          <g stroke="#e7d7b1" strokeOpacity="0.035" strokeWidth="1">
+            {Array.from({ length: 11 }, (_, i) => (
+              <line
+                key={`v${i}`}
+                x1={i * 160}
+                y1={-40}
+                x2={i * 160}
+                y2={VIEW_H + 40}
+              />
+            ))}
+            {Array.from({ length: 8 }, (_, i) => (
+              <line
+                key={`h${i}`}
+                x1={-40}
+                y1={i * 160}
+                x2={VIEW_W + 40}
+                y2={i * 160}
+              />
+            ))}
+          </g>
+
+          {/* cartouche */}
+          <g transform="translate(105, 60)" opacity="0.9" pointerEvents="none">
+            <rect
+              x="0"
+              y="0"
+              width="255"
+              height="118"
+              fill="none"
+              stroke="#c39538"
+              strokeOpacity="0.55"
+              strokeWidth="1.5"
+            />
+            <rect
+              x="6"
+              y="6"
+              width="243"
+              height="106"
+              fill="none"
+              stroke="#c39538"
+              strokeOpacity="0.3"
+              strokeWidth="0.8"
+            />
+            <text
+              x="127"
+              y="52"
+              textAnchor="middle"
+              fill="#e6bd63"
+              style={{
+                fontFamily: 'var(--bb-display)',
+                fontWeight: 900,
+                fontSize: 34,
+                letterSpacing: '0.24em',
+              }}
+            >
+              BRASS
+            </text>
+            <text
+              x="127"
+              y="76"
+              textAnchor="middle"
+              fill="#e7d7b1"
+              fillOpacity="0.8"
+              style={{
+                fontFamily: 'var(--bb-display)',
+                fontStyle: 'italic',
+                fontSize: 13.5,
+              }}
+            >
+              Birmingham &amp; the West Midlands
+            </text>
+            <text
+              x="127"
+              y="96"
+              textAnchor="middle"
+              fill="#e7d7b1"
+              fillOpacity="0.5"
+              style={{
+                fontFamily: 'var(--bb-body)',
+                fontSize: 10,
+                letterSpacing: '0.3em',
+              }}
+            >
+              ANNO 1770 — 1870
+            </text>
+          </g>
+
+          {/* compass rose */}
+          <g
+            transform="translate(1480, 980)"
+            stroke="#c39538"
+            strokeOpacity="0.5"
+            fill="none"
+            pointerEvents="none"
           >
-            N
-          </text>
-        </g>
+            <circle r="46" strokeWidth="1" />
+            <circle r="34" strokeWidth="0.6" strokeOpacity="0.35" />
+            <path
+              d="M0 -58 L9 -9 L0 0 L-9 -9 Z"
+              fill="#c39538"
+              fillOpacity="0.55"
+              stroke="none"
+            />
+            <path
+              d="M0 58 L9 9 L0 0 L-9 9 Z M-58 0 L-9 -9 L0 0 L-9 9 Z M58 0 L9 -9 L0 0 L9 9 Z"
+              fill="#c39538"
+              fillOpacity="0.25"
+              stroke="none"
+            />
+            <text
+              y="-66"
+              textAnchor="middle"
+              fill="#c39538"
+              fillOpacity="0.7"
+              stroke="none"
+              style={{ fontFamily: 'var(--bb-display)', fontSize: 18 }}
+            >
+              N
+            </text>
+          </g>
 
-        {/* ------------ routes ------------ */}
-        <g>
-          {linkStates.map((state) => {
-            const {
-              conn,
-              key,
-              d,
-              activeThisEra,
-              built,
-              isLegal,
-              isSelected,
-              isHighlighted,
-              renderType,
-              dimmed,
-            } = state
+          {/* ------------ routes ------------ */}
+          <g>
+            {linkStates.map((state) => {
+              const {
+                conn,
+                key,
+                d,
+                activeThisEra,
+                built,
+                isLegal,
+                isSelected,
+                isHighlighted,
+                renderType,
+                dimmed,
+              } = state
 
-            return (
-              <g key={key} opacity={dimmed ? 0.3 : 1}>
-                {/* hover-a-name spotlight: a colour halo under the owner's
+              return (
+                <g key={key} opacity={dimmed ? 0.3 : 1}>
+                  {/* hover-a-name spotlight: a colour halo under the owner's
                     route so their network reads at a glance */}
-                {isHighlighted && highlight && (
-                  <path
-                    d={d}
-                    fill="none"
-                    stroke={highlight.color}
-                    strokeOpacity="0.55"
-                    strokeWidth="12"
-                    strokeLinecap="round"
-                    pointerEvents="none"
-                  />
-                )}
-                {!activeThisEra && !built ? (
-                  // ghost — corridor exists but not in this era
-                  <path
-                    d={d}
-                    fill="none"
-                    stroke="#e7d7b1"
-                    strokeOpacity="0.13"
-                    strokeWidth="2.5"
-                    strokeDasharray="5 7"
-                  />
-                ) : renderType === 'canal' ? (
-                  <>
+                  {isHighlighted && highlight && (
                     <path
                       d={d}
                       fill="none"
-                      stroke="#12302e"
-                      strokeWidth="10"
+                      stroke={highlight.color}
+                      strokeOpacity="0.55"
+                      strokeWidth="12"
                       strokeLinecap="round"
+                      pointerEvents="none"
                     />
+                  )}
+                  {!activeThisEra && !built ? (
+                    // ghost — corridor exists but not in this era
                     <path
                       d={d}
                       fill="none"
-                      stroke="#4e9c96"
-                      strokeOpacity={built ? 1 : 0.75}
-                      strokeWidth="4.5"
-                      strokeLinecap="round"
+                      stroke="#e7d7b1"
+                      strokeOpacity="0.13"
+                      strokeWidth="2.5"
+                      strokeDasharray="5 7"
                     />
-                    <path
-                      d={d}
-                      fill="none"
-                      stroke="#9fd4cc"
-                      strokeOpacity="0.5"
-                      strokeWidth="1.2"
-                      strokeDasharray="10 14"
-                    />
-                  </>
-                ) : (
-                  <>
-                    <path
-                      d={d}
-                      fill="none"
-                      stroke="#331f12"
-                      strokeWidth="10"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d={d}
-                      fill="none"
-                      stroke="#c2632f"
-                      strokeOpacity={built ? 1 : 0.8}
-                      strokeWidth="4.5"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d={d}
-                      fill="none"
-                      stroke="#f2e6c8"
-                      strokeOpacity="0.65"
-                      strokeWidth="1.6"
-                      strokeDasharray="1.6 7"
-                    />
-                  </>
-                )}
+                  ) : renderType === 'canal' ? (
+                    <>
+                      <path
+                        d={d}
+                        fill="none"
+                        stroke="#12302e"
+                        strokeWidth="10"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d={d}
+                        fill="none"
+                        stroke="#4e9c96"
+                        strokeOpacity={built ? 1 : 0.75}
+                        strokeWidth="4.5"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d={d}
+                        fill="none"
+                        stroke="#9fd4cc"
+                        strokeOpacity="0.5"
+                        strokeWidth="1.2"
+                        strokeDasharray="10 14"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <path
+                        d={d}
+                        fill="none"
+                        stroke="#331f12"
+                        strokeWidth="10"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d={d}
+                        fill="none"
+                        stroke="#c2632f"
+                        strokeOpacity={built ? 1 : 0.8}
+                        strokeWidth="4.5"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d={d}
+                        fill="none"
+                        stroke="#f2e6c8"
+                        strokeOpacity="0.65"
+                        strokeWidth="1.6"
+                        strokeDasharray="1.6 7"
+                      />
+                    </>
+                  )}
 
-                {/* legal-target pulse */}
-                {(isLegal || isSelected) && (
-                  <path
-                    d={d}
-                    fill="none"
-                    stroke={isSelected ? '#e6bd63' : '#e6bd63'}
-                    strokeWidth={isSelected ? 4 : 2}
-                    className={isSelected ? undefined : 'bb2-target'}
-                    strokeOpacity={isSelected ? 1 : 0.9}
-                    pointerEvents="none"
-                  />
-                )}
+                  {/* legal-target pulse */}
+                  {(isLegal || isSelected) && (
+                    <path
+                      d={d}
+                      fill="none"
+                      stroke={isSelected ? '#e6bd63' : '#e6bd63'}
+                      strokeWidth={isSelected ? 4 : 2}
+                      className={isSelected ? undefined : 'bb2-target'}
+                      strokeOpacity={isSelected ? 1 : 0.9}
+                      pointerEvents="none"
+                    />
+                  )}
 
-                {/* fat invisible hit area */}
-                {(pickingLink || onLinkClick) && (
-                  <path
-                    d={d}
-                    data-conn={key}
-                    data-legal={isLegal || undefined}
-                    fill="none"
-                    stroke="transparent"
-                    strokeWidth="22"
-                    role={pickingLink ? 'button' : undefined}
-                    aria-label={
-                      pickingLink
-                        ? `Route ${cities[conn.from]?.name ?? conn.from} — ${cities[conn.to]?.name ?? conn.to}${isLegal ? ' — legal route' : ' — not a legal route'}`
-                        : undefined
-                    }
-                    tabIndex={pickingLink && isLegal ? 0 : undefined}
-                    onKeyDown={(e) => {
-                      if (pickingLink && (e.key === 'Enter' || e.key === ' ')) {
-                        e.preventDefault()
-                        onLinkClick?.(conn.from, conn.to)
+                  {/* fat invisible hit area */}
+                  {(pickingLink || onLinkClick) && (
+                    <path
+                      d={d}
+                      data-conn={key}
+                      data-legal={isLegal || undefined}
+                      fill="none"
+                      stroke="transparent"
+                      strokeWidth="22"
+                      role={pickingLink ? 'button' : undefined}
+                      aria-label={
+                        pickingLink
+                          ? `Route ${cities[conn.from]?.name ?? conn.from} — ${cities[conn.to]?.name ?? conn.to}${isLegal ? ' — legal route' : ' — not a legal route'}`
+                          : undefined
                       }
-                    }}
-                    style={{
-                      cursor: isLegal
-                        ? 'pointer'
-                        : pickingLink
-                          ? 'not-allowed'
-                          : 'default',
-                    }}
-                    onClick={() => {
-                      if (!wasDrag() && pickingLink) {
-                        onLinkClick?.(conn.from, conn.to)
-                      }
-                    }}
-                  />
-                )}
-              </g>
-            )
-          })}
-        </g>
+                      tabIndex={pickingLink && isLegal ? 0 : undefined}
+                      onKeyDown={(e) => {
+                        if (
+                          pickingLink &&
+                          (e.key === 'Enter' || e.key === ' ')
+                        ) {
+                          e.preventDefault()
+                          onLinkClick?.(conn.from, conn.to)
+                        }
+                      }}
+                      style={{
+                        cursor: isLegal
+                          ? 'pointer'
+                          : pickingLink
+                            ? 'not-allowed'
+                            : 'default',
+                      }}
+                      onClick={() => {
+                        if (!wasDrag() && pickingLink) {
+                          onLinkClick?.(conn.from, conn.to)
+                        }
+                      }}
+                    />
+                  )}
+                </g>
+              )
+            })}
+          </g>
 
-        {/* the southern Farm Brewery's implicit connection: a spur off the
+          {/* the southern Farm Brewery's implicit connection: a spur off the
             kidderminster—worcester corridor (rules p.5 — one tile connects
             all three; no second tile may be placed, so no hit area) */}
-        {(() => {
-          const mid = pointAt('kidderminster', 'worcester', 0.5)
-          const fb = cityPos.farmBrewery2
-          // Mirror the corridor's built type so a rail link reads rail (orange),
-          // a canal link canal (teal), and an unbuilt corridor the neutral
-          // potential hint — never a canal default in the rail era.
-          const kwBuilt = builtLinks.get(linkKey('kidderminster', 'worcester'))
-          const spur = farmBrewerySpurStyle(kwBuilt?.type ?? null)
-          return (
-            <path
-              d={`M ${mid.x} ${mid.y} L ${fb.x} ${fb.y}`}
-              fill="none"
-              stroke={spur.stroke}
-              strokeOpacity={spur.strokeOpacity}
-              strokeWidth={spur.strokeWidth}
-              strokeDasharray={spur.strokeDasharray}
-              pointerEvents="none"
-            />
-          )
-        })()}
-
-        {/* ------------ merchant plates ------------ */}
-        {(Object.keys(cities) as CityId[])
-          .filter((id) => cities[id].type === 'merchant')
-          .map((id) => (
-            <MerchantPlate
-              key={id}
-              cityId={id}
-              entries={merchantsByCity.get(id) ?? []}
-              dimmed={
-                pickingCity ||
-                (vpAnnotations !== null && !vpAnnotations.cities.has(id)) ||
-                highlight !== null
-              }
-              inNetwork={networkCities?.has(id) ?? false}
-              networkColor={networkColor}
-              located={locatedCities?.has(id) ?? false}
-              vp={vpAnnotations?.cities.get(id)}
-              vpColor={vpColor}
-            />
-          ))}
-
-        {/* ------------ city plates ------------ */}
-        {(Object.keys(cities) as CityId[])
-          .filter((id) => cities[id].type === 'city')
-          .map((id) => {
-            const occupants = assignSlots(id, builtByCity.get(id) ?? [])
-            const isLegal = legalCities?.has(id) ?? false
+          {(() => {
+            const mid = pointAt('kidderminster', 'worcester', 0.5)
+            const fb = cityPos.farmBrewery2
+            // Mirror the corridor's built type so a rail link reads rail (orange),
+            // a canal link canal (teal), and an unbuilt corridor the neutral
+            // potential hint — never a canal default in the rail era.
+            const kwBuilt = builtLinks.get(
+              linkKey('kidderminster', 'worcester'),
+            )
+            const spur = farmBrewerySpurStyle(kwBuilt?.type ?? null)
             return (
-              <CityPlate
+              <path
+                d={`M ${mid.x} ${mid.y} L ${fb.x} ${fb.y}`}
+                fill="none"
+                stroke={spur.stroke}
+                strokeOpacity={spur.strokeOpacity}
+                strokeWidth={spur.strokeWidth}
+                strokeDasharray={spur.strokeDasharray}
+                pointerEvents="none"
+              />
+            )
+          })()}
+
+          {/* ------------ merchant plates ------------ */}
+          {(Object.keys(cities) as CityId[])
+            .filter((id) => cities[id].type === 'merchant')
+            .map((id) => (
+              <MerchantPlate
                 key={id}
                 cityId={id}
-                occupants={occupants}
-                isLegal={isLegal}
-                isSelected={selectedCity === id}
+                entries={merchantsByCity.get(id) ?? []}
                 dimmed={
-                  (pickingCity && !isLegal && selectedCity !== id) ||
+                  pickingCity ||
                   (vpAnnotations !== null && !vpAnnotations.cities.has(id)) ||
-                  (highlight !== null && !highlight.cities.has(id))
+                  highlight !== null
                 }
                 inNetwork={networkCities?.has(id) ?? false}
                 networkColor={networkColor}
-                highlighted={highlight?.cities.has(id) ?? false}
-                highlightColor={highlight?.color ?? null}
-                hoverHint={hoverCities?.has(id) ?? false}
                 located={locatedCities?.has(id) ?? false}
                 vp={vpAnnotations?.cities.get(id)}
                 vpColor={vpColor}
-                onClick={() => {
-                  if (!wasDrag() && pickingCity) onCityClick?.(id)
-                }}
-                clickable={pickingCity}
               />
-            )
-          })}
+            ))}
 
-        {/* ------------ built-link markers ------------
+          {/* ------------ city plates ------------ */}
+          {(Object.keys(cities) as CityId[])
+            .filter((id) => cities[id].type === 'city')
+            .map((id) => {
+              const occupants = assignSlots(id, builtByCity.get(id) ?? [])
+              const isLegal = legalCities?.has(id) ?? false
+              return (
+                <CityPlate
+                  key={id}
+                  cityId={id}
+                  occupants={occupants}
+                  isLegal={isLegal}
+                  isSelected={selectedCity === id}
+                  dimmed={
+                    (pickingCity && !isLegal && selectedCity !== id) ||
+                    (vpAnnotations !== null && !vpAnnotations.cities.has(id)) ||
+                    (highlight !== null && !highlight.cities.has(id))
+                  }
+                  inNetwork={networkCities?.has(id) ?? false}
+                  networkColor={networkColor}
+                  highlighted={highlight?.cities.has(id) ?? false}
+                  highlightColor={highlight?.color ?? null}
+                  hoverHint={hoverCities?.has(id) ?? false}
+                  located={locatedCities?.has(id) ?? false}
+                  vp={vpAnnotations?.cities.get(id)}
+                  vpColor={vpColor}
+                  onClick={() => {
+                    if (!wasDrag() && pickingCity) onCityClick?.(id)
+                  }}
+                  clickable={pickingCity}
+                />
+              )
+            })}
+
+          {/* ------------ built-link markers ------------
             Painted last on purpose: a route's marker can sit close enough to
             a plate that the plate would swallow it (SVG z-order is document
             order). `linkMarkerAnchor` already slides it into the gap between
             plates where one exists; this pass keeps it visible where none
             does — Stoke-on-Trent—Stone being the tightest hop on the board. */}
-        {linkStates.map(({ key, built, linkVp, anchor, dimmed }) =>
-          built || linkVp !== undefined ? (
-            <g key={key} opacity={dimmed ? 0.3 : 1}>
-              {built && (
-                <g
-                  transform={`translate(${anchor.x}, ${anchor.y})`}
-                  pointerEvents="none"
-                >
-                  <rect
-                    x="-16"
-                    y="-10"
-                    width="32"
-                    height="20"
-                    rx="3.5"
-                    fill={PLAYER_FILL[built.player.color]}
-                    stroke="#16130f"
-                    strokeWidth="1.4"
-                    filter="url(#bb2-plate-shadow)"
-                  />
-                  <g fill="#f2e6c8" stroke="none">
-                    {built.type === 'canal' ? (
-                      // bespoke narrowboat silhouette (no such icon exists
-                      // in any library — see bb-icon-research-f12)
-                      <path d="M-10.6 -5.2 h2.4 v3 h6.6 v-3.4 h1.8 v3.4 h1.4 v2 h-12.2 z M-13 1 h26 c-0.7 2.9 -3.2 4.6 -6.4 4.6 h-13.2 c-3.2 0 -5.7 -1.7 -6.4 -4.6 z" />
-                    ) : (
-                      // delapouite/steam-locomotive (game-icons.net CC BY 3.0)
-                      <g transform="translate(-12.5, -12.5) scale(0.04883)">
-                        <path d={GAME_ICONS.steamLocomotive.d} />
-                      </g>
-                    )}
+          {linkStates.map(({ key, built, linkVp, anchor, dimmed }) =>
+            built || linkVp !== undefined ? (
+              <g key={key} opacity={dimmed ? 0.3 : 1}>
+                {built && (
+                  <g
+                    transform={`translate(${anchor.x}, ${anchor.y})`}
+                    pointerEvents="none"
+                  >
+                    <rect
+                      x="-16"
+                      y="-10"
+                      width="32"
+                      height="20"
+                      rx="3.5"
+                      fill={PLAYER_FILL[built.player.color]}
+                      stroke="#16130f"
+                      strokeWidth="1.4"
+                      filter="url(#bb2-plate-shadow)"
+                    />
+                    <g fill="#f2e6c8" stroke="none">
+                      {built.type === 'canal' ? (
+                        // bespoke narrowboat silhouette (no such icon exists
+                        // in any library — see bb-icon-research-f12)
+                        <path d="M-10.6 -5.2 h2.4 v3 h6.6 v-3.4 h1.8 v3.4 h1.4 v2 h-12.2 z M-13 1 h26 c-0.7 2.9 -3.2 4.6 -6.4 4.6 h-13.2 c-3.2 0 -5.7 -1.7 -6.4 -4.6 z" />
+                      ) : (
+                        // delapouite/steam-locomotive (game-icons.net CC BY 3.0)
+                        <g transform="translate(-12.5, -12.5) scale(0.04883)">
+                          <path d={GAME_ICONS.steamLocomotive.d} />
+                        </g>
+                      )}
+                    </g>
                   </g>
-                </g>
-              )}
+                )}
 
-              {/* game-end: what this route scored for the shown player */}
-              {linkVp !== undefined && (
-                <g
-                  transform={`translate(${anchor.x}, ${anchor.y})`}
-                  data-vp-link={key}
-                >
-                  <VpRoundel vp={linkVp} color={vpColor ?? '#e6bd63'} />
-                </g>
-              )}
-            </g>
-          ) : null,
-        )}
-      </svg>
+                {/* game-end: what this route scored for the shown player */}
+                {linkVp !== undefined && (
+                  <g
+                    transform={`translate(${anchor.x}, ${anchor.y})`}
+                    data-vp-link={key}
+                  >
+                    <VpRoundel vp={linkVp} color={vpColor ?? '#e6bd63'} />
+                  </g>
+                )}
+              </g>
+            ) : null,
+          )}
+        </svg>
 
-      {/* prompt banner — the board's own instruction, high contrast */}
-      {prompt && (
-        <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2">
-          <div
-            className="bb2-rise flex items-center gap-2 rounded border px-4 py-2 text-[13px] font-semibold tracking-wide"
-            style={{
-              background: 'rgba(20, 16, 11, 0.92)',
-              borderColor: 'var(--bb-brass)',
-              color: 'var(--bb-parchment-bright)',
-              boxShadow:
-                '0 6px 18px rgba(0,0,0,.5), 0 0 0 1px rgba(230,189,99,.15)',
-            }}
+        {/* zoom controls */}
+        <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
+          <button
+            type="button"
+            className="bb2-board-ctrl"
+            onClick={() => zoomBy(1 / 1.3)}
+            aria-label="Zoom in"
           >
-            <span
-              className="inline-block h-2 w-2 rounded-full"
-              style={{ background: 'var(--bb-brass-bright)' }}
-            />
-            {prompt}
-          </div>
+            +
+          </button>
+          <button
+            type="button"
+            className="bb2-board-ctrl"
+            onClick={() => zoomBy(1.3)}
+            aria-label="Zoom out"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            className="bb2-board-ctrl is-home"
+            onClick={resetView}
+            aria-label="Reset view"
+          >
+            ⌂
+          </button>
         </div>
-      )}
 
-      {/* zoom controls */}
-      <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
-        <button
-          type="button"
-          className="bb2-board-ctrl"
-          onClick={() => zoomBy(1 / 1.3)}
-          aria-label="Zoom in"
-        >
-          +
-        </button>
-        <button
-          type="button"
-          className="bb2-board-ctrl"
-          onClick={() => zoomBy(1.3)}
-          aria-label="Zoom out"
-        >
-          −
-        </button>
-        <button
-          type="button"
-          className="bb2-board-ctrl is-home"
-          onClick={resetView}
-          aria-label="Reset view"
-        >
-          ⌂
-        </button>
-      </div>
-
-      {/* legend — hidden on phones: it is decorative, and at 390px it runs
+        {/* legend — hidden on phones: it is decorative, and at 390px it runs
           under the zoom controls and swallows the reset button, which is the
-          one control a pinched-in player needs to find their way back. */}
-      <div
-        className="absolute bottom-3 left-3 z-10 hidden items-center gap-4 rounded border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] sm:flex"
-        style={{
-          background: 'rgba(20,16,11,.85)',
-          borderColor: 'var(--bb-brass-hairline-soft)',
-          color: 'rgba(231,215,177,.75)',
-        }}
-      >
-        <span className="flex items-center gap-1.5">
-          <svg width="26" height="8">
-            <line
-              x1="1"
-              y1="4"
-              x2="25"
-              y2="4"
-              stroke="#12302e"
-              strokeWidth="7"
-              strokeLinecap="round"
-            />
-            <line
-              x1="1"
-              y1="4"
-              x2="25"
-              y2="4"
-              stroke="#4e9c96"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-          </svg>
-          Canal
-        </span>
-        <span className="flex items-center gap-1.5">
-          <svg width="26" height="8">
-            <line
-              x1="1"
-              y1="4"
-              x2="25"
-              y2="4"
-              stroke="#331f12"
-              strokeWidth="7"
-              strokeLinecap="round"
-            />
-            <line
-              x1="1"
-              y1="4"
-              x2="25"
-              y2="4"
-              stroke="#c2632f"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-            <line
-              x1="1"
-              y1="4"
-              x2="25"
-              y2="4"
-              stroke="#f2e6c8"
-              strokeWidth="1.2"
-              strokeDasharray="1.4 5"
-            />
-          </svg>
-          Rail
-        </span>
-        <span className="flex items-center gap-1.5">
-          <svg width="26" height="8">
-            <line
-              x1="1"
-              y1="4"
-              x2="25"
-              y2="4"
-              stroke="#e7d7b1"
-              strokeOpacity="0.3"
-              strokeWidth="2"
-              strokeDasharray="4 5"
-            />
-          </svg>
-          Other era
-        </span>
-        {networkColor && networkCities && networkCities.size > 0 && (
+          one control a pinched-in player needs to find their way back.
+          Top-right, clear of the frame's bottom apron: the bottom-left corner
+          belongs to the hand tray's step label (.bb2-tray-label), and the
+          top-left to the map's own cartouche. */}
+        <div
+          className="absolute right-3 top-3 z-10 hidden items-center gap-4 rounded border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] sm:flex"
+          style={{
+            background: 'rgba(20,16,11,.85)',
+            borderColor: 'var(--bb-brass-hairline-soft)',
+            color: 'rgba(231,215,177,.75)',
+          }}
+        >
           <span className="flex items-center gap-1.5">
-            <span
-              className="inline-block h-3 w-4 rounded-[3px]"
-              style={{
-                background: `${networkColor}30`,
-                border: `1.5px solid ${networkColor}`,
-              }}
-            />
-            Your network
+            <svg width="26" height="8">
+              <line
+                x1="1"
+                y1="4"
+                x2="25"
+                y2="4"
+                stroke="#12302e"
+                strokeWidth="7"
+                strokeLinecap="round"
+              />
+              <line
+                x1="1"
+                y1="4"
+                x2="25"
+                y2="4"
+                stroke="#4e9c96"
+                strokeWidth="3"
+                strokeLinecap="round"
+              />
+            </svg>
+            Canal
           </span>
-        )}
+          <span className="flex items-center gap-1.5">
+            <svg width="26" height="8">
+              <line
+                x1="1"
+                y1="4"
+                x2="25"
+                y2="4"
+                stroke="#331f12"
+                strokeWidth="7"
+                strokeLinecap="round"
+              />
+              <line
+                x1="1"
+                y1="4"
+                x2="25"
+                y2="4"
+                stroke="#c2632f"
+                strokeWidth="3"
+                strokeLinecap="round"
+              />
+              <line
+                x1="1"
+                y1="4"
+                x2="25"
+                y2="4"
+                stroke="#f2e6c8"
+                strokeWidth="1.2"
+                strokeDasharray="1.4 5"
+              />
+            </svg>
+            Rail
+          </span>
+          <span className="flex items-center gap-1.5">
+            <svg width="26" height="8">
+              <line
+                x1="1"
+                y1="4"
+                x2="25"
+                y2="4"
+                stroke="#e7d7b1"
+                strokeOpacity="0.3"
+                strokeWidth="2"
+                strokeDasharray="4 5"
+              />
+            </svg>
+            Other era
+          </span>
+          {networkColor && networkCities && networkCities.size > 0 && (
+            <span className="flex items-center gap-1.5">
+              <span
+                className="inline-block h-3 w-4 rounded-[3px]"
+                style={{
+                  background: `${networkColor}30`,
+                  border: `1.5px solid ${networkColor}`,
+                }}
+              />
+              Your network
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )

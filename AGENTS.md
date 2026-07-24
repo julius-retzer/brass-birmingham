@@ -657,6 +657,21 @@ What this means in practice:
   (`legalCityTargets` / `legalLinkTargets`), used by both `game.tsx` and
   `mp/mp-game.tsx`. It enumerates and asks `can()`; it re-derives no rule. See
   "Legality is engine-owned" below.
+- NEXT-STEP NARRATION IS OWN-SURFACE (2026-07-24, supersedes the floating
+  banner + tray pill): nothing floats over the play area. The board's
+  instruction is a caption bar in the frame's NORMAL FLOW
+  (`components/board-caption.ts`, shared by both shells — site/route picks
+  AND the beer/iron/coal source steps, counts from the same sets the
+  spotlight uses); the tray's hint is `.bb2-tray-label` inside the tray band
+  (absolutely positioned, ZERO height reserve — `hintClearance` and the old
+  pill are gone, so the fan never moves when the hint changes; don't
+  reintroduce a hint that resizes the tray, that's the PR #81 jumping-hand
+  regression); dock and mat modal narrate themselves. On phones a wizard
+  step change scrolls the surface that owns the next tap into view
+  (`step-scroll.ts` pure decision + `use-step-scroll.ts` applied half; 2s
+  don't-fight-the-player window, `prefers-reduced-motion` honoured, no-op on
+  lg). The board legend sits top-right — the frame's bottom-left apron
+  belongs to the tray label.
 - Boot order in `game.tsx` (client-side, behind a mount gate):
   `/?preview=gameover` → `/?era=rail` (rail fixture) → `/?demo` (canal
   fixture) → `/?fresh=1` → localStorage save (`bb2-save-v1`) → setup

@@ -33,7 +33,6 @@ import {
   fanAngle,
   fanLayout,
   fanLift,
-  hintClearance,
   lensReach,
   lensShiftX,
   moveHandleLayout,
@@ -283,30 +282,18 @@ export function HandTray({
       className={`bb2-handtray pointer-events-none fixed bottom-0 left-0 right-0 z-40 flex flex-col items-center transition-[right] duration-300 ease-in-out ${
         panelCollapsed ? 'lg:right-[44px]' : 'lg:right-[428px]'
       }`}
-      style={
-        { '--bb-hint-clear': `${hintClearance(lens)}px` } as React.CSSProperties
-      }
     >
       {hint && (
-        // The pill stacks above the fan, clearing the tallest lens this
-        // device can raise (--bb-hint-clear, scaled with the tray) so no
-        // card — resting, selected or magnified — ever reaches it. It stays
-        // fully opaque and put: the reserve is static, so hovering never
-        // moves or dims the instruction. It is click-transparent: on phones
-        // the dock scrolls behind it, and the pill must never eat a tap
-        // aimed at an action button.
-        <div className="bb2-hand-hint bb2-rise relative z-[1]">
-          <div
-            className="rounded border px-4 py-1.5 text-[12px] font-semibold uppercase tracking-[0.18em]"
-            style={{
-              background: 'rgba(20,16,11,.92)',
-              borderColor: 'var(--bb-brass)',
-              color: 'var(--bb-brass-bright)',
-              boxShadow: '0 6px 18px rgba(0,0,0,.5)',
-            }}
-          >
-            {hint}
-          </div>
+        // The tray's own label, anchored to the band's left edge — never a
+        // floating pill over the middle of the board. Absolutely positioned,
+        // so it reserves no height and can never move the hand: the fan
+        // keeps a constant layout whether or not a hint is showing. On
+        // phones it rides the band's top edge (over the scrolling panel,
+        // not the board); on desktop it sits in the board frame's bottom
+        // apron, which the map never paints into (see .bb2-tray-label).
+        // Click-transparent like the rest of the tray.
+        <div className="bb2-tray-label" data-testid="hand-hint">
+          {hint}
         </div>
       )}
       <div

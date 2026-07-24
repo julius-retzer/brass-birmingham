@@ -187,6 +187,13 @@ test('phone: a tap after zooming selects the tile under the finger', async ({
     })
     .toBe(true)
   await svg.scrollIntoViewIfNeeded()
+  // The demo fixture boots with a stale lastError toast ("Insufficient
+  // coal…"); with the board scrolled to the viewport top, the toast overlays
+  // the exact spot Derby occupies, and a touch landing on it never reaches
+  // the svg. Wait for it to expire before dispatching real touches.
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, {
+    timeout: 10_000,
+  })
   const cdp = await page.context().newCDPSession(page)
   const board = await boardBox(page)
   const small = (await derby.boundingBox())!

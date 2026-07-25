@@ -1363,7 +1363,12 @@ When updating this file, preserve this bar for all agents and keep entries conci
     (`priorCreds` ref) are restored, and the player keeps the seat they were
     already in; only when there was no prior seat does it show the ONE
     unrevealing join-screen notice (`recovery-rejected`) — never which half was
-    wrong.
+    wrong. GOTCHA: the same effect ALSO listens for `hashchange`, because a link
+    pasted into the address bar of a tab already on `/g/<token>` is a
+    same-document fragment navigation — nothing remounts, so the mount pass
+    alone left the secret sitting in the address bar and the link did nothing.
+    Both entry points go through `consumeRecoveryLink`, so the strip and the
+    unpersisted-until-authenticated rule hold for either.
   - TWO LINKS, OPPOSITE SEMANTICS, and the UI must keep them unmistakable: the
     INVITE link is the only bare URL on screen (the masthead chip, labelled
     "Invite"); the recovery link never renders until the player opens the modal

@@ -178,9 +178,86 @@ test('a seat is restored in a clean browser from its recovery link, and the secr
   expect(await forged.evaluate(() => location.hash)).toBe('')
   expect(forged.url()).not.toContain(flipped)
 
+  /* ---- a refused link is a NO-OP for a player already in their seat ---- */
+  // Anyone holding the public game token can craft a link for any seat, so the
+  // recovered credentials stay unpersisted until the server accepts them. On a
+  // refusal the browser's own credentials are restored and the player keeps
+  // playing — the seat they already hold is never the casualty of a bad paste.
+  const token = gameUrl.split('/g/')[1]!
+  const storedBefore = await guest.evaluate(
+    (t) => localStorage.getItem(`bb-mp-${t}`),
+    token,
+  )
+  await guest.goto(`${gameUrl}#seat=1&secret=${flipped}`)
+  await expect(guest.getByTestId('lobby-seat-1')).toContainText('Brunel')
+  await expect(guest.getByTestId('lobby-seat-1')).toContainText('you')
+  await expect(guest.getByTestId('join-seat')).toHaveCount(0)
+  expect(
+    await guest.evaluate((t) => localStorage.getItem(`bb-mp-${t}`), token),
+  ).toBe(storedBefore)
+  expect(await guest.evaluate(() => location.hash)).toBe('')
+
   await Promise.all(
     [hostCtx, guestCtx, restoredCtx, strangerCtx, forgedCtx].map((c) =>
       c.close(),
     ),
   )
+})
+
+test('a seat claimed after the game starts gets its key as a modal, and the board is usable once it closes', async ({
+  browser,
+}) => {
+  /* ---- a live two-player game ---- */
+  const hostCtx = await browser.newContext()
+  const host = await hostCtx.newPage()
+  await host.goto('/?fresh=1')
+  await host.getByTestId('mode-online').click()
+  await host.getByTestId('name-0').fill('Ada')
+  await host.getByRole('button', { name: '2', exact: true }).click()
+  await host.getByTestId('create-online').click()
+  await host.waitForURL(/\/g\/[A-Za-z0-9_-]{20,}/)
+  const gameUrl = host.url()
+
+  const guestCtx = await browser.newContext()
+  const guest = await guestCtx.newPage()
+  await guest.goto(gameUrl)
+  await guest.getByTestId('join-name').fill('Brunel')
+  await guest.getByTestId('join-seat').click()
+
+  await host.getByTestId('lobby-ready-toggle').click()
+  await guest.getByTestId('lobby-ready-toggle').click()
+  await expect(host.getByTestId('lobby-start')).toBeEnabled()
+  await host.getByTestId('lobby-start').click()
+  await expect(host.getByTestId('era-plate')).toHaveText('canal era')
+
+  /* ---- seat 1 is released and re-claimed mid-game ---- */
+  // This path skips the lobby, so it never meets the inline notice: the key is
+  // offered as a modal instead. Its condition is the one worth pinning — armed
+  // for a lobby claim, the flag survives into the started game and drops a
+  // full-screen curtain over the board.
+  await host.getByTestId('seats-button').click()
+  await host.getByTestId('release-1').click()
+  await expect(host.getByTestId('seats-overlay')).toBeVisible()
+
+  const retakenCtx = await browser.newContext()
+  const retaken = await retakenCtx.newPage()
+  await retaken.goto(gameUrl)
+  await retaken.getByTestId('join-name').fill('Telford')
+  await retaken.getByTestId('join-seat').click()
+
+  await expect(retaken.getByTestId('seat-key-modal')).toBeVisible()
+  await expect(retaken.getByTestId('seat-key-warning')).toContainText(
+    'anyone with this link can take your seat',
+  )
+  await retaken.getByTestId('seat-key-close').click()
+  await expect(retaken.getByTestId('seat-key-modal')).toHaveCount(0)
+
+  // Nothing is left covering the table: a real click reaches the chrome (a
+  // lingering curtain would intercept it), and the key is still retrievable.
+  await expect(retaken.getByTestId('era-plate')).toHaveText('canal era')
+  await retaken.getByTestId('chat-toggle').click()
+  await expect(retaken.getByTestId('chat-list')).toBeVisible()
+  await expect(retaken.getByTestId('seat-key-button')).toBeVisible()
+
+  await Promise.all([hostCtx, guestCtx, retakenCtx].map((c) => c.close()))
 })

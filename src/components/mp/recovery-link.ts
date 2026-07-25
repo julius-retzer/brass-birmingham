@@ -11,13 +11,19 @@
 // No new credential scheme is invented here: the recovery link simply carries
 // the EXISTING per-seat secret (the same one already sitting in localStorage
 // under `bb-mp-<token>`, minted by joinGame and verified by `secretMatches`).
-// The server therefore needs no new endpoint, no new column, and — crucially —
-// never sees or logs the secret at all, because:
+// The server therefore needs no new endpoint and no new column, and learns
+// nothing from the link itself, because:
 //
 //   THE SECRET RIDES IN THE URL FRAGMENT, NEVER THE QUERY STRING.
 //   A fragment is never sent to the origin, never reaches a request log, and
 //   is stripped from the `Referer` header by the URL spec. A `?secret=` link
 //   would land in Vercel's access log for `/g/<token>` on the very first hit.
+//
+// The link is therefore no new exposure — but it is not a claim that the secret
+// never travels: the SSE stream authenticates with `?seat=&secret=`, so the
+// same credential rides a query string there for every seated player, link or
+// not. That is why `sentry-scrub.ts` redacts the `secret` param name as well as
+// the free-text shape below, and why neither gate may be dropped.
 //
 // The fragment is nevertheless written in `secret=…` form ON PURPOSE: that is
 // the shape `sentry-scrub.ts` already redacts (its `scrubText` pattern matches

@@ -232,17 +232,29 @@ export function MpGame({ token }: { token: string }) {
   // The strip is synchronous inside `consumeRecoveryLink`; the recovered creds
   // stay unpersisted until the stream authenticates the seat (see below).
   useEffect(() => {
-    const recovered = consumeRecoveryLink(window)
-    const existing = loadCreds(token)
-    if (recovered) {
+    const arm = (recovered: Creds) => {
       recoveryPending.current = true
       recoveredCreds.current = recovered
-      priorCreds.current = existing
+      priorCreds.current = loadCreds(token)
       setCreds(recovered)
-    } else {
-      setCreds(existing)
     }
+
+    const recovered = consumeRecoveryLink(window)
+    if (recovered) arm(recovered)
+    else setCreds(loadCreds(token))
     setCredsLoaded(true)
+
+    // A recovery link pasted into the address bar of a tab ALREADY on this
+    // game is a same-document fragment navigation: nothing remounts, so the
+    // mount pass alone would leave the secret in the address bar and the link
+    // would do nothing. `consumeRecoveryLink` strips either way, so even a
+    // fragment too malformed to parse is scrubbed here.
+    const onHashChange = () => {
+      const fromHash = consumeRecoveryLink(window)
+      if (fromHash) arm(fromHash)
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
   }, [token])
 
   // Pause the live stream on a persistently hidden tab (60s grace, so a quick

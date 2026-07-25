@@ -1351,17 +1351,28 @@ When updating this file, preserve this bar for all agents and keep entries conci
     the existing gate covers it with no second scrubbing path (pinned by a
     mirror of that pattern in `recovery-link.test.ts`). Change the format and
     you must re-check both.
-  - `consumeRecoveryLink` is WRITE-THEN-STRIP and synchronous: localStorage
-    first, then `history.replaceState` (never pushState — Back must not reach
-    the credential), and it runs in `mp-game.tsx`'s FIRST effect, before the
-    stream effect opens an EventSource. Verification is the ordinary seat
-    auth: a bad link yields `you: null`, which shows ONE unrevealing join-screen
-    notice (`recovery-rejected`) — never which half was wrong.
+  - `consumeRecoveryLink` is STRIP-then-VERIFY-then-WRITE and synchronous. It
+    runs in `mp-game.tsx`'s FIRST effect, before the stream effect opens an
+    EventSource: `history.replaceState` (never pushState — Back must not reach
+    the credential) drops ANY fragment — even a malformed, secret-bearing one
+    that fails to parse — so a mangled paste can never leave the secret in the
+    URL. It does NOT persist: the recovered creds are held UNPERSISTED
+    (`recoveredCreds` ref) and only written to `bb-mp-<token>` once the stream
+    authenticates the seat. A bad or stale link must never clobber a working
+    seat's stored secret — so on rejection the browser's PRIOR creds
+    (`priorCreds` ref) are restored, and the player keeps the seat they were
+    already in; only when there was no prior seat does it show the ONE
+    unrevealing join-screen notice (`recovery-rejected`) — never which half was
+    wrong.
   - TWO LINKS, OPPOSITE SEMANTICS, and the UI must keep them unmistakable: the
     INVITE link is the only bare URL on screen (the masthead chip, labelled
     "Invite"); the recovery link never renders until the player opens the modal
     AND reveals it. Different affordance on purpose — do not put them side by
-    side, and do not add a second visible copy of the recovery URL.
+    side, and do not add a second visible copy of the recovery URL. The invite
+    affordances (`ShareLink`, `InviteCallout`) build their URL from
+    `inviteUrl()` (origin + path only), never `location.href` — a structural
+    guarantee the invite can never carry a fragment or query even if a stray
+    one lingered in the address bar.
   - Surfaced at claim time as an inline lobby card (`SeatKeyNotice`, dismissal
     remembered under its OWN key `bb-mp-seatkey-seen-<token>`) — NOT a modal:
     the host claims seat 0 at creation and never passes the join screen, so the

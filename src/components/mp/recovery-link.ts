@@ -25,10 +25,13 @@
 // matches the `secret` param name), so a client-side event carrying
 // `location.href` is scrubbed by the existing gate with nothing added here.
 //
-// Consumption is deliberately WRITE-THEN-STRIP and fully synchronous: the
-// credentials go to localStorage and `history.replaceState` removes them from
-// the address bar in the same tick, BEFORE any fetch/EventSource/navigation
-// could carry them onward. See `consumeRecoveryLink`.
+// Consumption is STRIP-then-VERIFY-then-WRITE. `consumeRecoveryLink` removes the
+// fragment from the address bar synchronously — for ANY fragment, valid or not,
+// BEFORE any fetch/EventSource/navigation could carry it onward — and returns
+// the parsed credentials WITHOUT persisting them. Persisting is the caller's
+// job, and only after the server has authenticated the seat: a bad or stale
+// link must never overwrite a working seat's stored secret. See
+// `consumeRecoveryLink` and its caller in `mp-game.tsx`.
 
 export interface RecoveryCreds {
   seatId: number
@@ -43,7 +46,6 @@ export const credsKey = (token: string) => `bb-mp-${token}`
 export interface RecoveryWindowLike {
   location: { pathname: string; search: string; hash: string }
   history: { replaceState(data: unknown, unused: string, url: string): void }
-  localStorage: { setItem(key: string, value: string): void }
 }
 
 /**
@@ -78,42 +80,45 @@ export function parseRecoveryHash(hash: string): RecoveryCreds | null {
   const params = new URLSearchParams(raw)
   const seat = params.get('seat')
   const secret = params.get('secret')
-  if (seat === null || !secret) return null
+  // An empty seat must be refused explicitly: `Number('')` is 0, which would
+  // otherwise pass the integer check and masquerade as seat 0.
+  if (!seat || !secret) return null
   const seatId = Number(seat)
   if (!Number.isInteger(seatId) || seatId < 0) return null
   return { seatId, seatSecret: secret }
 }
 
 /**
- * Consume a recovery link found in the current URL: persist the credentials
- * for this game and scrub them out of the address bar and session history.
+ * Consume a recovery link found in the current URL: scrub any fragment out of
+ * the address bar and session history, and return the parsed credentials.
  *
- * Returns the credentials when a fragment was consumed, else null (the plain
- * invite-link case, which must fall through to the normal join screen).
+ * Returns the credentials when the fragment was a well-formed recovery link,
+ * else null (the plain invite-link case, which must fall through to the normal
+ * join screen).
  *
- * ORDER IS LOAD-BEARING — store, then strip, both synchronously, before the
- * caller opens the SSE stream. `replaceState` (not pushState) is used so the
- * secret-bearing entry is REPLACED rather than added: pressing Back cannot
- * return to it.
+ * STRIPPING IS UNCONDITIONAL and comes FIRST. `replaceState` runs whenever the
+ * URL carries any fragment — even a malformed, secret-bearing one that
+ * `parseRecoveryHash` rejects — before the caller opens the SSE stream, so a
+ * mangled paste can never leave the secret in the URL for the invite affordance
+ * to read back or for a later request to carry. `replaceState` (not pushState)
+ * REPLACES the secret-bearing entry rather than adding one: pressing Back
+ * cannot return to it.
+ *
+ * The credentials are NOT persisted here. Whether to store them is the caller's
+ * decision, and only once the server has authenticated the seat — otherwise a
+ * bad or stale link would clobber a working seat's stored secret.
  */
 export function consumeRecoveryLink(
-  token: string,
   win: RecoveryWindowLike,
 ): RecoveryCreds | null {
+  const hadFragment = win.location.hash.replace(/^#/, '').length > 0
   const creds = parseRecoveryHash(win.location.hash)
-  if (!creds) return null
-  try {
-    win.localStorage.setItem(credsKey(token), JSON.stringify(creds))
-  } catch {
-    // Private-mode storage can refuse writes. The seat still works for this
-    // page load (the caller holds the creds in memory); losing persistence is
-    // strictly better than leaving the secret in the URL, so carry on and
-    // strip regardless.
+  if (hadFragment) {
+    win.history.replaceState(
+      null,
+      '',
+      `${win.location.pathname}${win.location.search}`,
+    )
   }
-  win.history.replaceState(
-    null,
-    '',
-    `${win.location.pathname}${win.location.search}`,
-  )
   return creds
 }

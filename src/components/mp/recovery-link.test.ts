@@ -3,7 +3,6 @@ import {
   type RecoveryWindowLike,
   buildRecoveryLink,
   consumeRecoveryLink,
-  credsKey,
   parseRecoveryHash,
 } from './recovery-link'
 
@@ -11,13 +10,11 @@ const TOKEN = 'Ab3xY_9zQw-token01'
 const SECRET = 'sQ7v_Kd2mE9pLr4TnW1xYg'
 
 /** A stand-in for `window` under vitest's node environment: records the
- *  replaceState calls and the storage writes so the test can prove BOTH the
- *  persistence and the scrubbing happened. */
+ *  replaceState calls so the test can prove the fragment is scrubbed. */
 function fakeWindow(
   hash: string,
   search = '',
 ): RecoveryWindowLike & {
-  stored: Record<string, string>
   replaced: string[]
 } {
   const win = {
@@ -33,12 +30,6 @@ function fakeWindow(
         win.location.hash = frag ? `#${frag}` : ''
       },
     },
-    localStorage: {
-      setItem(key: string, value: string) {
-        win.stored[key] = value
-      },
-    },
-    stored: {} as Record<string, string>,
     replaced: [] as string[],
   }
   return win
@@ -91,21 +82,20 @@ describe('recovery link — round trip', () => {
     expect(link.startsWith(`https://brass.example/g/${TOKEN}#`)).toBe(true)
   })
 
-  it('consuming a link restores THAT seat and stores it under this game', () => {
+  it('consuming a link returns THAT seat WITHOUT persisting it', () => {
     const win = fakeWindow(`#seat=3&secret=${SECRET}`)
-    const creds = consumeRecoveryLink(TOKEN, win)
+    const creds = consumeRecoveryLink(win)
     expect(creds).toEqual({ seatId: 3, seatSecret: SECRET })
-    expect(JSON.parse(win.stored[credsKey(TOKEN)]!)).toEqual({
-      seatId: 3,
-      seatSecret: SECRET,
-    })
+    // Persisting is the caller's job, and only once the server authenticates
+    // the seat — a bad or stale link must never clobber a working seat's
+    // stored secret. Nothing here writes storage.
   })
 })
 
 describe('recovery link — the URL is scrubbed after consumption', () => {
   it('strips the fragment via replaceState, keeping the path', () => {
     const win = fakeWindow(`#seat=1&secret=${SECRET}`)
-    consumeRecoveryLink(TOKEN, win)
+    consumeRecoveryLink(win)
     expect(win.replaced).toEqual([`/g/${TOKEN}`])
     expect(win.location.hash).toBe('')
     // nothing anywhere in the visible location still holds the secret
@@ -116,7 +106,7 @@ describe('recovery link — the URL is scrubbed after consumption', () => {
 
   it('preserves an unrelated query string while dropping the fragment', () => {
     const win = fakeWindow(`#seat=1&secret=${SECRET}`, '?ref=discord')
-    consumeRecoveryLink(TOKEN, win)
+    consumeRecoveryLink(win)
     expect(win.replaced).toEqual([`/g/${TOKEN}?ref=discord`])
   })
 
@@ -124,20 +114,21 @@ describe('recovery link — the URL is scrubbed after consumption', () => {
     // pushState would leave the credential in session history; the module must
     // only ever call replaceState (asserted by the fake exposing no pushState).
     const win = fakeWindow(`#seat=0&secret=${SECRET}`)
-    expect(() => consumeRecoveryLink(TOKEN, win)).not.toThrow()
+    expect(() => consumeRecoveryLink(win)).not.toThrow()
     expect(win.replaced).toHaveLength(1)
   })
 
-  it('still strips the URL when storage refuses the write', () => {
-    const win = fakeWindow(`#seat=0&secret=${SECRET}`)
-    win.localStorage.setItem = () => {
-      throw new Error('QuotaExceededError')
-    }
-    expect(consumeRecoveryLink(TOKEN, win)).toEqual({
-      seatId: 0,
-      seatSecret: SECRET,
-    })
+  it('strips a MALFORMED secret-bearing fragment too, so it cannot leak', () => {
+    // `#seat=one&secret=…` fails to parse (bad seat) but still carries the
+    // secret. It must be scrubbed from the address bar all the same — otherwise
+    // the invite affordance would read it straight back out of `location`.
+    const win = fakeWindow(`#seat=one&secret=${SECRET}`)
+    expect(consumeRecoveryLink(win)).toBeNull()
+    expect(win.replaced).toEqual([`/g/${TOKEN}`])
     expect(win.location.hash).toBe('')
+    const visible =
+      win.location.pathname + win.location.search + win.location.hash
+    expect(visible).not.toContain(SECRET)
   })
 })
 
@@ -151,6 +142,7 @@ describe('recovery link — malformed input is refused without a hint', () => {
     ['bare hash', '#'],
     ['missing secret', '#seat=1'],
     ['empty secret', '#seat=1&secret='],
+    ['empty seat', `#seat=&secret=${SECRET}`],
     ['missing seat', `#secret=${SECRET}`],
     ['non-numeric seat', `#seat=zero&secret=${SECRET}`],
     ['negative seat', `#seat=-1&secret=${SECRET}`],
@@ -164,10 +156,10 @@ describe('recovery link — malformed input is refused without a hint', () => {
     })
   }
 
-  it('a refused fragment leaves storage untouched and creds unclaimed', () => {
+  it('a refused fragment yields no creds but is still stripped', () => {
     const win = fakeWindow('#seat=1')
-    expect(consumeRecoveryLink(TOKEN, win)).toBeNull()
-    expect(win.stored).toEqual({})
+    expect(consumeRecoveryLink(win)).toBeNull()
+    expect(win.location.hash).toBe('')
   })
 })
 
@@ -181,9 +173,8 @@ describe('invite link vs recovery link', () => {
 
   it('opening an invite link consumes nothing and falls through to joining', () => {
     const win = fakeWindow('')
-    expect(consumeRecoveryLink(TOKEN, win)).toBeNull()
+    expect(consumeRecoveryLink(win)).toBeNull()
     expect(win.replaced).toEqual([]) // no needless history rewrite
-    expect(win.stored).toEqual({})
   })
 
   it('the recovery link is a strict superset of the invite link', () => {

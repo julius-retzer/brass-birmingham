@@ -200,6 +200,14 @@ export function MpGame({ token }: { token: string }) {
   // the EXISTING seat-secret check on the server — nothing new authenticates
   // here, and the refusal never says which half of the link was wrong.
   const recoveryPending = useRef(false)
+  // Credentials parsed from a recovery link, held UNPERSISTED until the server
+  // authenticates the seat. Only then are they written to storage — a bad or
+  // stale link must never overwrite a working seat's stored secret.
+  const recoveredCreds = useRef<Creds | null>(null)
+  // Whatever valid credentials this browser already held for the game before a
+  // recovery link was opened. If the link fails to authenticate, these are
+  // restored so the player keeps the seat they were already in.
+  const priorCreds = useRef<Creds | null>(null)
   /** A consumed recovery link the server would not authenticate. Rendered as
    *  ONE message on the join screen for every failure mode (wrong seat,
    *  tampered secret, seat since released) — it must not narrow down which. */
@@ -218,15 +226,22 @@ export function MpGame({ token }: { token: string }) {
   // frame on reopen is the full current view, so nothing is missed.
   const [streamPaused, setStreamPaused] = useState(false)
 
-  // FIRST effect on purpose: a recovery link must be consumed — credentials
-  // persisted, secret stripped out of the address bar — before the stream
-  // effect below opens an EventSource, so the secret can never ride a request
-  // or a Referer header. Both halves are synchronous inside
-  // `consumeRecoveryLink`; the fragment never reached the server to begin with.
+  // FIRST effect on purpose: a recovery link must be consumed — the secret
+  // stripped out of the address bar — before the stream effect below opens an
+  // EventSource, so the secret can never ride a request or a Referer header.
+  // The strip is synchronous inside `consumeRecoveryLink`; the recovered creds
+  // stay unpersisted until the stream authenticates the seat (see below).
   useEffect(() => {
-    const recovered = consumeRecoveryLink(token, window)
-    if (recovered) recoveryPending.current = true
-    setCreds(recovered ?? loadCreds(token))
+    const recovered = consumeRecoveryLink(window)
+    const existing = loadCreds(token)
+    if (recovered) {
+      recoveryPending.current = true
+      recoveredCreds.current = recovered
+      priorCreds.current = existing
+      setCreds(recovered)
+    } else {
+      setCreds(existing)
+    }
     setCredsLoaded(true)
   }, [token])
 
@@ -303,21 +318,45 @@ export function MpGame({ token }: { token: string }) {
       setStreamFailing(false)
       const parsed = JSON.parse(e.data as string) as GameViewWire
       if (myCreds && parsed.you === null) {
-        // this credentialed stream was rejected: the seat was released or
-        // the secret is stale → back to claiming
-        localStorage.removeItem(credsKey(token))
+        // This credentialed stream was rejected: the seat was released or the
+        // secret is stale.
         if (recoveryPending.current) {
           recoveryPending.current = false
+          const prior = priorCreds.current
+          recoveredCreds.current = null
+          priorCreds.current = null
+          if (prior) {
+            // The link did not authenticate, but this browser already held a
+            // working seat here — restore it rather than evicting the player.
+            // The recovered creds were never persisted, so storage still holds
+            // `prior`; rewrite it to be robust and re-open the stream with it.
+            localStorage.setItem(credsKey(token), JSON.stringify(prior))
+            setCreds(prior)
+            return
+          }
+          // No seat to fall back to: surface the one unrevealing notice.
+          localStorage.removeItem(credsKey(token))
           setRecoveryRejected(true)
+          setCreds(null)
+          return
         }
+        // Ordinary mid-session rejection (seat released or secret stale) →
+        // back to claiming.
+        localStorage.removeItem(credsKey(token))
         setCreds(null)
         return
       }
-      // The link was accepted. Disarm, so that a LATER rejection on this same
-      // session — a peer releasing the seat mid-game — reports itself the
-      // ordinary way instead of blaming a recovery link that in fact worked.
+      // The link was accepted. Persist the recovered creds now that the server
+      // has authenticated the seat, and disarm so that a LATER rejection on
+      // this same session — a peer releasing the seat mid-game — reports itself
+      // the ordinary way instead of blaming a recovery link that in fact
+      // worked.
       if (recoveryPending.current && parsed.you !== null) {
         recoveryPending.current = false
+        const rec = recoveredCreds.current
+        recoveredCreds.current = null
+        priorCreds.current = null
+        if (rec) localStorage.setItem(credsKey(token), JSON.stringify(rec))
       }
       applyView(parsed)
     }
@@ -911,8 +950,17 @@ function SeatsButton({
   )
 }
 
+/** The public invite URL for the current game: origin + path only, so it can
+ *  never carry a recovery fragment or a stray query. A malformed recovery link
+ *  that survived in the address bar must not leak into the invite affordance. */
+function inviteUrl(): string {
+  if (typeof window === 'undefined') return ''
+  return `${window.location.origin}${window.location.pathname}`
+}
+
 function ShareLink({ className }: { className?: string }) {
   const [copied, setCopied] = useState(false)
+  const url = inviteUrl()
   return (
     <button
       type="button"
@@ -920,7 +968,7 @@ function ShareLink({ className }: { className?: string }) {
       data-testid="share-link"
       style={{ cursor: 'pointer', textTransform: 'none', letterSpacing: 0 }}
       onClick={() => {
-        void navigator.clipboard?.writeText(window.location.href)
+        void navigator.clipboard?.writeText(url)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       }}
@@ -941,7 +989,7 @@ function ShareLink({ className }: { className?: string }) {
           than the viewport; the full URL still shows from lg up (unchanged)
           and is always copied in full. */}
       <span className="min-w-0 truncate">
-        {copied ? 'Invite link copied!' : window.location.href}
+        {copied ? 'Invite link copied!' : url}
       </span>
     </button>
   )
@@ -965,7 +1013,7 @@ function ShareLink({ className }: { className?: string }) {
  */
 function InviteCallout({ openSeats }: { openSeats: number }) {
   const [copied, setCopied] = useState(false)
-  const url = typeof window === 'undefined' ? '' : window.location.href
+  const url = inviteUrl()
   return (
     <div
       className="bb2-panel bb2-panel-active mt-1 flex w-full max-w-sm flex-col gap-2.5 p-5"

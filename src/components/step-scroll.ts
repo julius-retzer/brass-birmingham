@@ -19,25 +19,28 @@ const BOARD_STEPS = [
   'playing.action.building.selectingLocation',
   'playing.action.networking.selectingLink',
   'playing.action.networking.selectingSecondLink',
-  // Source picks are board taps too — the map spotlights the candidates.
-  'playing.action.selling.choosingBeerSource',
-  'playing.action.networking.choosingDoubleLinkBeer',
-  'playing.action.building.choosingIronSource',
-  'playing.action.developing.choosingIronSource',
-  'playing.action.building.choosingCoalSource',
-  'playing.action.networking.choosingLinkCoal',
-  'playing.action.networking.choosingDoubleLinkCoal',
 ]
 
-// Confirm and sale steps live in the dock. Card-pick steps deliberately map
-// to nothing: the hand tray is bottom-fixed and always on screen, and the
-// develop steps open a full-screen modal that needs no scrolling.
+// Confirm and sale steps live in the dock — as do the beer/iron/coal source
+// picks: the map only spotlights those candidates, the actual pick control is
+// the dock picker, so a phone auto-scroll to the board would strand the
+// player away from the only tappable control. Card-pick steps deliberately
+// map to nothing: the hand tray is bottom-fixed and always on screen, and
+// `developing.choosingIronSource` maps to nothing too — it auto-opens the
+// develop mat modal, which owns that pick, same as its `selectingTiles`/
+// `confirmingDevelop` siblings.
 const DOCK_STEPS = [
   'playing.action.building.confirmingBuild',
   'playing.action.networking.confirmingLink',
   'playing.action.networking.confirmingDoubleLink',
   'playing.action.takingLoan.confirmingLoan',
   'playing.action.selling.selectingSale',
+  'playing.action.selling.choosingBeerSource',
+  'playing.action.networking.choosingDoubleLinkBeer',
+  'playing.action.building.choosingIronSource',
+  'playing.action.building.choosingCoalSource',
+  'playing.action.networking.choosingLinkCoal',
+  'playing.action.networking.choosingDoubleLinkCoal',
 ]
 
 /** Serialize the step the state is parked in, for change detection. */

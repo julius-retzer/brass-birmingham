@@ -13,9 +13,6 @@ describe('stepScrollTarget', () => {
     'playing.action.building.selectingLocation',
     'playing.action.networking.selectingLink',
     'playing.action.networking.selectingSecondLink',
-    'playing.action.selling.choosingBeerSource',
-    'playing.action.building.choosingIronSource',
-    'playing.action.building.choosingCoalSource',
   ])('%s is a board tap', (step) => {
     expect(stepScrollTarget(matchesOnly(step))).toBe('board')
   })
@@ -26,6 +23,12 @@ describe('stepScrollTarget', () => {
     'playing.action.networking.confirmingDoubleLink',
     'playing.action.takingLoan.confirmingLoan',
     'playing.action.selling.selectingSale',
+    'playing.action.selling.choosingBeerSource',
+    'playing.action.networking.choosingDoubleLinkBeer',
+    'playing.action.building.choosingIronSource',
+    'playing.action.building.choosingCoalSource',
+    'playing.action.networking.choosingLinkCoal',
+    'playing.action.networking.choosingDoubleLinkCoal',
   ])('%s is a dock step', (step) => {
     expect(stepScrollTarget(matchesOnly(step))).toBe('dock')
   })
@@ -35,6 +38,7 @@ describe('stepScrollTarget', () => {
       'playing.action.selectingAction',
       'playing.action.building.selectingCard',
       'playing.action.developing.selectingTiles',
+      'playing.action.developing.choosingIronSource',
       'playing.action.developing.confirmingDevelop',
       'playing.action.scouting.selectingCards',
     ]) {

@@ -2,6 +2,10 @@
 // importantly — that a seat's view NEVER contains another player's cards.
 import { beforeAll, describe, expect, test, vi } from 'vitest'
 import {
+  buildRecoveryLink,
+  parseRecoveryHash,
+} from '../components/mp/recovery-link'
+import {
   CHAT_MAX_LENGTH,
   CHAT_TAIL_LIMIT,
   actInGame,
@@ -406,6 +410,171 @@ describe('multiplayer: lifecycle and authority', () => {
     }
     const lobby = await getGameView(host.token, 1, guest.seatSecret)
     expect(lobby?.hostSeatId).toBe(1)
+  })
+})
+
+// The personal recovery link ("seat key"). It carries the EXISTING per-seat
+// secret in a URL fragment — no new credential, no new endpoint — so these
+// tests drive the real link builder/parser against the real seat auth and
+// prove the round trip end to end. The client-side half (storage write, URL
+// scrubbing, malformed input) is pinned offline in
+// `src/components/mp/recovery-link.test.ts`.
+describe('multiplayer: personal seat recovery links', () => {
+  /** What a clean browser does with a pasted recovery URL: parse the
+   *  fragment and present whatever it finds to the ordinary seat auth. */
+  const openInCleanBrowser = (link: string) =>
+    parseRecoveryHash(new URL(link).hash)
+
+  test('every seated player — not just the host — round-trips their own seat', async () => {
+    const { host, guest } = await freshGame()
+    const origin = 'https://brass.example'
+
+    for (const seat of [
+      { seatId: 0, seatSecret: host.seatSecret, name: 'Ada' },
+      { seatId: guest.seatId, seatSecret: guest.seatSecret, name: 'Brunel' },
+    ]) {
+      const link = buildRecoveryLink(origin, host.token, seat)
+      // the link addresses this game and hides the credential in the fragment
+      expect(link.startsWith(`${origin}/g/${host.token}#`)).toBe(true)
+
+      const restored = openInCleanBrowser(link)
+      expect(restored).toEqual({
+        seatId: seat.seatId,
+        seatSecret: seat.seatSecret,
+      })
+
+      // …and those credentials authenticate THAT seat, with its own hand.
+      const view = await getGameView(
+        host.token,
+        restored!.seatId,
+        restored!.seatSecret,
+      )
+      expect(view?.you).toBe(seat.seatId)
+      expect(ctxOf(view!).players[seat.seatId]!.name).toBe(seat.name)
+    }
+  })
+
+  test('a restored seat can act — it is the same credential, not a read-only pass', async () => {
+    const { host, guest } = await freshGame()
+    const view = await getGameView(host.token, 0, host.seatSecret)
+    const current = ctxOf(view!).currentPlayerIndex
+    const seat =
+      current === 0
+        ? { seatId: 0, seatSecret: host.seatSecret }
+        : { seatId: guest.seatId, seatSecret: guest.seatSecret }
+
+    const restored = openInCleanBrowser(
+      buildRecoveryLink('https://brass.example', host.token, seat),
+    )!
+    // A full action flow driven entirely from the recovered credentials.
+    expect(
+      (
+        await actInGame(host.token, restored.seatId, restored.seatSecret, {
+          type: 'TAKE_LOAN',
+        })
+      ).ok,
+    ).toBe(true)
+    const mine = await getGameView(
+      host.token,
+      restored.seatId,
+      restored.seatSecret,
+    )
+    expect(
+      (
+        await actInGame(host.token, restored.seatId, restored.seatSecret, {
+          type: 'SELECT_CARD',
+          cardId: ctxOf(mine!).players[current]!.hand[0]!.id,
+        })
+      ).ok,
+    ).toBe(true)
+    expect(
+      (
+        await actInGame(host.token, restored.seatId, restored.seatSecret, {
+          type: 'CONFIRM',
+        })
+      ).ok,
+    ).toBe(true)
+  })
+
+  test('a tampered secret is refused, and the refusal says nothing about which half was wrong', async () => {
+    const { host } = await freshGame()
+    const good = buildRecoveryLink('https://brass.example', host.token, {
+      seatId: 0,
+      seatSecret: host.seatSecret,
+    })
+
+    // One character flipped in the secret — everything else identical.
+    const flipped = host.seatSecret.startsWith('a')
+      ? `b${host.seatSecret.slice(1)}`
+      : `a${host.seatSecret.slice(1)}`
+    const tampered = good.replace(host.seatSecret, flipped)
+    expect(tampered).not.toBe(good)
+
+    const refusals = await Promise.all(
+      [
+        // right seat, wrong secret
+        { seatId: 0, seatSecret: flipped },
+        // wrong seat, right secret (seat 1's key would not be seat 0's)
+        { seatId: 1, seatSecret: host.seatSecret },
+        // pure invention
+        { seatId: 0, seatSecret: 'not-a-real-secret-at-all' },
+      ].map((c) => getGameView(host.token, c.seatId, c.seatSecret)),
+    )
+
+    // Every failure mode answers IDENTICALLY: an unauthenticated view. No
+    // error string, no seat hint, nothing that narrows the search.
+    for (const refused of refusals) {
+      expect(refused?.you).toBeNull()
+      expect(refused?.snapshot).toBeNull()
+    }
+    expect(JSON.stringify(refusals[0])).toBe(JSON.stringify(refusals[2]))
+
+    // …and the untampered link still works, so this is the secret failing and
+    // not the whole game being unreachable.
+    const ok = openInCleanBrowser(good)!
+    expect((await getGameView(host.token, ok.seatId, ok.seatSecret))?.you).toBe(
+      0,
+    )
+  })
+
+  test('an invite link grants an OPEN seat only — never an occupied one', async () => {
+    const host = await createGame('Ada', 2)
+    // Anyone holding just the token (the invite link) is anonymous: no seat.
+    const anonymous = await getGameView(host.token, null, null)
+    expect(anonymous?.you).toBeNull()
+    expect(anonymous?.seats[0]!.claimed).toBe(true)
+
+    // It takes the one open seat…
+    const guest = await joinGame(host.token, 'Brunel')
+    expect(guest.seatId).toBe(1)
+    // …and then grants nothing at all: the occupied seats stay occupied.
+    await expect(joinGame(host.token, 'Interloper')).rejects.toThrow(
+      /no open seats/i,
+    )
+    const still = await getGameView(host.token, 1, guest.seatSecret)
+    expect(still?.you).toBe(1)
+  })
+
+  test('#88 intact: releasing a seat kills its old recovery link', async () => {
+    const { host, guest } = await freshGame()
+    const hostKey = openInCleanBrowser(
+      buildRecoveryLink('https://brass.example', host.token, {
+        seatId: 0,
+        seatSecret: host.seatSecret,
+      }),
+    )!
+    expect(
+      (await getGameView(host.token, hostKey.seatId, hostKey.seatSecret))?.you,
+    ).toBe(0)
+
+    // A seated peer frees seat 0 (the existing recovery model).
+    await releaseSeat(host.token, guest.seatSecret, 0)
+
+    // The recovery link that used to open that seat is now inert — the seat
+    // has no secretHash at all, so the credential matches nothing.
+    expect(
+      (await getGameView(host.token, hostKey.seatId, hostKey.seatSecret))?.you,
+    ).toBeNull()
   })
 })
 

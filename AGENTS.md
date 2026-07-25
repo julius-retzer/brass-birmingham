@@ -1336,6 +1336,62 @@ When updating this file, preserve this bar for all agents and keep entries conci
   only the credentialed SSE stream may clear creds on `you: null` — a late
   frame from the previous unauthenticated stream must not wipe freshly-claimed
   credentials (race fixed 2026-07-13).
+- PERSONAL RECOVERY LINK / "seat key" (2026-07-24): every seated player can
+  restore their OWN seat on another device. It is the EXISTING per-seat secret
+  in a URL — no new credential, no new endpoint, no schema change; the whole
+  feature is client-side (`components/mp/recovery-link.ts` + `seat-key.tsx`)
+  and the server never learns a link was used. Complementary to the
+  release-and-reclaim model above, which stays the fallback for a key that is
+  also gone (releasing a seat still kills its old link).
+  - THE SECRET RIDES IN THE URL FRAGMENT (`/g/<token>#seat=N&secret=…`), never
+    the query string: a fragment is not sent to the origin, so it cannot reach
+    a request log or a `Referer`. A `?secret=` link would land in Vercel's
+    access log on the first hit. The `secret=…` SHAPE is deliberate — it is
+    what `sentry-scrub.ts`'s `scrubText`/`scrubQueryString` already redact, so
+    the existing gate covers it with no second scrubbing path (pinned by a
+    mirror of that pattern in `recovery-link.test.ts`). Change the format and
+    you must re-check both.
+  - `consumeRecoveryLink` is STRIP-then-VERIFY-then-WRITE and synchronous. It
+    runs in `mp-game.tsx`'s FIRST effect, before the stream effect opens an
+    EventSource: `history.replaceState` (never pushState — Back must not reach
+    the credential) drops ANY fragment — even a malformed, secret-bearing one
+    that fails to parse — so a mangled paste can never leave the secret in the
+    URL. It does NOT persist: the recovered creds are held UNPERSISTED
+    (`recoveredCreds` ref) and only written to `bb-mp-<token>` once the stream
+    authenticates the seat. A bad or stale link must never clobber a working
+    seat's stored secret — so on rejection the browser's PRIOR creds
+    (`priorCreds` ref) are restored, and the player keeps the seat they were
+    already in; only when there was no prior seat does it show the ONE
+    unrevealing join-screen notice (`recovery-rejected`) — never which half was
+    wrong. GOTCHA: the same effect ALSO listens for `hashchange`, because a link
+    pasted into the address bar of a tab already on `/g/<token>` is a
+    same-document fragment navigation — nothing remounts, so the mount pass
+    alone left the secret sitting in the address bar and the link did nothing.
+    Both entry points go through `consumeRecoveryLink`, so the strip and the
+    unpersisted-until-authenticated rule hold for either.
+  - TWO LINKS, OPPOSITE SEMANTICS, and the UI must keep them unmistakable: the
+    INVITE link is the only bare URL on screen (the masthead chip, labelled
+    "Invite"); the recovery link never renders until the player opens the modal
+    AND reveals it. Different affordance on purpose — do not put them side by
+    side, and do not add a second visible copy of the recovery URL. The invite
+    affordances (`ShareLink`, `InviteCallout`) build their URL from
+    `inviteUrl()` (origin + path only), never `location.href` — a structural
+    guarantee the invite can never carry a fragment or query even if a stray
+    one lingered in the address bar.
+  - Surfaced at claim time as an inline lobby card (`SeatKeyNotice`, dismissal
+    remembered under its OWN key `bb-mp-seatkey-seen-<token>`) — NOT a modal:
+    the host claims seat 0 at creation and never passes the join screen, so the
+    lobby is the one place that covers everyone. GOTCHA that bit once: the
+    auto-modal is armed ONLY for a seat claimed MID-GAME
+    (`view.phase !== 'lobby'`); arming it for a lobby joiner leaves the flag set
+    when the game starts and drops a full-screen `bb2-curtain` over the board
+    (it intercepts every dock click — `multiplayer.spec.ts` catches it).
+  - Pinned by `components/mp/recovery-link.test.ts` (offline: format, scrubbing,
+    malformed input, invite-vs-recovery), the `personal seat recovery links`
+    block in `gameStore.multiplayer.test.ts` (wire: every seat round-trips,
+    restored creds can act, tampered refused identically, invite grants no
+    occupied seat, release kills the link) and `e2e/seat-recovery.spec.ts`
+    (real clean browser profile, address bar + history + DOM).
 - In-flight "syncing" indicator (2026-07-15): because there is NO optimistic
   UI, `mp/use-in-flight.ts` tracks each intent from `send()`'s POST until its
   settling SSE frame. An intent is settled when a frame arrives with a

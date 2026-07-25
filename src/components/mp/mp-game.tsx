@@ -41,7 +41,9 @@ import {
   usePanelCollapsed,
 } from '../side-panels'
 import { sourceCandidateCities } from '../source-spotlight'
+import { consumeRecoveryLink, credsKey } from './recovery-link'
 import { UNREACHABLE, refusalToShow } from './refusal'
+import { SeatKeyButton, SeatKeyModal, SeatKeyNotice } from './seat-key'
 import { didBecomeMyTurn, playTurnChime, titleForTurn } from './turnNotify'
 import { useInFlight } from './use-in-flight'
 
@@ -116,8 +118,6 @@ interface Creds {
   seatId: number
   seatSecret: string
 }
-
-const credsKey = (token: string) => `bb-mp-${token}`
 
 /** Keep the client's chat memory bounded; the recent tail on a full frame is
  *  smaller than this, so a reconnect never loses already-seen lines. */
@@ -194,6 +194,29 @@ function rehydrate(snapshot: unknown): unknown {
 export function MpGame({ token }: { token: string }) {
   const [creds, setCreds] = useState<Creds | null>(null)
   const [credsLoaded, setCredsLoaded] = useState(false)
+  // Set while a seat restored from a recovery link is still unverified, so the
+  // stream's ordinary accept/reject can be reported to the player who pasted
+  // it (otherwise a bad link silently shows the join screen). Verification is
+  // the EXISTING seat-secret check on the server — nothing new authenticates
+  // here, and the refusal never says which half of the link was wrong.
+  const recoveryPending = useRef(false)
+  // Credentials parsed from a recovery link, held UNPERSISTED until the server
+  // authenticates the seat. Only then are they written to storage — a bad or
+  // stale link must never overwrite a working seat's stored secret.
+  const recoveredCreds = useRef<Creds | null>(null)
+  // Whatever valid credentials this browser already held for the game before a
+  // recovery link was opened. If the link fails to authenticate, these are
+  // restored so the player keeps the seat they were already in.
+  const priorCreds = useRef<Creds | null>(null)
+  /** A consumed recovery link the server would not authenticate. Rendered as
+   *  ONE message on the join screen for every failure mode (wrong seat,
+   *  tampered secret, seat since released) — it must not narrow down which. */
+  const [recoveryRejected, setRecoveryRejected] = useState(false)
+  // Set ONLY for a seat claimed mid-game (a released seat re-taken), which
+  // skips the lobby and therefore the inline SeatKeyNotice. A lobby joiner
+  // must NOT set this: the flag would survive into the started game and put a
+  // full-screen modal over the board on the first turn.
+  const [seatKeyAtClaim, setSeatKeyAtClaim] = useState(false)
   const [view, setView] = useState<GameViewWire | null>(null)
   const [streamFailing, setStreamFailing] = useState(false)
   // The SSE stream drives a ~1.2s server-side DB poll for its whole lifetime.
@@ -203,9 +226,35 @@ export function MpGame({ token }: { token: string }) {
   // frame on reopen is the full current view, so nothing is missed.
   const [streamPaused, setStreamPaused] = useState(false)
 
+  // FIRST effect on purpose: a recovery link must be consumed — the secret
+  // stripped out of the address bar — before the stream effect below opens an
+  // EventSource, so the secret can never ride a request or a Referer header.
+  // The strip is synchronous inside `consumeRecoveryLink`; the recovered creds
+  // stay unpersisted until the stream authenticates the seat (see below).
   useEffect(() => {
-    setCreds(loadCreds(token))
+    const arm = (recovered: Creds) => {
+      recoveryPending.current = true
+      recoveredCreds.current = recovered
+      priorCreds.current = loadCreds(token)
+      setCreds(recovered)
+    }
+
+    const recovered = consumeRecoveryLink(window)
+    if (recovered) arm(recovered)
+    else setCreds(loadCreds(token))
     setCredsLoaded(true)
+
+    // A recovery link pasted into the address bar of a tab ALREADY on this
+    // game is a same-document fragment navigation: nothing remounts, so the
+    // mount pass alone would leave the secret in the address bar and the link
+    // would do nothing. `consumeRecoveryLink` strips either way, so even a
+    // fragment too malformed to parse is scrubbed here.
+    const onHashChange = () => {
+      const fromHash = consumeRecoveryLink(window)
+      if (fromHash) arm(fromHash)
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
   }, [token])
 
   // Pause the live stream on a persistently hidden tab (60s grace, so a quick
@@ -281,11 +330,45 @@ export function MpGame({ token }: { token: string }) {
       setStreamFailing(false)
       const parsed = JSON.parse(e.data as string) as GameViewWire
       if (myCreds && parsed.you === null) {
-        // this credentialed stream was rejected: the seat was released or
-        // the secret is stale → back to claiming
+        // This credentialed stream was rejected: the seat was released or the
+        // secret is stale.
+        if (recoveryPending.current) {
+          recoveryPending.current = false
+          const prior = priorCreds.current
+          recoveredCreds.current = null
+          priorCreds.current = null
+          if (prior) {
+            // The link did not authenticate, but this browser already held a
+            // working seat here — restore it rather than evicting the player.
+            // The recovered creds were never persisted, so storage still holds
+            // `prior`; rewrite it to be robust and re-open the stream with it.
+            localStorage.setItem(credsKey(token), JSON.stringify(prior))
+            setCreds(prior)
+            return
+          }
+          // No seat to fall back to: surface the one unrevealing notice.
+          localStorage.removeItem(credsKey(token))
+          setRecoveryRejected(true)
+          setCreds(null)
+          return
+        }
+        // Ordinary mid-session rejection (seat released or secret stale) →
+        // back to claiming.
         localStorage.removeItem(credsKey(token))
         setCreds(null)
         return
+      }
+      // The link was accepted. Persist the recovered creds now that the server
+      // has authenticated the seat, and disarm so that a LATER rejection on
+      // this same session — a peer releasing the seat mid-game — reports itself
+      // the ordinary way instead of blaming a recovery link that in fact
+      // worked.
+      if (recoveryPending.current && parsed.you !== null) {
+        recoveryPending.current = false
+        const rec = recoveredCreds.current
+        recoveredCreds.current = null
+        priorCreds.current = null
+        if (rec) localStorage.setItem(credsKey(token), JSON.stringify(rec))
       }
       applyView(parsed)
     }
@@ -354,20 +437,39 @@ export function MpGame({ token }: { token: string }) {
       <JoinScreen
         token={token}
         view={view}
+        recoveryRejected={recoveryRejected}
         onJoined={(c) => {
           localStorage.setItem(credsKey(token), JSON.stringify(c))
           setCreds(c)
+          setRecoveryRejected(false)
+          setSeatKeyAtClaim(view.phase !== 'lobby')
         }}
       />
     )
   }
 
   if (view.phase === 'lobby') {
+    // The lobby carries the claim-time nudge inline (SeatKeyNotice) for every
+    // seated player, host included — no modal needed, and nothing on top of
+    // the ready/start controls.
     return <LobbyScreen token={token} view={view} creds={creds} />
   }
 
   return (
-    <MpTable token={token} view={view} creds={creds!} applyView={applyView} />
+    <>
+      <MpTable token={token} view={view} creds={creds!} applyView={applyView} />
+      {/* Claiming a seat MID-GAME (a released seat re-taken) skips the lobby
+          entirely, so that one path gets the modal instead. Dismissible, and
+          the Seat key button in the masthead brings it back. */}
+      {seatKeyAtClaim && creds && (
+        <SeatKeyModal
+          token={token}
+          creds={creds}
+          atClaim
+          onClose={() => setSeatKeyAtClaim(false)}
+        />
+      )}
+    </>
   )
 }
 
@@ -408,10 +510,12 @@ function GoneScreen() {
 function JoinScreen({
   token,
   view,
+  recoveryRejected,
   onJoined,
 }: {
   token: string
   view: GameViewWire
+  recoveryRejected: boolean
   onJoined: (creds: Creds) => void
 }) {
   const [name, setName] = useState('')
@@ -451,6 +555,20 @@ function JoinScreen({
       </h1>
       <div className="bb2-panel mt-4 flex w-full max-w-sm flex-col gap-4 p-6">
         <span className="bb2-panel-title">Claim a seat</span>
+        {recoveryRejected && (
+          <p
+            className="rounded border px-3 py-2 text-[12.5px]"
+            data-testid="recovery-rejected"
+            style={{
+              borderColor: 'rgba(214, 92, 62, .55)',
+              background: 'rgba(214, 92, 62, .12)',
+              color: 'var(--bb-parchment-bright)',
+            }}
+          >
+            That seat key did not work for this table. Take an open seat below,
+            or ask a player at the table to release yours first.
+          </p>
+        )}
         <div className="flex flex-col gap-1.5">
           {view.seats.map((s) => (
             <div
@@ -526,6 +644,7 @@ function LobbyScreen({
     view.you !== null
       ? view.seats.find((s) => s.seatId === view.you)
       : undefined
+  const openSeats = view.seats.filter((s) => !s.claimed).length
   const allClaimed = view.seats.every((s) => s.claimed)
   const allReady = view.seats.every((s) => s.ready)
   const canStart = allClaimed && allReady
@@ -628,7 +747,11 @@ function LobbyScreen({
       >
         {view.name?.trim() ? view.name : 'Waiting to begin'}
       </h1>
-      <ShareLink />
+      {/* While seats are open, filling them IS the task — so the invite is the
+          lobby's primary affordance, outranking the seat key below it. Once
+          the table is full there is nobody left to invite and it drops back to
+          the compact chip. See the note on InviteCallout. */}
+      {openSeats > 0 ? <InviteCallout openSeats={openSeats} /> : <ShareLink />}
       <div
         className="text-[12px]"
         style={{ color: 'rgba(231,215,177,.55)' }}
@@ -738,7 +861,13 @@ function LobbyScreen({
       )}
 
       {isSeated && creds && (
-        <SeatsButton token={token} creds={creds} seats={view.seats} />
+        <>
+          <SeatKeyNotice token={token} creds={creds} />
+          <div className="flex items-start gap-2">
+            <SeatsButton token={token} creds={creds} seats={view.seats} />
+            <SeatKeyButton token={token} creds={creds} />
+          </div>
+        </>
       )}
 
       {!isHost && (
@@ -823,8 +952,9 @@ function SeatsButton({
             className="text-[10.5px]"
             style={{ color: 'rgba(231,215,177,.45)' }}
           >
-            Release a seat if its player lost their link or browser — even the
-            host's — so they can claim it again from the invite link.
+            A player who still has their seat key can just open it to get back
+            in. Release a seat only when that is gone too — even the host's — so
+            it can be claimed again from the invite link.
           </p>
         </div>
       )}
@@ -832,8 +962,17 @@ function SeatsButton({
   )
 }
 
+/** The public invite URL for the current game: origin + path only, so it can
+ *  never carry a recovery fragment or a stray query. A malformed recovery link
+ *  that survived in the address bar must not leak into the invite affordance. */
+function inviteUrl(): string {
+  if (typeof window === 'undefined') return ''
+  return `${window.location.origin}${window.location.pathname}`
+}
+
 function ShareLink({ className }: { className?: string }) {
   const [copied, setCopied] = useState(false)
+  const url = inviteUrl()
   return (
     <button
       type="button"
@@ -841,20 +980,94 @@ function ShareLink({ className }: { className?: string }) {
       data-testid="share-link"
       style={{ cursor: 'pointer', textTransform: 'none', letterSpacing: 0 }}
       onClick={() => {
-        void navigator.clipboard?.writeText(window.location.href)
+        void navigator.clipboard?.writeText(url)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       }}
-      title="Copy the invite link"
+      title="Copy the invite link — safe to share, it only offers an open seat"
     >
+      {/* The ONLY bare URL on screen is this public one, so "the link you can
+          grab" is always the safe one; the private seat key lives behind a
+          button and a reveal (see seat-key.tsx). The label makes the pair
+          textually distinct rather than two lookalike URLs side by side. */}
+      <span
+        className="flex-none text-[9px] font-bold uppercase tracking-[0.16em]"
+        style={{ color: 'var(--bb-brass-bright)' }}
+      >
+        Invite
+      </span>
       {/* The invite URL can be long (token + a deploy-preview host). Let it
           ellipsis-truncate on phones so it can never force the masthead wider
           than the viewport; the full URL still shows from lg up (unchanged)
           and is always copied in full. */}
       <span className="min-w-0 truncate">
-        {copied ? 'Link copied!' : window.location.href}
+        {copied ? 'Invite link copied!' : url}
       </span>
     </button>
+  )
+}
+
+/**
+ * The lobby's PRIMARY affordance while seats are still open: a real card with
+ * the invite URL and an obvious copy button.
+ *
+ * WHY IT OUTRANKS THE SEAT KEY (2026-07-24 review). Prominence has to track
+ * SHAREABILITY. When the seat key was the biggest gold panel on the lobby and
+ * the invite was a thin pill, the layout taught the wrong safety lesson — the
+ * credential looked like the thing to send and the genuinely shareable link
+ * looked like a footnote. That is the same invite-vs-recovery confusion this
+ * feature guards against in its copy, showing up as styling. So: the invite
+ * looks shareable, the seat key looks guarded (SeatKeyNotice is deliberately
+ * calm — do not re-promote it here).
+ *
+ * Scoped to the lobby. In the live game the invite is no longer the call to
+ * action and the compact masthead `ShareLink` chip is right.
+ */
+function InviteCallout({ openSeats }: { openSeats: number }) {
+  const [copied, setCopied] = useState(false)
+  const url = inviteUrl()
+  return (
+    <div
+      className="bb2-panel bb2-panel-active mt-1 flex w-full max-w-sm flex-col gap-2.5 p-5"
+      data-testid="invite-callout"
+    >
+      <span className="bb2-panel-title">
+        Invite {openSeats === 1 ? 'a player' : 'players'}
+      </span>
+      <p className="text-[12.5px]" style={{ color: 'var(--bb-parchment)' }}>
+        {openSeats === 1
+          ? 'One seat is still open.'
+          : `${openSeats} seats are still open.`}{' '}
+        Send this link — whoever opens it claims a seat.
+      </p>
+      <code
+        className="block break-all rounded border px-3 py-2 text-[11.5px] leading-snug"
+        data-testid="invite-link-text"
+        style={{
+          borderColor: 'rgba(231,215,177,.18)',
+          background: 'rgba(0,0,0,.25)',
+          color: 'var(--bb-parchment)',
+        }}
+      >
+        {url}
+      </code>
+      <button
+        type="button"
+        className="bb2-confirm w-full"
+        data-testid="share-link"
+        onClick={() => {
+          void navigator.clipboard?.writeText(url)
+          setCopied(true)
+          setTimeout(() => setCopied(false), 2000)
+        }}
+      >
+        {copied ? 'Invite link copied!' : 'Copy invite link'}
+      </button>
+      <p className="text-[11.5px]" style={{ color: 'rgba(231,215,177,.5)' }}>
+        Safe to share anywhere — it only offers an open seat, never anyone
+        else's.
+      </p>
+    </div>
   )
 }
 
@@ -1432,7 +1645,10 @@ function MpTable({
               </button>
             )}
             {you !== null && (
-              <SeatsButton token={token} creds={creds} seats={view.seats} />
+              <>
+                <SeatsButton token={token} creds={creds} seats={view.seats} />
+                <SeatKeyButton token={token} creds={creds} />
+              </>
             )}
             <ShareLink className="max-w-[52vw] sm:max-w-[240px] lg:max-w-none" />
           </div>

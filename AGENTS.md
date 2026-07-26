@@ -1189,7 +1189,13 @@ When updating this file, preserve this bar for all agents and keep entries conci
   `dev`, `preview`, and the long-lived pre-migrated `ci` parent. Those
   DB-backed suites run ~30s over the network (vs instant files), so they set a
   30s per-file timeout via `vi.setConfig`; leave the global 5s for the
-  in-memory engine suite.
+  in-memory engine suite. A round trip costs ~15ms against the local Docker DB
+  and ~100ms+ against a Neon branch, so a DB test whose cost scales with a
+  sample count (many games/rows) passes locally and times out in CI unless the
+  samples run CONCURRENTLY — they are independent (own token, own per-token
+  lock in `withGameLock`). See the 20-sample starting-player test in
+  `gameStore.multiplayer.test.ts`: never shrink such a sample count to fit the
+  clock, parallelise it and state an explicit `timeout`.
 - LOCAL TEST DB IS DOCKER (added 2026-07-17, supersedes the Neon-branch default
   below for laptops): `compose.yaml` runs Postgres + the Neon HTTP proxy;
   `pnpm db:local` starts it and both `pnpm test` and `pnpm exec playwright test`

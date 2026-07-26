@@ -39,6 +39,7 @@ import {
   LENS_FINE,
   LENS_SELECTED,
   actTabLayout,
+  actTabShiftX,
   cardIndexAtX,
   dockShift,
   fanAngle,
@@ -543,7 +544,7 @@ export function HandTray({
                     bottom: `${actTab.bottom}px`,
                     height: `${actTab.height}px`,
                     width: `${actTab.width}px`,
-                    transform: `translateX(calc(-50% + ${lensShiftX(i, n, spacing, fanWidth, lens.scale)}px)) rotate(${-angle}deg)`,
+                    transform: `translateX(calc(-50% + ${actTabShiftX(lensShiftX(i, n, spacing, fanWidth, lens.scale), actTab)}px)) rotate(${-angle}deg)`,
                   }}
                 >
                   {actLabel}

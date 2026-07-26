@@ -9,6 +9,7 @@ import {
   MIN_SPACING,
   PHONE_HAND_SCALE,
   actTabLayout,
+  actTabShiftX,
   cardIndexAtX,
   dockShift,
   fanLayout,
@@ -241,6 +242,29 @@ describe('actTabLayout', () => {
         lens.rise + (CARD_H * lens.scale) / 2,
       )
     }
+  })
+})
+
+describe('actTabShiftX', () => {
+  const tab = actTabLayout(LENS_COARSE)
+
+  it("never carries the tab out of the card's hitbox", () => {
+    // An edge card's lens slides a long way inward to stay on screen; the
+    // hitbox that takes the tap does not move with it.
+    const width = 541 // 390px phone at the tray's own scale
+    const { spacing } = fanLayout(8, width)
+    const lensShift = lensShiftX(0, 8, spacing, width, LENS_COARSE.scale)
+    expect(lensShift).toBeGreaterThan((CARD_W - tab.width) / 2)
+
+    const shift = actTabShiftX(lensShift, tab)
+    expect(Math.abs(shift) + tab.width / 2).toBeLessThanOrEqual(CARD_W / 2)
+  })
+
+  it('follows a small shift exactly, and both directions', () => {
+    expect(actTabShiftX(0, tab)).toBe(0)
+    expect(actTabShiftX(2, tab)).toBe(2)
+    expect(actTabShiftX(-2, tab)).toBe(-2)
+    expect(actTabShiftX(-99, tab)).toBe(-(CARD_W - tab.width) / 2)
   })
 })
 

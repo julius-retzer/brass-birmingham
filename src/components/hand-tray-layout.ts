@@ -217,6 +217,19 @@ export function actTabLayout(lens: LensPreset): ActTabLayout {
   }
 }
 
+/**
+ * Horizontal placement of the act tab, from the shift its lens already took.
+ * It follows that clamp only as far as its own side margin allows: the lens can
+ * slide a long way inward on an edge card, while the hitbox that takes the tap
+ * neither moves nor grows sideways — so a tab carried the whole way would hang
+ * over the seat next door, and a finger aiming at the label would land on the
+ * wrong card.
+ */
+export function actTabShiftX(lensShift: number, tab: ActTabLayout): number {
+  const slack = (CARD_W - tab.width) / 2
+  return Math.max(-slack, Math.min(slack, lensShift))
+}
+
 /** How far above its seat the magnified visual reaches, layout px. */
 export function lensReach(lens: LensPreset): number {
   return lens.rise + CARD_H * (lens.scale - 1)

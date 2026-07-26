@@ -344,6 +344,69 @@ test.describe('phone: the peeked card names its own second tap', () => {
     await expect(page.getByText('Choose an action')).toBeVisible()
   })
 
+  test("an edge card's tab stays on the card, not on its neighbour", async ({
+    page,
+  }) => {
+    // A full 8-card hand at 390px is the tight case: the outermost card's
+    // magnified visual slides a long way inward to stay on screen, while the
+    // hitbox that takes the tap does not move with it.
+    await page.goto('/?fresh=1')
+    await page.getByTestId('mode-local').tap()
+    await page.getByRole('button', { name: '2', exact: true }).tap()
+    await page.getByRole('button', { name: 'Open the ledger' }).tap()
+
+    const cards = page.locator('button.bb2-card')
+    await expect(cards.first()).toBeVisible()
+    expect(await cards.count()).toBe(8)
+
+    // A packed fan buries every card's own centre under its right-hand
+    // neighbour, so the outermost cards are peeked by browsing to them: press
+    // the top card, hold, then slide past the end of the fan (the browse clamps
+    // to the edge card).
+    const last = (await cards.last().boundingBox())!
+    const cdp = await page.context().newCDPSession(page)
+    const browseTo = async (x: number) => {
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [
+          { x: last.x + last.width / 2, y: last.y + last.height / 2 },
+        ],
+      })
+      await expect(cards.last()).toHaveAttribute('data-raised', 'true')
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{ x, y: last.y + last.height / 2 }],
+      })
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchEnd',
+        touchPoints: [],
+      })
+    }
+
+    for (const [card, browseX] of [
+      [cards.first(), 0],
+      [cards.last(), page.viewportSize()!.width],
+    ] as const) {
+      await browseTo(browseX)
+      const tab = page.locator('.bb2-card-act')
+      await expect(tab).toHaveText('Play')
+
+      const box = (await tab.boundingBox())!
+      const hit = (await card.boundingBox())!
+      expect(box.x).toBeGreaterThanOrEqual(hit.x)
+      expect(box.x + box.width).toBeLessThanOrEqual(hit.x + hit.width)
+    }
+
+    // And a tap where the tab says reaches THAT card, not the seat next door.
+    // Checked on the right-hand edge because the dev server this suite runs
+    // against parks Next's own dev-tools badge over the bottom-LEFT corner,
+    // where the leftmost card's tab sits at 390px.
+    const tab = (await page.locator('.bb2-card-act').boundingBox())!
+    await page.touchscreen.tap(tab.x + tab.width / 2, tab.y + tab.height / 2)
+    await expect(cards.last()).toHaveAttribute('data-selected', 'true')
+    await expect(page.getByText('Play this card')).toBeVisible()
+  })
+
   test('a card in play offers Put back', async ({ page }) => {
     await page.goto('/?demo')
     const card = page.getByTestId('card-brewery_2')

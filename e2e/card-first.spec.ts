@@ -54,7 +54,7 @@ test('card-first: play a card, pick Network, confirm — card never re-asked', a
   const held = page.getByTestId('card-brewery_2')
   await expect(held).toHaveAttribute('data-selected', 'true')
   await expect(
-    page.locator('.bb2-hand-hint').getByText(/^Holding /),
+    page.getByTestId('hand-hint').getByText(/^Holding /),
   ).toBeVisible()
 
   const legalRoute = page.locator('path[data-conn][data-legal="true"]')
@@ -67,7 +67,7 @@ test('card-first: play a card, pick Network, confirm — card never re-asked', a
   // Still held through the confirm step, right up until it's spent.
   await expect(held).toHaveAttribute('data-selected', 'true')
   await expect(
-    page.locator('.bb2-hand-hint').getByText(/^Holding /),
+    page.getByTestId('hand-hint').getByText(/^Holding /),
   ).toBeVisible()
   await confirm.click()
 
@@ -166,7 +166,7 @@ test('card-first: clicking another card mid-action cancels it and re-holds the n
   await birmingham.click()
   await page.getByTestId('action-network').click()
   await expect(
-    page.locator('.bb2-hand-hint').getByText(/^Holding /),
+    page.getByTestId('hand-hint').getByText(/^Holding /),
   ).toBeVisible()
   await expect(birmingham).toHaveAttribute('data-selected', 'true')
 

@@ -576,10 +576,36 @@ button.bb2-card {
   transform: scale(var(--bb-hand-scale));
   width: calc(100% / var(--bb-hand-scale));
 }
-/* Lens reach is layout px inside the fan; the pill sits outside it, so the
- * reserve has to be scaled by hand. The 8px is the visual gap on top. */
-.bb2-hand-hint {
-  margin-bottom: calc(8px + var(--bb-hint-clear, 71px) * var(--bb-hand-scale));
+/* The tray's own step label. Absolutely positioned so it reserves no height
+ * — the fan never moves when it appears or disappears (a hint that resized
+ * the tray would reintroduce the jumping-hand regression PR #81 fixed).
+ * On phones it rides the top edge of the (scaled) card band, which overlays
+ * the scrolling panel there, never the board. On desktop the band sits in
+ * the board frame's bottom apron (the pb-[84px] strip the map never paints
+ * into), so the label drops to the tray's bottom-left corner beside the
+ * fan. Cards paint above it — a raised edge card may briefly cover it. */
+.bb2-tray-label {
+  position: absolute;
+  left: 12px;
+  bottom: calc(150px * var(--bb-hand-scale) - 16px);
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--bb-brass-hairline);
+  background: rgba(20, 16, 11, 0.88);
+  color: var(--bb-brass-bright);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+@media (min-width: 1024px) {
+  .bb2-tray-label {
+    bottom: 10px;
+  }
 }
 @media (min-width: 640px) {
   .bb2-handtray {

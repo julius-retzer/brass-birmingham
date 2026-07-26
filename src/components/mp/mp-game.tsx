@@ -22,6 +22,7 @@ import {
 import { explainRefusal } from '~/store/refusal'
 import { refreshEmbeddedTileStats } from '~/store/saveMigration'
 import { ActionDock, SELLABLE, getHandSelection } from '../action-dock'
+import { boardCaption } from '../board-caption'
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from '../board/board-map'
 import { CommandPalette } from '../command-palette'
 import { developMatView } from '../develop-mat'
@@ -41,6 +42,7 @@ import {
   usePanelCollapsed,
 } from '../side-panels'
 import { sourceCandidateCities } from '../source-spotlight'
+import { useStepScroll } from '../use-step-scroll'
 import { consumeRecoveryLink, credsKey } from './recovery-link'
 import { UNREACHABLE, refusalToShow } from './refusal'
 import { SeatKeyButton, SeatKeyModal, SeatKeyNotice } from './seat-key'
@@ -1426,26 +1428,20 @@ function MpTable({
     [state],
   )
 
-  const boardPrompt = useMemo(() => {
-    if (!ctx) return null
-    if (pickingSite) {
-      const t = ctx.selectedIndustryTile?.type
-      const n = legalCities?.size ?? 0
-      return `Choose a site for your ${t === 'manufacturer' ? 'goods works' : (t ?? 'industry')} — ${n} legal ${n === 1 ? 'city' : 'cities'}`
-    }
-    if (pickingLink || pickingSecondLink) {
-      const n = (legalLinks?.size ?? 0) / 2
-      return `Choose ${pickingSecondLink ? 'a second' : 'a'} ${ctx.era} route — ${n} available`
-    }
-    return null
-  }, [
-    ctx,
-    pickingSite,
-    pickingLink,
-    pickingSecondLink,
-    legalCities,
-    legalLinks,
-  ])
+  const boardPrompt = useMemo(
+    () =>
+      state
+        ? boardCaption(state, { legalCities, legalLinks, sourceCities })
+        : null,
+    [state, legalCities, legalLinks, sourceCities],
+  )
+
+  // Phone: a step change brings the surface that owns the next tap into
+  // view (board for site/route/source picks, dock for confirm/sale) —
+  // only on my own turn, and never against a scroll the player just made.
+  const boardFrameRef = useRef<HTMLDivElement | null>(null)
+  const dockPanelRef = useRef<HTMLDivElement | null>(null)
+  useStepScroll(myTurn ? state : null, boardFrameRef, dockPanelRef)
 
   // Exact sale probe on my own filtered snapshot (my hand is real in it).
   const canSellAnything = useMemo(() => {
@@ -1664,7 +1660,10 @@ function MpTable({
         />
 
         <div className="flex min-h-0 flex-col gap-3 px-3 pb-3 lg:flex-1 lg:flex-row">
-          <div className="bb2-board-frame h-[52vh] min-h-[320px] lg:h-auto lg:min-h-0 lg:flex-1">
+          <div
+            ref={boardFrameRef}
+            className="bb2-board-frame h-[52vh] min-h-[320px] lg:h-auto lg:min-h-0 lg:flex-1"
+          >
             <div className="bb2-board-inner pb-9 lg:pb-[84px]">
               <BoardMap
                 players={ctx.players}
@@ -1704,6 +1703,7 @@ function MpTable({
                 the edge instead of squashing its contents mid-animation. */}
             <div className="flex w-full flex-col gap-3 lg:w-[416px]">
               <div
+                ref={dockPanelRef}
                 className={`bb2-panel bb2-panel-active flex flex-col gap-3 p-5 ${myTurn && inFlight ? 'bb2-busy' : ''}`}
                 aria-busy={myTurn && inFlight}
               >

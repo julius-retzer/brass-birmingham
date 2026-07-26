@@ -177,37 +177,6 @@ export function lensReach(lens: LensPreset): number {
   return lens.rise + CARD_H * (lens.scale - 1)
 }
 
-/** Layout height of the tray box — must match .bb2-handbox in theme.css. */
-export const HANDBOX_H = 150
-
-/**
- * Gap the hint pill must hold above the tray box so no lens can ever reach
- * it, in layout px (the caller scales it by the tray's own scale).
- *
- * Deliberately a STATIC per-device value — the worst case of the two lenses
- * that device can show (`lens` = the pointer's hover/peek preset, or the
- * persistent selected one) rather than whatever is raised right now. A pill
- * that re-measured per raise would jump ~70px on every hover, and the reserve
- * must hold in the resting state too: a selected card keeps its lens for the
- * whole flow, which is exactly the state that used to bury the instruction.
- *
- * A card is CARD_H tall in a HANDBOX_H box aligned to its bottom, so it
- * already pokes out the top before any lens applies. HINT_PAD covers what
- * this box model doesn't: the seat's own rotation about the 50% 120% pivot
- * lifts a card's top corner, and lensReach measures the lens rather than its
- * rotated bounding box (measured ~6px on the demo fan — the pad is rounded up
- * so the reserve stays honest rather than exact-and-brittle).
- */
-const HINT_PAD = 10
-
-export function hintClearance(lens: LensPreset): number {
-  return (
-    Math.max(lensReach(lens), lensReach(LENS_SELECTED)) +
-    (CARD_H - HANDBOX_H) +
-    HINT_PAD
-  )
-}
-
 /**
  * Which card of the fan sits under layout-x position `x` — the drag-to-browse
  * mapping. Uses the resting seat centres (width/2 + (i − (n−1)/2)·spacing),

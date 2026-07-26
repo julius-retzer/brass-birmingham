@@ -35,6 +35,7 @@ import {
   SELLABLE,
   getHandSelection,
 } from './action-dock'
+import { boardCaption } from './board-caption'
 import { BoardMap, PLAYER_FILL, playerNetworkCities } from './board/board-map'
 import { CommandPalette } from './command-palette'
 import { demoSnapshot } from './demo/demo-snapshot'
@@ -60,6 +61,7 @@ import { PlayerRail } from './player-rail'
 import { SetupScreen } from './setup-screen'
 import { MarketsPanel, SidePanelRail, usePanelCollapsed } from './side-panels'
 import { sourceCandidateCities } from './source-spotlight'
+import { useStepScroll } from './use-step-scroll'
 
 const SAVE_KEY = 'bb2-save-v1'
 
@@ -734,26 +736,22 @@ function GameInner({
   // engine's; the shared seam keeps this identical to the online surface.
   const sourceCities = useMemo(() => sourceCandidateCities(state), [state])
 
-  const boardPrompt = useMemo(() => {
-    if (pickingSite) {
-      const t = ctx.selectedIndustryTile?.type
-      const n = legalCities?.size ?? 0
-      return `Choose a site for your ${t === 'manufacturer' ? 'goods works' : (t ?? 'industry')} — ${n} legal ${n === 1 ? 'city' : 'cities'}`
-    }
-    if (pickingLink || pickingSecondLink) {
-      const n = (legalLinks?.size ?? 0) / 2
-      return `Choose ${pickingSecondLink ? 'a second' : 'a'} ${ctx.era} route — ${n} available`
-    }
-    return null
-  }, [
-    pickingSite,
-    pickingLink,
-    pickingSecondLink,
-    legalCities,
-    legalLinks,
-    ctx.selectedIndustryTile?.type,
-    ctx.era,
-  ])
+  const boardPrompt = useMemo(
+    () =>
+      boardCaption(state, {
+        legalCities,
+        legalLinks,
+        sourceCities,
+      }),
+    [state, legalCities, legalLinks, sourceCities],
+  )
+
+  // Phone: a step change brings the surface that owns the next tap into
+  // view (board for site/route/source picks, dock for confirm/sale) —
+  // unless the player just scrolled somewhere themselves.
+  const boardFrameRef = useRef<HTMLDivElement | null>(null)
+  const dockPanelRef = useRef<HTMLDivElement | null>(null)
+  useStepScroll(state, boardFrameRef, dockPanelRef)
 
   // Every rejected click is answered by the engine's own explainer, so the
   // player is told what is missing instead of "not legal".
@@ -910,7 +908,10 @@ function GameInner({
 
         {/* ---------- main: board + dock ---------- */}
         <div className="flex min-h-0 flex-col gap-3 px-3 pb-3 lg:flex-1 lg:flex-row">
-          <div className="bb2-board-frame h-[52vh] min-h-[320px] lg:h-auto lg:min-h-0 lg:flex-1">
+          <div
+            ref={boardFrameRef}
+            className="bb2-board-frame h-[52vh] min-h-[320px] lg:h-auto lg:min-h-0 lg:flex-1"
+          >
             <div className="bb2-board-inner pb-9 lg:pb-[84px]">
               <BoardMap
                 players={ctx.players}
@@ -952,7 +953,10 @@ function GameInner({
             {/* Inner keeps its full width so a collapse clips the column to
                 the edge instead of squashing its contents mid-animation. */}
             <div className="flex w-full flex-col gap-3 lg:w-[416px]">
-              <div className="bb2-panel bb2-panel-active flex flex-col gap-3 p-5">
+              <div
+                ref={dockPanelRef}
+                className="bb2-panel bb2-panel-active flex flex-col gap-3 p-5"
+              >
                 {!needsReveal && (
                   <ActionDock
                     snapshot={state as GameStoreSnapshot}

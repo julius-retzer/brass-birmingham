@@ -18,17 +18,17 @@ export interface SourceStepState {
   context: GameState
 }
 
-const BEER_STEPS = [
+export const BEER_STEPS = [
   'playing.action.selling.choosingBeerSource',
   'playing.action.networking.choosingDoubleLinkBeer',
 ]
 
-const IRON_STEPS = [
+export const IRON_STEPS = [
   'playing.action.building.choosingIronSource',
   'playing.action.developing.choosingIronSource',
 ]
 
-const COAL_STEPS = [
+export const COAL_STEPS = [
   'playing.action.building.choosingCoalSource',
   'playing.action.networking.choosingLinkCoal',
   'playing.action.networking.choosingDoubleLinkCoal',

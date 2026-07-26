@@ -593,7 +593,14 @@ What this means in practice:
   matrix and fails on skew or unequal axes). Its ink bounds are hard-coded
   (`BARREL_INK`) because the board renders server-side where there is no
   `getBBox`; the same spec measures the live path so vendored icon data cannot
-  drift away from them. (1b) ANY SEPARATION MUST BE WORTH A SCREEN PIXEL: the
+  drift away from them. (1a) A ROUND WELL IS FITTED BY RADIUS, NOT BY AXES. The
+  cask's silhouette nearly fills its own box, so its corners reach ~20% further
+  from centre than its half-width or half-height — an "is the height inside the
+  rim" check passes while the art overruns the ring at four points and the well
+  stops reading as one. `BARREL_INK_R` is that silhouette radius, sampled with
+  `isPointInFill` off the live path (the e2e spec re-samples it), and
+  `BARREL_RIM_CLEARANCE` is what is left over inside the rim's inner face.
+  (1b) ANY SEPARATION MUST BE WORTH A SCREEN PIXEL: the
   air above the socket row is 7 board units = 1.55 CSS px on a phone. Two units
   — the intuitive "small gap" — is 0.44 px and reads as nothing at all.
   (2) A merchant plate grows UPWARD from a bottom edge half a tile-row

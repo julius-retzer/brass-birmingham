@@ -8,6 +8,7 @@
  * all, and a barrel spent on a sale.
  */
 import { type Page, expect, test } from '@playwright/test'
+import { BARREL_INK_R } from '../src/components/board/merchant-beer'
 
 function sockets(page: Page, city: string, state?: 'ready' | 'spent') {
   const sel = state ? `[data-beer="${state}"]` : '[data-beer]'
@@ -77,7 +78,8 @@ test('the barrel glyph sits centred in its socket, clear of the rim', async ({
     .evaluate((g) => {
       const socket = g.querySelector('circle')!
       const art = g.querySelector('g') as SVGGElement
-      const ink = (art.querySelector('path') as SVGPathElement).getBBox()
+      const path = art.querySelector('path') as SVGPathElement
+      const ink = path.getBBox()
       // getBBox is in the element's own space, so walk the art group's matrix
       // to land the ink bounds in the socket's coordinates.
       const m = art.transform.baseVal.consolidate()!.matrix
@@ -89,12 +91,30 @@ test('the barrel glyph sits centred in its socket, clear of the rim', async ({
           y: m.b * x + m.d * y + m.f,
         })),
       )
+      // The socket is round, so what has to fit is the silhouette's own radius,
+      // not its width and height. Sample the fill for the furthest inked point
+      // from the centre of the bounds the transform centres on the socket.
+      const cx = ink.x + ink.width / 2
+      const cy = ink.y + ink.height / 2
+      const probe = (g as SVGGElement).ownerSVGElement!.createSVGPoint()
+      const N = 160
+      let inkR = 0
+      for (let i = 0; i <= N; i++) {
+        for (let j = 0; j <= N; j++) {
+          probe.x = ink.x + (ink.width * i) / N
+          probe.y = ink.y + (ink.height * j) / N
+          if (!path.isPointInFill(probe)) continue
+          inkR = Math.max(inkR, Math.hypot(probe.x - cx, probe.y - cy))
+        }
+      }
       return {
         r: Number(socket.getAttribute('r')),
+        stroke: Number(socket.getAttribute('stroke-width')),
         a: m.a,
         b: m.b,
         c: m.c,
         d: m.d,
+        inkR,
         left: Math.min(...pts.map((p) => p.x)),
         right: Math.max(...pts.map((p) => p.x)),
         top: Math.min(...pts.map((p) => p.y)),
@@ -111,11 +131,20 @@ test('the barrel glyph sits centred in its socket, clear of the rim', async ({
   const w = fit.right - fit.left
   const h = fit.bottom - fit.top
   expect(w).toBeGreaterThan(0)
-  // Centred on the socket origin, and inside its rim on both axes.
+  // Centred on the socket origin.
   expect(Math.abs(fit.left + w / 2)).toBeLessThan(0.6)
   expect(Math.abs(fit.top + h / 2)).toBeLessThan(0.6)
-  expect(w / 2).toBeLessThan(fit.r - 1)
-  expect(h / 2).toBeLessThan(fit.r - 1)
+
+  // The hard-coded silhouette radius the geometry is sized from, measured off
+  // the live path so replacing the vendored icon cannot quietly let the barrel
+  // overrun the well again.
+  expect(fit.inkR).toBeGreaterThan(BARREL_INK_R - 3)
+  expect(fit.inkR).toBeLessThan(BARREL_INK_R + 1)
+
+  // Every inked point sits inside the rim's inner face, with a ring of well to
+  // spare, so the socket contains the barrel rather than being covered by it.
+  const placedR = fit.inkR * fit.a
+  expect(placedR).toBeLessThan(fit.r - fit.stroke / 2 - 1.8)
 })
 
 // merchant-beer.test.ts sizes the barrel in board units against these two

@@ -35,6 +35,7 @@ import {
   BEER_SOCKET_CX,
   BEER_SOCKET_CY,
   BEER_SOCKET_R,
+  BEER_SOCKET_STROKE,
   barrelTransform,
   merchantIconCells,
 } from './merchant-beer'
@@ -1698,7 +1699,7 @@ function MerchantBeerSocket({ hasBeer }: { hasBeer: boolean }) {
         fillOpacity={hasBeer ? 0.95 : 0.7}
         stroke="#c39538"
         strokeOpacity={hasBeer ? 0.6 : 0.3}
-        strokeWidth="1.2"
+        strokeWidth={BEER_SOCKET_STROKE}
         strokeDasharray={hasBeer ? undefined : '3 3'}
       />
       {hasBeer && (

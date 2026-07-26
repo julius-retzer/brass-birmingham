@@ -9,12 +9,15 @@ import {
   BARREL_H,
   BARREL_ICON,
   BARREL_INK,
+  BARREL_INK_R,
+  BARREL_RIM_CLEARANCE,
   BARREL_SCALE,
   BARREL_W,
   BEER_ROW_GAP,
   BEER_SOCKET_CX,
   BEER_SOCKET_CY,
   BEER_SOCKET_D,
+  BEER_SOCKET_INNER_R,
   BEER_SOCKET_R,
   ICON_SIZE_GRID,
   ICON_SIZE_SINGLE,
@@ -46,9 +49,16 @@ describe('beer socket', () => {
     )
   })
 
-  it('holds the barrel clear of its rim', () => {
-    expect(BARREL_W / 2).toBeLessThan(BEER_SOCKET_R)
-    expect(BARREL_H / 2).toBeLessThan(BEER_SOCKET_R)
+  it('holds the whole barrel silhouette clear of its rim', () => {
+    // The socket is ROUND, so fitting the cask's width and height inside the rim
+    // proves nothing: its corners reach a fifth further out than either axis and
+    // that is where it overran. Measure the silhouette's own radius.
+    expect(BARREL_INK_R * BARREL_SCALE).toBeLessThan(BEER_SOCKET_INNER_R)
+    // And leave enough dark well showing that the containment is obvious rather
+    // than tangent.
+    expect(BARREL_RIM_CLEARANCE).toBeGreaterThan(1.8)
+    expect(BARREL_W / 2).toBeLessThan(BEER_SOCKET_INNER_R)
+    expect(BARREL_H / 2).toBeLessThan(BEER_SOCKET_INNER_R)
   })
 
   it('never crosses into the neighbouring slot', () => {
@@ -95,12 +105,17 @@ describe('barrel', () => {
   })
 
   it('keeps a legible bright mass at phone scale', () => {
-    // A socket of its own puts the whole barrel on a clear patch of plate, so
-    // both axes survive the reduction rather than just the longer one.
-    expect(BARREL_W * PHONE_SCALE).toBeGreaterThan(4.5)
-    expect(BARREL_H * PHONE_SCALE).toBeGreaterThan(5)
-    // And at desk scale there is room for the cask shape to read.
-    expect(BARREL_H * DESKTOP_SCALE).toBeGreaterThan(11)
+    // At 390px the socket is barely 6px across, so nothing cask-shaped can read
+    // there at any size that fits inside it — what carries is the amber mass
+    // against the dark well. Hold that mass above the point where antialiasing
+    // dissolves it into the rim.
+    expect(BARREL_W * PHONE_SCALE).toBeGreaterThan(3.5)
+    expect(BARREL_H * PHONE_SCALE).toBeGreaterThan(4.5)
+    // At desk scale the cask shape itself has room to read.
+    expect(BARREL_H * DESKTOP_SCALE).toBeGreaterThan(10)
+    // Whatever the size, the barrel is the majority of the well it stands in —
+    // a token rattling around inside the rim reads as debris, not as stock.
+    expect(BARREL_H / BEER_SOCKET_D).toBeGreaterThan(0.65)
   })
 })
 

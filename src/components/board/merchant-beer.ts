@@ -24,6 +24,10 @@ export const BEER_ROW_GAP = 7
 /** Diameter of the recessed socket a merchant's barrel rests in. */
 export const BEER_SOCKET_D = MERCHANT_BEER_ROW_H - BEER_ROW_GAP
 export const BEER_SOCKET_R = BEER_SOCKET_D / 2
+/** Width of the socket's brass rim, centred on `BEER_SOCKET_R`. */
+export const BEER_SOCKET_STROKE = 1.2
+/** Inside face of that rim — the circle the barrel has to stay within. */
+export const BEER_SOCKET_INNER_R = BEER_SOCKET_R - BEER_SOCKET_STROKE / 2
 /** Socket centre in slot-local units — under the middle of its own tile. */
 export const BEER_SOCKET_CX = SLOT / 2
 export const BEER_SOCKET_CY = SLOT + BEER_ROW_GAP + BEER_SOCKET_R
@@ -88,11 +92,28 @@ export const BARREL_ICON = GAME_ICONS.brewery
  */
 export const BARREL_INK = { x: 73, y: 41, w: 366.02, h: 433.94 }
 
-/** Height of the placed barrel, in board units. */
-export const BARREL_H = 25
+/**
+ * Furthest the glyph's ink reaches from the centre of those bounds, in the same
+ * 512-unit space. This — not the ink's width or height — is what has to fit a
+ * ROUND socket: the cask's silhouette very nearly fills its box, so its corners
+ * sit a fifth further out than either axis and an axis-only fit lets them
+ * overrun the rim. Sampled off the live path, and re-measured by
+ * `e2e/merchant-beer.spec`.
+ */
+export const BARREL_INK_R = 245.06
+
+/**
+ * Height of the placed barrel, in board units: as large as the socket can hold
+ * with a ring of well still showing all the way round. Sized up from here the
+ * silhouette eats the rim and the well stops reading as one.
+ */
+export const BARREL_H = 21
 /** The ONLY scale factor applied to the art, and it drives both axes. */
 export const BARREL_SCALE = BARREL_H / BARREL_INK.h
 export const BARREL_W = BARREL_INK.w * BARREL_SCALE
+/** Board units of dark well left between the cask's silhouette and the rim. */
+export const BARREL_RIM_CLEARANCE =
+  BEER_SOCKET_INNER_R - BARREL_INK_R * BARREL_SCALE
 
 /**
  * Places the glyph's ink centred on the socket. One `scale` argument by

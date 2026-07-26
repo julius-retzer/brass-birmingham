@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { type CityId, connections } from '~/data/board'
-import { linkKey } from './board-data'
+import { type CityId, cities, connections } from '~/data/board'
+import { VIEW_H, VIEW_W, linkKey } from './board-data'
 import {
   type Rect,
   linkMarkerAnchor,
@@ -21,6 +21,32 @@ function occludedBy(from: CityId, to: CityId, at: { x: number; y: number }) {
   const box = markerBoxAt(at)
   return plateObstacles().filter((r) => overlaps(box, r)).length
 }
+
+describe('plate boxes', () => {
+  const ids = Object.keys(cities) as CityId[]
+
+  it('all sit inside the board viewBox', () => {
+    // Anything past the edges is simply not drawn, and merchant plates reach
+    // further from their city point than city plates do.
+    for (const id of ids) {
+      const r = plateRect(id)
+      expect(r.x, id).toBeGreaterThanOrEqual(0)
+      expect(r.y, id).toBeGreaterThanOrEqual(0)
+      expect(r.x + r.w, id).toBeLessThanOrEqual(VIEW_W)
+      expect(r.y + r.h, id).toBeLessThanOrEqual(VIEW_H)
+    }
+  })
+
+  it('never overlap each other', () => {
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const a = plateRect(ids[i]!)
+        const b = plateRect(ids[j]!)
+        expect(overlaps(a, b), `${ids[i]} / ${ids[j]}`).toBe(false)
+      }
+    }
+  })
+})
 
 // The bug the captain hit: the boat on the Stoke—Stone canal sat under the
 // Stoke plate and its name ribbon.

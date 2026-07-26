@@ -1,8 +1,10 @@
 import { type Config } from 'tailwindcss'
-import { fontFamily } from 'tailwindcss/defaultTheme'
+import defaultTheme from 'tailwindcss/defaultTheme'
+
+const { fontFamily } = defaultTheme
 
 export default {
-  darkMode: ['class'],
+  darkMode: ['class', '.dark'],
   content: ['./src/**/*.tsx'],
   theme: {
     extend: {

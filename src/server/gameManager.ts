@@ -1,9 +1,10 @@
 import { createActor } from 'xstate'
-import { gameStore, type GameEvent, type Player } from '../store/gameStore'
+import { gameStore, type GameEvent, type Player, type GameState } from '../store/gameStore'
 import { getInitialPlayerIndustryTilesWithQuantities } from '../data/industryTiles'
 import { db } from './db'
 import { games } from './db/schema'
 import { eq } from 'drizzle-orm'
+import { filterGameStateForPlayer, type FilteredGameState } from './stateFilter'
 
 // Type for persisted snapshot (JSON-serializable data from getPersistedSnapshot())
 interface PersistedGameSnapshot {
@@ -106,16 +107,32 @@ export class GameManager {
     }
   }
   
-  async getGameState(gameId: string): Promise<PersistedGameSnapshot | null> {
+  async getGameState(gameId: string, playerIndex?: number): Promise<PersistedGameSnapshot | null> {
     try {
-      // Return only the persisted snapshot (JSON-serializable) for client components
+      // Get the persisted snapshot from database
       const [game] = await db.select().from(games).where(eq(games.id, gameId))
       if (!game) {
         return null
       }
       
-      // Return the persisted snapshot directly from database
-      return JSON.parse(game.state)
+      const persistedSnapshot = JSON.parse(game.state)
+      
+      // If no player index provided, return full state (for admin/testing purposes)
+      if (playerIndex === undefined) {
+        return persistedSnapshot
+      }
+      
+      // Extract the game state from the persisted snapshot
+      const gameState = persistedSnapshot.context as GameState
+      
+      // Filter the state for the requesting player (convert to 0-based index)
+      const filteredGameState = filterGameStateForPlayer(gameState, playerIndex - 1)
+      
+      // Return the filtered state in the same persisted snapshot structure
+      return {
+        ...persistedSnapshot,
+        context: filteredGameState
+      }
     } catch (error) {
       console.error('Error getting game state:', error)
       return null

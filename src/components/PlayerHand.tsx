@@ -1,6 +1,7 @@
 import { type Card } from '../data/cards'
 import { cn } from '../lib/utils'
 import { type Player } from '../store/gameStore'
+import { type FilteredPlayer } from '../server/stateFilter'
 import { GameCard } from './GameCard'
 import { Badge } from './ui/badge'
 import { CardContent, CardHeader, CardTitle, Card as CardUI } from './ui/card'
@@ -12,7 +13,7 @@ import {
 } from './ui/tooltip'
 
 interface PlayerHandProps {
-  player: Player
+  player: Player | FilteredPlayer
   selectedCard?: Card | null
   selectedCards?: Card[]
   onCardSelect?: (card: Card) => void
@@ -28,6 +29,11 @@ export function PlayerHand({
   currentAction,
   currentSubState,
 }: PlayerHandProps) {
+  // Check if this is a filtered player (opponent) without hand details
+  const isFilteredPlayer = !('hand' in player) || player.hand === undefined
+  const handCount = 'handCount' in player ? player.handCount : player.hand?.length || 0
+  const playerHand = !isFilteredPlayer && player.hand ? player.hand : []
+
   const isCardSelected = (card: Card) => {
     if (selectedCards) {
       return selectedCards.some((sc) => sc.id === card.id)
@@ -63,41 +69,53 @@ export function PlayerHand({
     <CardUI
       className={cn(
         'transition-colors duration-200',
-        onCardSelect ? 'border-primary' : 'border-muted',
+        onCardSelect && !isFilteredPlayer ? 'border-primary' : 'border-muted',
       )}
     >
       <CardHeader>
         <div className="flex items-center gap-2">
-          <CardTitle>Hand ({player.hand.length} cards)</CardTitle>
-          {onCardSelect && (
+          <CardTitle>Hand ({handCount} cards)</CardTitle>
+          {onCardSelect && !isFilteredPlayer && (
             <Badge variant="default">
               {currentAction ? currentSubState : 'Select card'}
+            </Badge>
+          )}
+          {isFilteredPlayer && (
+            <Badge variant="secondary">
+              Hidden (opponent)
             </Badge>
           )}
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <TooltipProvider>
-            {player.hand.map((card) => (
-              <Tooltip key={card.id}>
-                <TooltipTrigger asChild>
-                  <div>
-                    <GameCard
-                      card={card}
-                      isSelected={isCardSelected(card)}
-                      onClick={() => onCardSelect?.(card)}
-                      disabled={!onCardSelect}
-                    />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{getCardTooltip(card)}</p>
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </TooltipProvider>
-        </div>
+        {isFilteredPlayer ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>Opponent's hand is hidden</p>
+            <p className="text-sm">Cards: {handCount}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <TooltipProvider>
+              {playerHand.map((card) => (
+                <Tooltip key={card.id}>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <GameCard
+                        card={card}
+                        isSelected={isCardSelected(card)}
+                        onClick={() => onCardSelect?.(card)}
+                        disabled={!onCardSelect}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{getCardTooltip(card)}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </TooltipProvider>
+          </div>
+        )}
       </CardContent>
     </CardUI>
   )

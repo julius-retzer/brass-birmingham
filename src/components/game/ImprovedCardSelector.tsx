@@ -2,7 +2,9 @@
 
 import { Search, MapPin, Factory, Shuffle, Eye } from 'lucide-react'
 import React from 'react'
-import { type Card, type IndustryCard, type LocationCard, type WildCard, type IndustryType } from '~/data/cards'
+import { type Card, type IndustryCard, type LocationCard, type WildLocationCard, type WildIndustryCard, type IndustryType } from '~/data/cards'
+
+type WildCard = WildLocationCard | WildIndustryCard
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs'
@@ -82,7 +84,7 @@ const getCardIcon = (card: Card) => {
     case 'wild_location':
       return '📍'
     case 'industry':
-      return getIndustryIcon((card as IndustryCard).industries[0])
+      return getIndustryIcon((card as IndustryCard).industries[0]!)
     case 'wild_industry':
       return '🏭'
     default:
@@ -251,7 +253,7 @@ export function ImprovedCardSelector({
         const cardName = card.type === 'location' || card.type === 'wild_location' 
           ? (card as LocationCard).location.toLowerCase()
           : card.type === 'industry'
-          ? (card as IndustryCard).industries[0].toLowerCase()
+          ? ((card as IndustryCard).industries[0] ?? '').toLowerCase()
           : card.type.toLowerCase()
         
         if (!cardName.includes(searchLower)) return false

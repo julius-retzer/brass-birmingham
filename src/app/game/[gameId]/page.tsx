@@ -13,7 +13,8 @@ export default async function GamePage({
   const { gameId } = await params
   const { player, name } = await searchParams
   
-  const gameState = await gameManager.getGameState(gameId)
+  const playerIndex = parseInt(player || '1') as 1 | 2
+  const gameState = await gameManager.getGameState(gameId, playerIndex)
   
   if (!gameState) {
     notFound()
@@ -23,7 +24,6 @@ export default async function GamePage({
   // No need to re-serialize, just pass it directly
   const persistedSnapshot = gameState
   
-  const playerIndex = parseInt(player || '1') as 1 | 2
   const playerName = name
   
   // Get game info to check if player 2 has joined

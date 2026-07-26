@@ -31,7 +31,7 @@ import { ScrollArea } from '../ui/scroll-area'
 import { Separator } from '../ui/separator'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '../ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
-import { Toggle, ToggleGroup, ToggleGroupItem } from '../ui/toggle-group'
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group'
 
 interface ActionSelectorProps {
   player: Player
@@ -226,7 +226,7 @@ export function ImprovedCardSelector({
   selectedCards = [],
 }: CardSelectorProps) {
   const getCardGroups = () => {
-    const groups: Record<string, Card[]> = {
+    const groups: { location: Card[]; industry: Card[]; wild: Card[] } = {
       location: [],
       industry: [],
       wild: [],

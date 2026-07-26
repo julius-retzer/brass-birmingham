@@ -6,6 +6,7 @@ import { useGamePolling } from '~/hooks/useGamePolling'
 import { ImprovedGameInterface } from './game/ImprovedGameInterface'
 import type { GameStoreSnapshot, GameEvent } from '~/store/gameStore'
 import { gameStore } from '~/store/gameStore'
+import { reconstructGameStateFromFiltered, type FilteredGameState } from '~/server/stateFilter'
 import { createActor } from 'xstate'
 import { Alert, AlertDescription } from './ui/alert'
 import { Badge } from './ui/badge'
@@ -53,9 +54,23 @@ export function GameInterface({ gameState, gameId, playerIndex, playerName }: Ga
   // Recreate XState actor from persisted snapshot for full compatibility
   const liveSnapshot = useMemo(() => {
     try {
-      // Create a new actor and restore it from the persisted snapshot
+      // Check if this is a filtered state and reconstruct it if necessary
+      const contextData = gameState.context as any
+      let snapshotToUse = gameState
+      
+      // If this looks like a filtered state (has handCount property on players), reconstruct it
+      if (contextData.players?.[0]?.handCount !== undefined) {
+        const filteredContext = contextData as FilteredGameState
+        const reconstructedContext = reconstructGameStateFromFiltered(filteredContext, playerIndex - 1)
+        snapshotToUse = {
+          ...gameState,
+          context: reconstructedContext
+        }
+      }
+      
+      // Create a new actor and restore it from the (possibly reconstructed) snapshot
       const actor = createActor(gameStore, {
-        snapshot: gameState
+        snapshot: snapshotToUse as any // Type assertion needed for XState compatibility
       })
       
       actor.start()
@@ -74,11 +89,11 @@ export function GameInterface({ gameState, gameId, playerIndex, playerName }: Ga
         can: () => true,
         hasTag: () => false,
         toStrings: () => ['unknown']
-      } as GameStoreSnapshot
+      } as unknown as GameStoreSnapshot
       
       return fallback
     }
-  }, [gameState])
+  }, [gameState, playerIndex])
   
   const handleEvent = (event: GameEvent) => {
     startTransition(async () => {
@@ -158,10 +173,15 @@ export function GameInterface({ gameState, gameId, playerIndex, playerName }: Ga
   const opponentPlayer = players[playerIndex === 1 ? 1 : 0]
 
   // Detect era transition conditions (like home page)
+  // Note: With filtered state, we need to check handCount for opponents
   const isEraEnd =
     era === 'canal' &&
     liveSnapshot.context.drawPile.length === 0 &&
-    players.every((player) => player.hand.length === 0)
+    players.every((player) => {
+      // For filtered players, use handCount; for regular players, use hand.length
+      const handCount = 'handCount' in player ? player.handCount : player.hand?.length || 0
+      return handCount === 0
+    })
 
   const shouldShowEraTransition = isEraEnd
 

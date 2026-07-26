@@ -14,7 +14,7 @@ export function useGameNotifications() {
       loan: '🏦 Loan Taken'
     }
     
-    toast.success(actionNames[actionType] || 'Action Complete', {
+    toast.success(actionNames[actionType as keyof typeof actionNames] || 'Action Complete', {
       description: details,
       icon: <CheckCircle className="h-4 w-4" />
     })
@@ -42,7 +42,7 @@ export function useGameNotifications() {
     
     toast.info(`${action} ${resource}`, {
       description: `${sign}${amount} ${resource}`,
-      icon: resourceIcons[resource] || <Info className="h-4 w-4" />
+      icon: resourceIcons[resource as keyof typeof resourceIcons] || <Info className="h-4 w-4" />
     })
   }
 

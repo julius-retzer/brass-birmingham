@@ -100,7 +100,7 @@ export function ImprovedResourceDashboard({
       id: 'player',
       title: 'Player Status',
       icon: Users,
-      isOpen: sections.player,
+      isOpen: sections.player ?? true,
       hasUpdates: false,
       urgency: currentPlayer.money < 10 ? 'high' : 'low'
     },
@@ -108,7 +108,7 @@ export function ImprovedResourceDashboard({
       id: 'resources',
       title: 'Market Resources',
       icon: Factory,
-      isOpen: sections.resources,
+      isOpen: sections.resources ?? true,
       hasUpdates: false,
       urgency: Math.min(coalPercentage, ironPercentage, beerPercentage) < 30 ? 'high' : 'low'
     },
@@ -116,7 +116,7 @@ export function ImprovedResourceDashboard({
       id: 'markets',
       title: 'Markets',
       icon: TrendingUp,
-      isOpen: sections.markets,
+      isOpen: sections.markets ?? false,
       hasUpdates: coalMarket.length > 0 || ironMarket.length > 0,
       urgency: 'medium'
     },
@@ -124,7 +124,7 @@ export function ImprovedResourceDashboard({
       id: 'merchants',
       title: `Merchants (${merchants.length})`,
       icon: Coins,
-      isOpen: sections.merchants,
+      isOpen: sections.merchants ?? false,
       hasUpdates: merchants.length > 0,
       urgency: merchants.length > 0 ? 'medium' : 'low'
     },
@@ -132,7 +132,7 @@ export function ImprovedResourceDashboard({
       id: 'game',
       title: 'Game Info',
       icon: Settings,
-      isOpen: sections.game,
+      isOpen: sections.game ?? false,
       hasUpdates: false,
       urgency: 'low'
     }
@@ -332,9 +332,9 @@ export function ImprovedResourceDashboard({
                       <div className="text-sm font-medium mb-2">Coal Market</div>
                       {coalMarket.length > 0 ? (
                         <div className="grid grid-cols-2 gap-1">
-                          {coalMarket.map((price, index) => (
+                          {coalMarket.map((slot, index) => (
                             <Badge key={index} variant="outline" className="text-xs">
-                              £{price}
+                              £{slot.price}
                             </Badge>
                           ))}
                         </div>
@@ -347,9 +347,9 @@ export function ImprovedResourceDashboard({
                       <div className="text-sm font-medium mb-2">Iron Market</div>
                       {ironMarket.length > 0 ? (
                         <div className="grid grid-cols-2 gap-1">
-                          {ironMarket.map((price, index) => (
+                          {ironMarket.map((slot, index) => (
                             <Badge key={index} variant="outline" className="text-xs">
-                              £{price}
+                              £{slot.price}
                             </Badge>
                           ))}
                         </div>

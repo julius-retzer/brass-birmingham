@@ -14,7 +14,6 @@ Use ref tool to read Vitest docs
 When I write command "init" you will:
 - Read ai-docs folder
 - Use ref tool to read Xstate docs
-- Use ref tool to read Vitest docs
 - Read gameStore.ts and its tests
 
 ## Project Overview

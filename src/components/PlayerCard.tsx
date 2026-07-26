@@ -8,14 +8,17 @@ import {
 } from 'lucide-react'
 import { cities } from '../data/board'
 import { type Player } from '../store/gameStore'
+import { type FilteredPlayer } from '../server/stateFilter'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 
 interface PlayerCardProps {
-  player: Player
+  player: Player | FilteredPlayer
   isCurrentPlayer: boolean
 }
 
 export function PlayerCard({ player, isCurrentPlayer }: PlayerCardProps) {
+  // Get hand count - for filtered players, use handCount; for regular players, use hand.length
+  const handCount = 'handCount' in player ? player.handCount : player.hand?.length || 0
   return (
     <Card className={isCurrentPlayer ? 'ring-2 ring-primary bg-primary/5' : ''}>
       <CardHeader>
@@ -62,7 +65,7 @@ export function PlayerCard({ player, isCurrentPlayer }: PlayerCardProps) {
           <h4 className="text-sm font-medium mb-2">Cards</h4>
           <div className="flex items-center gap-2">
             <ScrollText className="h-4 w-4" />
-            <span className="text-sm">Hand: {player.hand.length}</span>
+            <span className="text-sm">Hand: {handCount}</span>
           </div>
         </div>
 

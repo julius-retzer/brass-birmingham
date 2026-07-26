@@ -1,6 +1,6 @@
 // Simple test to check database connection
-import { db } from './src/server/db/index.ts'
-import { games } from './src/server/db/schema.ts'
+import { db } from './src/server/db/index.js'
+import { games } from './src/server/db/schema.js'
 
 async function testDB() {
   try {

@@ -14,7 +14,7 @@ export default async function GameCreatedPage({
     notFound()
   }
   
-  const player1Name = gameState.context.players[0]?.name || 'Player 1'
+  const player1Name = (gameState.context as any)?.players?.[0]?.name || 'Player 1'
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">

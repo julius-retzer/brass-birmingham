@@ -4,6 +4,10 @@ import { createActor } from 'xstate'
 import { gameStore } from './gameStore'
 import type { Card } from '../data/cards'
 
+// Helper: xstate v5.28 matches() types don't accept dot-notation strings directly
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const matchesState = (snapshot: any, state: string): boolean => snapshot.matches(state)
+
 let activeActors: ReturnType<typeof createActor>[] = []
 
 afterEach(() => {
@@ -55,7 +59,7 @@ describe('Game Store - Pass Action', () => {
     s = actor.getSnapshot()
     
     // Should be in passing.selectingCard state
-    expect(s.matches('playing.action.passing.selectingCard')).toBe(true)
+    expect(matchesState(s,'playing.action.passing.selectingCard')).toBe(true)
     expect(s.context.selectedCard).toBe(null)
   })
 
@@ -75,7 +79,7 @@ describe('Game Store - Pass Action', () => {
     s = actor.getSnapshot()
     
     // Should be in confirmingPass state with card selected
-    expect(s.matches('playing.action.passing.confirmingPass')).toBe(true)
+    expect(matchesState(s,'playing.action.passing.confirmingPass')).toBe(true)
     expect(s.context.selectedCard?.id).toBe(cardToDiscard.id)
   })
 
@@ -112,7 +116,7 @@ describe('Game Store - Pass Action', () => {
     expect(s.context.actionsRemaining).toBe(1) // Next player's turn in first round
     
     // Should be back to action selection for next player
-    expect(s.matches('playing.action.selectingAction')).toBe(true)
+    expect(matchesState(s,'playing.action.selectingAction')).toBe(true)
   })
 
   test('pass action can be cancelled from card selection', () => {
@@ -122,14 +126,14 @@ describe('Game Store - Pass Action', () => {
     // Start pass action
     actor.send({ type: 'PASS' })
     s = actor.getSnapshot()
-    expect(s.matches('playing.action.passing.selectingCard')).toBe(true)
+    expect(matchesState(s,'playing.action.passing.selectingCard')).toBe(true)
     
     // Cancel pass action
     actor.send({ type: 'CANCEL' })
     s = actor.getSnapshot()
     
     // Should return to selecting action
-    expect(s.matches('playing.action.selectingAction')).toBe(true)
+    expect(matchesState(s,'playing.action.selectingAction')).toBe(true)
     expect(s.context.selectedCard).toBe(null)
   })
 
@@ -143,14 +147,14 @@ describe('Game Store - Pass Action', () => {
     actor.send({ type: 'PASS' })
     actor.send({ type: 'SELECT_CARD', cardId: cardToDiscard.id })
     s = actor.getSnapshot()
-    expect(s.matches('playing.action.passing.confirmingPass')).toBe(true)
+    expect(matchesState(s,'playing.action.passing.confirmingPass')).toBe(true)
     
     // Cancel from confirmation
     actor.send({ type: 'CANCEL' })
     s = actor.getSnapshot()
     
     // Should return to card selection
-    expect(s.matches('playing.action.passing.selectingCard')).toBe(true)
+    expect(matchesState(s,'playing.action.passing.selectingCard')).toBe(true)
     expect(s.context.selectedCard).toBe(null)
   })
 

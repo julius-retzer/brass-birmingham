@@ -886,6 +886,16 @@ What this means in practice:
   `POST /api/mp/create` refuses (403) any request for AI opponent seats —
   the server check exists so a client bypassing the hidden UI still can't
   create AI seats in prod. Flip the one function to re-enable.
+- THE CHARTER LEARNS THAT FLAG FROM THE SERVER RENDER, NEVER A FETCH
+  (2026-07-24): `aiOpponentsAvailableFromEnv()` runs in `src/app/page.tsx`
+  (`dynamic = 'force-dynamic'`, so the answer is per-request rather than frozen
+  at build) and is threaded to `SetupScreen` as a prop. A post-hydration fetch
+  for it costs a real bug: the answer inserts a third mode button, reflowing the
+  row from 2 to 3 columns AFTER it is tappable, so a phone tap aimed at "One
+  device" lands on "Versus AI" (that is what broke `hand-tray.spec.ts` on CI).
+  Anything the charter's layout depends on must arrive with the page — pinned by
+  `e2e/charter-layout.spec.ts`, which holds every API answer, measures the mode
+  row, releases them and requires the geometry to be identical.
 
 ## CI (GitHub Actions, Neon-per-run added 2026-07-15)
 

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { aiOpponentsAvailable, aiOpponentsEnabled } from './features'
+import {
+  aiOpponentsAvailable,
+  aiOpponentsAvailableFromEnv,
+  aiOpponentsEnabled,
+} from './features'
 
 describe('aiOpponentsEnabled', () => {
   it('is disabled in production', () => {
@@ -50,5 +54,35 @@ describe('aiOpponentsAvailable', () => {
         mock: true,
       }),
     ).toBe(false)
+  })
+})
+
+describe('aiOpponentsAvailableFromEnv', () => {
+  it('reads a key from the environment', () => {
+    expect(aiOpponentsAvailableFromEnv({ ANTHROPIC_API_KEY: 'sk-test' })).toBe(
+      true,
+    )
+  })
+
+  it('accepts the offline mock instead of a key', () => {
+    expect(aiOpponentsAvailableFromEnv({ BB_AI_MOCK: '1' })).toBe(true)
+  })
+
+  it('is unavailable with neither', () => {
+    expect(aiOpponentsAvailableFromEnv({})).toBe(false)
+  })
+
+  it('is unavailable in production even with a key and the mock', () => {
+    expect(
+      aiOpponentsAvailableFromEnv({
+        VERCEL_ENV: 'production',
+        ANTHROPIC_API_KEY: 'sk-test',
+        BB_AI_MOCK: '1',
+      }),
+    ).toBe(false)
+  })
+
+  it('treats any other BB_AI_MOCK value as off', () => {
+    expect(aiOpponentsAvailableFromEnv({ BB_AI_MOCK: 'true' })).toBe(false)
   })
 })

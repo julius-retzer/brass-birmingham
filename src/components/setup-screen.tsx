@@ -4,7 +4,7 @@
 // founding a company against server-driven AI opponents.
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { AI_TIERS, type AiTierId } from '~/server/ai/types'
 import { type Player } from '~/store/gameStore'
@@ -35,8 +35,18 @@ export type SetupPlayer = Omit<
 
 export function SetupScreen({
   onStart,
+  aiOpponentsAvailable = false,
 }: {
   onStart: (players: SetupPlayer[]) => void
+  /**
+   * Whether the server can actually seat AI rivals (needs an LLM key, or the
+   * offline mock, and not production). Handed down from the server render so
+   * the mode row's column count is final on the first paint: a flag that
+   * arrived later inserted a third button, and a tap aimed at "One device"
+   * landed on "Versus AI". The key value never crosses to the client, only
+   * this boolean does.
+   */
+  aiOpponentsAvailable?: boolean
 }) {
   const router = useRouter()
   // Default to opening an online table — most sessions here are networked, so
@@ -56,25 +66,6 @@ export function SetupScreen({
     'apprentice',
   ])
   const [creating, setCreating] = useState(false)
-  // Whether the server can actually seat AI rivals (needs an LLM key, or the
-  // offline mock, and not production). Default hidden until the server confirms
-  // — the key value never crosses to the client, only this boolean does.
-  const [aiEnabled, setAiEnabled] = useState(false)
-
-  useEffect(() => {
-    let alive = true
-    fetch('/api/mp/ai-available')
-      .then((res) => (res.ok ? res.json() : { available: false }))
-      .then((body: { available?: boolean }) => {
-        if (alive) setAiEnabled(!!body.available)
-      })
-      .catch(() => {
-        // Network hiccup fetching the flag → leave AI hidden (safe default).
-      })
-    return () => {
-      alive = false
-    }
-  }, [])
 
   const createOnline = async () => {
     setCreating(true)
@@ -148,7 +139,9 @@ export function SetupScreen({
 
         <div
           className={
-            aiEnabled ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-2 gap-2'
+            aiOpponentsAvailable
+              ? 'grid grid-cols-3 gap-2'
+              : 'grid grid-cols-2 gap-2'
           }
         >
           <button
@@ -173,7 +166,7 @@ export function SetupScreen({
               One device
             </span>
           </button>
-          {aiEnabled && (
+          {aiOpponentsAvailable && (
             <button
               type="button"
               className="bb2-option justify-center py-2"

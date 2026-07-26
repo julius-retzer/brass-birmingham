@@ -179,7 +179,12 @@ interface Boot {
   resumed: boolean
 }
 
-export function Game() {
+export function Game({
+  aiOpponentsAvailable = false,
+}: {
+  /** Whether the server can seat AI rivals — decided server-side, see page.tsx. */
+  aiOpponentsAvailable?: boolean
+}) {
   const [boot, setBoot] = useState<Boot | null>(null)
   const [generation, setGeneration] = useState(0)
   // Dev-only: wait for the Stately Inspector to attach before creating the
@@ -361,6 +366,7 @@ export function Game() {
     <SaveRecoveryBoundary onRecover={newGame}>
       <GameInner
         key={`${boot.kind}-${boot.resumed}-${generation}`}
+        aiOpponentsAvailable={aiOpponentsAvailable}
         boot={boot}
         inspect={inspect}
         onNewGame={newGame}
@@ -413,11 +419,13 @@ class SaveRecoveryBoundary extends Component<
 }
 
 function GameInner({
+  aiOpponentsAvailable,
   boot,
   inspect,
   onNewGame,
   onRestoreSnapshot,
 }: {
+  aiOpponentsAvailable: boolean
   boot: Boot
   inspect?: InspectFn
   onNewGame: () => void
@@ -807,6 +815,7 @@ function GameInner({
     return (
       <>
         <SetupScreen
+          aiOpponentsAvailable={aiOpponentsAvailable}
           onStart={(players) => {
             send({ type: 'START_GAME', players })
             setRevealedFor(players[0]?.id ?? null)

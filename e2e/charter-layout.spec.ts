@@ -19,6 +19,13 @@ test.describe('charter layout', () => {
       await new Promise<void>((resolve) => held.push(resolve))
       await route.continue()
     })
+    // Stubbed rather than passed through: the count line under the panel is the
+    // one held answer whose CONTENT changes what renders, and the suite's other
+    // specs are creating and finishing games in the same database.
+    await page.route('**/api/stats', async (route) => {
+      await new Promise<void>((resolve) => held.push(resolve))
+      await route.fulfill({ json: { activeGames: 3, activePlayers: 7 } })
+    })
 
     await page.goto('/?fresh=1')
     const local = page.getByTestId('mode-local')

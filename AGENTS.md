@@ -894,6 +894,16 @@ What this means in practice:
   `POST /api/mp/create` refuses (403) any request for AI opponent seats —
   the server check exists so a client bypassing the hidden UI still can't
   create AI seats in prod. Flip the one function to re-enable.
+- THE CHARTER LEARNS THAT FLAG FROM THE SERVER RENDER, NEVER A FETCH
+  (2026-07-24): `aiOpponentsAvailableFromEnv()` runs in `src/app/page.tsx`
+  (`dynamic = 'force-dynamic'`, so the answer is per-request rather than frozen
+  at build) and is threaded to `SetupScreen` as a prop. A post-hydration fetch
+  for it costs a real bug: the answer inserts a third mode button, reflowing the
+  row from 2 to 3 columns AFTER it is tappable, so a phone tap aimed at "One
+  device" lands on "Versus AI" (that is what broke `hand-tray.spec.ts` on CI).
+  Anything the charter's layout depends on must arrive with the page — pinned by
+  `e2e/charter-layout.spec.ts`, which holds every API answer, measures the mode
+  row, releases them and requires the geometry to be identical.
 
 ## CI (GitHub Actions, Neon-per-run added 2026-07-15)
 
@@ -1024,12 +1034,18 @@ When updating this file, preserve this bar for all agents and keep entries conci
   specs widen their per-expect timeout to 15s (`expect.configure`) and set
   long test timeouts — every assertion is a POST + SSE round trip against a
   network database; do NOT read a slow run as a product bug before checking
-  DB contention. GOTCHA for parallel checkouts: :3199 is shared and
-  `reuseExistingServer` is on locally, so a second run in another worktree
-  attaches to the FIRST run's dev server and every test after that run's
-  teardown dies on `ERR_CONNECTION_REFUSED` (dozens of ~150ms failures, all
-  `page.goto`). That is the port, not the product — run one suite at a time
-  per machine, or point `baseURL`/`webServer` at a free port for the run.
+  DB contention. GOTCHA, PORT :3199 IS SHARED BY EVERY WORKTREE:
+  `reuseExistingServer` is on locally, so a second concurrent checkout either
+  attaches to the FIRST run's dev server (silently testing THAT checkout's
+  code — green runs and screenshots alike, with no warning) or, if that first
+  server tears down mid-run, every subsequent test dies on
+  `ERR_CONNECTION_REFUSED` (dozens of ~150ms failures, all `page.goto`).
+  That is the port, not the product. `lsof -iTCP:3199 -sTCP:LISTEN` names the
+  owner's cwd. Run one suite at a time per machine, or verify your own tree
+  while a sibling is testing by running against a private port with a
+  throwaway config that spreads `playwright.config.ts` and overrides
+  `baseURL`, the `--port` in `webServer.command`, its `url`, and
+  `reuseExistingServer: false`.
 - `mp-playthrough.spec.ts` (2026-07-17) is the capstone: two real browsers
   play a scripted-but-adaptive canal opening through the UI — network, loan,
   scout, wild-card builds, a SELL that stops at the beer-source picker (own

@@ -18,3 +18,16 @@ export function aiOpponentsAvailable(opts: {
 }): boolean {
   return aiOpponentsEnabled(opts.vercelEnv) && (opts.hasKey || opts.mock)
 }
+
+// Server-side reader for the flag above. Lives here rather than alongside the
+// provider so a caller that only needs the boolean does not pull the LLM SDK
+// into its bundle; the env is injectable so it stays unit-testable.
+export function aiOpponentsAvailableFromEnv(
+  env: Record<string, string | undefined> = process.env,
+): boolean {
+  return aiOpponentsAvailable({
+    vercelEnv: env.VERCEL_ENV,
+    hasKey: !!env.ANTHROPIC_API_KEY,
+    mock: env.BB_AI_MOCK === '1',
+  })
+}

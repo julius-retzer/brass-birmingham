@@ -300,7 +300,8 @@ function LinkIcons({ n }: { n: number }) {
 // One slot in an industry track: a tile, or an empty placeholder for a
 // depleted level. Tapping/hovering a tile drives the docked readout. In
 // develop mode the ARMED tile (the one a pick would scrap) smoulders brass
-// and a tap peels it off; tapping any other tile explains why not.
+// and a tap peels it off; tapping any other tile explains why not. Exactly one
+// ring shows per tile — see `ringHue` below.
 function TrackSlot({
   entry,
   selected,
@@ -330,29 +331,39 @@ function TrackSlot({
     )
   }
   const { tile, count, next, barred } = entry
+  const armed = develop?.armed ?? false
+  // One ring per tile: the armed pulse steps aside on the tile the pointer is
+  // on, so two brass rings never stack on the same tile edge. In develop mode
+  // brass is reserved for "a pick scraps this one", so a look at any other
+  // tile rings in the survey teal the map uses for locating a place.
+  const ringHue = !develop || armed ? 'var(--bb-brass-bright)' : '#8fd8cd'
+  const ringGlow =
+    !develop || armed ? 'rgba(230,189,99,.4)' : 'rgba(143,216,205,.4)'
   return (
     <button
       type="button"
       data-testid={`mat-slot-${tile.id}`}
       data-depth={count}
-      data-develop-armed={develop?.armed || undefined}
+      data-develop-armed={armed || undefined}
       aria-pressed={selected}
       aria-label={
-        develop?.armed
+        armed
           ? `Scrap ${LABEL[tile.type]} ${ROMAN[tile.level] ?? tile.level}`
           : undefined
       }
       onClick={(e) => {
         onSelect()
         if (develop) {
-          if (develop.armed) develop.onPick(e.currentTarget)
+          if (armed) develop.onPick(e.currentTarget)
           else develop.onBlocked()
         }
       }}
       onMouseEnter={onSelect}
       onFocus={onSelect}
       className={`relative shrink-0 rounded-md transition-transform hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus:outline-none ${
-        develop?.armed ? 'bb2-develop-armed hover:-translate-y-1' : ''
+        armed
+          ? `hover:-translate-y-1 ${selected ? '' : 'bb2-develop-armed'}`
+          : ''
       }`}
       style={{ opacity: barred ? 0.42 : 1 }}
     >
@@ -372,8 +383,8 @@ function TrackSlot({
           className="pointer-events-none absolute rounded-lg"
           style={{
             inset: -3,
-            border: '1.5px solid var(--bb-brass-bright)',
-            boxShadow: '0 0 8px rgba(230,189,99,.4)',
+            border: `1.5px solid ${ringHue}`,
+            boxShadow: `0 0 8px ${ringGlow}`,
           }}
         />
       )}

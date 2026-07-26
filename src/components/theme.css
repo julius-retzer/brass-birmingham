@@ -565,8 +565,8 @@ button.bb2-card {
 /* The tray sizes cards by scaling the whole fan; the width compensates the
  * scale (100% / s) so the usable layout width stays the full viewport —
  * without it a phone tray would waste 28% of an already-narrow screen.
- * The scale lives on the tray root, not the box, so the step label
- * (.bb2-tray-label, a sibling of the fan) can anchor to the scaled band. */
+ * The scale lives on the tray root, not the box, so a sibling of the fan can
+ * anchor to the scaled band. */
 .bb2-handtray {
   --bb-hand-scale: 0.72;
 }
@@ -577,46 +577,6 @@ button.bb2-card {
   transform-origin: bottom center;
   transform: scale(var(--bb-hand-scale));
   width: calc(100% / var(--bb-hand-scale));
-}
-/* The tray's own step label, shown only while an action is in flight.
- * Absolutely positioned so it reserves no height — the fan never moves when
- * it appears or disappears (a hint that resized the tray would reintroduce
- * the jumping-hand regression PR #81 fixed).
- * It floats over whatever is beneath the fixed tray, so an idle label would
- * sit on a scrolling panel's heading for the whole turn; each surface
- * narrates its own idle state instead.
- * On phones it rides the top edge of the (scaled) card band, which overlays
- * the scrolling panel there, never the board. On desktop the band sits in
- * the board frame's bottom apron (the pb-[84px] strip the map never paints
- * into), so the label drops to the tray's bottom-left corner beside the
- * fan. It paints ABOVE the cards: a selected card keeps its lens for the
- * whole flow and would otherwise sit on the label for the whole flow too.
- * Click-transparent (the tray root is), so covering a card costs no tap. */
-.bb2-tray-label {
-  position: absolute;
-  z-index: 1;
-  left: 12px;
-  bottom: calc(150px * var(--bb-hand-scale) - 16px);
-  /* Every step's label fits a 390px phone at this width; a narrower cap
-   * ellipsised the Build and Scout steps mid-word. */
-  max-width: calc(100% - 24px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: 3px 8px;
-  border-radius: 3px;
-  border: 1px solid var(--bb-brass-hairline);
-  background: rgba(20, 16, 11, 0.88);
-  color: var(--bb-brass-bright);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-@media (min-width: 1024px) {
-  .bb2-tray-label {
-    bottom: 10px;
-  }
 }
 @media (min-width: 640px) {
   .bb2-handtray {
@@ -713,11 +673,65 @@ button.bb2-card {
   cursor: default;
 }
 
+/* The act tab on a peeked card: the poured brass of every other committing
+ * control in the game (.bb2-confirm), so it reads as "this plays it" at a
+ * glance, and the dark ghost treatment when the tap would put the card BACK.
+ * Rides inside the magnified visual's lower edge (actTabLayout) — geometry is
+ * inline, this is only the chrome. Click-transparent on purpose: it sits within
+ * the card's own hitbox, so the tap it invites lands on the card, and the card
+ * stays the single control (a button on a button is neither). */
+.bb2-card-act {
+  position: absolute;
+  left: 50%;
+  z-index: 4;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  padding: 0 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid #7a5c22;
+  background: linear-gradient(
+    180deg,
+    #ecc568 0%,
+    #c99b3f 45%,
+    #a87d2c 55%,
+    #c79e46 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 245, 210, 0.7), 0 6px 16px
+    rgba(0, 0, 0, 0.6);
+  color: #241a08;
+  font-family: var(--bb-display);
+  /* Type is in layout px too — the tray scales the whole fan down. */
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  white-space: nowrap;
+  animation: bb2-act-in 0.16s ease-out both;
+}
+.bb2-card-act[data-variant="back"] {
+  border-color: var(--bb-brass);
+  background: rgba(20, 16, 11, 0.94);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+  color: var(--bb-brass-bright);
+  font-size: 16px;
+}
+/* Opacity only: the tab's transform carries its placement, inline. */
+@keyframes bb2-act-in {
+  from {
+    opacity: 0;
+  }
+}
+
 /* Magnification is decorative; motion-sensitive players get the end state. */
 @media (prefers-reduced-motion: reduce) {
   .bb2-card-seat,
   .bb2-card-lens {
     transition: none;
+  }
+  .bb2-card-act {
+    animation: none;
   }
 }
 

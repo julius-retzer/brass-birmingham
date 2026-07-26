@@ -29,36 +29,61 @@ const wolverhampton: LocationCard = {
   color: 'other',
 }
 
+const dudley: LocationCard = {
+  id: 'loc-dudley-1',
+  type: 'location',
+  location: 'dudley',
+  color: 'other',
+}
+
+/** Every state the hand is live in, plus the two that end it. */
+const IN_FLOW = [
+  'playing.action.selectingAction',
+  'playing.action.cardSelected',
+  'playing.action.building.selectingCard',
+  'playing.action.building.selectingIndustryType',
+  'playing.action.building.selectingLocation',
+  'playing.action.building.confirmingBuild',
+  'playing.action.building.choosingIronSource',
+  'playing.action.networking.selectingCard',
+  'playing.action.networking.selectingLink',
+  'playing.action.networking.confirmingLink',
+  'playing.action.networking.choosingDoubleLinkBeer',
+  'playing.action.developing.selectingCard',
+  'playing.action.developing.selectingTiles',
+  'playing.action.selling.selectingCard',
+  'playing.action.selling.selectingSale',
+  'playing.action.selling.choosingBeerSource',
+  'playing.action.takingLoan.selectingCard',
+  'playing.action.scouting.selectingCards',
+]
+
 describe('getHandSelection — held card persists through the whole flow', () => {
-  test('card-first idle: hand live, but the tray says nothing', () => {
+  test('card-first idle: hand live, nothing lifted', () => {
     expect(getHandSelection(snap('playing.action.selectingAction'))).toEqual({
-      hint: null,
       selectedIds: [],
     })
   })
 
-  test('cardSelected: held card highlighted and named (put back / switch handled by machine)', () => {
-    const sel = getHandSelection(
-      snap('playing.action.cardSelected', { selectedCard: wolverhampton }),
-    )
-    expect(sel?.selectedIds).toEqual(['loc-wolverhampton-1'])
-    expect(sel?.hint).toBe('Holding Wolverhampton')
+  test('cardSelected: held card lifted (put back / switch handled by machine)', () => {
+    expect(
+      getHandSelection(
+        snap('playing.action.cardSelected', { selectedCard: wolverhampton }),
+      ),
+    ).toEqual({ selectedIds: ['loc-wolverhampton-1'] })
   })
 
-  test('deeper Network step keeps the card lifted and names it', () => {
+  test('deeper Network step keeps the card lifted', () => {
     expect(
       getHandSelection(
         snap('playing.action.networking.selectingLink', {
           selectedCard: wolverhampton,
         }),
       ),
-    ).toEqual({
-      hint: 'Holding Wolverhampton',
-      selectedIds: ['loc-wolverhampton-1'],
-    })
+    ).toEqual({ selectedIds: ['loc-wolverhampton-1'] })
   })
 
-  test('the indicator persists across every deeper step of a flow', () => {
+  test('the lift persists across every deeper step of a flow', () => {
     for (const path of [
       'playing.action.building.selectingIndustryType',
       'playing.action.building.selectingLocation',
@@ -74,35 +99,44 @@ describe('getHandSelection — held card persists through the whole flow', () =>
       const sel = getHandSelection(snap(path, { selectedCard: wolverhampton }))
       expect(sel, path).not.toBeNull()
       expect(sel?.selectedIds, path).toEqual(['loc-wolverhampton-1'])
-      expect(sel?.hint, path).toBe('Holding Wolverhampton')
     }
   })
 
-  test('an action-first discard step names the action, nothing held yet', () => {
+  test('an action-first discard step lifts nothing until a card is played', () => {
     expect(
       getHandSelection(snap('playing.action.networking.selectingCard')),
-    ).toEqual({ hint: 'Network — discard a card', selectedIds: [] })
+    ).toEqual({ selectedIds: [] })
   })
 
-  test('no hint ever restates the dock title', () => {
-    for (const path of [
-      'playing.action.selectingAction',
-      'playing.action.cardSelected',
-      'playing.action.building.selectingCard',
-      'playing.action.scouting.selectingCards',
-      'playing.action.networking.selectingLink',
-    ]) {
-      const sel = getHandSelection(snap(path, { selectedCard: wolverhampton }))
-      expect(sel?.hint?.toLowerCase() ?? '', path).not.toContain(
-        'choose an action',
+  test("Scout lifts every card picked so far, in the machine's own order", () => {
+    expect(
+      getHandSelection(
+        snap('playing.action.scouting.selectingCards', {
+          selectedCardsForScout: [wolverhampton, dudley],
+        }),
+      ),
+    ).toEqual({ selectedIds: ['loc-wolverhampton-1', 'loc-dudley-1'] })
+  })
+
+  test('the tray contributes no words in any state', () => {
+    // The fixed tray floats over whichever panel is beneath it, so it carries
+    // no narration of its own: each surface names its own step in its own
+    // panel. A label added back here would be a string on this contract.
+    for (const path of IN_FLOW) {
+      const sel = getHandSelection(
+        snap(path, {
+          selectedCard: wolverhampton,
+          selectedCardsForScout: [wolverhampton],
+        }),
       )
+      expect(Object.keys(sel ?? {}), path).toEqual(['selectedIds'])
     }
   })
 
-  test('the held hint is order-independent: a deep step reached action-first reads identically', () => {
+  test('the lift is order-independent: a deep step reached action-first reads identically', () => {
     // getHandSelection keys off the current state + selectedCard only — never
-    // how the state was reached — so action-first and card-first converge to
-    // the same "Holding <name>" the instant a card is committed.
+    // how the state was reached — so action-first and card-first converge on
+    // the same lifted card the instant one is committed.
     const cardFirst = getHandSelection(
       snap('playing.action.networking.selectingLink', {
         selectedCard: wolverhampton,
@@ -113,8 +147,8 @@ describe('getHandSelection — held card persists through the whole flow', () =>
         selectedCard: wolverhampton,
       }),
     )
-    expect(cardFirst?.hint).toBe('Holding Wolverhampton')
-    expect(actionFirst?.hint).toBe('Holding Wolverhampton')
+    expect(cardFirst).toEqual({ selectedIds: ['loc-wolverhampton-1'] })
+    expect(actionFirst).toEqual(cardFirst)
   })
 
   test('outside any action flow → null', () => {

@@ -10,12 +10,13 @@ import { expect, test } from '@playwright/test'
  * (scale 1.3) until it is deselected or the action completes.
  *
  * Touch: there is no hover, so the FIRST tap peeks (raises the lens) and
- * the SECOND tap acts. A LONG-PRESS (350ms) also peeks, and keeping the
- * finger down while sliding browses the fan Hearthstone-style — the raise
- * follows the finger; releasing keeps the card under the finger peeked and
- * NEVER selects (acting stays a deliberate tap on the raised card).
- * Dimmed/disabled cards peek too (the seat wrapper handles the tap —
- * clicks don't fire on disabled buttons).
+ * the SECOND tap acts — which the peeked card SAYS, on a brass act tab that
+ * is itself the target ("Play", or "Put back" once the card is in play).
+ * A LONG-PRESS (350ms) also peeks, and keeping the finger down while sliding
+ * browses the fan Hearthstone-style — the raise follows the finger; releasing
+ * keeps the card under the finger peeked and NEVER selects (acting stays a
+ * deliberate tap). Dimmed/disabled cards peek too (the seat wrapper handles
+ * the tap — clicks don't fire on disabled buttons) and offer no tab.
  */
 
 /** The fan seat wrapper around a card button (carries the dock transform). */
@@ -67,6 +68,11 @@ test.describe('desktop hover magnification', () => {
       /scale\(1\.3\)/,
     )
 
+    // A hovered card offers no act tab: a mouse acts on its first click, so
+    // there is no second tap to advertise.
+    await card.hover()
+    await expect(page.getByTestId('card-act-brewery_2')).toHaveCount(0)
+
     // Re-tap puts it back — nothing consumed (pinned deeper in card-first.spec).
     await card.click()
     await expect(page.getByText('Choose an action')).toBeVisible()
@@ -86,6 +92,23 @@ test.describe('desktop hover magnification', () => {
     await card.hover()
     await expect(card).toHaveAttribute('data-raised', 'true')
     await card.click()
+    await expect(page.getByText('Play this card')).toBeVisible()
+  })
+
+  test('keyboard focus raises the card and Enter plays it, with no act tab', async ({
+    page,
+  }) => {
+    await page.goto('/?demo')
+    const card = page.getByTestId('card-brewery_2')
+    await expect(card).toBeVisible()
+
+    // :focus-visible reads like hover — one keystroke acts, so no tab.
+    await card.focus()
+    await expect(card).toHaveAttribute('data-raised', 'true')
+    await expect(page.getByTestId('card-act-brewery_2')).toHaveCount(0)
+
+    await page.keyboard.press('Enter')
+    await expect(card).toHaveAttribute('data-selected', 'true')
     await expect(page.getByText('Play this card')).toBeVisible()
   })
 })
@@ -184,13 +207,17 @@ test.describe('phone: fit + tap-to-peek', () => {
     await expect(target).toHaveAttribute('data-raised', 'true')
     await expect(start).not.toHaveAttribute('data-raised', 'true')
 
-    // Release keeps the browsed card peeked — browsing can never select.
+    // Release keeps the browsed card peeked — browsing can never select, not
+    // even through the act tab the peek has just put under the finger.
     await cdp.send('Input.dispatchTouchEvent', {
       type: 'touchEnd',
       touchPoints: [],
     })
     await expect(target).toHaveAttribute('data-raised', 'true')
     await expect(target).not.toHaveAttribute('data-selected', 'true')
+    await expect(
+      page.getByTestId('card-act-cotton_manufacturer_4'),
+    ).toBeVisible()
     await expect(page.getByText('Play this card')).not.toBeVisible()
 
     // The kept peek then acts on a normal tap (the existing second-tap rule).
@@ -259,5 +286,131 @@ test.describe('phone: fit + tap-to-peek', () => {
     // The loan never happened — put the new card back to idle.
     await page.getByTestId('cancel-action').tap()
     await expect(page.getByText('Choose an action')).toBeVisible()
+  })
+})
+
+/**
+ * The act tab: what makes the second tap visible instead of folklore.
+ *
+ * isMobile is what flips the emulated primary pointer to coarse (the bigger
+ * lens and the ◀ ▶ handles); hasTouch alone leaves it fine. The tab itself is
+ * gated on the PEEK, not the pointer media query, so it appears in either
+ * emulation — but the geometry a thumb actually gets is the coarse one.
+ */
+test.describe('phone: the peeked card names its own second tap', () => {
+  test.use({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+  })
+
+  test('a peek offers Play, on a target the card itself takes', async ({
+    page,
+  }) => {
+    await page.goto('/?demo')
+    const card = page.getByTestId('card-brewery_2')
+    await expect(card).toBeVisible()
+
+    // Nothing at rest: the fan is a fan.
+    await expect(page.locator('.bb2-card-act')).toHaveCount(0)
+
+    await card.tap()
+    const tab = page.getByTestId('card-act-brewery_2')
+    await expect(tab).toHaveText('Play')
+
+    // Thumb sized, wholly on screen (the tray overhangs the bottom edge, so a
+    // tab hung below the card would be half off it) and wholly INSIDE the
+    // card's hitbox — a finger aiming at the tab lands on the card, which is
+    // the thing that acts.
+    const box = (await tab.boundingBox())!
+    const hit = (await card.boundingBox())!
+    const view = page.viewportSize()!
+    expect(box.height).toBeGreaterThanOrEqual(44)
+    expect(box.width).toBeGreaterThanOrEqual(44)
+    expect(box.y).toBeGreaterThan(0)
+    expect(box.y + box.height).toBeLessThanOrEqual(view.height)
+    expect(box.x).toBeGreaterThanOrEqual(hit.x)
+    expect(box.x + box.width).toBeLessThanOrEqual(hit.x + hit.width)
+
+    // Tapping where the tab says to is the second tap.
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
+    await expect(card).toHaveAttribute('data-selected', 'true')
+    await expect(page.getByText('Play this card')).toBeVisible()
+    // The peek is spent, so the tab goes with it.
+    await expect(page.getByTestId('card-act-brewery_2')).toHaveCount(0)
+
+    // Put the fixture back.
+    await card.tap()
+    await expect(page.getByText('Choose an action')).toBeVisible()
+  })
+
+  test('a card in play offers Put back', async ({ page }) => {
+    await page.goto('/?demo')
+    const card = page.getByTestId('card-brewery_2')
+    await card.tap()
+    await card.tap()
+    await expect(card).toHaveAttribute('data-selected', 'true')
+
+    // A selected card acts on the first tap, so the peek that reveals its tab
+    // comes from the long-press browse.
+    const cbox = (await card.boundingBox())!
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [
+        { x: cbox.x + cbox.width / 2, y: cbox.y + cbox.height / 2 },
+      ],
+    })
+    const tab = page.getByTestId('card-act-brewery_2')
+    await expect(tab).toHaveText('Put back')
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [],
+    })
+    await expect(tab).toBeVisible()
+
+    // And the tap it advertises does exactly that.
+    await card.tap()
+    await expect(page.getByText('Choose an action')).toBeVisible()
+    await expect(card).not.toHaveAttribute('data-selected', 'true')
+  })
+
+  test('a card that cannot be played peeks, but promises nothing', async ({
+    page,
+  }) => {
+    // A Sell that has already flipped an industry can only be finished, so no
+    // other card is playable: the rest of the hand dims. A dimmed card still
+    // peeks (that is how a phone reads it) and must offer no tab.
+    await page.goto('/?demo=sell')
+    await page.getByTestId('action-sell').tap()
+    const played = page.locator('button.bb2-card:not([disabled])').first()
+    await played.tap()
+    await played.tap()
+    await page.getByTestId('sale-option').first().tap()
+    await page.getByTestId('beer-source').first().tap()
+    await expect(page.getByText(/Flipped 1 industry this action/)).toBeVisible()
+
+    const spare = page.locator('button.bb2-card[data-dimmed="true"]').first()
+    await expect(spare).toBeVisible()
+    // Playwright will not tap a disabled button, and neither does the app: the
+    // peek on a dimmed card comes from the seat wrapper around it.
+    const box = (await spare.boundingBox())!
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
+    await expect(spare).toHaveAttribute('data-raised', 'true')
+    await expect(page.locator('.bb2-card-act')).toHaveCount(0)
+  })
+
+  test('reduced motion: the tab still appears and still plays the card', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto('/?demo')
+    const card = page.getByTestId('card-brewery_2')
+    await card.tap()
+    const tab = page.getByTestId('card-act-brewery_2')
+    await expect(tab).toBeVisible()
+    await expect(tab).toHaveCSS('opacity', '1')
+    await card.tap()
+    await expect(page.getByText('Play this card')).toBeVisible()
   })
 })

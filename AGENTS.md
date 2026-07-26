@@ -557,6 +557,17 @@ What this means in practice:
   game itself never touches the DB.
 - All styles are scoped under `.bb2` (`theme.css`) with Fraunces + Barlow
   Semi Condensed via `next/font` in `src/app/page.tsx`.
+- THE TOAST LAYER IS POINTER-TRANSPARENT (`components/ui/sonner.tsx`): toasts
+  render top-right over the board, and on a 390px phone one covers a
+  board-width strip of it, so a hit-testable layer swallows the tap under it
+  with no feedback at all. The container and each toast take
+  `pointer-events: none`; `[&_button]` opts interactive controls (action,
+  cancel, close) back in — the app ships no such control today, so anything
+  adding one inherits it for free. The cost is sonner's own pointer
+  affordances (swipe-to-dismiss, hover-to-pause): toasts are notifications
+  here and expire on their own. Pinned by `e2e/toast-hit-test.spec.ts`, a
+  real-CDP-touch hit test — any new fixed overlay over the board owes the
+  same check.
 - INDUSTRY ICON COLOURS (2026-07-22): six industries each have a base + bright
   stop (`--bb-ind-*` / `--bb-ind-*-bright` in `theme.css`); glyphs render inside
   a `.bb2-indchip` wash coin via `IndustryChip` (`icons.tsx`) — the coin carries
@@ -966,7 +977,12 @@ When updating this file, preserve this bar for all agents and keep entries conci
   specs widen their per-expect timeout to 15s (`expect.configure`) and set
   long test timeouts — every assertion is a POST + SSE round trip against a
   network database; do NOT read a slow run as a product bug before checking
-  DB contention.
+  DB contention. GOTCHA for parallel checkouts: :3199 is shared and
+  `reuseExistingServer` is on locally, so a second run in another worktree
+  attaches to the FIRST run's dev server and every test after that run's
+  teardown dies on `ERR_CONNECTION_REFUSED` (dozens of ~150ms failures, all
+  `page.goto`). That is the port, not the product — run one suite at a time
+  per machine, or point `baseURL`/`webServer` at a free port for the run.
 - `mp-playthrough.spec.ts` (2026-07-17) is the capstone: two real browsers
   play a scripted-but-adaptive canal opening through the UI — network, loan,
   scout, wild-card builds, a SELL that stops at the beer-source picker (own

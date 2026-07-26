@@ -18,6 +18,10 @@ import { GAME_ICONS } from '../gameicons-data'
 import { IndustryFragment } from '../icons'
 import { VIEW_H, VIEW_W, cityPos, linkKey } from './board-data'
 import {
+  LINK_ICON_DY,
+  LINK_ICON_R,
+  MERCHANT_PLATE_H,
+  MERCHANT_PLATE_TOP,
   PLATE_PAD,
   SLOT,
   SLOT_GAP,
@@ -26,6 +30,15 @@ import {
   pointAt,
   routeCurve,
 } from './marker-anchor'
+import {
+  BARREL_ICON,
+  BEER_SOCKET_CX,
+  BEER_SOCKET_CY,
+  BEER_SOCKET_R,
+  BEER_SOCKET_STROKE,
+  barrelTransform,
+  merchantIconCells,
+} from './merchant-beer'
 import {
   FOCUS_PAN_ANIMATION_MS,
   FOCUS_PAN_DEBOUNCE_MS,
@@ -1518,9 +1531,9 @@ function BuiltTile({ occ }: { occ: BuiltIndustry }) {
   const ink = occ.flipped ? INDUSTRY_FILL[occ.type] : INDUSTRY_INK[occ.type]
   const statInk = occ.flipped ? '#4a3d29' : ink
   // On-tile resource markers: the fill carries the resource identity, a
-  // single 1px parchment keyline (shared with the merchant beer barrel)
-  // lifts every marker off its face and off the owner ribbon. Iron stays the
-  // shipped orange for now — its market/tile hue reconcile lands separately.
+  // single 1px parchment keyline lifts every marker off its face and off the
+  // owner ribbon. Iron stays the shipped orange for now — its market/tile hue
+  // reconcile lands separately.
   const cubes =
     occ.type === 'coal'
       ? { n: occ.coalCubesOnTile, c: '#1d1b18' }
@@ -1659,6 +1672,48 @@ function BuiltTile({ occ }: { occ: BuiltIndustry }) {
 
 /* ================= merchant plate ================= */
 
+/**
+ * The beer a merchant supplies, standing in its own socket below the tile.
+ *
+ * The socket is what makes the state readable: it is always drawn for a tile
+ * that buys goods, so a spent merchant leaves a dark well exactly where its
+ * siblings still show amber — absence is a mark, not a missing mark. And amber
+ * against the near-black well separates by luminance, where amber on the brass
+ * plate and brass glyphs shares their hue and washes out. Geometry, including
+ * the barrel's single uniform scale, lives in `merchant-beer.ts`.
+ */
+function MerchantBeerSocket({ hasBeer }: { hasBeer: boolean }) {
+  return (
+    <g
+      transform={`translate(${BEER_SOCKET_CX}, ${BEER_SOCKET_CY})`}
+      data-beer={hasBeer ? 'ready' : 'spent'}
+    >
+      <title>
+        {hasBeer
+          ? 'Beer barrel ready here — consumed when selling to this merchant'
+          : 'Beer already taken from this merchant — none left this era'}
+      </title>
+      <circle
+        r={BEER_SOCKET_R}
+        fill="#100e0c"
+        fillOpacity={hasBeer ? 0.95 : 0.7}
+        stroke="#c39538"
+        strokeOpacity={hasBeer ? 0.6 : 0.3}
+        strokeWidth={BEER_SOCKET_STROKE}
+        strokeDasharray={hasBeer ? undefined : '3 3'}
+      />
+      {hasBeer && (
+        <g transform={barrelTransform()}>
+          {/* One flat amber fill, no keyline: the socket already separates the
+              amber, and a second tone on a ~5px shape breaks the cask into two
+              blobs instead of shading it. */}
+          <path d={BARREL_ICON.d} fill="#e8bc4f" />
+        </g>
+      )}
+    </g>
+  )
+}
+
 function MerchantPlate({
   cityId,
   entries,
@@ -1682,7 +1737,7 @@ function MerchantPlate({
   const pos = cityPos[cityId]
   const n = Math.max(entries.length, 2)
   const plateW = n * SLOT + (n - 1) * SLOT_GAP + PLATE_PAD * 2
-  const plateH = SLOT + PLATE_PAD * 2
+  const plateH = MERCHANT_PLATE_H
   const name = cities[cityId].name
   const closed = entries.length === 0
   const bonusLabel = (m: Merchant) =>
@@ -1696,7 +1751,7 @@ function MerchantPlate({
 
   return (
     <g
-      transform={`translate(${pos.x - plateW / 2}, ${pos.y - plateH / 2})`}
+      transform={`translate(${pos.x - plateW / 2}, ${pos.y + MERCHANT_PLATE_TOP})`}
       data-city={cityId}
       data-located={located || undefined}
       opacity={dimmed && !located ? 0.45 : closed && !located ? 0.3 : 1}
@@ -1760,25 +1815,15 @@ function MerchantPlate({
                 strokeDasharray={m ? undefined : '3 3'}
               />
               {m && m.industryIcons.length > 0 ? (
-                m.industryIcons.slice(0, 3).map((t, j) => {
-                  const count = Math.min(m.industryIcons.length, 3)
-                  const size = count === 1 ? 24 : 15
-                  const x =
-                    count === 1 ? (SLOT - size) / 2 : 4 + (j % 2) * (size + 4)
-                  const y =
-                    count === 1
-                      ? (SLOT - size) / 2
-                      : 3.5 + Math.floor(j / 2) * (size + 4)
-                  return (
-                    <g
-                      key={j}
-                      transform={`translate(${x}, ${y}) scale(${size / 24})`}
-                      style={{ color: '#e6bd63' }}
-                    >
-                      <IndustryFragment type={t} />
-                    </g>
-                  )
-                })
+                merchantIconCells(m.industryIcons.length).map((cell, j) => (
+                  <g
+                    key={j}
+                    transform={`translate(${cell.x}, ${cell.y}) scale(${cell.size / 24})`}
+                    style={{ color: '#e6bd63' }}
+                  >
+                    <IndustryFragment type={m.industryIcons[j]!} />
+                  </g>
+                ))
               ) : m ? (
                 // blank merchant tile — buys nothing
                 <text
@@ -1792,40 +1837,11 @@ function MerchantPlate({
                   ✕
                 </text>
               ) : null}
-              {/* beer barrel ready at this merchant — drawn as a barrel,
-                  not an anonymous dot (captain feedback 2026-07-14) */}
-              {m?.hasBeer && (
-                <g transform={`translate(${SLOT - 7}, 6.5)`}>
-                  <title>
-                    Beer barrel available — consumed when selling to this
-                    merchant
-                  </title>
-                  <ellipse
-                    cx="0"
-                    cy="0"
-                    rx="4.2"
-                    ry="5.2"
-                    fill="#e8bc4f"
-                    stroke="#f2e6c8"
-                    strokeWidth="1"
-                  />
-                  <line
-                    x1="-4.2"
-                    y1="-1.7"
-                    x2="4.2"
-                    y2="-1.7"
-                    stroke="#5c451a"
-                    strokeWidth="0.9"
-                  />
-                  <line
-                    x1="-4.2"
-                    y1="1.7"
-                    x2="4.2"
-                    y2="1.7"
-                    stroke="#5c451a"
-                    strokeWidth="0.9"
-                  />
-                </g>
+              {/* A merchant tile that buys anything owns a socket for the whole
+                  era; a blank tile never holds beer, so it gets no socket at
+                  all and can never be mistaken for a spent one. */}
+              {m && m.industryIcons.length > 0 && (
+                <MerchantBeerSocket hasBeer={m.hasBeer} />
               )}
             </g>
           )
@@ -1834,7 +1850,10 @@ function MerchantPlate({
 
       {/* the two •—• link-scoring icons printed at every merchant location
           (GAME_CONSTANTS.MERCHANT_LINK_ICONS — worth 2 to adjacent links) */}
-      <g transform={`translate(${plateW / 2 - 15}, -7)`} pointerEvents="none">
+      <g
+        transform={`translate(${plateW / 2 - 15}, ${-LINK_ICON_DY})`}
+        pointerEvents="none"
+      >
         <title>2 link-scoring icons at this merchant</title>
         {[0, 1].map((i) => (
           <g
@@ -1844,9 +1863,21 @@ function MerchantPlate({
             strokeWidth="1.5"
             strokeLinecap="round"
           >
-            <circle cx="0" cy="0" r="1.7" fill="#c39538" stroke="none" />
+            <circle
+              cx="0"
+              cy="0"
+              r={LINK_ICON_R}
+              fill="#c39538"
+              stroke="none"
+            />
             <path d="M1.7 0 H9.3" />
-            <circle cx="11" cy="0" r="1.7" fill="#c39538" stroke="none" />
+            <circle
+              cx="11"
+              cy="0"
+              r={LINK_ICON_R}
+              fill="#c39538"
+              stroke="none"
+            />
           </g>
         ))}
       </g>

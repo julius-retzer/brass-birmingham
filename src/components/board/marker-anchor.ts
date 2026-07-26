@@ -21,6 +21,34 @@ export const SLOT = 52
 export const SLOT_GAP = 4
 export const PLATE_PAD = 6
 
+/**
+ * Height of the beer-socket row a merchant plate carries under its tile row.
+ * Lives here with the other plate metrics — `plateRect` needs it to size the
+ * obstacle box and `merchant-beer.ts` divides it into the socket and its
+ * clearance, so the two cannot drift.
+ */
+export const MERCHANT_BEER_ROW_H = 36
+
+/** Height of any merchant plate: tile row plus beer-socket row. */
+export const MERCHANT_PLATE_H = SLOT + MERCHANT_BEER_ROW_H + PLATE_PAD * 2
+
+/**
+ * A merchant plate's top edge relative to its city point. The plate hangs its
+ * BOTTOM edge half a tile row below the point and reaches upward for the rest,
+ * so the extra height lands in empty board: the name ribbon keeps its baseline
+ * and the routes arriving from below keep the gap a link marker needs. Only
+ * merchant plates are anchored this way; city plates centre on their point.
+ */
+export const MERCHANT_PLATE_TOP = (SLOT + PLATE_PAD * 2) / 2 - MERCHANT_PLATE_H
+
+/**
+ * The link-scoring icon pair straddles a plate's top edge, making it the topmost
+ * thing a plate draws — which caps how far up a plate may reach. Warrington sits
+ * nearest the board's top edge, so this is what bounds `MERCHANT_BEER_ROW_H`.
+ */
+export const LINK_ICON_DY = 7
+export const LINK_ICON_R = 1.7
+
 /** Plates whose slots stack into a grid instead of one row. */
 export const PLATE_GRIDS: Partial<Record<CityId, Array<[number, number]>>> = {
   birmingham: [
@@ -79,7 +107,7 @@ export function plateRect(cityId: CityId): Rect {
   let h: number
   if (cities[cityId].type === 'merchant') {
     w = 2 * SLOT + SLOT_GAP + PLATE_PAD * 2
-    h = SLOT + PLATE_PAD * 2
+    h = MERCHANT_PLATE_H
   } else {
     const grid = plateGrid(cityId, (cityIndustrySlots[cityId] ?? []).length)
     const cols = Math.max(...grid.map(([c]) => c)) + 1
@@ -87,7 +115,11 @@ export function plateRect(cityId: CityId): Rect {
     w = cols * SLOT + (cols - 1) * SLOT_GAP + PLATE_PAD * 2
     h = rows * SLOT + (rows - 1) * SLOT_GAP + PLATE_PAD * 2
   }
-  return { x: pos.x - w / 2, y: pos.y - h / 2, w, h }
+  const y =
+    cities[cityId].type === 'merchant'
+      ? pos.y + MERCHANT_PLATE_TOP
+      : pos.y - h / 2
+  return { x: pos.x - w / 2, y, w, h }
 }
 
 // The name ribbon hangs under every plate (baseline at plateH + 13) and is

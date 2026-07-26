@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { type CityId, connections } from '~/data/board'
-import { linkKey } from './board-data'
+import { type CityId, cities, connections } from '~/data/board'
+import { VIEW_H, VIEW_W, linkKey } from './board-data'
 import {
+  LINK_ICON_DY,
+  LINK_ICON_R,
   type Rect,
   linkMarkerAnchor,
   markerBoxAt,
@@ -21,6 +23,43 @@ function occludedBy(from: CityId, to: CityId, at: { x: number; y: number }) {
   const box = markerBoxAt(at)
   return plateObstacles().filter((r) => overlaps(box, r)).length
 }
+
+describe('plate boxes', () => {
+  const ids = Object.keys(cities) as CityId[]
+
+  it('every plate and name ribbon sits inside the board viewBox', () => {
+    // A zoomed-in player sees exactly the viewBox, so anything outside it is
+    // reachable only by the letterbox slack at fit zoom. Merchant plates reach
+    // further from their city point than city plates do, hence the check.
+    for (const r of plateObstacles()) {
+      const at = `${r.x},${r.y}`
+      expect(r.x, at).toBeGreaterThanOrEqual(0)
+      expect(r.y, at).toBeGreaterThanOrEqual(0)
+      expect(r.x + r.w, at).toBeLessThanOrEqual(VIEW_W)
+      expect(r.y + r.h, at).toBeLessThanOrEqual(VIEW_H)
+    }
+  })
+
+  it('leave room above for the link-icon pair', () => {
+    // The pair straddles the top edge, so a plate that reaches too far up puts
+    // it outside the viewBox. This is what caps a merchant plate's height.
+    for (const id of ids) {
+      expect(plateRect(id).y, id).toBeGreaterThanOrEqual(
+        LINK_ICON_DY + LINK_ICON_R,
+      )
+    }
+  })
+
+  it('never overlap each other', () => {
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const a = plateRect(ids[i]!)
+        const b = plateRect(ids[j]!)
+        expect(overlaps(a, b), `${ids[i]} / ${ids[j]}`).toBe(false)
+      }
+    }
+  })
+})
 
 // The bug the captain hit: the boat on the Stoke—Stone canal sat under the
 // Stoke plate and its name ribbon.
@@ -53,8 +92,28 @@ describe('link marker anchors', () => {
     // the marker layer painting after the plates instead.
     expect(blocked.map((c) => linkKey(c.from, c.to))).toStrictEqual([
       'stoke|stone',
+      'worcester|gloucester',
       'birmingham|redditch',
     ])
+  })
+
+  it('leaves a blocked marker mostly in the open', () => {
+    // A route with no fully clear spot must still be a marker on the board
+    // rather than a marker on a plate, so bound the residual overlap.
+    for (const conn of connections) {
+      const box = markerBoxAt(linkMarkerAnchor(conn.from, conn.to))
+      let covered = 0
+      for (const r of plateObstacles()) {
+        const ox = Math.min(box.x + box.w, r.x + r.w) - Math.max(box.x, r.x)
+        const oy = Math.min(box.y + box.h, r.y + r.h) - Math.max(box.y, r.y)
+        if (ox > 0 && oy > 0) covered += ox * oy
+      }
+      // Stoke—Stone is the worst case at 0.387; the rest are under 0.06.
+      expect(
+        covered / (box.w * box.h),
+        linkKey(conn.from, conn.to),
+      ).toBeLessThan(0.45)
+    }
   })
 
   it('keeps every anchor on its own route', () => {

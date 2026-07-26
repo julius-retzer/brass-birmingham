@@ -568,13 +568,65 @@ What this means in practice:
   here and expire on their own. Pinned by `e2e/toast-hit-test.spec.ts`, a
   real-CDP-touch hit test — any new fixed overlay over the board owes the
   same check.
+- MERCHANT BEER SITS IN ITS OWN SOCKET (2026-07-26): the beer a merchant
+  supplies is the vendored `brewery` barrel glyph standing in a recessed round
+  well BELOW its tile, in a dedicated row the merchant plate reserves for it —
+  alongside the tile rather than inside its icon area, as the printed board does.
+  It is DELIBERATELY the same glyph the brewery industry wears: a merchant never
+  buys beer, so a barrel in the socket has one possible meaning, and beer and the
+  industry that makes it are one thing on this board — a second beer symbol would
+  be a new shape for a concept that already has one. Geometry is pure
+  in `board/merchant-beer.ts` (which also owns
+  the merchant slot's industry-glyph cells, so tile-vs-socket clearance is
+  asserted in one place); the plate metrics it divides up (`MERCHANT_BEER_ROW_H`,
+  `MERCHANT_PLATE_H`, `MERCHANT_PLATE_TOP`) live with the other plate sizing in
+  `board/marker-anchor.ts` so `plateRect`'s obstacle box cannot drift from what
+  is drawn. Four rules, and any new on-board marker inherits them:
+  (1) THE BOARD IS 1600 UNITS WIDE AND A 390px PHONE RENDERS IT AT 0.221 (1280px
+  gives 0.489 — the unit tests size markers against those numbers and
+  `e2e/merchant-beer.spec.ts` reads the live `getScreenCTM` at both widths, so a
+  frame change that shrinks the board fails), so a marker crammed into an
+  occupied area can only
+  reach legible size by being reshaped, and a reshaped barrel stops reading as a
+  barrel. Give it its own space instead: THE GLYPH IS PLACED WITH A SINGLE
+  UNIFORM `scale()` — never stretch one axis (the e2e spec walks the rendered
+  matrix and fails on skew or unequal axes). Its ink bounds are hard-coded
+  (`BARREL_INK`) because the board renders server-side where there is no
+  `getBBox`; the same spec measures the live path so vendored icon data cannot
+  drift away from them. (1a) A ROUND WELL IS FITTED BY RADIUS, NOT BY AXES. The
+  cask's silhouette nearly fills its own box, so its corners reach ~20% further
+  from centre than its half-width or half-height — an "is the height inside the
+  rim" check passes while the art overruns the ring at four points and the well
+  stops reading as one. `BARREL_INK_R` is that silhouette radius, sampled with
+  `isPointInFill` off the live path (the e2e spec re-samples it), and
+  `BARREL_RIM_CLEARANCE` is what is left over inside the rim's inner face.
+  (1b) ANY SEPARATION MUST BE WORTH A SCREEN PIXEL: the
+  air above the socket row is 7 board units = 1.55 CSS px on a phone. Two units
+  — the intuitive "small gap" — is 0.44 px and reads as nothing at all.
+  (2) A merchant plate grows UPWARD from a bottom edge half a tile-row
+  below its city point (`MERCHANT_PLATE_TOP`), because growing downward pushes
+  Gloucester's ribbon off the viewBox and squeezes the Warrington–Stoke link
+  marker; `marker-anchor.test.ts` catches both. What CAPS the row height is the
+  link-icon pair straddling the plate's top edge (`LINK_ICON_DY`/`LINK_ICON_R`):
+  Warrington sits nearest the board's top edge, so the plate cannot exceed 100
+  units without pushing those icons outside the viewBox. (3) Contrast comes from the dark
+  well under the amber, not from the fill — every plate, glyph and link icon on a
+  merchant is the same brass hue family. Corollary: the cask carries no light
+  keyline and no second fill; it must stay ONE amber mass or it breaks into two
+  blobs at phone size. (4) The socket is what makes state readable: a tile that
+  buys goods owns one for the whole era, so spent beer leaves a dashed empty
+  well, while a blank tile gets no socket at all — three distinct reads. Carries
+  `data-beer="ready"|"spent"`; pinned by `merchant-beer.test.ts` (geometry,
+  uniform scale, phone-scale mass) and `e2e/merchant-beer.spec.ts` (which slots
+  get one, plus the render scale). Cosmetic cost, deliberate: a closed or blank
+  merchant still reserves the socket row, so its plate shows an empty bottom
+  band.
 - INDUSTRY ICON COLOURS (2026-07-22): six industries each have a base + bright
   stop (`--bb-ind-*` / `--bb-ind-*-bright` in `theme.css`); glyphs render inside
   a `.bb2-indchip` wash coin via `IndustryChip` (`icons.tsx`) — the coin carries
   the tint, the glyph keeps surface ink. Board tile faces use the SAME base
   hexes (`INDUSTRY_FILL`/`INDUSTRY_INK`, `board-map.tsx`). On-tile resource
-  markers share one 1px parchment keyline `#f2e6c8` (cubes + merchant beer
-  barrel). Cube LAYOUT: BOTH surfaces now draw EVERY cube in a two-wide grid —
+  markers share one 1px parchment keyline `#f2e6c8`. Cube LAYOUT: BOTH surfaces now draw EVERY cube in a two-wide grid —
   the player MAT (`player-ledger.tsx` `MatTileArt`) and, since 2026-07-23, the
   board (`BuiltTile`), whose geometry lives in the pure `board/tile-cubes.ts`
   (`cubeCells`). The board's old single column TOUCHED the roman level numeral
@@ -986,8 +1038,13 @@ What this means in practice:
   still builds and runs) and the BUILD-ONLY `SENTRY_AUTH_TOKEN`/`SENTRY_ORG`/
   `SENTRY_PROJECT` for source maps. All optional in `src/env.js`, documented in
   `.env.example`.
-- GOTCHA: `pnpm test`'s glob now includes `src/lib/*.test.ts` — it did not
-  before, so a test placed there used to be silently skipped by CI.
+- GOTCHA: `pnpm test`'s glob is an EXPLICIT per-directory list, not a recursive
+  sweep, and CI runs exactly it — a test in a directory that is not listed is
+  silently skipped on every PR (this hid `src/lib` and all of
+  `src/components/board` for a while). Add the directory to BOTH `test` and
+  `test:watch` in the same commit as the first test you put there, and check
+  with `pnpm test 2>&1 | grep <your-file>` rather than trusting a local
+  `pnpm vitest run <path>`.
 
 ## Analytics (added 2026-07-17)
 

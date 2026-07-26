@@ -30,18 +30,19 @@ const wolverhampton: LocationCard = {
 }
 
 describe('getHandSelection — held card persists through the whole flow', () => {
-  test('card-first idle: nothing held, hand live', () => {
+  test('card-first idle: hand live, but the tray says nothing', () => {
     expect(getHandSelection(snap('playing.action.selectingAction'))).toEqual({
-      hint: 'Pick an action — or play a card first',
+      hint: null,
       selectedIds: [],
     })
   })
 
-  test('cardSelected: held card highlighted (put back / switch handled by machine)', () => {
+  test('cardSelected: held card highlighted and named (put back / switch handled by machine)', () => {
     const sel = getHandSelection(
       snap('playing.action.cardSelected', { selectedCard: wolverhampton }),
     )
     expect(sel?.selectedIds).toEqual(['loc-wolverhampton-1'])
+    expect(sel?.hint).toBe('Holding Wolverhampton')
   })
 
   test('deeper Network step keeps the card lifted and names it', () => {
@@ -81,6 +82,21 @@ describe('getHandSelection — held card persists through the whole flow', () =>
     expect(
       getHandSelection(snap('playing.action.networking.selectingCard')),
     ).toEqual({ hint: 'Network — discard a card', selectedIds: [] })
+  })
+
+  test('no hint ever restates the dock title', () => {
+    for (const path of [
+      'playing.action.selectingAction',
+      'playing.action.cardSelected',
+      'playing.action.building.selectingCard',
+      'playing.action.scouting.selectingCards',
+      'playing.action.networking.selectingLink',
+    ]) {
+      const sel = getHandSelection(snap(path, { selectedCard: wolverhampton }))
+      expect(sel?.hint?.toLowerCase() ?? '', path).not.toContain(
+        'choose an action',
+      )
+    }
   })
 
   test('the held hint is order-independent: a deep step reached action-first reads identically', () => {

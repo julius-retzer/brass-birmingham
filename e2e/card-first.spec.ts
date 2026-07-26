@@ -33,10 +33,15 @@ test('card-first: play a card, pick Network, confirm — card never re-asked', a
   await page.goto('/?demo')
   await expect(treasuryOf(page, 'Eliza')).toHaveText('£19')
 
-  // The hand is live while idling — play a card first.
+  // The hand is live while idling, and the tray carries no label until an
+  // action is actually in flight — play a card first.
+  await expect(page.getByTestId('hand-hint')).toHaveCount(0)
   await page.getByTestId('card-brewery_2').click()
   await expect(page.getByText('Play this card')).toBeVisible()
-  await expect(page.getByText('Holding')).toBeVisible()
+  await expect(page.getByTestId('held-card')).toContainText('Holding')
+  await expect(
+    page.getByTestId('hand-hint').getByText(/^Holding /),
+  ).toBeVisible()
 
   // The held card's actions are offered; Network goes STRAIGHT to the
   // route step — no second card ask.

@@ -237,7 +237,8 @@ interface ActionDockProps {
 /* ----- hand-selection contract for the shell / HandTray ----- */
 
 export interface HandSelection {
-  hint: string
+  /** null = the tray says nothing; the hand is still live. */
+  hint: string | null
   selectedIds: string[]
 }
 
@@ -245,10 +246,13 @@ export function getHandSelection(
   snapshot: GameStoreSnapshot,
 ): HandSelection | null {
   const is = (path: string) => snapshot.matches(path as never)
-  // Card-first: the hand is live while idling — playing a card opens the
-  // actions it can start (the machine's cardSelected state). Wording gotcha:
-  // neither hint may contain "choose an action" (the idle dock title, pinned
-  // by e2e getByText, which substring-matches case-insensitively).
+  // A hint exists only while something is actually in flight. Idling, the
+  // hand is live (card-first: playing a card opens the actions it can start,
+  // the machine's cardSelected state) but the tray says nothing — the dock's
+  // own "Choose an action" panel is the narration for that state, and a tray
+  // label repeating it just covers whatever panel it happens to float over.
+  // Wording gotcha: no hint may contain "choose an action" (that dock title,
+  // pinned by e2e getByText, which substring-matches case-insensitively).
   //
   // Which cards are actually clickable at each step is NOT decided here — the
   // shell asks the machine (`state.can({SELECT_CARD, cardId})`) per card. That
@@ -256,11 +260,14 @@ export function getHandSelection(
   // once a card is committed only a DIFFERENT card is (the mid-flow switch),
   // and a Sell that already flipped an industry offers none.
   if (is('playing.action.selectingAction'))
-    return { hint: 'Pick an action — or play a card first', selectedIds: [] }
+    return { hint: null, selectedIds: [] }
   if (is('playing.action.cardSelected')) {
+    // Same "Holding <card>" wording as every deeper step: the held card is
+    // the only live state the tray adds here, and the dock already carries
+    // the title, the card chip and the Put back control.
     const held = snapshot.context.selectedCard
     return {
-      hint: 'Pick an action for this card — tap it again to put it back',
+      hint: held ? `Holding ${cardTitle(held)}` : null,
       selectedIds: held ? [held.id] : [],
     }
   }
@@ -999,6 +1006,14 @@ export function ActionDock({
             </button>
           ))}
         </div>
+        {/* Card-first entry lives here rather than on a tray label: the dock
+            scrolls with its own panel, so it can never cover another one. */}
+        <p
+          className="text-[12px] leading-snug"
+          style={{ color: 'rgba(231,215,177,.5)' }}
+        >
+          Or play a card from your hand to see the actions it can start.
+        </p>
         <PassButton
           disabled={!can({ type: 'PASS' })}
           onPass={() => send({ type: 'PASS' })}

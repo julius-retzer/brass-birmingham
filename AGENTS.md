@@ -693,7 +693,13 @@ What this means in practice:
   (absolutely positioned, ZERO height reserve — `hintClearance` and the old
   pill are gone, so the fan never moves when the hint changes; don't
   reintroduce a hint that resizes the tray, that's the PR #81 jumping-hand
-  regression); dock and mat modal narrate themselves. On phones a wizard
+  regression); dock and mat modal narrate themselves. The tray label exists
+  ONLY while an action is in flight: the fixed tray floats over the scrolling
+  panel column, so an idle label sits on some panel's heading for the whole
+  turn — idle narration is the dock's own "Choose an action" panel, card-first
+  entry included. It paints ABOVE the fan (`z-index`), because a selected card
+  keeps its lens for the whole flow and would otherwise bury it; the tray is
+  click-transparent, so that costs no tap. On phones a wizard
   step change scrolls the surface that owns the next tap into view
   (`step-scroll.ts` pure decision + `use-step-scroll.ts` applied half; 2s
   don't-fight-the-player window, `prefers-reduced-motion` honoured, no-op on
@@ -730,7 +736,9 @@ What this means in practice:
   `role="img"` back, that flattens them out of the a11y tree.
 - The hand tray (`hand-tray.tsx`) doubles as the card selector for every
   discard step. `getHandSelection()` (`action-dock.tsx`) returns
-  `{hint, selectedIds}` for EVERY `playing.action.*` state: the card-picking
+  `{hint, selectedIds}` for EVERY `playing.action.*` state (`hint` is null
+  while idling — the hand stays live, the tray just says nothing): the
+  card-picking
   steps name the action; once a card is committed a catch-all keeps the held
   `context.selectedCard` in `selectedIds` with a `Holding <name>` hint — so the
   fan keeps the card lifted (persistent `LENS_SELECTED`) and the pill keeps

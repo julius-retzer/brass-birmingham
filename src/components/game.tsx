@@ -52,6 +52,7 @@ import { useHandOrder } from './hand-order'
 import { HandTray } from './hand-tray'
 import { computeHoverCities, focusCityFor } from './hover-highlight'
 import { IncomeTrackModal } from './income-track'
+import { LeaderShortcuts } from './leader-shortcuts'
 import { JournalPanel } from './journal'
 import { legalCityTargets, legalLinkTargets } from './legal-targets'
 import { LocateCityProvider, useLocateCityState } from './locate'
@@ -940,6 +941,7 @@ function GameInner({
           </div>
 
           <SidePanelRail collapsed={panelCollapsed} onToggle={togglePanel} />
+          <LeaderShortcuts handlers={{ togglePanel }} />
 
           <aside
             data-testid="side-panel"

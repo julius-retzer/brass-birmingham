@@ -30,6 +30,7 @@ import { useHandOrder } from '../hand-order'
 import { HandTray } from '../hand-tray'
 import { computeHoverCities, focusCityFor } from '../hover-highlight'
 import { JournalPanel } from '../journal'
+import { LeaderShortcuts } from '../leader-shortcuts'
 import { legalCityTargets, legalLinkTargets } from '../legal-targets'
 import { LocateCityProvider, useLocateCityState } from '../locate'
 import { GameOverScreen, RoundCurtain } from '../overlays'
@@ -1689,6 +1690,7 @@ function MpTable({
           </div>
 
           <SidePanelRail collapsed={panelCollapsed} onToggle={togglePanel} />
+          <LeaderShortcuts handlers={{ togglePanel }} />
 
           <aside
             data-testid="side-panel"

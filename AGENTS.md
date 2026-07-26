@@ -141,8 +141,8 @@ Next 16.2.x still drives its TS integration through the `typescript6@6.0.2`
 compiler-API shim — the deliberate two-package split above survives the bump
 untouched (`next build`'s "Running TypeScript …" and `next dev` both go through
 it; `pnpm exec tsc --version` must still say 7.x). The upgrade was a plain
-`next`/`eslint-config-next` version bump + `pnpm install`; React stays on 18.3.x
-(Next 16 peers `react ^18.2.0 || ^19` — do NOT jump to React 19). Node pin
+`next`/`eslint-config-next` version bump + `pnpm install`; React is on 19.2.x
+(bumped from 18.3.x in #85; Next 16 peers `react ^18.2.0 || ^19`). Node pin
 unchanged (Next 16 needs ≥20.9; repo is on 24.18.0). What bit / to know:
 - **`jsx` is now `react-jsx`, MANDATORY.** Next 16 rewrites `tsconfig.json`
   (`jsx: preserve` → `react-jsx`, the React automatic runtime) on EVERY build if
@@ -799,6 +799,29 @@ What this means in practice:
   Cmd+K is RESERVED for this palette — other shortcut work must not claim it.
   Pinned by `palette-search.test.ts`, `locate-model.test.ts` and
   `e2e/command-palette.spec.ts`.
+- KEYBOARD SHORTCUTS ARE LEADER-PREFIX (2026-07-24): tap `g`, then a key —
+  NEVER a modifier combo, which is the whole point (Cmd/Ctrl+letter belongs to
+  the browser and the OS; Cmd+K is the palette above). `components/shortcuts.ts`
+  is the ONLY place a binding is declared — id, key, description, `desktopOnly`
+  — and the only place the sequence options live; a new binding is one row there
+  plus the surface passing `LeaderShortcuts` a handler under that id (no handler
+  ⇒ registered but inert, so a binding may land before every surface serves it).
+  Both shells mount `<LeaderShortcuts handlers={{…}} />`; the one binding today
+  is the side dock collapse, reusing `usePanelCollapsed`. Matching, the
+  text-field suppression (`ignoreInputs`: inputs, textareas, selects,
+  contenteditable) and the listener lifecycle all belong to TanStack Hotkeys
+  (`useHotkeySequences`) — do not hand-roll a keydown listener beside it. The
+  leader window is 1500ms, enforced by the library; the hint overlay's `armed`
+  flag is a DISPLAY mirror on its own timer (the manager exposes no lapse
+  callback) and never decides whether a shortcut fires. A suppressed keystroke
+  and a soft-disabled row both LEAVE sequence progress intact, so
+  `LeaderShortcuts` calls `resetAll()` when focus moves or the breakpoint flips
+  — otherwise an armed leader outlives a detour into a chat box. Pinned by
+  `shortcuts.test.ts`, `shortcuts.dom.test.ts` and
+  `e2e/keyboard-shortcuts.spec.ts`. GOTCHA: vitest runs `environment: 'node'`,
+  so `shortcuts.dom.test.ts` opts into happy-dom with a `// @vitest-environment`
+  docblock — that is how a real-DOM key test gets into the CI-run `pnpm test`
+  glob at all.
 - CARD-MAP-SYNC (2026-07-21): hovering a LOCATION card in the hand tray
   auto-pans the map (slight zoom-out, animated, debounced) when its city is
   off-viewport — BoardMap's `focusCity` prop, fed by `focusCityFor`

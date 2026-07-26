@@ -1,0 +1,143 @@
+'use client'
+
+// The React half of the leader-prefix shortcuts declared in shortcuts.ts:
+// registers every sequence with TanStack Hotkeys and shows the hint overlay
+// while the leader is armed. A surface mounts it once and hands over the
+// handlers it can serve.
+import {
+  getSequenceManager,
+  useHotkey,
+  useHotkeySequences,
+} from '@tanstack/react-hotkeys'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  DESKTOP_MEDIA_QUERY,
+  SHORTCUT_LEADER,
+  SHORTCUT_SEQUENCE_OPTIONS,
+  SHORTCUT_TIMEOUT_MS,
+  type ShortcutHandlers,
+  type ShortcutId,
+  shortcutHints,
+  shortcutSequences,
+} from './shortcuts'
+
+// Starts false so the first client render matches the server's, then settles
+// on the real viewport — a desktop-only binding stays inert until it does.
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState(false)
+  useEffect(() => {
+    const query = window.matchMedia(DESKTOP_MEDIA_QUERY)
+    const sync = () => setIsDesktop(query.matches)
+    sync()
+    query.addEventListener('change', sync)
+    return () => query.removeEventListener('change', sync)
+  }, [])
+  return isDesktop
+}
+
+export function LeaderShortcuts({ handlers }: { handlers: ShortcutHandlers }) {
+  const context = { isDesktop: useIsDesktop() }
+  const [armed, setArmed] = useState(false)
+  const lapse = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const disarm = useCallback(() => {
+    if (lapse.current !== null) clearTimeout(lapse.current)
+    lapse.current = null
+    setArmed(false)
+  }, [])
+
+  const forgetLeader = useCallback(() => {
+    getSequenceManager().resetAll()
+    disarm()
+  }, [disarm])
+
+  useEffect(() => disarm, [disarm])
+
+  // A half-typed sequence survives both a suppressed keystroke and a
+  // soft-disabled binding, so an armed leader would otherwise outlive a detour
+  // into a chat box or a resize across the breakpoint. Focus moving anywhere
+  // else is reason enough to forget it — the player is doing something with
+  // that thing, not finishing a shortcut.
+  useEffect(() => {
+    window.addEventListener('focusin', forgetLeader)
+    return () => window.removeEventListener('focusin', forgetLeader)
+  }, [forgetLeader])
+
+  useEffect(() => {
+    forgetLeader()
+  }, [context.isDesktop, forgetLeader])
+
+  // Taking the hint down is this component's business, so the handlers the
+  // registry sees are wrapped rather than each surface remembering to do it.
+  const wrapped: ShortcutHandlers = {}
+  for (const [id, handler] of Object.entries(handlers)) {
+    if (!handler) continue
+    wrapped[id as ShortcutId] = () => {
+      disarm()
+      handler()
+    }
+  }
+
+  useHotkeySequences(
+    shortcutSequences(wrapped, context),
+    SHORTCUT_SEQUENCE_OPTIONS,
+  )
+
+  // A display mirror of the sequence manager's own leader progress: it exposes
+  // no lapse callback, so the overlay keeps its own timer on the same window.
+  // Drift is cosmetic — the manager alone decides whether a shortcut fires.
+  useHotkey(
+    SHORTCUT_LEADER,
+    () => {
+      if (lapse.current !== null) clearTimeout(lapse.current)
+      setArmed(true)
+      lapse.current = setTimeout(() => {
+        lapse.current = null
+        setArmed(false)
+      }, SHORTCUT_TIMEOUT_MS)
+    },
+    {
+      ignoreInputs: true,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
+
+  const hints = shortcutHints(handlers, context)
+  if (!armed || hints.length === 0) return null
+
+  return (
+    <div
+      data-testid="shortcut-hint"
+      role="status"
+      className="bb2-panel pointer-events-none fixed bottom-4 right-4 z-[70] flex flex-col gap-1.5 p-3"
+    >
+      <span
+        className="text-[10.5px] font-bold uppercase tracking-[0.2em]"
+        style={{ color: 'rgba(231,215,177,.5)' }}
+      >
+        {SHORTCUT_LEADER.toLowerCase()} then…
+      </span>
+      {hints.map((hint) => (
+        <span key={hint.key} className="flex items-center gap-2">
+          <span
+            className="min-w-[22px] rounded border px-1.5 py-0.5 text-center font-mono text-[12px] font-bold lowercase"
+            style={{
+              borderColor: 'var(--bb-brass-hairline)',
+              background: 'rgba(20,16,11,.7)',
+              color: 'var(--bb-brass-bright)',
+            }}
+          >
+            {hint.key.toLowerCase()}
+          </span>
+          <span
+            className="text-[12.5px]"
+            style={{ color: 'var(--bb-parchment)' }}
+          >
+            {hint.description}
+          </span>
+        </span>
+      ))}
+    </div>
+  )
+}

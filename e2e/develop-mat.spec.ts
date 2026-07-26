@@ -38,6 +38,35 @@ test('the mat opens on the tile step and an armed tap stages the scrap', async (
   await expect(page.getByTestId('develop-lowest')).toBeVisible()
 })
 
+test('a tile never shows two rings: the selected one does its own arming', async ({
+  page,
+}) => {
+  await openDevelopMat(page)
+
+  // The mat opens with the lowest cotton tile both armed and selected.
+  const cotton = page.getByTestId('mat-slot-cotton_2')
+  await expect(cotton).toHaveAttribute('data-develop-armed', 'true')
+  await expect(cotton).toHaveAttribute('aria-pressed', 'true')
+  // Its own pulse stands down and its single ring carries the arming instead.
+  await expect(cotton).not.toHaveClass(/bb2-develop-armed/)
+  await expect(cotton.locator('.bb2-mat-ring-armed')).toHaveCount(1)
+
+  // Every other armed tile keeps pulsing, with no second ring of its own.
+  const coal = page.locator(
+    '[data-develop-armed][data-testid^="mat-slot-coal"]',
+  )
+  await expect(coal).toHaveClass(/bb2-develop-armed/)
+  await expect(coal.locator('.bb2-mat-ring')).toHaveCount(0)
+
+  // Reading a tile a pick would NOT scrap rings it in the inspect hue, and
+  // hands the brass pulse back to the armed one.
+  const higher = page.getByTestId('mat-slot-cotton_3')
+  await higher.hover()
+  await expect(higher.locator('.bb2-mat-ring-inspect')).toHaveCount(1)
+  await expect(cotton).toHaveClass(/bb2-develop-armed/)
+  await expect(cotton.locator('.bb2-mat-ring')).toHaveCount(0)
+})
+
 test('a lightbulb Pottery tap explains the rulebook block', async ({
   page,
 }) => {

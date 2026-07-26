@@ -332,13 +332,11 @@ function TrackSlot({
   }
   const { tile, count, next, barred } = entry
   const armed = develop?.armed ?? false
-  // One ring per tile: the armed pulse steps aside on the tile the pointer is
-  // on, so two brass rings never stack on the same tile edge. In develop mode
-  // brass is reserved for "a pick scraps this one", so a look at any other
-  // tile rings in the survey teal the map uses for locating a place.
-  const ringHue = !develop || armed ? 'var(--bb-brass-bright)' : '#8fd8cd'
-  const ringGlow =
-    !develop || armed ? 'rgba(230,189,99,.4)' : 'rgba(143,216,205,.4)'
+  // The selected tile's ring is the only ring it shows: on an armed tile that
+  // ring takes over the arming (brass, breathing) and the pulse below stands
+  // down, so the two never stack on one tile edge. Ring styling lives in
+  // `.bb2-mat-ring*` (theme.css) — the armed breath animates the border colour,
+  // which an inline style would fight.
   return (
     <button
       type="button"
@@ -374,18 +372,18 @@ function TrackSlot({
         tile={tile}
         depth={count}
         size={48}
-        next={next}
+        // "Next tile out to BUILD" is noise while developing, and its soft brass
+        // halo is a second glow over the stacked edges the pile depth is read
+        // from — the armed ring says what matters on this surface.
+        next={next && !develop}
         barred={barred}
       />
       {selected && (
         <span
           aria-hidden
-          className="pointer-events-none absolute rounded-lg"
-          style={{
-            inset: -3,
-            border: `1.5px solid ${ringHue}`,
-            boxShadow: `0 0 8px ${ringGlow}`,
-          }}
+          className={`pointer-events-none absolute rounded-lg bb2-mat-ring ${
+            armed ? 'bb2-mat-ring-armed' : develop ? 'bb2-mat-ring-inspect' : ''
+          }`}
         />
       )}
     </button>

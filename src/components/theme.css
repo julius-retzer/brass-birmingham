@@ -30,6 +30,8 @@
 
   --bb-canal: #4e9c96;
   --bb-canal-deep: #2b5a58;
+  /* the surveyor's "here it is" teal — see the hover-to-locate mark below */
+  --bb-locate: #8fd8cd;
   --bb-rail: #c2632f;
   --bb-rail-deep: #7c3d1c;
   --bb-danger: #c14434;
@@ -1094,12 +1096,42 @@ button:focus-visible .bb2-locate-name {
     box-shadow: 0 0 0 2px rgba(230, 189, 99, 0.95);
   }
 }
-/* Carried only by an armed tile that is NOT the selected one: the selection
-   ring is the single ring on the tile under the pointer (hover and focus both
-   select), so this never shares an edge with it. */
+/* Carried only by an armed tile that is NOT the selected one — on the selected
+   tile `.bb2-mat-ring-armed` is the armed ring instead, so brass never stacks
+   two rings on one tile edge. */
 .bb2-develop-armed {
   animation: bb2-develop-arm 1.5s ease-in-out infinite;
   border-radius: 8px;
+}
+
+/* The ring on the selected tile (a tap, a hover and a focus all select). It is
+   the ONLY ring that tile shows, so on an armed one it does the arming too:
+   same brass, same 2px line, same opacity-only breath as the pulse it stands in
+   for. Every tile a pick would scrap therefore breathes brass, selected or not. */
+.bb2-mat-ring {
+  inset: -3px;
+  border: 1.5px solid var(--bb-brass-bright);
+  box-shadow: 0 0 8px rgba(230, 189, 99, 0.4);
+}
+.bb2-mat-ring-armed {
+  border-width: 2px;
+  animation: bb2-mat-ring-arm 1.5s ease-in-out infinite;
+}
+@keyframes bb2-mat-ring-arm {
+  0%,
+  100% {
+    border-color: rgba(230, 189, 99, 0.62);
+  }
+  50% {
+    border-color: rgba(230, 189, 99, 1);
+  }
+}
+/* While developing, brass means "a pick scraps this one" — so reading any other
+   tile rings in the surveyor's teal, one line-weight lighter. Hue, weight and
+   breath all separate the two, none of them alone. */
+.bb2-mat-ring-inspect {
+  border-color: var(--bb-locate);
+  box-shadow: 0 0 8px rgba(143, 216, 205, 0.4);
 }
 
 /* A scrapped tile mid-flight from its pile to the scrap tray: one long arc
@@ -1140,6 +1172,10 @@ button:focus-visible .bb2-locate-name {
   .bb2-develop-armed {
     animation: none;
     box-shadow: 0 0 0 2px rgba(230, 189, 99, 0.85);
+  }
+  .bb2-mat-ring-armed {
+    animation: none;
+    border-color: rgba(230, 189, 99, 0.95);
   }
   .bb2-dev-flyer {
     transition: none;

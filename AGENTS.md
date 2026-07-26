@@ -606,6 +606,22 @@ What this means in practice:
   `gameStore.developmat.test.ts` + `develop-mat.test.ts` +
   `e2e/develop-mat.spec.ts`; `iron-source.spec` / `locate-city.spec` /
   `mp-playthrough.spec` now drive develop THROUGH the modal.
+- ONE RING PER MAT TILE (2026-07-24): a mat tile shows exactly ONE ring, ever.
+  The selected tile's ring (`.bb2-mat-ring`, `theme.css`) is that ring, and on
+  an ARMED tile it does the arming itself (`.bb2-mat-ring-armed`: brass, 2px,
+  opacity-only breath) while the tile's own `.bb2-develop-armed` box-shadow
+  pulse stands down — two brass rings 3px apart on one tile edge was the bug.
+  Keying the stand-down on SELECTION (not CSS `:hover`) is deliberate: a tap
+  selects, so a hover-scoped rule would leave the clash on every phone. Hue
+  carries the rest: while developing, brass means "a pick scraps this one", so a
+  look at any other tile rings in `--bb-locate` teal (`.bb2-mat-ring-inspect`,
+  the map's own surveyor's mark) one line-weight lighter — armed vs read apart
+  by hue, weight AND breath, none of them alone, so reduced motion still tells
+  them apart. Develop mode also drops `MatTileArt`'s `next` halo: a soft brass
+  bloom over the stacked cardboard edges is exactly what makes pile depth
+  uncountable, and "next out to BUILD" says nothing on a scrapping surface.
+  NEVER answer a ring clash by growing or blurring one ring — depth reading is
+  the stack (see the mat-quantity note above). Pinned by `e2e/develop-mat.spec.ts`.
 - The board is a custom SVG (`board/board-map.tsx`, geometry hand-tuned in
   `board-data.ts`) — NOT React Flow. Legal targets come from `state.can(...)`
   sets computed in `game.tsx`; the map dims illegal plates/routes and

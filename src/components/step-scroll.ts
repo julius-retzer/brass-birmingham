@@ -24,12 +24,15 @@ const BOARD_STEPS = [
 // Confirm and sale steps live in the dock — as do the beer/iron/coal source
 // picks: the map only spotlights those candidates, the actual pick control is
 // the dock picker, so a phone auto-scroll to the board would strand the
-// player away from the only tappable control. Card-pick steps deliberately
-// map to nothing: the hand tray is bottom-fixed and always on screen, and
-// `developing.choosingIronSource` maps to nothing too — it auto-opens the
-// develop mat modal, which owns that pick, same as its `selectingTiles`/
+// player away from the only tappable control. `cardSelected` is a dock step
+// for the same reason: the card is committed and the next tap is the action
+// list it can start, which on a phone sits below the board. The steps still
+// PICKING a card map to nothing — the hand tray is bottom-fixed and always on
+// screen — and neither does `developing.choosingIronSource`, which auto-opens
+// the develop mat modal, owner of that pick like its `selectingTiles`/
 // `confirmingDevelop` siblings.
 const DOCK_STEPS = [
+  'playing.action.cardSelected',
   'playing.action.building.confirmingBuild',
   'playing.action.networking.confirmingLink',
   'playing.action.networking.confirmingDoubleLink',

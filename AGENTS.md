@@ -751,8 +751,15 @@ What this means in practice:
   On phones a wizard step change scrolls the surface that owns the next tap
   into view (`step-scroll.ts` pure decision + `use-step-scroll.ts` applied
   half; 2s don't-fight-the-player window, `prefers-reduced-motion` honoured,
-  no-op on lg). The board legend sits top-right, clear of the frame's bottom
-  apron, which belongs to the hand tray.
+  no-op on lg). It is driven by the MACHINE's step and nothing else — that is
+  what keeps a touch PEEK (`hand-tray.tsx`'s local `peekedId`, no event) from
+  yanking the view while a player is only reading a card; a tap-handler scroll
+  would. Holding a card (`playing.action.cardSelected`) is a dock step: the
+  action list it can start is the next tap, and on a phone that panel sits
+  below the board. It scrolls only, never moves focus — the played card keeps
+  it, so an assistive cursor is not thrown into the dock mid-turn. The board
+  legend sits top-right, clear of the frame's bottom apron, which belongs to
+  the hand tray.
 - Boot order in `game.tsx` (client-side, behind a mount gate):
   `/?preview=gameover` → `/?era=rail` (rail fixture) → `/?demo` (canal
   fixture) → `/?fresh=1` → localStorage save (`bb2-save-v1`) → setup

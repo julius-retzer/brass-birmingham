@@ -172,6 +172,64 @@ export function moveHandleShiftX(
   return 0
 }
 
+/** Smallest comfortable touch target, CSS px. */
+const TOUCH_MIN_PX = 44
+/** Tray scale on a phone — mirrors --bb-hand-scale in theme.css. */
+export const PHONE_HAND_SCALE = 0.72
+/**
+ * Height of the act tab on a peeked card, LAYOUT px. Everything in this module
+ * is measured before the tray scales itself down, so a tab sized to the touch
+ * minimum directly would land at 30 real px on a phone.
+ */
+const ACT_TAB_H = Math.ceil(TOUCH_MIN_PX / PHONE_HAND_SCALE)
+/** Side margin between the tab and the edges of the card's hitbox. */
+const ACT_TAB_INSET_X = 4
+/** How far the tab sits inside the magnified visual's lower edge. */
+const ACT_TAB_INSET_Y = 14
+
+export interface ActTabLayout {
+  /** Tab height. */
+  height: number
+  /** Tab width. */
+  width: number
+  /** Offset of the tab's bottom edge above the seat's bottom edge. */
+  bottom: number
+}
+
+/**
+ * Where the act tab sits on a peeked card — the label that says what a second
+ * tap will do, because touch has no hover to reveal it. It rides just inside
+ * the LOWER edge of the magnified visual: on the card, so it plainly belongs
+ * to it, but below the centred artwork and clear of the ◀ ▶ reorder handles,
+ * which flank the card's middle. Low is deliberate — it keeps the tab under the
+ * thumb that just tapped — but not so low that it lands on the screen edge the
+ * tray already overhangs.
+ *
+ * It stays INSIDE the card's own 108-wide hitbox, because the card is what
+ * takes the tap: the tab is the target the finger aims at, and the button
+ * beneath it is the one that acts.
+ */
+export function actTabLayout(lens: LensPreset): ActTabLayout {
+  return {
+    height: ACT_TAB_H,
+    width: CARD_W - 2 * ACT_TAB_INSET_X,
+    bottom: lens.rise + ACT_TAB_INSET_Y,
+  }
+}
+
+/**
+ * Horizontal placement of the act tab, from the shift its lens already took.
+ * It follows that clamp only as far as its own side margin allows: the lens can
+ * slide a long way inward on an edge card, while the hitbox that takes the tap
+ * neither moves nor grows sideways — so a tab carried the whole way would hang
+ * over the seat next door, and a finger aiming at the label would land on the
+ * wrong card.
+ */
+export function actTabShiftX(lensShift: number, tab: ActTabLayout): number {
+  const slack = (CARD_W - tab.width) / 2
+  return Math.max(-slack, Math.min(slack, lensShift))
+}
+
 /** How far above its seat the magnified visual reaches, layout px. */
 export function lensReach(lens: LensPreset): number {
   return lens.rise + CARD_H * (lens.scale - 1)

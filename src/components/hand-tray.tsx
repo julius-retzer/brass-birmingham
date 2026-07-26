@@ -10,6 +10,16 @@
 // the card under the finger peeked). A selected card keeps a smaller
 // persistent lens. Pure geometry lives in hand-tray-layout.ts.
 //
+// A PEEKED card carries an act tab ("Play" / "Put back") on its lower edge.
+// The peek exists because touch has no hover — it is how a phone reads a card
+// out of a fan packed to a 26px sliver — so the tap that ACTS is a second one,
+// and the tab is what says so: a target the finger can aim at instead of an
+// invisible repeat. It is a LABEL, not a control (pointer-events: none, inside
+// the card's own hitbox): the card takes the tap either way, which keeps one
+// control per card and leaves the card's tap point clear, exactly as the ◀ ▶
+// handles do. Hover and keyboard focus never show it — they already act on the
+// first click, and the tab keys off `peekedId`, which only touch ever sets.
+//
 // The fan is also REORDERABLE (display only — see hand-order.ts; the engine's
 // hand is never touched). Which ways in depend on the pointer, because the
 // tray's pointer budget is already spent: on DESKTOP (fine pointer) a mouse
@@ -28,6 +38,8 @@ import {
   LENS_COARSE,
   LENS_FINE,
   LENS_SELECTED,
+  actTabLayout,
+  actTabShiftX,
   cardIndexAtX,
   dockShift,
   fanAngle,
@@ -70,7 +82,6 @@ export interface HandTrayProps {
   canSelect: ((cardId: string) => boolean) | null
   onSelect?: (cardId: string) => void
   selectedIds?: string[]
-  hint?: string | null
   /** Hover preview: the shell highlights the card's targets on the map. */
   onHoverCard?: (card: GameCard | null) => void
   /** Right dock collapsed — the tray extends toward the reclaimed edge. */
@@ -87,7 +98,6 @@ export function HandTray({
   canSelect,
   onSelect,
   selectedIds = [],
-  hint,
   onHoverCard,
   panelCollapsed = false,
   onReorder,
@@ -192,6 +202,7 @@ export function HandTray({
   const lens = coarse ? LENS_COARSE : LENS_FINE
   const { spacing, marginX } = fanLayout(n, fanWidth)
   const handles = moveHandleLayout(lens, coarse)
+  const actTab = actTabLayout(lens)
 
   // Long-press browse: once the hold fires, sliding moves the raised
   // highlight to the card whose resting seat is under the finger; releasing
@@ -283,19 +294,6 @@ export function HandTray({
         panelCollapsed ? 'lg:right-[44px]' : 'lg:right-[428px]'
       }`}
     >
-      {hint && (
-        // The tray's own label, anchored to the band's left edge — never a
-        // floating pill over the middle of the board. Absolutely positioned,
-        // so it reserves no height and can never move the hand: the fan
-        // keeps a constant layout whether or not a hint is showing. On
-        // phones it rides the band's top edge (over the scrolling panel,
-        // not the board); on desktop it sits in the board frame's bottom
-        // apron, which the map never paints into (see .bb2-tray-label).
-        // Click-transparent like the rest of the tray.
-        <div className="bb2-tray-label" data-testid="hand-hint">
-          {hint}
-        </div>
-      )}
       <div
         ref={fanRef}
         className="bb2-hand bb2-handbox"
@@ -311,6 +309,19 @@ export function HandTray({
           const disabled = selecting ? !enabled : true
           const raised = i === raisedIndex
           const dragging = draggingId === card.id
+          // `peekedId` is only ever set by touch, so it is exactly the state
+          // whose next tap acts — what the act tab is there to advertise.
+          const actLabel =
+            peekedId === card.id && enabled
+              ? selected
+                ? 'Put back'
+                : 'Play'
+              : null
+          /** The second tap's effect, shared by the card and its act tab. */
+          const act = () => {
+            if (peekedId) setPeek(null)
+            onSelect?.(card.id)
+          }
           const shift = dockShift(
             i,
             raisedIndex === -1 ? null : raisedIndex,
@@ -419,10 +430,7 @@ export function HandTray({
                     setPeek(card)
                     return
                   }
-                  if (enabled) {
-                    if (peekedId) setPeek(null)
-                    onSelect?.(card.id)
-                  }
+                  if (enabled) act()
                 }}
                 onKeyDown={(e) => {
                   // Shift+Arrow, not a bare arrow: bare arrows are how a
@@ -518,6 +526,28 @@ export function HandTray({
                       <span aria-hidden>{glyph}</span>
                     </button>
                   ))}
+                </span>
+              )}
+              {/* What the next tap does, on the card it will do it to. Sized
+                and placed by actTabLayout; counter-rotated out of the fan's
+                tilt so the label reads straight, and shifted with the same
+                edge clamp as the lens it rides. Hidden from assistive tech:
+                nothing reaches a peek without a pointer, and the card button
+                is the only control here. */}
+              {actLabel && !draggingId && (
+                <span
+                  className="bb2-card-act"
+                  data-testid={`card-act-${card.id}`}
+                  data-variant={selected ? 'back' : undefined}
+                  aria-hidden
+                  style={{
+                    bottom: `${actTab.bottom}px`,
+                    height: `${actTab.height}px`,
+                    width: `${actTab.width}px`,
+                    transform: `translateX(calc(-50% + ${actTabShiftX(lensShiftX(i, n, spacing, fanWidth, lens.scale), actTab)}px)) rotate(${-angle}deg)`,
+                  }}
+                >
+                  {actLabel}
                 </span>
               )}
             </span>

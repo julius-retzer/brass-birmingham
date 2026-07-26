@@ -31,7 +31,7 @@ import {
   pendingIronChoice,
 } from '~/store/shared/resourceSources'
 import { disabledActionReason } from './action-reason'
-import { CardChip, cardTitle } from './cards'
+import { CardChip } from './cards'
 import {
   doubleLinkDisabledReason,
   showsDoubleLinkOption,
@@ -237,68 +237,53 @@ interface ActionDockProps {
 /* ----- hand-selection contract for the shell / HandTray ----- */
 
 export interface HandSelection {
-  /** null = the tray says nothing; the hand is still live. */
-  hint: string | null
   selectedIds: string[]
 }
 
+/**
+ * Which hand cards the current step has in play — nothing else. The tray adds
+ * no words of its own: each surface narrates its own step in its own panel,
+ * and the fixed tray floats over whichever panel happens to be under it.
+ *
+ * Which cards are actually clickable is NOT decided here — the shell asks the
+ * machine (`state.can({SELECT_CARD, cardId})`) per card. That keeps one source
+ * of truth: on a pick step every hand card is selectable; once a card is
+ * committed only a DIFFERENT card is (the mid-flow switch), and a Sell that
+ * already flipped an industry offers none.
+ */
 export function getHandSelection(
   snapshot: GameStoreSnapshot,
 ): HandSelection | null {
   const is = (path: string) => snapshot.matches(path as never)
-  // A hint exists only while something is actually in flight. Idling, the
-  // hand is live (card-first: playing a card opens the actions it can start,
-  // the machine's cardSelected state) but the tray says nothing — the dock's
-  // own "Choose an action" panel is the narration for that state, and a tray
-  // label repeating it just covers whatever panel it happens to float over.
-  // Wording gotcha: no hint may contain "choose an action" (that dock title,
-  // pinned by e2e getByText, which substring-matches case-insensitively).
-  //
-  // Which cards are actually clickable at each step is NOT decided here — the
-  // shell asks the machine (`state.can({SELECT_CARD, cardId})`) per card. That
-  // keeps one source of truth: on a pick step every hand card is selectable;
-  // once a card is committed only a DIFFERENT card is (the mid-flow switch),
-  // and a Sell that already flipped an industry offers none.
-  if (is('playing.action.selectingAction'))
-    return { hint: null, selectedIds: [] }
+  // Card-first: the hand is live while idling — playing a card opens the
+  // actions it can start (the machine's cardSelected state).
+  if (is('playing.action.selectingAction')) return { selectedIds: [] }
   if (is('playing.action.cardSelected')) {
-    // Same "Holding <card>" wording as every deeper step: the held card is
-    // the only live state the tray adds here, and the dock already carries
-    // the title, the card chip and the Put back control.
     const held = snapshot.context.selectedCard
-    return {
-      hint: held ? `Holding ${cardTitle(held)}` : null,
-      selectedIds: held ? [held.id] : [],
-    }
+    return { selectedIds: held ? [held.id] : [] }
   }
-  if (is('playing.action.building.selectingCard'))
-    return { hint: 'Build — play a card from your hand', selectedIds: [] }
-  if (is('playing.action.networking.selectingCard'))
-    return { hint: 'Network — discard a card', selectedIds: [] }
-  if (is('playing.action.developing.selectingCard'))
-    return { hint: 'Develop — discard a card', selectedIds: [] }
-  if (is('playing.action.selling.selectingCard'))
-    return { hint: 'Sell — discard a card', selectedIds: [] }
-  if (is('playing.action.takingLoan.selectingCard'))
-    return { hint: 'Loan — discard a card', selectedIds: [] }
-  if (is('playing.action.scouting.selectingCards')) {
-    const picked = snapshot.context.selectedCardsForScout
+  if (is('playing.action.scouting.selectingCards'))
     return {
-      hint: `Scout — discard three cards (${picked.length}/3)`,
-      selectedIds: picked.map((c) => c.id),
+      selectedIds: snapshot.context.selectedCardsForScout.map((c) => c.id),
     }
-  }
+  if (
+    is('playing.action.building.selectingCard') ||
+    is('playing.action.networking.selectingCard') ||
+    is('playing.action.developing.selectingCard') ||
+    is('playing.action.selling.selectingCard') ||
+    is('playing.action.takingLoan.selectingCard')
+  )
+    return { selectedIds: [] }
   // Any deeper step of an action flow: the card is committed but still in
-  // play. Keep it lifted in the fan and named in the pill for the WHOLE flow
-  // (until confirm / cancel / put-back) so the player never loses sight of
-  // what they're spending. Derived from machine context, so it survives the
-  // multiplayer intent → broadcast → rebuild round-trip like every other
-  // selection signal. Clicking a DIFFERENT card here switches the play (the
-  // machine cancels the action and re-holds it, see `canSwitchHeldCard`).
+  // play. Keep it lifted in the fan for the WHOLE flow (until confirm /
+  // cancel / put-back) so the player never loses sight of what they're
+  // spending. Derived from machine context, so it survives the multiplayer
+  // intent → broadcast → rebuild round-trip like every other selection
+  // signal. Clicking a DIFFERENT card here switches the play (the machine
+  // cancels the action and re-holds it, see `canSwitchHeldCard`).
   if (is('playing.action')) {
     const held = snapshot.context.selectedCard
-    if (held)
-      return { hint: `Holding ${cardTitle(held)}`, selectedIds: [held.id] }
+    if (held) return { selectedIds: [held.id] }
   }
   return null
 }
@@ -652,20 +637,20 @@ function StepRail({ steps, active }: { steps: string[]; active: number }) {
 }
 
 /**
- * The held-card banner, shown the instant a card is committed and kept for the
- * whole action flow — the SAME "Holding <card>" wording in the card-first
- * chooser and every action-first step, so the two entry orders look identical
- * (captain's rule: the held card is named consistently regardless of order).
+ * The card this action is spending, shown the instant one is committed and kept
+ * for the whole flow — identically in the card-first chooser and every
+ * action-first step, so the two entry orders look the same.
+ *
+ * The chip alone: it sits under the flow's own title and beside the card lifted
+ * out of the fan, so a word introducing it would only restate what both
+ * already show.
  */
 function HeldCard({ card }: { card: Card | null | undefined }) {
   if (!card) return null
   return (
-    <div
-      className="flex items-center gap-2 text-[12px]"
-      style={{ color: 'rgba(231,215,177,.6)' }}
-      data-testid="held-card"
-    >
-      Holding <CardChip card={card} />
+    <div className="flex items-center gap-2" data-testid="held-card">
+      <span className="sr-only">Card in play:</span>
+      <CardChip card={card} />
     </div>
   )
 }

@@ -1082,9 +1082,8 @@ export function BoardMap({
         {/* legend — hidden on phones: it is decorative, and at 390px it runs
           under the zoom controls and swallows the reset button, which is the
           one control a pinched-in player needs to find their way back.
-          Top-right, clear of the frame's bottom apron: the bottom-left corner
-          belongs to the hand tray's step label (.bb2-tray-label), and the
-          top-left to the map's own cartouche. */}
+          Top-right, clear of the frame's bottom apron, which belongs to the
+          hand tray, and of the top-left, which is the map's own cartouche. */}
         <div
           className="absolute right-3 top-3 z-10 hidden items-center gap-4 rounded border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] sm:flex"
           style={{

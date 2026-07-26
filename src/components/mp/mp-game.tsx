@@ -1854,7 +1854,6 @@ function MpTable({
           }
           onSelect={(cardId) => send({ type: 'SELECT_CARD', cardId })}
           selectedIds={handSel?.selectedIds ?? []}
-          hint={handSel?.hint ?? null}
           onHoverCard={setHoveredCard}
           panelCollapsed={panelCollapsed}
           onReorder={(cardId, toIndex) =>

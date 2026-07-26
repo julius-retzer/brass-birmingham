@@ -52,8 +52,8 @@ import { useHandOrder } from './hand-order'
 import { HandTray } from './hand-tray'
 import { computeHoverCities, focusCityFor } from './hover-highlight'
 import { IncomeTrackModal } from './income-track'
-import { LeaderShortcuts } from './leader-shortcuts'
 import { JournalPanel } from './journal'
+import { LeaderShortcuts } from './leader-shortcuts'
 import { legalCityTargets, legalLinkTargets } from './legal-targets'
 import { LocateCityProvider, useLocateCityState } from './locate'
 import { GameOverScreen, PassGate, RoundCurtain } from './overlays'
@@ -1024,7 +1024,6 @@ function GameInner({
             }
             onSelect={(cardId) => send({ type: 'SELECT_CARD', cardId })}
             selectedIds={handSel?.selectedIds ?? []}
-            hint={handSel?.hint ?? null}
             onHoverCard={setHoveredCard}
             panelCollapsed={panelCollapsed}
             onReorder={(cardId, toIndex) =>

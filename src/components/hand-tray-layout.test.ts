@@ -7,6 +7,9 @@ import {
   LENS_FINE,
   LENS_SELECTED,
   MIN_SPACING,
+  PHONE_HAND_SCALE,
+  actTabLayout,
+  actTabShiftX,
   cardIndexAtX,
   dockShift,
   fanLayout,
@@ -191,6 +194,77 @@ describe('moveHandleLayout', () => {
         lens.rise + (CARD_H * lens.scale) / 2,
       )
     }
+  })
+})
+
+describe('actTabLayout', () => {
+  it('rides inside the lower edge of the magnified card', () => {
+    for (const lens of [LENS_FINE, LENS_COARSE]) {
+      const { bottom } = actTabLayout(lens)
+      // lens.rise IS the magnified visual's bottom edge (transform-origin
+      // 50% 100%), and the tab sits above it — the tray already overhangs the
+      // bottom of the screen, so a tab hanging below the card would land on
+      // the edge.
+      expect(bottom).toBeGreaterThan(lens.rise)
+    }
+  })
+
+  it('is a thumb-sized target once the tray has scaled itself down', () => {
+    // Layout px are pre-scale: on a phone the whole fan is drawn at
+    // PHONE_HAND_SCALE, so that is the size a finger actually gets.
+    const { height, width } = actTabLayout(LENS_COARSE)
+    expect(height * PHONE_HAND_SCALE).toBeGreaterThanOrEqual(44)
+    expect(width * PHONE_HAND_SCALE).toBeGreaterThanOrEqual(44)
+  })
+
+  it("stays inside the card's hitbox, which is what takes the tap", () => {
+    for (const lens of [LENS_FINE, LENS_COARSE]) {
+      const tab = actTabLayout(lens)
+      // Horizontally within the 108px button, and vertically within the
+      // upward ::after extension that covers the magnified visual.
+      expect(tab.width).toBeLessThan(CARD_W)
+      expect(tab.bottom + tab.height).toBeLessThan(lensReach(lens) + CARD_H)
+    }
+  })
+
+  it('clears the reorder handles, which flank the same card', () => {
+    for (const lens of [LENS_FINE, LENS_COARSE]) {
+      const tab = actTabLayout(lens)
+      const handles = moveHandleLayout(lens, lens === LENS_COARSE)
+      expect(tab.bottom + tab.height).toBeLessThan(handles.bottom)
+    }
+  })
+
+  it('leaves the centred artwork on the card face uncovered', () => {
+    for (const lens of [LENS_FINE, LENS_COARSE]) {
+      const tab = actTabLayout(lens)
+      expect(tab.bottom + tab.height).toBeLessThan(
+        lens.rise + (CARD_H * lens.scale) / 2,
+      )
+    }
+  })
+})
+
+describe('actTabShiftX', () => {
+  const tab = actTabLayout(LENS_COARSE)
+
+  it("never carries the tab out of the card's hitbox", () => {
+    // An edge card's lens slides a long way inward to stay on screen; the
+    // hitbox that takes the tap does not move with it.
+    const width = 541 // 390px phone at the tray's own scale
+    const { spacing } = fanLayout(8, width)
+    const lensShift = lensShiftX(0, 8, spacing, width, LENS_COARSE.scale)
+    expect(lensShift).toBeGreaterThan((CARD_W - tab.width) / 2)
+
+    const shift = actTabShiftX(lensShift, tab)
+    expect(Math.abs(shift) + tab.width / 2).toBeLessThanOrEqual(CARD_W / 2)
+  })
+
+  it('follows a small shift exactly, and both directions', () => {
+    expect(actTabShiftX(0, tab)).toBe(0)
+    expect(actTabShiftX(2, tab)).toBe(2)
+    expect(actTabShiftX(-2, tab)).toBe(-2)
+    expect(actTabShiftX(-99, tab)).toBe(-(CARD_W - tab.width) / 2)
   })
 })
 

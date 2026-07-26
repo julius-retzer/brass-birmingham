@@ -685,26 +685,22 @@ What this means in practice:
   `mp/mp-game.tsx`. It enumerates and asks `can()`; it re-derives no rule. See
   "Legality is engine-owned" below.
 - NEXT-STEP NARRATION IS OWN-SURFACE (2026-07-24, supersedes the floating
-  banner + tray pill): nothing floats over the play area. The board's
-  instruction is a caption bar in the frame's NORMAL FLOW
-  (`components/board-caption.ts`, shared by both shells — site/route picks
-  AND the beer/iron/coal source steps, counts from the same sets the
-  spotlight uses); the tray's hint is `.bb2-tray-label` inside the tray band
-  (absolutely positioned, ZERO height reserve — `hintClearance` and the old
-  pill are gone, so the fan never moves when the hint changes; don't
-  reintroduce a hint that resizes the tray, that's the PR #81 jumping-hand
-  regression); dock and mat modal narrate themselves. The tray label exists
-  ONLY while an action is in flight: the fixed tray floats over the scrolling
-  panel column, so an idle label sits on some panel's heading for the whole
-  turn — idle narration is the dock's own "Choose an action" panel, card-first
-  entry included. It paints ABOVE the fan (`z-index`), because a selected card
-  keeps its lens for the whole flow and would otherwise bury it; the tray is
-  click-transparent, so that costs no tap. On phones a wizard
-  step change scrolls the surface that owns the next tap into view
-  (`step-scroll.ts` pure decision + `use-step-scroll.ts` applied half; 2s
-  don't-fight-the-player window, `prefers-reduced-motion` honoured, no-op on
-  lg). The board legend sits top-right — the frame's bottom-left apron
-  belongs to the tray label.
+  banner + tray pill): nothing floats over the play area, and no surface
+  narrates another. The board's instruction is a caption bar in the frame's
+  NORMAL FLOW (`components/board-caption.ts`, shared by both shells — site/route
+  picks AND the beer/iron/coal source steps, counts from the same sets the
+  spotlight uses); dock and mat modal narrate themselves. The TRAY carries NO
+  text label in any state (`hintClearance`, the old pill and `.bb2-tray-label`
+  are all gone): it is fixed over the scrolling panel column, so any label it
+  shows sits on some panel's heading, and everything it could say the dock is
+  already saying in the panel that owns the step. The one thing the tray does
+  say is on the CARD — the act tab, below. Don't reintroduce a tray hint, and
+  never one that resizes the tray (that's the PR #81 jumping-hand regression).
+  On phones a wizard step change scrolls the surface that owns the next tap
+  into view (`step-scroll.ts` pure decision + `use-step-scroll.ts` applied
+  half; 2s don't-fight-the-player window, `prefers-reduced-motion` honoured,
+  no-op on lg). The board legend sits top-right, clear of the frame's bottom
+  apron, which belongs to the hand tray.
 - Boot order in `game.tsx` (client-side, behind a mount gate):
   `/?preview=gameover` → `/?era=rail` (rail fixture) → `/?demo` (canal
   fixture) → `/?fresh=1` → localStorage save (`bb2-save-v1`) → setup
@@ -736,16 +732,35 @@ What this means in practice:
   `role="img"` back, that flattens them out of the a11y tree.
 - The hand tray (`hand-tray.tsx`) doubles as the card selector for every
   discard step. `getHandSelection()` (`action-dock.tsx`) returns
-  `{hint, selectedIds}` for EVERY `playing.action.*` state (`hint` is null
-  while idling — the hand stays live, the tray just says nothing): the
-  card-picking
-  steps name the action; once a card is committed a catch-all keeps the held
-  `context.selectedCard` in `selectedIds` with a `Holding <name>` hint — so the
-  fan keeps the card lifted (persistent `LENS_SELECTED`) and the pill keeps
-  naming it for the WHOLE flow (put-back is CANCEL in the dock). It does NOT
-  decide which cards are clickable — the shell asks the machine per card
+  `{selectedIds}` for EVERY `playing.action.*` state — which cards the step has
+  in play, and nothing else: a catch-all keeps a committed
+  `context.selectedCard` lifted (persistent `LENS_SELECTED`) for the WHOLE flow
+  (put-back is CANCEL in the dock). It does NOT decide which cards are
+  clickable — the shell asks the machine per card
   (`state.can({SELECT_CARD, cardId})`), the single source of truth, so it
-  survives the MP intent→broadcast→rebuild round-trip.
+  survives the MP intent→broadcast→rebuild round-trip. Pinned by
+  `hand-selection.test.ts`, which asserts the contract carries no string.
+- THE ACT TAB MAKES THE SECOND TAP VISIBLE (2026-07-24): on touch the first tap
+  PEEKS a card and the second one plays it (`peekedId`, only ever set by touch).
+  A peeked card carries a brass tab on its lower face naming what the next tap
+  does — "Play", or "Put back" for a card already in play — because otherwise
+  the second tap is invisible and players have to stumble on it. The two
+  stages STAY: the fan packs to a
+  26px sliver on a phone, so raising a card is the only way to read it, and a
+  one-tap fan would mean you cannot look at a card without spending it.
+  - It is a LABEL, not a control (`.bb2-card-act`, `pointer-events: none`,
+    `aria-hidden`), sized by `actTabLayout` to sit INSIDE the card's own 108px
+    hitbox: the card takes the tap either way, so there is one control per card
+    and the card's tap point stays clear — the same rule the ◀ ▶ handles follow,
+    and Playwright enforces it (an overlapping button makes `card.tap()` fail
+    with "intercepts pointer events").
+  - Layout px in `hand-tray-layout.ts` are PRE-SCALE: the tray draws the fan at
+    `PHONE_HAND_SCALE`, so a 44px target has to be sized 44/0.72 there. Type
+    too. Pinned by `hand-tray-layout.test.ts`.
+  - Mouse and keyboard never see it (they act on the first click), and it is
+    absent on a card that cannot be played. Touch paths are pinned by
+    `e2e/hand-tray.spec.ts` with REAL touch (`hasTouch` + `isMobile` — isMobile
+    is what makes `(pointer: coarse)` match).
 - HAND ORDER IS A VIEW PERMUTATION (2026-07-23): players reorder their own fan
   (mouse drag, the ◀ ▶ handles flanking a raised card, Shift+Arrow on a focused
   card). `hand-order.ts` owns it — a per-player card-id list under its OWN
@@ -761,15 +776,16 @@ What this means in practice:
   gesture on touch — a control over the face broke `card.tap()` outright.
   Pinned by `hand-order.test.ts`, `hand-tray-layout.test.ts`,
   `e2e/hand-reorder.spec.ts`.
-- HELD-CARD BANNER (2026-07-17): the DOCK also names the held card — a shared
-  `HeldCard` (`Holding <CardChip>`) rendered by the `Flow` wrapper (via a
+- HELD-CARD CHIP (2026-07-17): the DOCK names the card an action is spending —
+  a shared `HeldCard` (a bare `CardChip`) rendered by the `Flow` wrapper (via a
   `held` prop on every `<Flow>` / `DevelopTilePicker`) AND the `cardSelected`
-  chooser, so both entry orders (card-first and action-first) show the
-  IDENTICAL "Holding <card>" the instant `context.selectedCard` is set, for the
-  whole flow. Keyed on state + `selectedCard` only, so it's order-independent.
-  Don't reintroduce the old per-step "Playing"/"Card" chips — they duplicated
-  it. `data-testid="held-card"`; pinned by the action-first + card-first dock
-  tests in `card-first.spec.ts`.
+  chooser, so both entry orders (card-first and action-first) show the IDENTICAL
+  chip the instant `context.selectedCard` is set, for the whole flow. Keyed on
+  state + `selectedCard` only, so it's order-independent. The chip carries no
+  introducing word: it sits under the flow's own title and beside the card
+  lifted out of the fan. Don't reintroduce the old per-step "Playing"/"Card"
+  chips — they duplicated it. `data-testid="held-card"`; pinned by the
+  action-first + card-first dock tests in `card-first.spec.ts`.
 - CLICK-TO-SWITCH (2026-07-17): clicking a DIFFERENT hand card switches the
   play. On a pick step that's `cardSelected`'s own SELECT_CARD; mid-action it's
   a parent-level SELECT_CARD on `playing.action` → `cardSelected` that reuses

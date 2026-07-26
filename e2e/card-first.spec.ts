@@ -33,15 +33,12 @@ test('card-first: play a card, pick Network, confirm — card never re-asked', a
   await page.goto('/?demo')
   await expect(treasuryOf(page, 'Eliza')).toHaveText('£19')
 
-  // The hand is live while idling, and the tray carries no label until an
-  // action is actually in flight — play a card first.
+  // The hand is live while idling — play a card first. The tray itself adds no
+  // words in any state; the dock names the card it is spending.
   await expect(page.getByTestId('hand-hint')).toHaveCount(0)
   await page.getByTestId('card-brewery_2').click()
   await expect(page.getByText('Play this card')).toBeVisible()
-  await expect(page.getByTestId('held-card')).toContainText('Holding')
-  await expect(
-    page.getByTestId('hand-hint').getByText(/^Holding /),
-  ).toBeVisible()
+  await expect(page.getByTestId('held-card')).toContainText('Brewery')
 
   // The held card's actions are offered; Network goes STRAIGHT to the
   // route step — no second card ask.
@@ -53,14 +50,13 @@ test('card-first: play a card, pick Network, confirm — card never re-asked', a
   ).toBeVisible()
 
   // The card stays visibly held for the WHOLE action, not just the
-  // cardSelected screen: it keeps its lift in the fan and the "Holding …"
-  // label persists on the route step (the captain's report was that both
-  // vanished the moment an action was pressed).
+  // cardSelected screen: it keeps its lift in the fan and the dock's chip
+  // persists on the route step (the report was that both vanished the moment
+  // an action was pressed).
   const held = page.getByTestId('card-brewery_2')
   await expect(held).toHaveAttribute('data-selected', 'true')
-  await expect(
-    page.getByTestId('hand-hint').getByText(/^Holding /),
-  ).toBeVisible()
+  await expect(page.getByTestId('held-card')).toContainText('Brewery')
+  await expect(page.getByTestId('hand-hint')).toHaveCount(0)
 
   const legalRoute = page.locator('path[data-conn][data-legal="true"]')
   expect(await legalRoute.count()).toBeGreaterThan(0)
@@ -71,9 +67,8 @@ test('card-first: play a card, pick Network, confirm — card never re-asked', a
   await expect(confirm).toBeEnabled()
   // Still held through the confirm step, right up until it's spent.
   await expect(held).toHaveAttribute('data-selected', 'true')
-  await expect(
-    page.getByTestId('hand-hint').getByText(/^Holding /),
-  ).toBeVisible()
+  await expect(page.getByTestId('held-card')).toContainText('Brewery')
+  await expect(page.getByTestId('hand-hint')).toHaveCount(0)
   await confirm.click()
 
   // The link was laid with the held card and consumed the action (£19 − £3;
@@ -102,22 +97,21 @@ test('card-first: build with the held card resumes at the industry step', async 
   await expect(treasuryOf(page, 'Eliza')).toHaveText('£19')
 })
 
-test('action-first: the "Holding <card>" banner appears once a card is picked and persists', async ({
+test('action-first: the dock names the played card once one is picked, and keeps it', async ({
   page,
 }) => {
   await page.goto('/?demo')
 
   // Action first: choose Network BEFORE a card. On the discard step no card is
-  // held yet, so the dock shows no held-card banner.
+  // held yet, so the dock shows no card chip.
   await page.getByTestId('action-network').click()
   await expect(page.getByTestId('held-card')).toHaveCount(0)
 
-  // Pick a card during the discard step — the dock now NAMES it, the same
-  // "Holding <card>" wording the card-first order shows.
+  // Pick a card during the discard step — the dock NAMES it, exactly as the
+  // card-first order does.
   await page.getByTestId('card-birmingham_1').click()
   const held = page.getByTestId('held-card')
   await expect(held).toBeVisible()
-  await expect(held).toContainText('Holding')
   await expect(held).toContainText('Birmingham')
 
   // …and it persists through the route step and into confirm.
@@ -129,12 +123,12 @@ test('action-first: the "Holding <card>" banner appears once a card is picked an
   await expect(page.getByTestId('held-card')).toContainText('Birmingham')
 })
 
-test('card-first: the same held-card banner shows in the dock and persists', async ({
+test('card-first: the same card chip shows in the dock and persists', async ({
   page,
 }) => {
   await page.goto('/?demo')
 
-  // Card first: the banner is up from the chooser onward.
+  // Card first: the chip is up from the chooser onward.
   await page.getByTestId('card-birmingham_1').click()
   await expect(page.getByTestId('held-card')).toContainText('Birmingham')
   await page.getByTestId('action-network').click()
@@ -170,9 +164,7 @@ test('card-first: clicking another card mid-action cancels it and re-holds the n
   // Enter a real action flow holding Birmingham.
   await birmingham.click()
   await page.getByTestId('action-network').click()
-  await expect(
-    page.getByTestId('hand-hint').getByText(/^Holding /),
-  ).toBeVisible()
+  await expect(page.getByTestId('held-card')).toContainText('Birmingham')
   await expect(birmingham).toHaveAttribute('data-selected', 'true')
 
   // Clicking a DIFFERENT card mid-flow is "cancel this, play that instead":

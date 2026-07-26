@@ -52,8 +52,8 @@ async function freshGame() {
   await setSeatReady(host.token, 0, host.seatSecret, true)
   await setSeatReady(host.token, guest.seatId, guest.seatSecret, true)
   const started = await startGame(host.token, host.seatSecret)
-  expect(started.ok).toBe(true)
-  return { host, guest }
+  if (!started.ok) throw new Error(`start refused: ${started.error}`)
+  return { host, guest, started }
 }
 
 type Ctx = {
@@ -967,17 +967,31 @@ describe('multiplayer: the starting player is randomized server-side', () => {
     expect(b.turnOrder).toEqual(a.turnOrder)
   })
 
-  test('over many games the first player is not always seat 0', async () => {
-    // Real randomness over many 2-player games: the leader must vary (it was
-    // ALWAYS seat 0 before this change). With 20 fair coin flips, "all the
-    // same" has probability 2·2⁻²⁰ ≈ 2e-6 — effectively never, no retries.
-    const leaders = new Set<number>()
-    for (let n = 0; n < 20; n++) {
-      const { host } = await freshGame()
-      leaders.add((await startedCtx(host.token)).currentPlayerIndex)
-    }
-    expect(leaders.size).toBeGreaterThan(1)
-  })
+  // Sized so that a randomisation regression pinning the leader to one seat
+  // cannot slip through: with 20 fair coin flips, "all the same" has
+  // probability 2·2⁻²⁰ ≈ 2e-6 — effectively never, so no retry logic.
+  const RANDOMNESS_SAMPLES = 20
+
+  // The sample count is fixed by the statistics above, so the clock bends to
+  // it: headroom over the file-wide 30s, which is sized for the handful of
+  // round trips a single-game test makes.
+  test(
+    'over many games the first player is not always seat 0',
+    { timeout: 120_000 },
+    async () => {
+      // The samples run concurrently: each is 5 independent DB round trips and
+      // they share no state (per-game token, per-token lock). Serialized, this
+      // is ~100 round trips — fine against a warm local Postgres, over the
+      // clock against a remote branch on a loaded CI runner.
+      const leaders = await Promise.all(
+        Array.from({ length: RANDOMNESS_SAMPLES }, async () => {
+          const { started } = await freshGame()
+          return ctxOf(started.view).currentPlayerIndex
+        }),
+      )
+      expect(new Set(leaders).size).toBeGreaterThan(1)
+    },
+  )
 })
 
 describe('multiplayer: table names and private/public visibility', () => {

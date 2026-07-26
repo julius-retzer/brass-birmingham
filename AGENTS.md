@@ -1026,12 +1026,18 @@ When updating this file, preserve this bar for all agents and keep entries conci
   specs widen their per-expect timeout to 15s (`expect.configure`) and set
   long test timeouts — every assertion is a POST + SSE round trip against a
   network database; do NOT read a slow run as a product bug before checking
-  DB contention. GOTCHA for parallel checkouts: :3199 is shared and
-  `reuseExistingServer` is on locally, so a second run in another worktree
-  attaches to the FIRST run's dev server and every test after that run's
-  teardown dies on `ERR_CONNECTION_REFUSED` (dozens of ~150ms failures, all
-  `page.goto`). That is the port, not the product — run one suite at a time
-  per machine, or point `baseURL`/`webServer` at a free port for the run.
+  DB contention. GOTCHA, PORT :3199 IS SHARED BY EVERY WORKTREE:
+  `reuseExistingServer` is on locally, so a second concurrent checkout either
+  attaches to the FIRST run's dev server (silently testing THAT checkout's
+  code — green runs and screenshots alike, with no warning) or, if that first
+  server tears down mid-run, every subsequent test dies on
+  `ERR_CONNECTION_REFUSED` (dozens of ~150ms failures, all `page.goto`).
+  That is the port, not the product. `lsof -iTCP:3199 -sTCP:LISTEN` names the
+  owner's cwd. Run one suite at a time per machine, or verify your own tree
+  while a sibling is testing by running against a private port with a
+  throwaway config that spreads `playwright.config.ts` and overrides
+  `baseURL`, the `--port` in `webServer.command`, its `url`, and
+  `reuseExistingServer: false`.
 - `mp-playthrough.spec.ts` (2026-07-17) is the capstone: two real browsers
   play a scripted-but-adaptive canal opening through the UI — network, loan,
   scout, wild-card builds, a SELL that stops at the beer-source picker (own

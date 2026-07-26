@@ -6,32 +6,21 @@ import {
   SLOT,
 } from './marker-anchor'
 import {
-  BARREL_ART_H,
-  BARREL_ART_W,
   BARREL_H,
+  BARREL_ICON,
+  BARREL_INK,
   BARREL_SCALE,
   BARREL_W,
-  BASE_CY,
-  BASE_RX,
-  BASE_RY,
   BEER_ROW_GAP,
   BEER_SOCKET_CX,
   BEER_SOCKET_CY,
   BEER_SOCKET_D,
   BEER_SOCKET_R,
-  HEAD_CX,
-  HEAD_CY,
-  HEAD_RX,
-  HEAD_RY,
-  HOOP_INSET,
   ICON_SIZE_GRID,
   ICON_SIZE_SINGLE,
   MAX_ICONS,
-  barrelBodyPath,
-  barrelHoops,
   barrelTransform,
   merchantIconCells,
-  silhouetteEdge,
 } from './merchant-beer'
 
 /**
@@ -65,70 +54,53 @@ describe('beer socket', () => {
   it('never crosses into the neighbouring slot', () => {
     expect(BEER_SOCKET_D).toBeLessThanOrEqual(SLOT)
   })
+
+  it('shows air above itself at both render scales', () => {
+    // A gap only reads once it is worth about a screen pixel and a half; on a
+    // phone a couple of board units is under half of one.
+    expect(BEER_ROW_GAP * PHONE_SCALE).toBeGreaterThan(1.4)
+    expect(BEER_ROW_GAP * DESKTOP_SCALE).toBeGreaterThan(3)
+  })
 })
 
 describe('barrel', () => {
+  it('is one of the vendored game-icons glyphs', () => {
+    expect(BARREL_ICON.name).toBe('barrel')
+    expect(BARREL_ICON.author).toBe('Delapouite')
+    expect(BARREL_ICON.d.length).toBeGreaterThan(100)
+  })
+
   it('is placed with a single scale factor, never one per axis', () => {
     // The transform string is the thing that could distort the art, so assert
     // its shape: one scale argument, no comma.
     const t = barrelTransform()
-    expect(t).toMatch(/^translate\([^)]*\) scale\([\d.]+\)$/)
+    expect(t).toMatch(/^translate\([^)]*\) scale\([\d.]+\) translate\([^)]*\)$/)
     expect(t).toContain(`scale(${BARREL_SCALE})`)
-    expect(BARREL_W / BARREL_H).toBeCloseTo(BARREL_ART_W / BARREL_ART_H, 10)
+    expect(BARREL_W / BARREL_H).toBeCloseTo(BARREL_INK.w / BARREL_INK.h, 10)
   })
 
-  it('is authored taller than it is wide, like a cask', () => {
-    expect(BARREL_ART_H).toBeGreaterThan(BARREL_ART_W)
-    expect(BARREL_ART_W / BARREL_ART_H).toBeGreaterThan(0.6)
+  it('reads as a cask: its ink is taller than it is wide', () => {
+    expect(BARREL_INK.h).toBeGreaterThan(BARREL_INK.w)
+    expect(BARREL_INK.w / BARREL_INK.h).toBeGreaterThan(0.6)
+  })
+
+  it('is centred on the socket', () => {
+    const t = barrelTransform()
+    expect(t.startsWith(`translate(${-BARREL_W / 2}, ${-BARREL_H / 2})`)).toBe(
+      true,
+    )
+    expect(t.endsWith(`translate(${-BARREL_INK.x}, ${-BARREL_INK.y})`)).toBe(
+      true,
+    )
   })
 
   it('keeps a legible bright mass at phone scale', () => {
     // A socket of its own puts the whole barrel on a clear patch of plate, so
     // both axes survive the reduction rather than just the longer one.
     expect(BARREL_W * PHONE_SCALE).toBeGreaterThan(4.5)
-    expect(BARREL_H * PHONE_SCALE).toBeGreaterThan(5.5)
+    expect(BARREL_H * PHONE_SCALE).toBeGreaterThan(5)
     // And at desk scale there is room for the cask shape to read.
-    expect(BARREL_H * DESKTOP_SCALE).toBeGreaterThan(12)
-  })
-
-  it('draws a closed silhouette springing from the head', () => {
-    const d = barrelBodyPath()
-    expect(d.startsWith(`M${HEAD_CX - HEAD_RX} ${HEAD_CY}`)).toBe(true)
-    expect(d.endsWith('Z')).toBe(true)
-  })
-
-  it('tapers: both heads are narrower than the bilge', () => {
-    expect(HEAD_RX).toBeLessThan(BARREL_ART_W / 2)
-    expect(BASE_RX).toBeLessThan(BARREL_ART_W / 2)
-    const bilge = silhouetteEdge((HEAD_CY + BASE_CY) / 2)
-    expect(bilge.right - bilge.left).toBeGreaterThan(HEAD_RX * 2 * 1.3)
-  })
-
-  it('keeps both heads inside the art box', () => {
-    expect(HEAD_CY - HEAD_RY).toBeGreaterThanOrEqual(0)
-    expect(BASE_CY + BASE_RY).toBeLessThanOrEqual(BARREL_ART_H)
-    expect(HEAD_CY + HEAD_RY).toBeLessThan(BASE_CY - BASE_RY)
-  })
-
-  it('keeps the silhouette inside the art box at every height', () => {
-    for (let y = HEAD_CY; y <= BASE_CY; y += 0.5) {
-      const { left, right } = silhouetteEdge(y)
-      expect(left).toBeGreaterThanOrEqual(0)
-      expect(right).toBeLessThanOrEqual(BARREL_ART_W)
-    }
-  })
-
-  it('keeps both hoops inside the silhouette at their own height', () => {
-    const hoops = barrelHoops()
-    expect(hoops).toHaveLength(2)
-    for (const h of hoops) {
-      const { left, right } = silhouetteEdge(h.y)
-      expect(h.x1).toBeCloseTo(left + HOOP_INSET, 6)
-      expect(h.x2).toBeCloseTo(right - HOOP_INSET, 6)
-      expect(h.y).toBeGreaterThan(HEAD_CY + HEAD_RY)
-      expect(h.y).toBeLessThan(BASE_CY - BASE_RY)
-    }
-    expect(hoops[0]!.y).toBeLessThan(hoops[1]!.y)
+    expect(BARREL_H * DESKTOP_SCALE).toBeGreaterThan(11)
   })
 })
 

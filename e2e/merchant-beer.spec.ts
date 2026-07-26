@@ -62,6 +62,62 @@ test('spending a merchant barrel empties that socket and no other', async ({
   await expect(page.locator('[data-beer="ready"]')).toHaveCount(readyBefore - 1)
 })
 
+test('the barrel glyph sits centred in its socket, clear of the rim', async ({
+  page,
+}) => {
+  // `merchant-beer.ts` hard-codes the vendored glyph's ink bounds, because the
+  // board renders server-side where there is no `getBBox`. This measures the
+  // real path: if the icon data moves, the barrel drifts off-centre or out of
+  // its well and nothing else would notice.
+  await page.goto('/?demo')
+  await expect(page.getByTestId('era-plate')).toBeVisible()
+  const fit = await page
+    .locator('g[data-beer="ready"]')
+    .first()
+    .evaluate((g) => {
+      const socket = g.querySelector('circle')!
+      const art = g.querySelector('g') as SVGGElement
+      const ink = (art.querySelector('path') as SVGPathElement).getBBox()
+      // getBBox is in the element's own space, so walk the art group's matrix
+      // to land the ink bounds in the socket's coordinates.
+      const m = art.transform.baseVal.consolidate()!.matrix
+      const xs = [ink.x, ink.x + ink.width]
+      const ys = [ink.y, ink.y + ink.height]
+      const pts = xs.flatMap((x) =>
+        ys.map((y) => ({
+          x: m.a * x + m.c * y + m.e,
+          y: m.b * x + m.d * y + m.f,
+        })),
+      )
+      return {
+        r: Number(socket.getAttribute('r')),
+        a: m.a,
+        b: m.b,
+        c: m.c,
+        d: m.d,
+        left: Math.min(...pts.map((p) => p.x)),
+        right: Math.max(...pts.map((p) => p.x)),
+        top: Math.min(...pts.map((p) => p.y)),
+        bottom: Math.max(...pts.map((p) => p.y)),
+      }
+    })
+
+  // Both axes come out of the same factor, with no skew: the art can be sized,
+  // never stretched or sheared.
+  expect(fit.a).toBeCloseTo(fit.d, 9)
+  expect(fit.b).toBe(0)
+  expect(fit.c).toBe(0)
+
+  const w = fit.right - fit.left
+  const h = fit.bottom - fit.top
+  expect(w).toBeGreaterThan(0)
+  // Centred on the socket origin, and inside its rim on both axes.
+  expect(Math.abs(fit.left + w / 2)).toBeLessThan(0.6)
+  expect(Math.abs(fit.top + h / 2)).toBeLessThan(0.6)
+  expect(w / 2).toBeLessThan(fit.r - 1)
+  expect(h / 2).toBeLessThan(fit.r - 1)
+})
+
 // merchant-beer.test.ts sizes the barrel in board units against these two
 // scales. They are a property of the frame, not of the board data, so a layout
 // change could move them and shrink every on-board marker with nothing failing.

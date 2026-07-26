@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { type CityId, cities, connections } from '~/data/board'
 import { VIEW_H, VIEW_W, linkKey } from './board-data'
 import {
+  LINK_ICON_DY,
+  LINK_ICON_R,
   type Rect,
   linkMarkerAnchor,
   markerBoxAt,
@@ -35,6 +37,16 @@ describe('plate boxes', () => {
       expect(r.y, at).toBeGreaterThanOrEqual(0)
       expect(r.x + r.w, at).toBeLessThanOrEqual(VIEW_W)
       expect(r.y + r.h, at).toBeLessThanOrEqual(VIEW_H)
+    }
+  })
+
+  it('leave room above for the link-icon pair', () => {
+    // The pair straddles the top edge, so a plate that reaches too far up puts
+    // it outside the viewBox. This is what caps a merchant plate's height.
+    for (const id of ids) {
+      expect(plateRect(id).y, id).toBeGreaterThanOrEqual(
+        LINK_ICON_DY + LINK_ICON_R,
+      )
     }
   })
 

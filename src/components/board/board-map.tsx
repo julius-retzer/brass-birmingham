@@ -18,6 +18,8 @@ import { GAME_ICONS } from '../gameicons-data'
 import { IndustryFragment } from '../icons'
 import { VIEW_H, VIEW_W, cityPos, linkKey } from './board-data'
 import {
+  LINK_ICON_DY,
+  LINK_ICON_R,
   MERCHANT_PLATE_H,
   MERCHANT_PLATE_TOP,
   PLATE_PAD,
@@ -29,16 +31,10 @@ import {
   routeCurve,
 } from './marker-anchor'
 import {
+  BARREL_ICON,
   BEER_SOCKET_CX,
   BEER_SOCKET_CY,
   BEER_SOCKET_R,
-  HEAD_CX,
-  HEAD_CY,
-  HEAD_RX,
-  HEAD_RY,
-  HOOP_W,
-  barrelBodyPath,
-  barrelHoops,
   barrelTransform,
   merchantIconCells,
 } from './merchant-beer'
@@ -1707,32 +1703,10 @@ function MerchantBeerSocket({ hasBeer }: { hasBeer: boolean }) {
       />
       {hasBeer && (
         <g transform={barrelTransform()}>
-          {/* No parchment keyline on the barrel: the socket already separates
-              the amber, and at phone scale a light stroke on a ~5px shape
-              washes the fill towards cream. */}
-          <path d={barrelBodyPath()} fill="#e8bc4f" />
-          {barrelHoops().map((h) => (
-            <line
-              key={h.y}
-              x1={h.x1}
-              y1={h.y}
-              x2={h.x2}
-              y2={h.y}
-              stroke="#8a6d34"
-              strokeWidth={HOOP_W}
-            />
-          ))}
-          {/* Rim only, no second fill: the cask has to stay ONE amber mass or
-              it breaks into two blobs once the board is phone-sized. */}
-          <ellipse
-            cx={HEAD_CX}
-            cy={HEAD_CY}
-            rx={HEAD_RX}
-            ry={HEAD_RY}
-            fill="none"
-            stroke="#8a6d34"
-            strokeWidth={HOOP_W}
-          />
+          {/* One flat amber fill, no keyline: the socket already separates the
+              amber, and a second tone on a ~5px shape breaks the cask into two
+              blobs instead of shading it. */}
+          <path d={BARREL_ICON.d} fill="#e8bc4f" />
         </g>
       )}
     </g>
@@ -1875,7 +1849,10 @@ function MerchantPlate({
 
       {/* the two •—• link-scoring icons printed at every merchant location
           (GAME_CONSTANTS.MERCHANT_LINK_ICONS — worth 2 to adjacent links) */}
-      <g transform={`translate(${plateW / 2 - 15}, -7)`} pointerEvents="none">
+      <g
+        transform={`translate(${plateW / 2 - 15}, ${-LINK_ICON_DY})`}
+        pointerEvents="none"
+      >
         <title>2 link-scoring icons at this merchant</title>
         {[0, 1].map((i) => (
           <g
@@ -1885,9 +1862,21 @@ function MerchantPlate({
             strokeWidth="1.5"
             strokeLinecap="round"
           >
-            <circle cx="0" cy="0" r="1.7" fill="#c39538" stroke="none" />
+            <circle
+              cx="0"
+              cy="0"
+              r={LINK_ICON_R}
+              fill="#c39538"
+              stroke="none"
+            />
             <path d="M1.7 0 H9.3" />
-            <circle cx="11" cy="0" r="1.7" fill="#c39538" stroke="none" />
+            <circle
+              cx="11"
+              cy="0"
+              r={LINK_ICON_R}
+              fill="#c39538"
+              stroke="none"
+            />
           </g>
         ))}
       </g>

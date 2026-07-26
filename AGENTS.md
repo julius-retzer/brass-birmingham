@@ -569,9 +569,13 @@ What this means in practice:
   real-CDP-touch hit test — any new fixed overlay over the board owes the
   same check.
 - MERCHANT BEER SITS IN ITS OWN SOCKET (2026-07-26): the beer a merchant
-  supplies is an upright cask standing in a recessed round well BELOW its tile,
-  in a dedicated row the merchant plate reserves for it — alongside the tile
-  rather than inside its icon area, as the printed board does. Geometry is pure
+  supplies is the vendored `brewery` barrel glyph standing in a recessed round
+  well BELOW its tile, in a dedicated row the merchant plate reserves for it —
+  alongside the tile rather than inside its icon area, as the printed board does.
+  It is DELIBERATELY the same glyph the brewery industry wears: a merchant never
+  buys beer, so a barrel in the socket has one possible meaning, and beer and the
+  industry that makes it are one thing on this board — a second beer symbol would
+  be a new shape for a concept that already has one. Geometry is pure
   in `board/merchant-beer.ts` (which also owns
   the merchant slot's industry-glyph cells, so tile-vs-socket clearance is
   asserted in one place); the plate metrics it divides up (`MERCHANT_BEER_ROW_H`,
@@ -584,12 +588,21 @@ What this means in practice:
   frame change that shrinks the board fails), so a marker crammed into an
   occupied area can only
   reach legible size by being reshaped, and a reshaped barrel stops reading as a
-  barrel. Give it its own space instead: BARREL ART IS AUTHORED ONCE AT CASK
-  PROPORTIONS AND PLACED WITH A SINGLE UNIFORM `scale()` — never stretch one
-  axis. (2) A merchant plate grows UPWARD from a bottom edge half a tile-row
+  barrel. Give it its own space instead: THE GLYPH IS PLACED WITH A SINGLE
+  UNIFORM `scale()` — never stretch one axis (the e2e spec walks the rendered
+  matrix and fails on skew or unequal axes). Its ink bounds are hard-coded
+  (`BARREL_INK`) because the board renders server-side where there is no
+  `getBBox`; the same spec measures the live path so vendored icon data cannot
+  drift away from them. (1b) ANY SEPARATION MUST BE WORTH A SCREEN PIXEL: the
+  air above the socket row is 7 board units = 1.55 CSS px on a phone. Two units
+  — the intuitive "small gap" — is 0.44 px and reads as nothing at all.
+  (2) A merchant plate grows UPWARD from a bottom edge half a tile-row
   below its city point (`MERCHANT_PLATE_TOP`), because growing downward pushes
   Gloucester's ribbon off the viewBox and squeezes the Warrington–Stoke link
-  marker; `marker-anchor.test.ts` catches both. (3) Contrast comes from the dark
+  marker; `marker-anchor.test.ts` catches both. What CAPS the row height is the
+  link-icon pair straddling the plate's top edge (`LINK_ICON_DY`/`LINK_ICON_R`):
+  Warrington sits nearest the board's top edge, so the plate cannot exceed 100
+  units without pushing those icons outside the viewBox. (3) Contrast comes from the dark
   well under the amber, not from the fill — every plate, glyph and link icon on a
   merchant is the same brass hue family. Corollary: the cask carries no light
   keyline and no second fill; it must stay ONE amber mass or it breaks into two

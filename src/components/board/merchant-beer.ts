@@ -1,3 +1,4 @@
+import { GAME_ICONS } from '../gameicons-data'
 import { MERCHANT_BEER_ROW_H, SLOT } from './marker-anchor'
 
 /**
@@ -9,13 +10,17 @@ import { MERCHANT_BEER_ROW_H, SLOT } from './marker-anchor'
  * inside its icon area — the arrangement the printed board uses. That is what
  * buys the barrel its size: sharing the tile it would compete with the glyph
  * grid for the same 52 units and could only be made legible by being reshaped,
- * and a barrel is only recognisable at its natural proportions. So the art is
- * authored once at cask proportions (`BARREL_ART_W`×`BARREL_ART_H`) and placed
- * by `barrelTransform`, which scales both axes by one scalar.
+ * and a barrel is only recognisable at its natural proportions. The art is the
+ * project's own vendored `brewery` glyph, placed by `barrelTransform` at one
+ * scale factor for both axes.
  */
 
-/** Air between the tile row and the beer socket below it. */
-export const BEER_ROW_GAP = 2
+/**
+ * Air between the tile row and the beer socket below it. Sized to read as a gap
+ * rather than a hairline at BOTH render scales — a couple of board units is
+ * under half a screen pixel on a phone, which is no gap at all.
+ */
+export const BEER_ROW_GAP = 7
 /** Diameter of the recessed socket a merchant's barrel rests in. */
 export const BEER_SOCKET_D = MERCHANT_BEER_ROW_H - BEER_ROW_GAP
 export const BEER_SOCKET_R = BEER_SOCKET_D / 2
@@ -66,117 +71,37 @@ export function merchantIconCells(count: number): IconCell[] {
 /* ---------------- the barrel ---------------- */
 
 /**
- * The barrel's own coordinate box, at cask proportions: taller than its bilge is
- * wide, with heads narrower than the bilge. That taper is the whole read — an
- * untapered amber pill is a pill — so it is authored here and never adjusted to
- * fit anything.
+ * The barrel is `GAME_ICONS.brewery` — Delapouite's `barrel`, the same glyph the
+ * brewery industry wears. Deliberate: a merchant never buys beer, so a barrel
+ * can only ever appear here as the commodity, and beer and the industry that
+ * makes it are one thing on this board. Measured against `beerStein` at both
+ * render scales it also holds together better — a single connected amber mass at
+ * every scale and pixel density tested, where a stein's handle and a hand-drawn
+ * cask's hoops break the shape into fragments.
  */
-export const BARREL_ART_W = 92
-export const BARREL_ART_H = 122
+export const BARREL_ICON = GAME_ICONS.brewery
+
+/**
+ * Ink bounds of that glyph inside its 512-unit box. Read off `getBBox` and
+ * hard-coded because the board renders server-side too; `e2e/merchant-beer.spec`
+ * measures the live path and fails if the vendored data moves.
+ */
+export const BARREL_INK = { x: 73, y: 41, w: 366.02, h: 433.94 }
+
 /** Height of the placed barrel, in board units. */
-export const BARREL_H = 28
+export const BARREL_H = 25
 /** The ONLY scale factor applied to the art, and it drives both axes. */
-export const BARREL_SCALE = BARREL_H / BARREL_ART_H
-export const BARREL_W = BARREL_ART_W * BARREL_SCALE
-
-/** The top head, seen slightly from above. */
-export const HEAD_CX = BARREL_ART_W / 2
-export const HEAD_CY = 12
-export const HEAD_RX = 29
-export const HEAD_RY = 9
-/** The base, hidden behind the staves except for its front rim. */
-export const BASE_CY = BARREL_ART_H - 10
-export const BASE_RX = 27
-export const BASE_RY = 8
-
-interface Pt {
-  x: number
-  y: number
-}
+export const BARREL_SCALE = BARREL_H / BARREL_INK.h
+export const BARREL_W = BARREL_INK.w * BARREL_SCALE
 
 /**
- * The right-hand stave, head to base. Its control points reach past the art box
- * because a cubic never touches them — that overshoot is what gives the cask a
- * bilge wide enough to read against the narrow heads. The left stave is this
- * one mirrored, and both the silhouette and the hoops are measured from it, so
- * a hoop can never disagree with the edge it has to stay inside.
- */
-const BILGE_OVERSHOOT = 4
-const STAVE: readonly [Pt, Pt, Pt, Pt] = [
-  { x: HEAD_CX + HEAD_RX, y: HEAD_CY },
-  { x: BARREL_ART_W + BILGE_OVERSHOOT, y: 40 },
-  { x: BARREL_ART_W + BILGE_OVERSHOOT, y: 84 },
-  { x: HEAD_CX + BASE_RX, y: BASE_CY },
-]
-
-function staveAt(t: number): Pt {
-  const u = 1 - t
-  const w = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t]
-  return {
-    x: STAVE.reduce((s, p, i) => s + p.x * w[i]!, 0),
-    y: STAVE.reduce((s, p, i) => s + p.y * w[i]!, 0),
-  }
-}
-
-/**
- * Left and right edge of the silhouette at a given height, in art units. y runs
- * monotonically down the stave, so a bisection finds its parameter.
- */
-export function silhouetteEdge(y: number): { left: number; right: number } {
-  let lo = 0
-  let hi = 1
-  for (let i = 0; i < 40; i++) {
-    const mid = (lo + hi) / 2
-    if (staveAt(mid).y < y) lo = mid
-    else hi = mid
-  }
-  const right = staveAt((lo + hi) / 2).x
-  return { left: BARREL_ART_W - right, right }
-}
-
-/**
- * Silhouette of the cask: over the top head, down the staves to the bilge, in
- * to the narrower base, across the front of the base rim and back up.
- */
-export function barrelBodyPath(): string {
-  const mirror = (p: Pt) => `${BARREL_ART_W - p.x} ${p.y}`
-  return [
-    `M${HEAD_CX - HEAD_RX} ${HEAD_CY}`,
-    `A${HEAD_RX} ${HEAD_RY} 0 0 1 ${STAVE[0].x} ${STAVE[0].y}`,
-    `C${STAVE[1].x} ${STAVE[1].y} ${STAVE[2].x} ${STAVE[2].y} ${STAVE[3].x} ${STAVE[3].y}`,
-    `A${BASE_RX} ${BASE_RY} 0 0 1 ${BARREL_ART_W - STAVE[3].x} ${STAVE[3].y}`,
-    `C${mirror(STAVE[2])} ${mirror(STAVE[1])} ${HEAD_CX - HEAD_RX} ${HEAD_CY}`,
-    'Z',
-  ].join(' ')
-}
-
-export interface Hoop {
-  y: number
-  x1: number
-  x2: number
-}
-
-/** Thickness of a hoop, and how far it is held back from the silhouette. */
-export const HOOP_W = 7
-export const HOOP_INSET = 2
-const HOOP_YS = [42, 86]
-
-/**
- * The two iron hoops, spanning the silhouette's own width at their height so
- * neither can poke out of the bilge. They read as banding at desk size and as a
- * faint darkening at phone size, where they are sub-pixel.
- */
-export function barrelHoops(): Hoop[] {
-  return HOOP_YS.map((y) => {
-    const { left, right } = silhouetteEdge(y)
-    return { y, x1: left + HOOP_INSET, x2: right - HOOP_INSET }
-  })
-}
-
-/**
- * Places the art centred on the socket. One `scale` argument by construction:
- * the barrel may be sized, never reshaped.
+ * Places the glyph's ink centred on the socket. One `scale` argument by
+ * construction: the barrel may be sized, never reshaped.
  */
 export function barrelTransform(): string {
-  return `translate(${-BARREL_W / 2}, ${-BARREL_H / 2}) scale(${BARREL_SCALE})`
+  return (
+    `translate(${-BARREL_W / 2}, ${-BARREL_H / 2}) ` +
+    `scale(${BARREL_SCALE}) ` +
+    `translate(${-BARREL_INK.x}, ${-BARREL_INK.y})`
+  )
 }

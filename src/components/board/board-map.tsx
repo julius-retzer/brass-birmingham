@@ -29,9 +29,6 @@ import {
   routeCurve,
 } from './marker-anchor'
 import {
-  BARREL_H,
-  BARREL_SCALE,
-  BARREL_W,
   BEER_SOCKET_CX,
   BEER_SOCKET_CY,
   BEER_SOCKET_R,
@@ -40,9 +37,9 @@ import {
   HEAD_RX,
   HEAD_RY,
   HOOP_W,
-  MAX_ICONS,
   barrelBodyPath,
   barrelHoops,
+  barrelTransform,
   merchantIconCells,
 } from './merchant-beer'
 import {
@@ -1709,9 +1706,7 @@ function MerchantBeerSocket({ hasBeer }: { hasBeer: boolean }) {
         strokeDasharray={hasBeer ? undefined : '3 3'}
       />
       {hasBeer && (
-        <g
-          transform={`translate(${-BARREL_W / 2}, ${-BARREL_H / 2}) scale(${BARREL_SCALE})`}
-        >
+        <g transform={barrelTransform()}>
           {/* No parchment keyline on the barrel: the socket already separates
               the amber, and at phone scale a light stroke on a ~5px shape
               washes the fill towards cream. */}
@@ -1845,21 +1840,15 @@ function MerchantPlate({
                 strokeDasharray={m ? undefined : '3 3'}
               />
               {m && m.industryIcons.length > 0 ? (
-                m.industryIcons
-                  .slice(0, MAX_ICONS)
-                  .map((t, j) => ({
-                    t,
-                    cell: merchantIconCells(m.industryIcons.length)[j]!,
-                  }))
-                  .map(({ t, cell }, j) => (
-                    <g
-                      key={j}
-                      transform={`translate(${cell.x}, ${cell.y}) scale(${cell.size / 24})`}
-                      style={{ color: '#e6bd63' }}
-                    >
-                      <IndustryFragment type={t} />
-                    </g>
-                  ))
+                merchantIconCells(m.industryIcons.length).map((cell, j) => (
+                  <g
+                    key={j}
+                    transform={`translate(${cell.x}, ${cell.y}) scale(${cell.size / 24})`}
+                    style={{ color: '#e6bd63' }}
+                  >
+                    <IndustryFragment type={m.industryIcons[j]!} />
+                  </g>
+                ))
               ) : m ? (
                 // blank merchant tile — buys nothing
                 <text

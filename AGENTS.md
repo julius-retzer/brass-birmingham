@@ -570,16 +570,19 @@ What this means in practice:
   same check.
 - MERCHANT BEER SITS IN ITS OWN SOCKET (2026-07-26): the beer a merchant
   supplies is an upright cask standing in a recessed round well BELOW its tile,
-  in a dedicated row the merchant plate reserves for it — the physical board's
-  own arrangement. Geometry is pure in `board/merchant-beer.ts` (which also owns
+  in a dedicated row the merchant plate reserves for it — alongside the tile
+  rather than inside its icon area, as the printed board does. Geometry is pure
+  in `board/merchant-beer.ts` (which also owns
   the merchant slot's industry-glyph cells, so tile-vs-socket clearance is
   asserted in one place); the plate metrics it divides up (`MERCHANT_BEER_ROW_H`,
   `MERCHANT_PLATE_H`, `MERCHANT_PLATE_TOP`) live with the other plate sizing in
   `board/marker-anchor.ts` so `plateRect`'s obstacle box cannot drift from what
   is drawn. Four rules, and any new on-board marker inherits them:
   (1) THE BOARD IS 1600 UNITS WIDE AND A 390px PHONE RENDERS IT AT 0.221 (1280px
-  gives 0.489 — both measured off `getScreenCTM`, both pinned in
-  `merchant-beer.test.ts`), so a marker crammed into an occupied area can only
+  gives 0.489 — the unit tests size markers against those numbers and
+  `e2e/merchant-beer.spec.ts` reads the live `getScreenCTM` at both widths, so a
+  frame change that shrinks the board fails), so a marker crammed into an
+  occupied area can only
   reach legible size by being reshaped, and a reshaped barrel stops reading as a
   barrel. Give it its own space instead: BARREL ART IS AUTHORED ONCE AT CASK
   PROPORTIONS AND PLACED WITH A SINGLE UNIFORM `scale()` — never stretch one
@@ -595,7 +598,9 @@ What this means in practice:
   well, while a blank tile gets no socket at all — three distinct reads. Carries
   `data-beer="ready"|"spent"`; pinned by `merchant-beer.test.ts` (geometry,
   uniform scale, phone-scale mass) and `e2e/merchant-beer.spec.ts` (which slots
-  get one).
+  get one, plus the render scale). Cosmetic cost, deliberate: a closed or blank
+  merchant still reserves the socket row, so its plate shows an empty bottom
+  band.
 - INDUSTRY ICON COLOURS (2026-07-22): six industries each have a base + bright
   stop (`--bb-ind-*` / `--bb-ind-*-bright` in `theme.css`); glyphs render inside
   a `.bb2-indchip` wash coin via `IndustryChip` (`icons.tsx`) — the coin carries

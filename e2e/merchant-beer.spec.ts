@@ -61,3 +61,23 @@ test('spending a merchant barrel empties that socket and no other', async ({
   await expect(sockets(page, 'warrington', 'ready')).toHaveCount(0)
   await expect(page.locator('[data-beer="ready"]')).toHaveCount(readyBefore - 1)
 })
+
+// merchant-beer.test.ts sizes the barrel in board units against these two
+// scales. They are a property of the frame, not of the board data, so a layout
+// change could move them and shrink every on-board marker with nothing failing.
+for (const [width, height, scale] of [
+  [1280, 900, 0.489],
+  [390, 844, 0.221],
+] as const) {
+  test(`the board renders at ${scale} of its viewBox at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height })
+    await page.goto('/?demo')
+    await expect(page.getByTestId('era-plate')).toBeVisible()
+    const measured = await page
+      .locator('svg.touch-none')
+      .evaluate((svg) => (svg as SVGSVGElement).getScreenCTM()!.a)
+    expect(measured).toBeCloseTo(scale, 2)
+  })
+}

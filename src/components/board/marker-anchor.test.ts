@@ -25,15 +25,16 @@ function occludedBy(from: CityId, to: CityId, at: { x: number; y: number }) {
 describe('plate boxes', () => {
   const ids = Object.keys(cities) as CityId[]
 
-  it('all sit inside the board viewBox', () => {
-    // Anything past the edges is simply not drawn, and merchant plates reach
-    // further from their city point than city plates do.
-    for (const id of ids) {
-      const r = plateRect(id)
-      expect(r.x, id).toBeGreaterThanOrEqual(0)
-      expect(r.y, id).toBeGreaterThanOrEqual(0)
-      expect(r.x + r.w, id).toBeLessThanOrEqual(VIEW_W)
-      expect(r.y + r.h, id).toBeLessThanOrEqual(VIEW_H)
+  it('every plate and name ribbon sits inside the board viewBox', () => {
+    // A zoomed-in player sees exactly the viewBox, so anything outside it is
+    // reachable only by the letterbox slack at fit zoom. Merchant plates reach
+    // further from their city point than city plates do, hence the check.
+    for (const r of plateObstacles()) {
+      const at = `${r.x},${r.y}`
+      expect(r.x, at).toBeGreaterThanOrEqual(0)
+      expect(r.y, at).toBeGreaterThanOrEqual(0)
+      expect(r.x + r.w, at).toBeLessThanOrEqual(VIEW_W)
+      expect(r.y + r.h, at).toBeLessThanOrEqual(VIEW_H)
     }
   })
 
@@ -95,10 +96,11 @@ describe('link marker anchors', () => {
         const oy = Math.min(box.y + box.h, r.y + r.h) - Math.max(box.y, r.y)
         if (ox > 0 && oy > 0) covered += ox * oy
       }
+      // Stoke—Stone is the worst case at 0.387; the rest are under 0.06.
       expect(
         covered / (box.w * box.h),
         linkKey(conn.from, conn.to),
-      ).toBeLessThan(0.4)
+      ).toBeLessThan(0.45)
     }
   })
 

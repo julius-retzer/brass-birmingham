@@ -23,19 +23,22 @@ import {
   HEAD_CY,
   HEAD_RX,
   HEAD_RY,
-  HOOP_W,
+  HOOP_INSET,
   ICON_SIZE_GRID,
   ICON_SIZE_SINGLE,
   MAX_ICONS,
   barrelBodyPath,
   barrelHoops,
+  barrelTransform,
   merchantIconCells,
+  silhouetteEdge,
 } from './merchant-beer'
 
 /**
  * The board is a 1600×1150 viewBox letterboxed into its frame, which measures
  * out at these scales — so a marker's board units convert straight to the CSS
- * pixels a player actually looks at.
+ * pixels a player looks at. `e2e/merchant-beer.spec.ts` reads the live
+ * `getScreenCTM` at both widths and fails if the frame drifts off them.
  */
 const PHONE_SCALE = 0.221
 const DESKTOP_SCALE = 0.489
@@ -65,11 +68,13 @@ describe('beer socket', () => {
 })
 
 describe('barrel', () => {
-  it('is only ever scaled uniformly', () => {
-    // One scalar drives both axes, so the art can never be stretched to fit.
+  it('is placed with a single scale factor, never one per axis', () => {
+    // The transform string is the thing that could distort the art, so assert
+    // its shape: one scale argument, no comma.
+    const t = barrelTransform()
+    expect(t).toMatch(/^translate\([^)]*\) scale\([\d.]+\)$/)
+    expect(t).toContain(`scale(${BARREL_SCALE})`)
     expect(BARREL_W / BARREL_H).toBeCloseTo(BARREL_ART_W / BARREL_ART_H, 10)
-    expect(BARREL_SCALE).toBeCloseTo(BARREL_W / BARREL_ART_W, 10)
-    expect(BARREL_SCALE).toBeCloseTo(BARREL_H / BARREL_ART_H, 10)
   })
 
   it('is authored taller than it is wide, like a cask', () => {
@@ -78,11 +83,11 @@ describe('barrel', () => {
   })
 
   it('keeps a legible bright mass at phone scale', () => {
-    // The socket puts the whole barrel on its own patch of plate, so both axes
-    // survive: a marker squeezed into the glyph grid gave ~2px each way.
+    // A socket of its own puts the whole barrel on a clear patch of plate, so
+    // both axes survive the reduction rather than just the longer one.
     expect(BARREL_W * PHONE_SCALE).toBeGreaterThan(4.5)
     expect(BARREL_H * PHONE_SCALE).toBeGreaterThan(5.5)
-    // And at desk scale there is room for the cask detail to read.
+    // And at desk scale there is room for the cask shape to read.
     expect(BARREL_H * DESKTOP_SCALE).toBeGreaterThan(12)
   })
 
@@ -95,7 +100,8 @@ describe('barrel', () => {
   it('tapers: both heads are narrower than the bilge', () => {
     expect(HEAD_RX).toBeLessThan(BARREL_ART_W / 2)
     expect(BASE_RX).toBeLessThan(BARREL_ART_W / 2)
-    expect(HEAD_RX / (BARREL_ART_W / 2)).toBeLessThan(0.75)
+    const bilge = silhouetteEdge((HEAD_CY + BASE_CY) / 2)
+    expect(bilge.right - bilge.left).toBeGreaterThan(HEAD_RX * 2 * 1.3)
   })
 
   it('keeps both heads inside the art box', () => {
@@ -104,15 +110,23 @@ describe('barrel', () => {
     expect(HEAD_CY + HEAD_RY).toBeLessThan(BASE_CY - BASE_RY)
   })
 
-  it('keeps both hoops inside the silhouette', () => {
+  it('keeps the silhouette inside the art box at every height', () => {
+    for (let y = HEAD_CY; y <= BASE_CY; y += 0.5) {
+      const { left, right } = silhouetteEdge(y)
+      expect(left).toBeGreaterThanOrEqual(0)
+      expect(right).toBeLessThanOrEqual(BARREL_ART_W)
+    }
+  })
+
+  it('keeps both hoops inside the silhouette at their own height', () => {
     const hoops = barrelHoops()
     expect(hoops).toHaveLength(2)
     for (const h of hoops) {
-      expect(h.x1).toBeGreaterThan(0)
-      expect(h.x2).toBeLessThan(BARREL_ART_W)
+      const { left, right } = silhouetteEdge(h.y)
+      expect(h.x1).toBeCloseTo(left + HOOP_INSET, 6)
+      expect(h.x2).toBeCloseTo(right - HOOP_INSET, 6)
       expect(h.y).toBeGreaterThan(HEAD_CY + HEAD_RY)
       expect(h.y).toBeLessThan(BASE_CY - BASE_RY)
-      expect(HOOP_W).toBeLessThan(BARREL_ART_H / 20)
     }
     expect(hoops[0]!.y).toBeLessThan(hoops[1]!.y)
   })
@@ -123,7 +137,7 @@ describe('merchantIconCells', () => {
     expect(merchantIconCells(0)).toEqual([])
   })
 
-  it('keeps the shipped glyph sizes', () => {
+  it('draws a lone glyph large and shares a grid from two up', () => {
     expect(merchantIconCells(1)[0]?.size).toBe(ICON_SIZE_SINGLE)
     for (const n of [2, 3]) {
       for (const cell of merchantIconCells(n)) {
@@ -132,7 +146,7 @@ describe('merchantIconCells', () => {
     }
   })
 
-  it('uses the whole tile, which the socket no longer shares', () => {
+  it('uses the whole tile, which is the socket-free area', () => {
     for (const n of [1, 2, 3]) {
       for (const cell of merchantIconCells(n)) {
         expect(cell.x).toBeGreaterThanOrEqual(0)

@@ -300,7 +300,8 @@ function LinkIcons({ n }: { n: number }) {
 // One slot in an industry track: a tile, or an empty placeholder for a
 // depleted level. Tapping/hovering a tile drives the docked readout. In
 // develop mode the ARMED tile (the one a pick would scrap) smoulders brass
-// and a tap peels it off; tapping any other tile explains why not.
+// and a tap peels it off; tapping any other tile explains why not. Exactly one
+// ring shows per tile — see `ringHue` below.
 function TrackSlot({
   entry,
   selected,
@@ -330,29 +331,37 @@ function TrackSlot({
     )
   }
   const { tile, count, next, barred } = entry
+  const armed = develop?.armed ?? false
+  // The selected tile's ring is the only ring it shows: on an armed tile that
+  // ring takes over the arming (brass, breathing) and the pulse below stands
+  // down, so the two never stack on one tile edge. Ring styling lives in
+  // `.bb2-mat-ring*` (theme.css) — the armed breath animates the border colour,
+  // which an inline style would fight.
   return (
     <button
       type="button"
       data-testid={`mat-slot-${tile.id}`}
       data-depth={count}
-      data-develop-armed={develop?.armed || undefined}
+      data-develop-armed={armed || undefined}
       aria-pressed={selected}
       aria-label={
-        develop?.armed
+        armed
           ? `Scrap ${LABEL[tile.type]} ${ROMAN[tile.level] ?? tile.level}`
           : undefined
       }
       onClick={(e) => {
         onSelect()
         if (develop) {
-          if (develop.armed) develop.onPick(e.currentTarget)
+          if (armed) develop.onPick(e.currentTarget)
           else develop.onBlocked()
         }
       }}
       onMouseEnter={onSelect}
       onFocus={onSelect}
       className={`relative shrink-0 rounded-md transition-transform hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus:outline-none ${
-        develop?.armed ? 'bb2-develop-armed hover:-translate-y-1' : ''
+        armed
+          ? `hover:-translate-y-1 ${selected ? '' : 'bb2-develop-armed'}`
+          : ''
       }`}
       style={{ opacity: barred ? 0.42 : 1 }}
     >
@@ -363,18 +372,18 @@ function TrackSlot({
         tile={tile}
         depth={count}
         size={48}
-        next={next}
+        // "Next tile out to BUILD" is noise while developing, and its soft brass
+        // halo is a second glow over the stacked edges the pile depth is read
+        // from — the armed ring says what matters on this surface.
+        next={next && !develop}
         barred={barred}
       />
       {selected && (
         <span
           aria-hidden
-          className="pointer-events-none absolute rounded-lg"
-          style={{
-            inset: -3,
-            border: '1.5px solid var(--bb-brass-bright)',
-            boxShadow: '0 0 8px rgba(230,189,99,.4)',
-          }}
+          className={`pointer-events-none absolute rounded-lg bb2-mat-ring ${
+            armed ? 'bb2-mat-ring-armed' : develop ? 'bb2-mat-ring-inspect' : ''
+          }`}
         />
       )}
     </button>

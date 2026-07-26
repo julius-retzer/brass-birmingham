@@ -787,7 +787,10 @@ What this means in practice:
   (`useHotkeySequences`) — do not hand-roll a keydown listener beside it. The
   leader window is 1500ms, enforced by the library; the hint overlay's `armed`
   flag is a DISPLAY mirror on its own timer (the manager exposes no lapse
-  callback) and never decides whether a shortcut fires. Pinned by
+  callback) and never decides whether a shortcut fires. A suppressed keystroke
+  and a soft-disabled row both LEAVE sequence progress intact, so
+  `LeaderShortcuts` calls `resetAll()` when focus moves or the breakpoint flips
+  — otherwise an armed leader outlives a detour into a chat box. Pinned by
   `shortcuts.test.ts`, `shortcuts.dom.test.ts` and
   `e2e/keyboard-shortcuts.spec.ts`. GOTCHA: vitest runs `environment: 'node'`,
   so `shortcuts.dom.test.ts` opts into happy-dom with a `// @vitest-environment`

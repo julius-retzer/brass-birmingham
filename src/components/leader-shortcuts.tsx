@@ -4,7 +4,11 @@
 // registers every sequence with TanStack Hotkeys and shows the hint overlay
 // while the leader is armed. A surface mounts it once and hands over the
 // handlers it can serve.
-import { useHotkey, useHotkeySequences } from '@tanstack/react-hotkeys'
+import {
+  getSequenceManager,
+  useHotkey,
+  useHotkeySequences,
+} from '@tanstack/react-hotkeys'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   DESKTOP_MEDIA_QUERY,
@@ -42,7 +46,26 @@ export function LeaderShortcuts({ handlers }: { handlers: ShortcutHandlers }) {
     setArmed(false)
   }, [])
 
+  const forgetLeader = useCallback(() => {
+    getSequenceManager().resetAll()
+    disarm()
+  }, [disarm])
+
   useEffect(() => disarm, [disarm])
+
+  // A half-typed sequence survives both a suppressed keystroke and a
+  // soft-disabled binding, so an armed leader would otherwise outlive a detour
+  // into a chat box or a resize across the breakpoint. Focus moving anywhere
+  // else is reason enough to forget it — the player is doing something with
+  // that thing, not finishing a shortcut.
+  useEffect(() => {
+    window.addEventListener('focusin', forgetLeader)
+    return () => window.removeEventListener('focusin', forgetLeader)
+  }, [forgetLeader])
+
+  useEffect(() => {
+    forgetLeader()
+  }, [context.isDesktop, forgetLeader])
 
   // Taking the hint down is this component's business, so the handlers the
   // registry sees are wrapped rather than each surface remembering to do it.

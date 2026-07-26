@@ -65,6 +65,24 @@ test('typing the keys into a text field leaves the panel alone', async ({
   await expect(panel).toHaveAttribute('data-collapsed', 'true')
 })
 
+test('an armed leader is forgotten when focus moves into a field', async ({
+  page,
+}) => {
+  await page.goto('/?demo')
+  const panel = page.getByTestId('side-panel')
+  await expect(panel).toHaveAttribute('data-collapsed', 'false')
+
+  await armLeader(page)
+  await page.keyboard.press(`${MODIFIER}+KeyK`)
+  await expect(page.getByTestId('palette-input')).toBeFocused()
+  await expect(page.getByTestId('shortcut-hint')).toHaveCount(0)
+
+  // Back out and finish the sequence: the leader is gone, not merely paused.
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('KeyP')
+  await expect(panel).toHaveAttribute('data-collapsed', 'false')
+})
+
 test('the leader lapses if the second key never comes', async ({ page }) => {
   await page.goto('/?demo')
   const panel = page.getByTestId('side-panel')

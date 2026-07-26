@@ -19,6 +19,9 @@ export const SHORTCUT_LEADER: Hotkey = 'G'
 // before the next unrelated keystroke lands.
 export const SHORTCUT_TIMEOUT_MS = 1500
 
+// Tailwind's `lg`, the breakpoint the collapsible dock layout starts at.
+export const DESKTOP_MEDIA_QUERY = '(min-width: 1024px)'
+
 interface ShortcutBinding {
   /** Handler slot a surface fills in; also the row's stable identity. */
   id: string
@@ -26,10 +29,17 @@ interface ShortcutBinding {
   key: Hotkey
   /** Shown in the hint overlay while the leader is armed. */
   description: string
+  /** Set when the target only exists in the desktop layout. */
+  desktopOnly?: boolean
 }
 
 export const SHORTCUTS = [
-  { id: 'togglePanel', key: 'P', description: 'Collapse or expand the panel' },
+  {
+    id: 'togglePanel',
+    key: 'P',
+    description: 'Collapse or expand the panel',
+    desktopOnly: true,
+  },
 ] as const satisfies ReadonlyArray<ShortcutBinding>
 
 export type ShortcutId = (typeof SHORTCUTS)[number]['id']
@@ -39,6 +49,20 @@ export type ShortcutId = (typeof SHORTCUTS)[number]['id']
  * binding may be declared before every surface can serve it.
  */
 export type ShortcutHandlers = Partial<Record<ShortcutId, () => void>>
+
+export interface ShortcutContext {
+  /** Whether the viewport is showing the desktop layout. */
+  isDesktop: boolean
+}
+
+function isOffered(
+  binding: (typeof SHORTCUTS)[number],
+  handlers: ShortcutHandlers,
+  { isDesktop }: ShortcutContext,
+): boolean {
+  if (handlers[binding.id] === undefined) return false
+  return isDesktop || binding.desktopOnly !== true
+}
 
 // stopPropagation stays off: the listener sits on `document`, and window-level
 // keydown handlers (the command palette) run after it in the bubble phase.
@@ -55,19 +79,21 @@ export const SHORTCUT_SEQUENCE_OPTIONS: SequenceOptions = {
 /** The leader sequences to register, one per declared shortcut. */
 export function shortcutSequences(
   handlers: ShortcutHandlers,
+  context: ShortcutContext,
 ): Array<UseHotkeySequenceDefinition> {
   return SHORTCUTS.map((binding) => ({
     sequence: [SHORTCUT_LEADER, binding.key],
     callback: () => handlers[binding.id]?.(),
-    options: { enabled: handlers[binding.id] !== undefined },
+    options: { enabled: isOffered(binding, handlers, context) },
   }))
 }
 
 /** The rows the hint overlay lists: every shortcut this surface can serve. */
 export function shortcutHints(
   handlers: ShortcutHandlers,
+  context: ShortcutContext,
 ): Array<{ key: Hotkey; description: string }> {
-  return SHORTCUTS.filter((binding) => handlers[binding.id] !== undefined).map(
-    ({ key, description }) => ({ key, description }),
-  )
+  return SHORTCUTS.filter((binding) =>
+    isOffered(binding, handlers, context),
+  ).map(({ key, description }) => ({ key, description }))
 }

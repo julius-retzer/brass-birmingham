@@ -12,9 +12,12 @@ import {
   shortcutSequences,
 } from './shortcuts'
 
-function register(handlers: Parameters<typeof shortcutSequences>[0]) {
+function register(
+  handlers: Parameters<typeof shortcutSequences>[0],
+  context: Parameters<typeof shortcutSequences>[1] = { isDesktop: true },
+) {
   const manager = getSequenceManager()
-  for (const definition of shortcutSequences(handlers)) {
+  for (const definition of shortcutSequences(handlers, context)) {
     manager.register(definition.sequence, definition.callback, {
       ...SHORTCUT_SEQUENCE_OPTIONS,
       ...definition.options,
@@ -108,6 +111,13 @@ describe('leader shortcuts on a real keyboard', () => {
 
   it('never fires a binding no surface serves', () => {
     register({})
+    press('g')
+    press('p')
+    expect(togglePanel).not.toHaveBeenCalled()
+  })
+
+  it('never fires a desktop-only binding on a phone layout', () => {
+    register({ togglePanel }, { isDesktop: false })
     press('g')
     press('p')
     expect(togglePanel).not.toHaveBeenCalled()

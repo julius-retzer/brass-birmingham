@@ -8,9 +8,12 @@ import {
   shortcutSequences,
 } from './shortcuts'
 
+const DESKTOP = { isDesktop: true }
+const PHONE = { isDesktop: false }
+
 describe('shortcut registry', () => {
   it('declares one sequence per binding, all behind the leader', () => {
-    const definitions = shortcutSequences({ togglePanel: () => {} })
+    const definitions = shortcutSequences({ togglePanel: () => {} }, DESKTOP)
     expect(definitions).toHaveLength(SHORTCUTS.length)
     for (const definition of definitions) {
       expect(definition.sequence[0]).toBe(SHORTCUT_LEADER)
@@ -39,7 +42,7 @@ describe('shortcut registry', () => {
 
   it('routes a completed sequence to the matching handler', () => {
     const togglePanel = vi.fn()
-    const definition = shortcutSequences({ togglePanel }).find(
+    const definition = shortcutSequences({ togglePanel }, DESKTOP).find(
       (d) => d.sequence[1] === 'P',
     )
     definition?.callback(new Event('keydown') as KeyboardEvent, {
@@ -50,18 +53,28 @@ describe('shortcut registry', () => {
   })
 
   it('registers a handler-less binding but leaves it inert', () => {
-    const definitions = shortcutSequences({})
+    const definitions = shortcutSequences({}, DESKTOP)
     expect(definitions).toHaveLength(SHORTCUTS.length)
     for (const definition of definitions) {
       expect(definition.options?.enabled).toBe(false)
     }
-    expect(shortcutHints({})).toEqual([])
+    expect(shortcutHints({}, DESKTOP)).toEqual([])
   })
 
   it('hints only what this surface can serve', () => {
-    expect(shortcutHints({ togglePanel: () => {} })).toEqual([
+    expect(shortcutHints({ togglePanel: () => {} }, DESKTOP)).toEqual([
       { key: 'P', description: 'Collapse or expand the panel' },
     ])
+  })
+
+  it('holds a desktop-only binding inert on a phone layout', () => {
+    // The panel has no collapsed state below lg, so the shortcut must not
+    // quietly flip (and persist) a preference with nothing to show for it.
+    const handlers = { togglePanel: () => {} }
+    for (const definition of shortcutSequences(handlers, PHONE)) {
+      expect(definition.options?.enabled).toBe(false)
+    }
+    expect(shortcutHints(handlers, PHONE)).toEqual([])
   })
 
   it('suppresses shortcuts in text fields and bounds the leader window', () => {

@@ -7,6 +7,7 @@
 import { useHotkey, useHotkeySequences } from '@tanstack/react-hotkeys'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  DESKTOP_MEDIA_QUERY,
   SHORTCUT_LEADER,
   SHORTCUT_SEQUENCE_OPTIONS,
   SHORTCUT_TIMEOUT_MS,
@@ -16,7 +17,22 @@ import {
   shortcutSequences,
 } from './shortcuts'
 
+// Starts false so the first client render matches the server's, then settles
+// on the real viewport — a desktop-only binding stays inert until it does.
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState(false)
+  useEffect(() => {
+    const query = window.matchMedia(DESKTOP_MEDIA_QUERY)
+    const sync = () => setIsDesktop(query.matches)
+    sync()
+    query.addEventListener('change', sync)
+    return () => query.removeEventListener('change', sync)
+  }, [])
+  return isDesktop
+}
+
 export function LeaderShortcuts({ handlers }: { handlers: ShortcutHandlers }) {
+  const context = { isDesktop: useIsDesktop() }
   const [armed, setArmed] = useState(false)
   const lapse = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -39,7 +55,10 @@ export function LeaderShortcuts({ handlers }: { handlers: ShortcutHandlers }) {
     }
   }
 
-  useHotkeySequences(shortcutSequences(wrapped), SHORTCUT_SEQUENCE_OPTIONS)
+  useHotkeySequences(
+    shortcutSequences(wrapped, context),
+    SHORTCUT_SEQUENCE_OPTIONS,
+  )
 
   // A display mirror of the sequence manager's own leader progress: it exposes
   // no lapse callback, so the overlay keeps its own timer on the same window.
@@ -61,14 +80,14 @@ export function LeaderShortcuts({ handlers }: { handlers: ShortcutHandlers }) {
     },
   )
 
-  const hints = shortcutHints(handlers)
+  const hints = shortcutHints(handlers, context)
   if (!armed || hints.length === 0) return null
 
   return (
     <div
       data-testid="shortcut-hint"
       role="status"
-      className="bb2-panel pointer-events-none fixed bottom-4 right-4 z-[70] hidden flex-col gap-1.5 p-3 lg:flex"
+      className="bb2-panel pointer-events-none fixed bottom-4 right-4 z-[70] flex flex-col gap-1.5 p-3"
     >
       <span
         className="text-[10.5px] font-bold uppercase tracking-[0.2em]"

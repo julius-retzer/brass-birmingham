@@ -565,8 +565,8 @@ button.bb2-card {
 /* The tray sizes cards by scaling the whole fan; the width compensates the
  * scale (100% / s) so the usable layout width stays the full viewport —
  * without it a phone tray would waste 28% of an already-narrow screen.
- * The scale lives on the tray root, not the box, because the hint pill is a
- * SIBLING of the fan and has to reserve its clearance in the same scale. */
+ * The scale lives on the tray root, not the box, so the step label
+ * (.bb2-tray-label, a sibling of the fan) can anchor to the scaled band. */
 .bb2-handtray {
   --bb-hand-scale: 0.72;
 }
@@ -578,19 +578,28 @@ button.bb2-card {
   transform: scale(var(--bb-hand-scale));
   width: calc(100% / var(--bb-hand-scale));
 }
-/* The tray's own step label. Absolutely positioned so it reserves no height
- * — the fan never moves when it appears or disappears (a hint that resized
- * the tray would reintroduce the jumping-hand regression PR #81 fixed).
+/* The tray's own step label, shown only while an action is in flight.
+ * Absolutely positioned so it reserves no height — the fan never moves when
+ * it appears or disappears (a hint that resized the tray would reintroduce
+ * the jumping-hand regression PR #81 fixed).
+ * It floats over whatever is beneath the fixed tray, so an idle label would
+ * sit on a scrolling panel's heading for the whole turn; each surface
+ * narrates its own idle state instead.
  * On phones it rides the top edge of the (scaled) card band, which overlays
  * the scrolling panel there, never the board. On desktop the band sits in
  * the board frame's bottom apron (the pb-[84px] strip the map never paints
  * into), so the label drops to the tray's bottom-left corner beside the
- * fan. Cards paint above it — a raised edge card may briefly cover it. */
+ * fan. It paints ABOVE the cards: a selected card keeps its lens for the
+ * whole flow and would otherwise sit on the label for the whole flow too.
+ * Click-transparent (the tray root is), so covering a card costs no tap. */
 .bb2-tray-label {
   position: absolute;
+  z-index: 1;
   left: 12px;
   bottom: calc(150px * var(--bb-hand-scale) - 16px);
-  max-width: 60%;
+  /* Every step's label fits a 390px phone at this width; a narrower cap
+   * ellipsised the Build and Scout steps mid-word. */
+  max-width: calc(100% - 24px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -53,8 +53,27 @@ describe('link marker anchors', () => {
     // the marker layer painting after the plates instead.
     expect(blocked.map((c) => linkKey(c.from, c.to))).toStrictEqual([
       'stoke|stone',
+      'worcester|gloucester',
       'birmingham|redditch',
     ])
+  })
+
+  it('leaves a blocked marker mostly in the open', () => {
+    // A route with no fully clear spot must still be a marker on the board
+    // rather than a marker on a plate, so bound the residual overlap.
+    for (const conn of connections) {
+      const box = markerBoxAt(linkMarkerAnchor(conn.from, conn.to))
+      let covered = 0
+      for (const r of plateObstacles()) {
+        const ox = Math.min(box.x + box.w, r.x + r.w) - Math.max(box.x, r.x)
+        const oy = Math.min(box.y + box.h, r.y + r.h) - Math.max(box.y, r.y)
+        if (ox > 0 && oy > 0) covered += ox * oy
+      }
+      expect(
+        covered / (box.w * box.h),
+        linkKey(conn.from, conn.to),
+      ).toBeLessThan(0.4)
+    }
   })
 
   it('keeps every anchor on its own route', () => {

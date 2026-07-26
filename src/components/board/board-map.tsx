@@ -18,6 +18,8 @@ import { GAME_ICONS } from '../gameicons-data'
 import { IndustryFragment } from '../icons'
 import { VIEW_H, VIEW_W, cityPos, linkKey } from './board-data'
 import {
+  MERCHANT_PLATE_H,
+  MERCHANT_PLATE_TOP,
   PLATE_PAD,
   SLOT,
   SLOT_GAP,
@@ -26,6 +28,23 @@ import {
   pointAt,
   routeCurve,
 } from './marker-anchor'
+import {
+  BARREL_H,
+  BARREL_SCALE,
+  BARREL_W,
+  BEER_SOCKET_CX,
+  BEER_SOCKET_CY,
+  BEER_SOCKET_R,
+  HEAD_CX,
+  HEAD_CY,
+  HEAD_RX,
+  HEAD_RY,
+  HOOP_W,
+  MAX_ICONS,
+  barrelBodyPath,
+  barrelHoops,
+  merchantIconCells,
+} from './merchant-beer'
 import {
   FOCUS_PAN_ANIMATION_MS,
   FOCUS_PAN_DEBOUNCE_MS,
@@ -1518,9 +1537,9 @@ function BuiltTile({ occ }: { occ: BuiltIndustry }) {
   const ink = occ.flipped ? INDUSTRY_FILL[occ.type] : INDUSTRY_INK[occ.type]
   const statInk = occ.flipped ? '#4a3d29' : ink
   // On-tile resource markers: the fill carries the resource identity, a
-  // single 1px parchment keyline (shared with the merchant beer barrel)
-  // lifts every marker off its face and off the owner ribbon. Iron stays the
-  // shipped orange for now — its market/tile hue reconcile lands separately.
+  // single 1px parchment keyline lifts every marker off its face and off the
+  // owner ribbon. Iron stays the shipped orange for now — its market/tile hue
+  // reconcile lands separately.
   const cubes =
     occ.type === 'coal'
       ? { n: occ.coalCubesOnTile, c: '#1d1b18' }
@@ -1659,6 +1678,72 @@ function BuiltTile({ occ }: { occ: BuiltIndustry }) {
 
 /* ================= merchant plate ================= */
 
+/**
+ * The beer a merchant supplies, standing in its own socket below the tile.
+ *
+ * The socket is what makes the state readable: it is always drawn for a tile
+ * that buys goods, so a spent merchant leaves a dark well exactly where its
+ * siblings still show amber — absence is a mark, not a missing mark. And amber
+ * against the near-black well separates by luminance, where amber on the brass
+ * plate and brass glyphs shares their hue and washes out. Geometry, including
+ * the barrel's single uniform scale, lives in `merchant-beer.ts`.
+ */
+function MerchantBeerSocket({ hasBeer }: { hasBeer: boolean }) {
+  return (
+    <g
+      transform={`translate(${BEER_SOCKET_CX}, ${BEER_SOCKET_CY})`}
+      data-beer={hasBeer ? 'ready' : 'spent'}
+    >
+      <title>
+        {hasBeer
+          ? 'Beer barrel ready here — consumed when selling to this merchant'
+          : 'Beer already taken from this merchant — none left this era'}
+      </title>
+      <circle
+        r={BEER_SOCKET_R}
+        fill="#100e0c"
+        fillOpacity={hasBeer ? 0.95 : 0.7}
+        stroke="#c39538"
+        strokeOpacity={hasBeer ? 0.6 : 0.3}
+        strokeWidth="1.2"
+        strokeDasharray={hasBeer ? undefined : '3 3'}
+      />
+      {hasBeer && (
+        <g
+          transform={`translate(${-BARREL_W / 2}, ${-BARREL_H / 2}) scale(${BARREL_SCALE})`}
+        >
+          {/* No parchment keyline on the barrel: the socket already separates
+              the amber, and at phone scale a light stroke on a ~5px shape
+              washes the fill towards cream. */}
+          <path d={barrelBodyPath()} fill="#e8bc4f" />
+          {barrelHoops().map((h) => (
+            <line
+              key={h.y}
+              x1={h.x1}
+              y1={h.y}
+              x2={h.x2}
+              y2={h.y}
+              stroke="#8a6d34"
+              strokeWidth={HOOP_W}
+            />
+          ))}
+          {/* Rim only, no second fill: the cask has to stay ONE amber mass or
+              it breaks into two blobs once the board is phone-sized. */}
+          <ellipse
+            cx={HEAD_CX}
+            cy={HEAD_CY}
+            rx={HEAD_RX}
+            ry={HEAD_RY}
+            fill="none"
+            stroke="#8a6d34"
+            strokeWidth={HOOP_W}
+          />
+        </g>
+      )}
+    </g>
+  )
+}
+
 function MerchantPlate({
   cityId,
   entries,
@@ -1682,7 +1767,7 @@ function MerchantPlate({
   const pos = cityPos[cityId]
   const n = Math.max(entries.length, 2)
   const plateW = n * SLOT + (n - 1) * SLOT_GAP + PLATE_PAD * 2
-  const plateH = SLOT + PLATE_PAD * 2
+  const plateH = MERCHANT_PLATE_H
   const name = cities[cityId].name
   const closed = entries.length === 0
   const bonusLabel = (m: Merchant) =>
@@ -1696,7 +1781,7 @@ function MerchantPlate({
 
   return (
     <g
-      transform={`translate(${pos.x - plateW / 2}, ${pos.y - plateH / 2})`}
+      transform={`translate(${pos.x - plateW / 2}, ${pos.y + MERCHANT_PLATE_TOP})`}
       data-city={cityId}
       data-located={located || undefined}
       opacity={dimmed && !located ? 0.45 : closed && !located ? 0.3 : 1}
@@ -1760,25 +1845,21 @@ function MerchantPlate({
                 strokeDasharray={m ? undefined : '3 3'}
               />
               {m && m.industryIcons.length > 0 ? (
-                m.industryIcons.slice(0, 3).map((t, j) => {
-                  const count = Math.min(m.industryIcons.length, 3)
-                  const size = count === 1 ? 24 : 15
-                  const x =
-                    count === 1 ? (SLOT - size) / 2 : 4 + (j % 2) * (size + 4)
-                  const y =
-                    count === 1
-                      ? (SLOT - size) / 2
-                      : 3.5 + Math.floor(j / 2) * (size + 4)
-                  return (
+                m.industryIcons
+                  .slice(0, MAX_ICONS)
+                  .map((t, j) => ({
+                    t,
+                    cell: merchantIconCells(m.industryIcons.length)[j]!,
+                  }))
+                  .map(({ t, cell }, j) => (
                     <g
                       key={j}
-                      transform={`translate(${x}, ${y}) scale(${size / 24})`}
+                      transform={`translate(${cell.x}, ${cell.y}) scale(${cell.size / 24})`}
                       style={{ color: '#e6bd63' }}
                     >
                       <IndustryFragment type={t} />
                     </g>
-                  )
-                })
+                  ))
               ) : m ? (
                 // blank merchant tile — buys nothing
                 <text
@@ -1792,40 +1873,11 @@ function MerchantPlate({
                   ✕
                 </text>
               ) : null}
-              {/* beer barrel ready at this merchant — drawn as a barrel,
-                  not an anonymous dot (captain feedback 2026-07-14) */}
-              {m?.hasBeer && (
-                <g transform={`translate(${SLOT - 7}, 6.5)`}>
-                  <title>
-                    Beer barrel available — consumed when selling to this
-                    merchant
-                  </title>
-                  <ellipse
-                    cx="0"
-                    cy="0"
-                    rx="4.2"
-                    ry="5.2"
-                    fill="#e8bc4f"
-                    stroke="#f2e6c8"
-                    strokeWidth="1"
-                  />
-                  <line
-                    x1="-4.2"
-                    y1="-1.7"
-                    x2="4.2"
-                    y2="-1.7"
-                    stroke="#5c451a"
-                    strokeWidth="0.9"
-                  />
-                  <line
-                    x1="-4.2"
-                    y1="1.7"
-                    x2="4.2"
-                    y2="1.7"
-                    stroke="#5c451a"
-                    strokeWidth="0.9"
-                  />
-                </g>
+              {/* A merchant tile that buys anything owns a socket for the whole
+                  era; a blank tile never holds beer, so it gets no socket at
+                  all and can never be mistaken for a spent one. */}
+              {m && m.industryIcons.length > 0 && (
+                <MerchantBeerSocket hasBeer={m.hasBeer} />
               )}
             </g>
           )
